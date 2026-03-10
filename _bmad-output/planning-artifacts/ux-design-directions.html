@@ -1,0 +1,518 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>scrapnew — Design Direction Mockups</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #0a0a0b; color: #fafafa; }
+
+  /* Navigation */
+  .nav { position: fixed; top: 0; left: 0; right: 0; z-index: 100; background: #18181b; border-bottom: 1px solid #3f3f46; padding: 12px 24px; display: flex; align-items: center; gap: 16px; }
+  .nav h1 { font-size: 16px; font-weight: 600; color: #fafafa; }
+  .nav-tabs { display: flex; gap: 4px; margin-left: 24px; }
+  .nav-tab { padding: 6px 14px; border-radius: 6px; cursor: pointer; font-size: 13px; color: #a1a1aa; background: transparent; border: 1px solid transparent; transition: all 0.2s; }
+  .nav-tab:hover { color: #fafafa; background: #27272a; }
+  .nav-tab.active { color: #fafafa; background: #27272a; border-color: #3f3f46; }
+  .nav-desc { margin-left: auto; font-size: 12px; color: #71717a; }
+
+  /* Sections */
+  .section { display: none; padding-top: 60px; min-height: 100vh; }
+  .section.active { display: block; }
+  .section-header { padding: 24px 32px 16px; }
+  .section-header h2 { font-size: 20px; font-weight: 600; margin-bottom: 4px; }
+  .section-header p { font-size: 14px; color: #a1a1aa; }
+
+  /* Mockup container */
+  .mockup { margin: 16px 32px; border: 1px solid #3f3f46; border-radius: 12px; overflow: hidden; background: #0a0a0b; }
+  .mockup-label { padding: 8px 16px; background: #18181b; border-bottom: 1px solid #3f3f46; font-size: 12px; color: #71717a; }
+
+  /* ===== DIRECTION A: Command Center ===== */
+  .dir-a { display: grid; grid-template-columns: 56px 1fr; grid-template-rows: 48px 1fr; height: 600px; }
+  .dir-a .topbar { grid-column: 1 / -1; background: #18181b; border-bottom: 1px solid #3f3f46; display: flex; align-items: center; padding: 0 16px; gap: 16px; }
+  .dir-a .topbar .logo { font-weight: 600; font-size: 14px; }
+  .dir-a .topbar .status-pills { display: flex; gap: 8px; margin-left: auto; }
+  .dir-a .topbar .pill { padding: 2px 10px; border-radius: 100px; font-size: 11px; font-weight: 500; }
+  .dir-a .sidebar { background: #18181b; border-right: 1px solid #3f3f46; display: flex; flex-direction: column; align-items: center; padding-top: 12px; gap: 8px; }
+  .dir-a .sidebar .icon { width: 32px; height: 32px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 16px; cursor: pointer; color: #71717a; }
+  .dir-a .sidebar .icon:hover { background: #27272a; color: #fafafa; }
+  .dir-a .sidebar .icon.active { background: #27272a; color: #fafafa; }
+  .dir-a .main { padding: 16px; overflow: auto; }
+
+  /* Status cards */
+  .status-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 16px; }
+  .status-card { background: #18181b; border: 1px solid #3f3f46; border-radius: 8px; padding: 12px 16px; }
+  .status-card .label { font-size: 11px; color: #71717a; text-transform: uppercase; letter-spacing: 0.5px; }
+  .status-card .value { font-size: 24px; font-weight: 600; margin-top: 4px; }
+  .status-card .sub { font-size: 11px; color: #a1a1aa; margin-top: 2px; }
+
+  /* Data table */
+  .data-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  .data-table thead th { text-align: left; padding: 8px 12px; color: #71717a; font-weight: 500; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; border-bottom: 1px solid #3f3f46; }
+  .data-table tbody tr { border-bottom: 1px solid #27272a; }
+  .data-table tbody tr:hover { background: #18181b; }
+  .data-table tbody td { padding: 10px 12px; }
+  .badge { padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 500; display: inline-block; }
+  .badge-green { background: rgba(34,197,94,0.15); color: #22c55e; }
+  .badge-amber { background: rgba(245,158,11,0.15); color: #f59e0b; }
+  .badge-red { background: rgba(239,68,68,0.15); color: #ef4444; }
+  .badge-blue { background: rgba(59,130,246,0.15); color: #3b82f6; }
+  .badge-grey { background: rgba(107,114,128,0.15); color: #6b7280; }
+  .confidence-bar { width: 60px; height: 6px; background: #27272a; border-radius: 3px; display: inline-block; vertical-align: middle; margin-right: 6px; }
+  .confidence-fill { height: 100%; border-radius: 3px; }
+  .action-btn { padding: 4px 10px; border-radius: 4px; font-size: 11px; background: #27272a; border: 1px solid #3f3f46; color: #a1a1aa; cursor: pointer; margin-right: 4px; }
+  .action-btn:hover { color: #fafafa; border-color: #71717a; }
+  .url-text { color: #a1a1aa; font-family: 'JetBrains Mono', monospace; font-size: 12px; }
+
+  /* ===== DIRECTION B: Wide Sidebar ===== */
+  .dir-b { display: grid; grid-template-columns: 220px 1fr; height: 600px; }
+  .dir-b .sidebar { background: #18181b; border-right: 1px solid #3f3f46; padding: 16px; }
+  .dir-b .sidebar .logo { font-weight: 600; font-size: 16px; margin-bottom: 24px; padding: 0 8px; }
+  .dir-b .sidebar .nav-item { display: flex; align-items: center; gap: 10px; padding: 8px 12px; border-radius: 6px; font-size: 13px; color: #a1a1aa; cursor: pointer; margin-bottom: 2px; }
+  .dir-b .sidebar .nav-item:hover { background: #27272a; color: #fafafa; }
+  .dir-b .sidebar .nav-item.active { background: #27272a; color: #fafafa; }
+  .dir-b .sidebar .nav-item .count { margin-left: auto; font-size: 11px; background: #27272a; padding: 1px 6px; border-radius: 4px; }
+  .dir-b .sidebar .nav-section { font-size: 10px; text-transform: uppercase; letter-spacing: 1px; color: #71717a; padding: 16px 12px 6px; }
+  .dir-b .main { padding: 24px; overflow: auto; }
+  .dir-b .main .page-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; }
+  .dir-b .main .page-header h2 { font-size: 18px; font-weight: 600; }
+
+  /* Tab bar */
+  .tab-bar { display: flex; gap: 0; border-bottom: 1px solid #3f3f46; margin-bottom: 16px; }
+  .tab-item { padding: 8px 16px; font-size: 13px; color: #71717a; cursor: pointer; border-bottom: 2px solid transparent; }
+  .tab-item:hover { color: #a1a1aa; }
+  .tab-item.active { color: #fafafa; border-bottom-color: #fafafa; }
+  .tab-item .tab-count { font-size: 11px; background: #27272a; padding: 1px 6px; border-radius: 4px; margin-left: 6px; }
+
+  /* ===== DIRECTION C: Split Panel ===== */
+  .dir-c { display: grid; grid-template-columns: 56px 350px 1fr; height: 600px; }
+  .dir-c .sidebar { background: #18181b; border-right: 1px solid #3f3f46; display: flex; flex-direction: column; align-items: center; padding-top: 12px; gap: 8px; }
+  .dir-c .sidebar .icon { width: 32px; height: 32px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 16px; cursor: pointer; color: #71717a; }
+  .dir-c .sidebar .icon.active { background: #27272a; color: #fafafa; }
+  .dir-c .list-panel { background: #18181b; border-right: 1px solid #3f3f46; overflow: auto; }
+  .dir-c .list-panel .panel-header { padding: 16px; border-bottom: 1px solid #3f3f46; }
+  .dir-c .list-panel .panel-header h3 { font-size: 14px; font-weight: 600; }
+  .dir-c .list-item { padding: 12px 16px; border-bottom: 1px solid #27272a; cursor: pointer; }
+  .dir-c .list-item:hover { background: #27272a; }
+  .dir-c .list-item.selected { background: #27272a; border-left: 2px solid #3b82f6; }
+  .dir-c .list-item .item-title { font-size: 13px; font-weight: 500; margin-bottom: 4px; }
+  .dir-c .list-item .item-url { font-size: 11px; color: #71717a; font-family: monospace; }
+  .dir-c .list-item .item-meta { display: flex; gap: 8px; margin-top: 6px; align-items: center; }
+  .dir-c .detail-panel { padding: 24px; overflow: auto; }
+  .dir-c .detail-panel h2 { font-size: 18px; font-weight: 600; margin-bottom: 16px; }
+
+  /* Detail sections */
+  .detail-section { background: #18181b; border: 1px solid #3f3f46; border-radius: 8px; padding: 16px; margin-bottom: 12px; }
+  .detail-section h4 { font-size: 12px; color: #71717a; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 10px; }
+  .field-row { display: flex; align-items: center; padding: 6px 0; border-bottom: 1px solid #27272a; font-size: 13px; }
+  .field-row:last-child { border-bottom: none; }
+  .field-name { width: 120px; color: #a1a1aa; }
+  .field-value { flex: 1; }
+
+  /* ===== DIRECTION D: Dashboard-First ===== */
+  .dir-d { display: grid; grid-template-columns: 56px 1fr; grid-template-rows: 48px 1fr; height: 600px; }
+  .dir-d .topbar { grid-column: 1 / -1; background: #18181b; border-bottom: 1px solid #3f3f46; display: flex; align-items: center; padding: 0 16px; gap: 16px; }
+  .dir-d .topbar .logo { font-weight: 600; font-size: 14px; }
+  .dir-d .sidebar { background: #18181b; border-right: 1px solid #3f3f46; display: flex; flex-direction: column; align-items: center; padding-top: 12px; gap: 8px; }
+  .dir-d .sidebar .icon { width: 32px; height: 32px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 16px; cursor: pointer; color: #71717a; }
+  .dir-d .sidebar .icon.active { background: #27272a; color: #fafafa; }
+  .dir-d .main { padding: 20px; overflow: auto; }
+  .dashboard-grid { display: grid; grid-template-columns: repeat(3, 1fr); grid-template-rows: auto auto; gap: 12px; }
+  .dashboard-grid .wide { grid-column: span 2; }
+  .dashboard-grid .full { grid-column: span 3; }
+  .panel { background: #18181b; border: 1px solid #3f3f46; border-radius: 8px; padding: 16px; }
+  .panel h3 { font-size: 13px; font-weight: 600; margin-bottom: 12px; display: flex; align-items: center; justify-content: space-between; }
+  .panel h3 .see-all { font-size: 11px; color: #3b82f6; font-weight: 400; cursor: pointer; }
+  .mini-table { font-size: 12px; }
+  .mini-table tr { border-bottom: 1px solid #27272a; }
+  .mini-table td { padding: 6px 8px; }
+
+  /* ===== DIRECTION E: Extension Mockup ===== */
+  .dir-e { height: 600px; position: relative; overflow: hidden; }
+  .dir-e .fake-site { padding: 40px; background: #f8f9fa; color: #1a1a1a; height: 100%; overflow: auto; font-family: Arial, sans-serif; }
+  .dir-e .fake-site h1 { font-size: 20px; margin-bottom: 16px; color: #333; }
+  .dir-e .fake-site .job-card { background: white; border: 1px solid #e0e0e0; border-radius: 8px; padding: 16px; margin-bottom: 12px; position: relative; }
+  .dir-e .fake-site .job-card h3 { font-size: 15px; margin-bottom: 6px; color: #1a1a1a; }
+  .dir-e .fake-site .job-card .company { font-size: 13px; color: #666; margin-bottom: 4px; }
+  .dir-e .fake-site .job-card .location { font-size: 13px; color: #888; }
+  .dir-e .fake-site .job-card .salary { font-size: 13px; color: #2d7d2d; margin-top: 6px; }
+  /* Highlights */
+  .highlight-green { outline: 2px solid #22c55e; outline-offset: 2px; background: rgba(34,197,94,0.08) !important; position: relative; }
+  .highlight-amber { outline: 2px dashed #f59e0b; outline-offset: 2px; background: rgba(245,158,11,0.08) !important; position: relative; }
+  .highlight-label { position: absolute; top: -10px; right: 4px; font-size: 9px; padding: 1px 5px; border-radius: 3px; font-weight: 600; font-family: Inter, sans-serif; }
+  .highlight-label.green { background: #22c55e; color: white; }
+  .highlight-label.amber { background: #f59e0b; color: white; }
+  /* Extension panel */
+  .ext-panel { position: absolute; top: 0; right: 0; width: 320px; height: 100%; background: rgba(24,24,27,0.97); border-left: 1px solid #3f3f46; padding: 16px; overflow: auto; color: #fafafa; font-family: Inter, sans-serif; }
+  .ext-panel h3 { font-size: 14px; font-weight: 600; margin-bottom: 4px; }
+  .ext-panel .ext-subtitle { font-size: 11px; color: #71717a; margin-bottom: 16px; }
+  .ext-panel .ext-field { display: flex; align-items: center; padding: 8px 10px; margin-bottom: 4px; border-radius: 6px; font-size: 12px; background: #27272a; }
+  .ext-panel .ext-field .ext-field-name { flex: 1; }
+  .ext-panel .ext-field .ext-conf { font-size: 11px; margin-left: 8px; }
+  .ext-panel .ext-actions { margin-top: 16px; display: flex; gap: 8px; }
+  .ext-panel .ext-actions button { flex: 1; padding: 8px; border-radius: 6px; font-size: 12px; font-weight: 500; cursor: pointer; border: none; }
+  .ext-panel .ext-actions .save-btn { background: #22c55e; color: white; }
+  .ext-panel .ext-actions .add-btn { background: #27272a; color: #a1a1aa; border: 1px solid #3f3f46; }
+
+  /* ===== DIRECTION F: Minimal Focus ===== */
+  .dir-f { height: 600px; display: flex; flex-direction: column; }
+  .dir-f .topbar { height: 48px; background: #18181b; border-bottom: 1px solid #3f3f46; display: flex; align-items: center; padding: 0 24px; gap: 24px; }
+  .dir-f .topbar .logo { font-weight: 600; font-size: 14px; }
+  .dir-f .topbar .nav-link { font-size: 13px; color: #71717a; cursor: pointer; }
+  .dir-f .topbar .nav-link.active { color: #fafafa; }
+  .dir-f .topbar .nav-link:hover { color: #a1a1aa; }
+  .dir-f .content { flex: 1; padding: 32px 48px; overflow: auto; max-width: 1000px; }
+  .dir-f .content h2 { font-size: 20px; font-weight: 600; margin-bottom: 4px; }
+  .dir-f .content .subtitle { font-size: 13px; color: #71717a; margin-bottom: 24px; }
+  .dir-f .add-bar { display: flex; gap: 8px; margin-bottom: 24px; }
+  .dir-f .add-bar input { flex: 1; padding: 10px 14px; background: #18181b; border: 1px solid #3f3f46; border-radius: 8px; color: #fafafa; font-size: 13px; font-family: monospace; }
+  .dir-f .add-bar button { padding: 10px 20px; background: #3b82f6; color: white; border: none; border-radius: 8px; font-size: 13px; font-weight: 500; cursor: pointer; }
+
+  /* Utility */
+  .green { color: #22c55e; }
+  .amber { color: #f59e0b; }
+  .red { color: #ef4444; }
+  .blue { color: #3b82f6; }
+  .grey { color: #6b7280; }
+  .mono { font-family: 'JetBrains Mono', monospace; font-size: 12px; }
+</style>
+</head>
+<body>
+
+<div class="nav">
+  <h1>scrapnew Design Directions</h1>
+  <div class="nav-tabs">
+    <div class="nav-tab active" onclick="showSection('a')">A: Command Center</div>
+    <div class="nav-tab" onclick="showSection('b')">B: Wide Sidebar</div>
+    <div class="nav-tab" onclick="showSection('c')">C: Split Panel</div>
+    <div class="nav-tab" onclick="showSection('d')">D: Dashboard-First</div>
+    <div class="nav-tab" onclick="showSection('e')">E: Extension</div>
+    <div class="nav-tab" onclick="showSection('f')">F: Minimal</div>
+  </div>
+  <span class="nav-desc">Click tabs to compare directions</span>
+</div>
+
+<!-- DIRECTION A: Command Center -->
+<div class="section active" id="section-a">
+  <div class="section-header">
+    <h2>Direction A: Command Center</h2>
+    <p>Compact icon sidebar + top bar with live status pills. Grafana-inspired density with inline table actions. Maximum data visibility.</p>
+  </div>
+  <div class="mockup">
+    <div class="mockup-label">Dashboard — Sites View</div>
+    <div class="dir-a">
+      <div class="topbar">
+        <span class="logo">scrapnew</span>
+        <div class="status-pills">
+          <span class="pill badge-green">487 Active</span>
+          <span class="pill badge-amber">12 Review</span>
+          <span class="pill badge-red">3 Failed</span>
+          <span class="pill badge-blue">2 Analyzing</span>
+        </div>
+      </div>
+      <div class="sidebar">
+        <div class="icon active" title="Sites">📋</div>
+        <div class="icon" title="Review Queue">👁</div>
+        <div class="icon" title="Jobs">💼</div>
+        <div class="icon" title="Status">📊</div>
+      </div>
+      <div class="main">
+        <div class="status-row">
+          <div class="status-card"><div class="label">Total Sites</div><div class="value">504</div><div class="sub">+8 this week</div></div>
+          <div class="status-card"><div class="label">Scrape Success</div><div class="value green">96.4%</div><div class="sub">487/504 last run</div></div>
+          <div class="status-card"><div class="label">Review Queue</div><div class="value amber">12</div><div class="sub">Avg confidence: 78%</div></div>
+          <div class="status-card"><div class="label">Avg AI Confidence</div><div class="value">82%</div><div class="sub">↑ from 74% last month</div></div>
+        </div>
+        <div class="tab-bar">
+          <div class="tab-item active">All<span class="tab-count">504</span></div>
+          <div class="tab-item">Active<span class="tab-count green">487</span></div>
+          <div class="tab-item">Review<span class="tab-count amber">12</span></div>
+          <div class="tab-item">Failed<span class="tab-count red">3</span></div>
+          <div class="tab-item">Analyzing<span class="tab-count blue">2</span></div>
+          <div class="tab-item">Skipped<span class="tab-count grey">0</span></div>
+        </div>
+        <table class="data-table">
+          <thead><tr><th>Site</th><th>Status</th><th>Confidence</th><th>Last Scrape</th><th>Jobs</th><th>Actions</th></tr></thead>
+          <tbody>
+            <tr><td><span class="url-text">jobs.example.co.il</span></td><td><span class="badge badge-green">Active</span></td><td><span class="confidence-bar"><span class="confidence-fill" style="width:92%;background:#22c55e"></span></span>92%</td><td>2h ago</td><td>847</td><td><button class="action-btn">Scrape</button><button class="action-btn">View</button></td></tr>
+            <tr><td><span class="url-text">careers.startup.io</span></td><td><span class="badge badge-amber">Review</span></td><td><span class="confidence-bar"><span class="confidence-fill" style="width:78%;background:#22c55e"></span></span>78%</td><td>—</td><td>—</td><td><button class="action-btn">Review</button><button class="action-btn">Skip</button></td></tr>
+            <tr><td><span class="url-text">drushim-tech.co.il</span></td><td><span class="badge badge-red">Failed</span></td><td><span class="confidence-bar"><span class="confidence-fill" style="width:85%;background:#22c55e"></span></span>85%</td><td>Failed 6h ago</td><td>423</td><td><button class="action-btn">Re-scrape</button><button class="action-btn">Re-analyze</button></td></tr>
+            <tr><td><span class="url-text">alljobs.co.il/tech</span></td><td><span class="badge badge-blue">Analyzing</span></td><td><span style="color:#71717a">—</span></td><td>—</td><td>—</td><td><span style="font-size:11px;color:#71717a">Processing...</span></td></tr>
+            <tr><td><span class="url-text">jobmaster.co.il</span></td><td><span class="badge badge-green">Active</span></td><td><span class="confidence-bar"><span class="confidence-fill" style="width:71%;background:#22c55e"></span></span>71%</td><td>2h ago</td><td>156</td><td><button class="action-btn">Scrape</button><button class="action-btn">View</button></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- DIRECTION B: Wide Sidebar -->
+<div class="section" id="section-b">
+  <div class="section-header">
+    <h2>Direction B: Wide Sidebar Navigation</h2>
+    <p>Expanded sidebar with labels, counts, and sections. More traditional admin panel feel. Clear navigation hierarchy.</p>
+  </div>
+  <div class="mockup">
+    <div class="mockup-label">Dashboard — Review Queue</div>
+    <div class="dir-b">
+      <div class="sidebar">
+        <div class="logo">scrapnew</div>
+        <div class="nav-section">Main</div>
+        <div class="nav-item">📋 Sites <span class="count">504</span></div>
+        <div class="nav-item active">👁 Review Queue <span class="count" style="background:#f59e0b;color:#000">12</span></div>
+        <div class="nav-item">💼 Jobs <span class="count">24.3k</span></div>
+        <div class="nav-section">Operations</div>
+        <div class="nav-item">📊 System Status</div>
+        <div class="nav-item">⚠️ Alerts <span class="count" style="background:#ef4444;color:#fff">3</span></div>
+        <div class="nav-section">Quick Add</div>
+        <div style="padding: 8px 12px;"><input style="width:100%;padding:6px 10px;background:#27272a;border:1px solid #3f3f46;border-radius:4px;color:#fafafa;font-size:12px;font-family:monospace;" placeholder="Paste site URL..."></div>
+      </div>
+      <div class="main">
+        <div class="page-header">
+          <h2>Review Queue</h2>
+          <span style="font-size:13px;color:#71717a;">12 sites ready for review</span>
+        </div>
+        <table class="data-table">
+          <thead><tr><th>Site</th><th>Confidence</th><th>Fields Detected</th><th>Submitted</th><th></th></tr></thead>
+          <tbody>
+            <tr><td><span class="url-text">careers.startup.io</span></td><td><span class="confidence-bar"><span class="confidence-fill" style="width:78%;background:#22c55e"></span></span>78%</td><td>6 of 8</td><td>2 hours ago</td><td><button class="action-btn" style="background:#3b82f6;color:white;border-color:#3b82f6">Review →</button></td></tr>
+            <tr><td><span class="url-text">hiring.megacorp.co.il</span></td><td><span class="confidence-bar"><span class="confidence-fill" style="width:82%;background:#22c55e"></span></span>82%</td><td>7 of 8</td><td>3 hours ago</td><td><button class="action-btn" style="background:#3b82f6;color:white;border-color:#3b82f6">Review →</button></td></tr>
+            <tr><td><span class="url-text">jobs.retailchain.co.il</span></td><td><span class="confidence-bar"><span class="confidence-fill" style="width:72%;background:#22c55e"></span></span>72%</td><td>5 of 8</td><td>5 hours ago</td><td><button class="action-btn" style="background:#3b82f6;color:white;border-color:#3b82f6">Review →</button></td></tr>
+            <tr><td><span class="url-text">work.agency-il.com</span></td><td><span class="confidence-bar"><span class="confidence-fill" style="width:91%;background:#22c55e"></span></span>91%</td><td>8 of 8</td><td>6 hours ago</td><td><button class="action-btn" style="background:#3b82f6;color:white;border-color:#3b82f6">Review →</button></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- DIRECTION C: Split Panel -->
+<div class="section" id="section-c">
+  <div class="section-header">
+    <h2>Direction C: Split Panel (List + Detail)</h2>
+    <p>Email-client style: icon sidebar + list panel + detail panel. Select a site on the left, see details on the right. No page navigation needed.</p>
+  </div>
+  <div class="mockup">
+    <div class="mockup-label">Dashboard — Site Detail</div>
+    <div class="dir-c">
+      <div class="sidebar">
+        <div class="icon active">📋</div>
+        <div class="icon">👁</div>
+        <div class="icon">💼</div>
+        <div class="icon">📊</div>
+      </div>
+      <div class="list-panel">
+        <div class="panel-header"><h3>Sites (504)</h3></div>
+        <div class="list-item"><div class="item-title">jobs.example.co.il</div><div class="item-meta"><span class="badge badge-green">Active</span><span style="font-size:11px;color:#71717a">92%</span></div></div>
+        <div class="list-item selected"><div class="item-title">drushim-tech.co.il</div><div class="item-meta"><span class="badge badge-red">Failed</span><span style="font-size:11px;color:#71717a">85%</span></div></div>
+        <div class="list-item"><div class="item-title">careers.startup.io</div><div class="item-meta"><span class="badge badge-amber">Review</span><span style="font-size:11px;color:#71717a">78%</span></div></div>
+        <div class="list-item"><div class="item-title">alljobs.co.il/tech</div><div class="item-meta"><span class="badge badge-blue">Analyzing</span></div></div>
+        <div class="list-item"><div class="item-title">jobmaster.co.il</div><div class="item-meta"><span class="badge badge-green">Active</span><span style="font-size:11px;color:#71717a">71%</span></div></div>
+        <div class="list-item"><div class="item-title">work.agency-il.com</div><div class="item-meta"><span class="badge badge-green">Active</span><span style="font-size:11px;color:#71717a">88%</span></div></div>
+      </div>
+      <div class="detail-panel">
+        <h2>drushim-tech.co.il <span class="badge badge-red" style="font-size:12px;vertical-align:middle;">Failed</span></h2>
+        <div class="detail-section">
+          <h4>Last Scrape</h4>
+          <div class="field-row"><span class="field-name">Status</span><span class="field-value red">Failed — Structure Changed</span></div>
+          <div class="field-row"><span class="field-name">Time</span><span class="field-value">6 hours ago</span></div>
+          <div class="field-row"><span class="field-name">Jobs scraped</span><span class="field-value">0 (expected ~45)</span></div>
+          <div class="field-row"><span class="field-name">Error</span><span class="field-value mono">Selector .job-listing-card not found</span></div>
+        </div>
+        <div class="detail-section">
+          <h4>Configuration</h4>
+          <div class="field-row"><span class="field-name">Confidence</span><span class="field-value"><span class="confidence-bar"><span class="confidence-fill" style="width:85%;background:#22c55e"></span></span>85%</span></div>
+          <div class="field-row"><span class="field-name">Fields mapped</span><span class="field-value">7 of 8</span></div>
+          <div class="field-row"><span class="field-name">Last reviewed</span><span class="field-value">12 days ago</span></div>
+        </div>
+        <div style="display:flex;gap:8px;margin-top:16px;">
+          <button class="action-btn" style="padding:8px 16px;">Re-scrape</button>
+          <button class="action-btn" style="padding:8px 16px;">Re-analyze</button>
+          <button class="action-btn" style="padding:8px 16px;">Open in Extension</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- DIRECTION D: Dashboard-First -->
+<div class="section" id="section-d">
+  <div class="section-header">
+    <h2>Direction D: Dashboard-First (Grafana Style)</h2>
+    <p>Panel grid layout showing system health at a glance. Overview-first, drill-down-second. Optimized for the morning ops check.</p>
+  </div>
+  <div class="mockup">
+    <div class="mockup-label">Dashboard — System Overview</div>
+    <div class="dir-d">
+      <div class="topbar">
+        <span class="logo">scrapnew</span>
+        <span style="font-size:12px;color:#71717a;margin-left:auto;">Last scrape run: 2h ago</span>
+      </div>
+      <div class="sidebar">
+        <div class="icon active">🏠</div>
+        <div class="icon">📋</div>
+        <div class="icon">👁</div>
+        <div class="icon">💼</div>
+      </div>
+      <div class="main">
+        <div class="dashboard-grid">
+          <div class="panel">
+            <h3>Sites by Status</h3>
+            <div style="font-size:13px;">
+              <div style="display:flex;justify-content:space-between;padding:4px 0;"><span class="green">● Active</span><span>487</span></div>
+              <div style="display:flex;justify-content:space-between;padding:4px 0;"><span class="amber">● Review</span><span>12</span></div>
+              <div style="display:flex;justify-content:space-between;padding:4px 0;"><span class="red">● Failed</span><span>3</span></div>
+              <div style="display:flex;justify-content:space-between;padding:4px 0;"><span class="blue">● Analyzing</span><span>2</span></div>
+            </div>
+          </div>
+          <div class="panel">
+            <h3>Scrape Health</h3>
+            <div style="text-align:center;padding:8px 0;">
+              <div style="font-size:36px;font-weight:700;color:#22c55e;">96.4%</div>
+              <div style="font-size:11px;color:#71717a;">Success rate (24h)</div>
+            </div>
+          </div>
+          <div class="panel">
+            <h3>AI Learning</h3>
+            <div style="font-size:13px;">
+              <div style="display:flex;justify-content:space-between;padding:4px 0;"><span>Avg confidence</span><span>82%</span></div>
+              <div style="display:flex;justify-content:space-between;padding:4px 0;"><span>Last month</span><span style="color:#71717a">74%</span></div>
+              <div style="display:flex;justify-content:space-between;padding:4px 0;"><span>Trend</span><span class="green">↑ +8%</span></div>
+            </div>
+          </div>
+          <div class="panel wide">
+            <h3>Needs Attention <span class="see-all">View all →</span></h3>
+            <table class="mini-table" style="width:100%;">
+              <tr><td><span class="badge badge-red">Failed</span></td><td class="mono">drushim-tech.co.il</td><td style="color:#71717a">Structure changed</td><td><button class="action-btn">Fix</button></td></tr>
+              <tr><td><span class="badge badge-red">Failed</span></td><td class="mono">jobs.retailer.co.il</td><td style="color:#71717a">Timeout</td><td><button class="action-btn">Retry</button></td></tr>
+              <tr><td><span class="badge badge-red">Failed</span></td><td class="mono">careers.bank.co.il</td><td style="color:#71717a">Empty results</td><td><button class="action-btn">Investigate</button></td></tr>
+            </table>
+          </div>
+          <div class="panel">
+            <h3>Review Queue <span class="see-all">Open →</span></h3>
+            <div style="text-align:center;padding:8px 0;">
+              <div style="font-size:36px;font-weight:700;color:#f59e0b;">12</div>
+              <div style="font-size:11px;color:#71717a;">Sites pending review</div>
+              <div style="font-size:11px;color:#71717a;margin-top:4px;">Highest: 91% confidence</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- DIRECTION E: Extension -->
+<div class="section" id="section-e">
+  <div class="section-header">
+    <h2>Direction E: Chrome Extension Overlay</h2>
+    <p>The extension panel docked to the right, overlaying a target job site. Field mappings highlighted directly on the page with confidence indicators.</p>
+  </div>
+  <div class="mockup">
+    <div class="mockup-label">Chrome Extension — Review Mode on target site</div>
+    <div class="dir-e">
+      <div class="fake-site">
+        <h1>דרושים - משרות הייטק</h1>
+        <div class="job-card">
+          <h3 class="highlight-green">Senior Full Stack Developer<span class="highlight-label green">title 95%</span></h3>
+          <div class="company highlight-green">TechCorp Israel<span class="highlight-label green">company 92%</span></div>
+          <div class="location highlight-amber">תל אביב, ישראל<span class="highlight-label amber">location 68%</span></div>
+          <div class="salary highlight-green">₪28,000 - ₪38,000<span class="highlight-label green">salary 88%</span></div>
+        </div>
+        <div class="job-card">
+          <h3 class="highlight-green">Backend Engineer — Node.js<span class="highlight-label green">title 95%</span></h3>
+          <div class="company highlight-green">StartupXYZ<span class="highlight-label green">company 90%</span></div>
+          <div class="location highlight-amber">רמת גן<span class="highlight-label amber">location 68%</span></div>
+          <div class="salary highlight-green">₪25,000 - ₪35,000<span class="highlight-label green">salary 88%</span></div>
+        </div>
+        <div class="job-card">
+          <h3 class="highlight-green">DevOps Engineer<span class="highlight-label green">title 95%</span></h3>
+          <div class="company highlight-green">CloudServicesIL<span class="highlight-label green">company 91%</span></div>
+          <div class="location highlight-amber">הרצליה<span class="highlight-label amber">location 68%</span></div>
+        </div>
+      </div>
+      <div class="ext-panel">
+        <h3>scrapnew Extension</h3>
+        <div class="ext-subtitle">Review Mode — drushim-tech.co.il</div>
+        <div style="display:flex;gap:4px;margin-bottom:12px;">
+          <span class="badge badge-blue" style="font-size:10px;">Review</span>
+          <span class="badge badge-grey" style="font-size:10px;">Navigate</span>
+          <span class="badge badge-grey" style="font-size:10px;">Form Record</span>
+        </div>
+        <div style="font-size:11px;color:#71717a;margin-bottom:8px;">DETECTED FIELDS (6/8)</div>
+        <div class="ext-field"><span style="color:#22c55e;margin-right:8px;">●</span><span class="ext-field-name">Job Title</span><span class="ext-conf green">95%</span></div>
+        <div class="ext-field"><span style="color:#22c55e;margin-right:8px;">●</span><span class="ext-field-name">Company</span><span class="ext-conf green">92%</span></div>
+        <div class="ext-field"><span style="color:#f59e0b;margin-right:8px;">●</span><span class="ext-field-name">Location</span><span class="ext-conf amber">68%</span></div>
+        <div class="ext-field"><span style="color:#22c55e;margin-right:8px;">●</span><span class="ext-field-name">Salary</span><span class="ext-conf green">88%</span></div>
+        <div class="ext-field"><span style="color:#22c55e;margin-right:8px;">●</span><span class="ext-field-name">Description</span><span class="ext-conf green">85%</span></div>
+        <div class="ext-field"><span style="color:#22c55e;margin-right:8px;">●</span><span class="ext-field-name">Date Posted</span><span class="ext-conf green">79%</span></div>
+        <div style="font-size:11px;color:#ef4444;margin:8px 0 4px;">MISSING FIELDS</div>
+        <div class="ext-field" style="border:1px dashed #3f3f46;background:transparent;"><span style="color:#ef4444;margin-right:8px;">○</span><span class="ext-field-name" style="color:#71717a;">Apply URL</span><span class="ext-conf red">—</span></div>
+        <div class="ext-field" style="border:1px dashed #3f3f46;background:transparent;"><span style="color:#ef4444;margin-right:8px;">○</span><span class="ext-field-name" style="color:#71717a;">Job Type</span><span class="ext-conf red">—</span></div>
+        <div style="font-size:11px;color:#71717a;margin-top:12px;padding:8px;background:#27272a;border-radius:4px;">Overall confidence: <strong style="color:#22c55e">82%</strong> — 6 fields above threshold</div>
+        <div class="ext-actions">
+          <button class="add-btn">+ Add Field</button>
+          <button class="save-btn">Save Config</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- DIRECTION F: Minimal -->
+<div class="section" id="section-f">
+  <div class="section-header">
+    <h2>Direction F: Minimal / No-Sidebar</h2>
+    <p>Top navigation only, no sidebar. Maximum content area. Clean, focused, fewer visual elements. Works well at smaller viewport widths.</p>
+  </div>
+  <div class="mockup">
+    <div class="mockup-label">Dashboard — Sites View (Minimal)</div>
+    <div class="dir-f">
+      <div class="topbar">
+        <span class="logo">scrapnew</span>
+        <span class="nav-link active">Sites</span>
+        <span class="nav-link">Review</span>
+        <span class="nav-link">Jobs</span>
+        <span class="nav-link">Status</span>
+        <span style="margin-left:auto;display:flex;gap:8px;">
+          <span class="badge badge-green" style="font-size:11px;">487 active</span>
+          <span class="badge badge-red" style="font-size:11px;">3 failed</span>
+        </span>
+      </div>
+      <div class="content">
+        <h2>Sites</h2>
+        <div class="subtitle">504 total sites across all statuses</div>
+        <div class="add-bar">
+          <input placeholder="https://example.co.il/jobs" />
+          <button>Add Site</button>
+        </div>
+        <div class="tab-bar">
+          <div class="tab-item active">All<span class="tab-count">504</span></div>
+          <div class="tab-item">Active<span class="tab-count">487</span></div>
+          <div class="tab-item">Review<span class="tab-count">12</span></div>
+          <div class="tab-item">Failed<span class="tab-count">3</span></div>
+        </div>
+        <table class="data-table">
+          <thead><tr><th>Site</th><th>Status</th><th>Confidence</th><th>Last Scrape</th><th>Jobs</th><th></th></tr></thead>
+          <tbody>
+            <tr><td><span class="url-text">jobs.example.co.il</span></td><td><span class="badge badge-green">Active</span></td><td>92%</td><td>2h ago</td><td>847</td><td><button class="action-btn">Scrape</button></td></tr>
+            <tr><td><span class="url-text">careers.startup.io</span></td><td><span class="badge badge-amber">Review</span></td><td>78%</td><td>—</td><td>—</td><td><button class="action-btn">Review</button></td></tr>
+            <tr><td><span class="url-text">drushim-tech.co.il</span></td><td><span class="badge badge-red">Failed</span></td><td>85%</td><td>Failed</td><td>423</td><td><button class="action-btn">Fix</button></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+function showSection(id) {
+  document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+  document.getElementById('section-' + id).classList.add('active');
+  document.querySelectorAll('.nav-tab')[['a','b','c','d','e','f'].indexOf(id)].classList.add('active');
+}
+</script>
+</body>
+</html>

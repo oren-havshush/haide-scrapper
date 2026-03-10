@@ -1,0 +1,81 @@
+# generated: 2026-03-10
+# project: scrapnew
+# project_key: NOKEY
+# tracking_system: file-system
+# story_location: _bmad-output/implementation-artifacts
+
+# STATUS DEFINITIONS:
+# ==================
+# Epic Status:
+#   - backlog: Epic not yet started
+#   - in-progress: Epic actively being worked on
+#   - done: All stories in epic completed
+#
+# Epic Status Transitions:
+#   - backlog → in-progress: Automatically when first story is created (via create-story)
+#   - in-progress → done: Manually when all stories reach 'done' status
+#
+# Story Status:
+#   - backlog: Story only exists in epic file
+#   - ready-for-dev: Story file created in stories folder
+#   - in-progress: Developer actively working on implementation
+#   - review: Implementation complete, ready for review
+#   - done: Story completed
+#
+# Retrospective Status:
+#   - optional: Can be completed but not required
+#   - done: Retrospective has been completed
+#
+# WORKFLOW NOTES:
+# ===============
+# - Epic transitions to 'in-progress' automatically when first story is created
+# - Stories can be worked in parallel if team capacity allows
+# - SM typically creates next story after previous one is 'done' to incorporate learnings
+# - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
+
+generated: 2026-03-10
+project: scrapnew
+project_key: NOKEY
+tracking_system: file-system
+story_location: _bmad-output/implementation-artifacts
+
+development_status:
+  # Epic 1: Project Foundation & Site Management
+  epic-1: in-progress
+  1-1-project-scaffolding-and-dashboard-shell: in-progress
+  1-2-submit-new-site: backlog
+  1-3-view-and-filter-site-list: backlog
+  1-4-manage-site-lifecycle: backlog
+  epic-1-retrospective: optional
+
+  # Epic 2: AI Site Analysis Pipeline
+  epic-2: backlog
+  2-1-worker-process-and-job-queue-infrastructure: backlog
+  2-2-pattern-matching-analysis-method: backlog
+  2-3-crawl-classify-analysis-method: backlog
+  2-4-network-interception-analysis-method: backlog
+  2-5-combined-results-and-confidence-scoring: backlog
+  epic-2-retrospective: optional
+
+  # Epic 3: Review Queue & Chrome Extension
+  epic-3: backlog
+  3-1-review-queue-dashboard-view: backlog
+  3-2-chrome-extension-scaffolding-and-authentication: backlog
+  3-3-review-mode-field-mapping-overlay-and-correction: backlog
+  3-4-navigate-mode-page-flow-recording: backlog
+  3-5-form-record-mode-and-config-save: backlog
+  epic-3-retrospective: optional
+
+  # Epic 4: Scraping Engine & Data Collection
+  epic-4: backlog
+  4-1-trigger-on-demand-test-scrape: backlog
+  4-2-scrape-execution-and-job-data-extraction: backlog
+  4-3-data-normalization-validation-and-storage: backlog
+  epic-4-retrospective: optional
+
+  # Epic 5: Data Review & Operations Dashboard
+  epic-5: backlog
+  5-1-jobs-viewer-and-data-quality-review: backlog
+  5-2-system-status-overview-and-failure-alerts: backlog
+  5-3-re-scrape-from-dashboard-and-real-time-updates: backlog
+  epic-5-retrospective: optional
