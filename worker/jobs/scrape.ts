@@ -382,7 +382,11 @@ async function extractWithAutoItemDetection(
       for (let i = 0; i < allItems.length; i++) {
         const item = allItems[i];
 
-        // Click reveal via native DOM click (instant)
+        // Scroll item into view so lazy-loaded content and scroll-triggered
+        // handlers fire before we try to reveal/extract.
+        (item as HTMLElement).scrollIntoView({ block: "center" });
+        await new Promise((r) => setTimeout(r, 100));
+
         if (args.revSel) {
           const reveal = findReveal(item, args.revSel);
           if (reveal) {
@@ -642,9 +646,10 @@ async function extractWithExplicitItemSelector(
       for (let i = 0; i < items.length; i++) {
         const item = items[i];
 
-        // Click reveal via native DOM click, then yield for event handlers.
-        // 250ms is enough for most jQuery/CSS accordion toggles while keeping
-        // total time reasonable (107 items × 250ms ≈ 27s).
+        // Scroll item into view so lazy-loaded content populates before reveal.
+        (item as HTMLElement).scrollIntoView({ block: "center" });
+        await new Promise((r) => setTimeout(r, 100));
+
         if (args.revealSelector) {
           const reveal = findReveal(item, args.revealSelector);
           if (reveal) {
@@ -818,16 +823,53 @@ async function extractRawFieldsWithPageFlow(
   const linkSel = detailStep.action !== "navigate" ? detailStep.action : null;
 
   if (linkSel) {
-    // Prefer the explicit link selector recorded in Navigate Mode
+    // The Navigate Mode records the full selector of the ONE item the user
+    // clicked, which often includes per-item classes like .post-97432 that
+    // only match that single item. Generalize by stripping class fragments
+    // that contain digits (IDs), so "li.post-97432.job_listing > a" becomes
+    // "li.job_listing > a" and matches ALL items.
+    const generalizeSel = (sel: string): string =>
+      sel
+        .replace(/:nth-child\(\d+\)/g, "")
+        .replace(/:nth-of-type\(\d+\)/g, "")
+        .replace(/:first-child/g, "")
+        .replace(/:last-child/g, "")
+        .replace(/\.[\w-]*\d[\w-]*/g, "");
+
     const scopedSel = listingSelector
       ? `${listingSelector} ${linkSel}`
       : linkSel;
-    const linkEls = await page.$$(scopedSel);
 
-    // Fall back to unscoped if scoped found nothing
-    const els = linkEls.length > 0 ? linkEls : await page.$$(linkSel);
+    // Try original selector first
+    let els = await page.$$(scopedSel);
+    let usedSel = scopedSel;
 
-    console.info(`[scrape] Using Navigate Mode linkSelector: ${scopedSel} (found ${els.length} links)`);
+    // If it matched ≤1 item, the selector is probably too specific — generalize
+    if (els.length <= 1) {
+      const genScoped = generalizeSel(scopedSel);
+      if (genScoped !== scopedSel) {
+        const genEls = await page.$$(genScoped);
+        if (genEls.length > els.length) {
+          els = genEls;
+          usedSel = genScoped;
+        }
+      }
+    }
+
+    // Last resort: fall back to unscoped selector (original or generalized)
+    if (els.length <= 1) {
+      const genLink = generalizeSel(linkSel);
+      for (const fallback of [linkSel, genLink]) {
+        if (fallback === usedSel) continue;
+        const fbEls = await page.$$(fallback);
+        if (fbEls.length > els.length) {
+          els = fbEls;
+          usedSel = fallback;
+        }
+      }
+    }
+
+    console.info(`[scrape] Using Navigate Mode linkSelector: ${usedSel} (found ${els.length} links)`);
 
     for (const el of els) {
       try {
@@ -886,7 +928,11 @@ async function extractRawFieldsWithPageFlow(
   console.info(`[scrape] Found ${uniqueUrls.length} unique detail page URLs (${detailUrls.length} total)`);
 
   // Visit each detail page sequentially (do NOT process concurrently)
-  for (const detailUrl of uniqueUrls) {
+  for (let urlIdx = 0; urlIdx < uniqueUrls.length; urlIdx++) {
+    const detailUrl = uniqueUrls[urlIdx];
+    console.info(
+      `[scrape] Visiting detail page ${urlIdx + 1}/${uniqueUrls.length}: ${detailUrl}`,
+    );
     try {
       await page.goto(detailUrl, {
         waitUntil: "networkidle",
@@ -1199,6 +1245,57 @@ export async function handleScrapeJob(
       context,
     );
 
+    // Check if jobs were already saved incrementally before the error/timeout
+    const run = await prisma.scrapeRun.findUnique({
+      where: { id: scrapeRunId },
+      select: { jobCount: true, totalJobs: true, status: true },
+    });
+
+    const savedJobs = run?.jobCount ?? 0;
+
+    // If the timeout handler already set PARTIAL, don't overwrite it
+    if (run?.status === "PARTIAL") {
+      console.warn(
+        `[scrape] Scrape timed out but ${savedJobs} jobs were already saved (PARTIAL)`,
+      );
+      return {
+        success: true,
+        scrapeRunId,
+        jobCount: savedJobs,
+        totalJobs: run?.totalJobs ?? 0,
+        validJobs: savedJobs,
+        invalidJobs: 0,
+      };
+    }
+
+    // If we saved some jobs but the timeout handler didn't get to run yet
+    if (savedJobs > 0) {
+      console.warn(
+        `[scrape] Scrape errored but ${savedJobs} jobs were already saved — marking PARTIAL`,
+      );
+      await prisma.scrapeRun.update({
+        where: { id: scrapeRunId },
+        data: {
+          status: "PARTIAL",
+          error: `${errorMessage} (${savedJobs} jobs saved)`,
+          failureCategory,
+          completedAt: new Date(),
+        },
+      });
+      await prisma.site.update({
+        where: { id: site.id },
+        data: { status: "ACTIVE", activeAt: new Date() },
+      });
+      return {
+        success: true,
+        scrapeRunId,
+        jobCount: savedJobs,
+        totalJobs: run?.totalJobs ?? 0,
+        validJobs: savedJobs,
+        invalidJobs: 0,
+      };
+    }
+
     console.error("[scrape] Scrape failed:", {
       siteId: site.id,
       scrapeRunId,
@@ -1471,7 +1568,7 @@ async function executeScrape(
     });
 
     console.info(
-      `[scrape] Saved chunk: ${savedCount}/${recordsToPersist.length} jobs`,
+      `[scrape] Saved chunk: ${savedCount}/${recordsToPersist.length} jobs (${context.itemsFound} found on page)`,
     );
   }
 
@@ -1494,6 +1591,7 @@ async function executeScrape(
 
   console.info("[scrape] Scrape completed successfully:", {
     siteUrl: site.siteUrl,
+    foundOnPage: context.itemsFound,
     jobCount: result.jobCount,
     validJobs: result.validJobs,
     invalidJobs: result.invalidJobs,
@@ -1525,10 +1623,47 @@ function createTimeoutPromise(
   const promise = new Promise<ScrapeResult>((_, reject) => {
     timerId = setTimeout(async () => {
       try {
-        await failScrapeRun(scrapeRunId, siteId, {
-          error: "Scrape execution exceeded 5-minute timeout",
-          failureCategory: "timeout",
+        // Check if any jobs were already saved by incremental persistence
+        const run = await prisma.scrapeRun.findUnique({
+          where: { id: scrapeRunId },
+          select: { jobCount: true, totalJobs: true },
         });
+
+        const savedJobs = run?.jobCount ?? 0;
+        const totalJobs = run?.totalJobs ?? null;
+
+        if (savedJobs > 0) {
+          // Partial success: jobs were saved before the timeout hit
+          console.warn(
+            `[scrape] Timeout after saving ${savedJobs}/${totalJobs ?? "?"} jobs — marking as PARTIAL`,
+          );
+          await prisma.scrapeRun.update({
+            where: { id: scrapeRunId },
+            data: {
+              status: "PARTIAL",
+              error: `Timeout after saving ${savedJobs}/${totalJobs ?? "?"} jobs`,
+              failureCategory: "timeout",
+              completedAt: new Date(),
+            },
+          });
+          await prisma.site.update({
+            where: { id: siteId },
+            data: { status: "ACTIVE", activeAt: new Date() },
+          });
+          await emitWorkerEvent({
+            type: "scrape:completed",
+            payload: { siteId, jobCount: savedJobs },
+          });
+          await emitWorkerEvent({
+            type: "site:status-changed",
+            payload: { siteId, status: "ACTIVE" },
+          });
+        } else {
+          await failScrapeRun(scrapeRunId, siteId, {
+            error: "Scrape execution exceeded 5-minute timeout",
+            failureCategory: "timeout",
+          });
+        }
       } catch (updateError) {
         console.error("[scrape] Failed to update ScrapeRun on timeout:", updateError);
       }

@@ -9,7 +9,7 @@ import { apiFetch } from "@/lib/fetch";
 export interface ScrapeRunData {
   id: string;
   siteId: string;
-  status: "IN_PROGRESS" | "COMPLETED" | "FAILED";
+  status: "IN_PROGRESS" | "COMPLETED" | "PARTIAL" | "FAILED";
   jobCount: number;
   createdAt: string;
   completedAt: string | null;
