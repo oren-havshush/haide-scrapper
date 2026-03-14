@@ -12,6 +12,8 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Extension is a separate project with its own build
+    "extension/**",
   ]),
 ]);
 

@@ -1,0 +1,1313 @@
+import { prisma } from "../../src/lib/prisma";
+import type { WorkerJob, Site } from "../../src/generated/prisma/client";
+import { Prisma } from "../../src/generated/prisma/client";
+import { launchBrowser, createPage, closeBrowser } from "../lib/playwright";
+import { normalizeJobRecord } from "../lib/normalizer";
+import type { NormalizedJobRecord } from "../lib/normalizer";
+import { validateJobRecord } from "../lib/validator";
+import type { ValidationResult } from "../lib/validator";
+import type { Browser, Page } from "playwright";
+import { emitWorkerEvent } from "../lib/emitEvent";
+
+// ---------------------------------------------------------------------------
+// Types
+// ---------------------------------------------------------------------------
+
+/** Per-field mapping from Site.fieldMappings JSON (excluding _meta) */
+interface FieldMappingEntry {
+  selector: string;
+  sample: string;
+  sourceMethod: string;
+  methodsDetected: number;
+}
+
+/** A single page flow step from Site.pageFlow JSON */
+interface PageFlowStep {
+  url: string;
+  action: string;
+  waitFor?: string;
+}
+
+/** Result returned from handleScrapeJob (always returned, never throws) */
+interface ScrapeResult {
+  success: boolean;
+  scrapeRunId: string;
+  jobCount: number;
+  totalJobs: number;
+  validJobs: number;
+  invalidJobs: number;
+  error?: string;
+  failureCategory?: string;
+}
+
+/** Scrape execution context for error categorization */
+interface ScrapeContext {
+  pageLoaded: boolean;
+  selectorsMatched: boolean;
+  itemsFound: number;
+}
+
+/** A normalized record paired with its validation result */
+interface ValidatedRecord {
+  normalized: NormalizedJobRecord;
+  validation: ValidationResult;
+}
+
+// ---------------------------------------------------------------------------
+// Constants
+// ---------------------------------------------------------------------------
+
+const SCRAPE_TIMEOUT_MS = 300_000; // 5 minutes
+const DETAIL_PAGE_TIMEOUT_MS = 15_000; // 15 seconds per detail page
+const NAVIGATION_TIMEOUT_MS = 30_000; // 30 seconds for page navigation
+const MAX_EXTRACTED_ITEMS = 500;
+
+// ---------------------------------------------------------------------------
+// Helper: error categorization
+// ---------------------------------------------------------------------------
+
+function categorizeError(
+  error: Error,
+  context: ScrapeContext,
+): string {
+  if (error.message.includes("timeout") || error.message.includes("Timeout")) {
+    return "timeout";
+  }
+  if (context.pageLoaded && !context.selectorsMatched) {
+    return "structure_changed";
+  }
+  if (context.pageLoaded && context.selectorsMatched && context.itemsFound === 0) {
+    return "empty_results";
+  }
+  return "other";
+}
+
+// ---------------------------------------------------------------------------
+// Helper: parse field mappings from Site.fieldMappings JSON
+// ---------------------------------------------------------------------------
+
+function parseFieldMappings(
+  fieldMappingsRaw: unknown,
+): Record<string, FieldMappingEntry> {
+  if (!fieldMappingsRaw || typeof fieldMappingsRaw !== "object") {
+    return {};
+  }
+
+  const raw = fieldMappingsRaw as Record<string, unknown>;
+  const mappings: Record<string, FieldMappingEntry> = {};
+
+  for (const [key, value] of Object.entries(raw)) {
+    // Skip _meta key which contains training data
+    if (key === "_meta") continue;
+    if (!value || typeof value !== "object") continue;
+
+    const entry = value as Record<string, unknown>;
+    if (typeof entry.selector !== "string") continue;
+
+    mappings[key] = {
+      selector: entry.selector as string,
+      sample: (entry.sample as string) ?? "",
+      sourceMethod: (entry.sourceMethod as string) ?? "UNKNOWN",
+      methodsDetected: (entry.methodsDetected as number) ?? 1,
+    };
+  }
+
+  return mappings;
+}
+
+// ---------------------------------------------------------------------------
+// Helper: parse page flow from Site.pageFlow JSON
+// ---------------------------------------------------------------------------
+
+function parsePageFlow(pageFlowRaw: unknown): PageFlowStep[] {
+  if (!Array.isArray(pageFlowRaw)) return [];
+
+  const steps: PageFlowStep[] = [];
+  for (const item of pageFlowRaw) {
+    if (!item || typeof item !== "object") continue;
+    const step = item as Record<string, unknown>;
+    if (typeof step.url !== "string" || typeof step.action !== "string") continue;
+
+    steps.push({
+      url: step.url,
+      action: step.action,
+      waitFor: typeof step.waitFor === "string" ? step.waitFor : undefined,
+    });
+  }
+
+  return steps;
+}
+
+// ---------------------------------------------------------------------------
+// Auto-detect repeating item containers from absolute selectors and extract
+// fields using child-index paths (works even with nth-child absolute selectors).
+// ---------------------------------------------------------------------------
+
+async function extractWithAutoItemDetection(
+  page: Page,
+  fieldMappings: Record<string, FieldMappingEntry>,
+  revealSelector: string | null = null,
+): Promise<Record<string, string>[]> {
+  const selectorMap: Record<string, string> = {};
+  for (const [name, m] of Object.entries(fieldMappings)) {
+    selectorMap[name] = m.selector;
+  }
+
+  // Log selector match status before evaluate so we can diagnose in worker logs
+  for (const [name, sel] of Object.entries(selectorMap)) {
+    const found = await page.$(sel).catch(() => null);
+    console.info(`[scrape] Selector "${name}": ${found ? "MATCHED" : "NOT FOUND"} — ${sel.substring(0, 80)}`);
+  }
+
+  // Click all reveal/accordion elements on the page before extracting
+  if (revealSelector) {
+    const revealEls = await page.$$(revealSelector);
+    console.info(`[scrape] Reveal selector matched ${revealEls.length} elements`);
+    for (const el of revealEls) {
+      try {
+        await el.click();
+      } catch {
+        // Skip elements that can't be clicked
+      }
+    }
+    if (revealEls.length > 0) {
+      await page.waitForTimeout(1000);
+    }
+  }
+
+  const results: Record<string, string>[] = await page.evaluate(
+    (selectors: Record<string, string>) => {
+      const fieldEls: Record<string, Element> = {};
+      for (const [name, sel] of Object.entries(selectors)) {
+        try {
+          const el = document.querySelector(sel);
+          if (el) fieldEls[name] = el;
+        } catch {
+          /* invalid selector */
+        }
+      }
+
+      const titleEl = fieldEls["title"];
+      if (!titleEl) return [];
+
+      const titleTag = titleEl.tagName.toLowerCase();
+
+      // Walk up from the title element to find the nearest ancestor whose
+      // parent has multiple sibling children that also contain the same
+      // title tag — those siblings are the repeating job-card containers.
+      let itemContainer: Element | null = null;
+      let current: Element | null = titleEl.parentElement;
+      while (current && current !== document.body) {
+        const parent = current.parentElement;
+        if (!parent) break;
+
+        const sameTagSiblings = Array.from(parent.children).filter(
+          (sib) =>
+            sib.tagName === current!.tagName &&
+            sib.querySelector(titleTag) !== null,
+        );
+
+        if (sameTagSiblings.length >= 2) {
+          itemContainer = current;
+          break;
+        }
+        current = parent;
+      }
+      if (!itemContainer) return [];
+
+      const itemParent = itemContainer.parentElement!;
+      const itemTag = itemContainer.tagName;
+      const itemClasses = Array.from(itemContainer.classList);
+
+      // Collect all sibling items with the same tag/class pattern
+      const allItems = Array.from(itemParent.children).filter((child) => {
+        if (child.tagName !== itemTag) return false;
+        for (const cls of itemClasses) {
+          if (!child.classList.contains(cls)) return false;
+        }
+        return true;
+      });
+
+      // Build a child-index path from `root` down to `target`
+      const buildPath = (root: Element, target: Element): number[] => {
+        const path: number[] = [];
+        let node: Element | null = target;
+        while (node && node !== root) {
+          const parent: Element | null = node.parentElement;
+          if (!parent) return [];
+          path.unshift(Array.from(parent.children).indexOf(node));
+          node = parent;
+        }
+        return node === root ? path : [];
+      };
+
+      const followPath = (root: Element, path: number[]): Element | null => {
+        let node: Element = root;
+        for (const idx of path) {
+          const child = node.children[idx];
+          if (!child) return null;
+          node = child;
+        }
+        return node;
+      };
+
+      // Classify each field: inside the item container (relative path)
+      // or outside it (global value shared by all items).
+      const insidePaths: Record<string, number[]> = {};
+      const outsideValues: Record<string, string> = {};
+
+      for (const [name, el] of Object.entries(fieldEls)) {
+        if (itemContainer.contains(el)) {
+          const path = buildPath(itemContainer, el);
+          if (path.length > 0) insidePaths[name] = path;
+        } else {
+          outsideValues[name] = (el.innerText || "").trim();
+        }
+      }
+
+      // Extract fields from every item
+      const records: Record<string, string>[] = [];
+      for (const item of allItems) {
+        const rec: Record<string, string> = {};
+
+        for (const [name, path] of Object.entries(insidePaths)) {
+          const el = followPath(item, path);
+          if (el) {
+            rec[name] = (el.innerText || "").trim();
+            const anchor =
+              el.tagName === "A" ? el : el.closest("a");
+            if (anchor) {
+              const href = anchor.getAttribute("href");
+              if (href) rec[`${name}_href`] = href;
+            }
+          } else {
+            rec[name] = "";
+          }
+        }
+
+        for (const [name, val] of Object.entries(outsideValues)) {
+          rec[name] = val;
+        }
+
+        if (Object.values(rec).some((v) => v.length > 0)) {
+          records.push(rec);
+        }
+      }
+
+      return records;
+    },
+    selectorMap,
+  );
+
+  return results;
+}
+
+// ---------------------------------------------------------------------------
+// Explicit item-scoped extraction: uses itemSelector + relative field selectors.
+// This is the preferred path when the extension has set up container/item structure.
+// ---------------------------------------------------------------------------
+
+async function extractWithExplicitItemSelector(
+  page: Page,
+  fieldMappings: Record<string, FieldMappingEntry>,
+  listingSelector: string | null,
+  itemSelector: string,
+  revealSelector: string | null,
+): Promise<Record<string, string>[]> {
+  const containerSel = listingSelector ?? "body";
+  const fullSelector = `${containerSel} ${itemSelector}`;
+
+  let items = await page.$$(fullSelector);
+  if (items.length === 0) {
+    items = await page.$$(itemSelector);
+  }
+
+  console.info(`[scrape] Explicit itemSelector matched ${items.length} items`);
+
+  const rawFieldsList: Record<string, string>[] = [];
+
+  for (const item of items) {
+    // Click reveal/accordion element if configured (e.g. "Show details" button)
+    if (revealSelector) {
+      try {
+        let revealEl = await item.$(revealSelector);
+
+        // Search siblings and parent wrapper if not found inside the item.
+        if (!revealEl) {
+          revealEl = await item.evaluateHandle(
+            (el, sel) => {
+              // Check previous siblings (button often precedes the item)
+              let sib: Element | null = el.previousElementSibling;
+              let checked = 0;
+              while (sib && checked < 3) {
+                const match = sib.matches(sel) ? sib : sib.querySelector(sel);
+                if (match) return match;
+                sib = sib.previousElementSibling;
+                checked++;
+              }
+              // Check next siblings
+              sib = el.nextElementSibling;
+              checked = 0;
+              while (sib && checked < 3) {
+                const match = sib.matches(sel) ? sib : sib.querySelector(sel);
+                if (match) return match;
+                sib = sib.nextElementSibling;
+                checked++;
+              }
+              // Check parent wrapper (the direct parent may contain both button and item)
+              if (el.parentElement) {
+                const match = el.parentElement.querySelector(sel);
+                if (match && match !== el && !el.contains(match)) return match;
+              }
+              return null;
+            },
+            revealSelector,
+          ).then((h) => h.asElement()) ?? null;
+        }
+
+        if (revealEl) {
+          await revealEl.click();
+          await page.waitForTimeout(1000);
+        }
+      } catch {
+        // Reveal click failed for this item, continue with extraction anyway
+      }
+    }
+
+    const rawFields: Record<string, string> = {};
+
+    for (const [fieldName, mapping] of Object.entries(fieldMappings)) {
+      try {
+        // 1. Search inside the item element
+        let fieldEl = await item.$(mapping.selector);
+
+        // 2. If not found and we clicked a reveal, check next siblings
+        //    (accordion content often renders as a sibling, not a child)
+        if (!fieldEl && revealSelector) {
+          // Search next siblings for accordion content (e.g. expanded "show more")
+          const sibText = await item.evaluate(
+            (el, sel) => {
+              let sib = el.nextElementSibling;
+              let count = 0;
+              while (sib && count < 3) {
+                const match = sib.querySelector(sel);
+                if (match) {
+                  const text = (match.innerText || "").trim();
+                  const href = match.tagName === "A" ? match.getAttribute("href") : match.querySelector("a")?.getAttribute("href");
+                  return { text, href: href || null };
+                }
+                sib = sib.nextElementSibling;
+                count++;
+              }
+              return null;
+            },
+            mapping.selector,
+          );
+          if (sibText) {
+            rawFields[fieldName] = sibText.text;
+            if (sibText.href) rawFields[`${fieldName}_href`] = sibText.href;
+            continue; // Skip the fieldEl extraction below
+          }
+        }
+
+        if (fieldEl) {
+          const text = await fieldEl.innerText();
+          rawFields[fieldName] = text ?? "";
+          const href = await fieldEl.getAttribute("href");
+          if (href) rawFields[`${fieldName}_href`] = href;
+          if (!href) {
+            const anchor = await fieldEl.$("a");
+            if (anchor) {
+              const anchorHref = await anchor.getAttribute("href");
+              if (anchorHref) rawFields[`${fieldName}_href`] = anchorHref;
+            }
+          }
+        } else {
+          rawFields[fieldName] = "";
+        }
+      } catch {
+        rawFields[fieldName] = "";
+      }
+    }
+
+    rawFieldsList.push(rawFields);
+  }
+
+  return rawFieldsList;
+}
+
+// ---------------------------------------------------------------------------
+// Single-page listing extraction -- returns raw field maps
+// ---------------------------------------------------------------------------
+
+async function extractRawFieldsFromListingPage(
+  page: Page,
+  fieldMappings: Record<string, FieldMappingEntry>,
+  listingSelector: string | null,
+  itemSelector: string | null,
+  revealSelector: string | null = null,
+): Promise<Record<string, string>[]> {
+  // Preferred path: explicit itemSelector from extension container setup.
+  // Field selectors are relative to each item element.
+  if (itemSelector) {
+    const rawFieldsList = await extractWithExplicitItemSelector(
+      page, fieldMappings, listingSelector, itemSelector, revealSelector,
+    );
+    if (rawFieldsList.length > 0) {
+      console.info(
+        `[scrape] Explicit item-scoped extraction: ${rawFieldsList.length} records`,
+      );
+      return dedupeAndCapRawFields(rawFieldsList);
+    }
+    console.warn("[scrape] Explicit itemSelector matched 0 items, falling through to auto-detect");
+  }
+
+  // Fallback: auto-detect repeating item containers from absolute selectors
+  const rawFieldsList = await extractWithAutoItemDetection(page, fieldMappings, revealSelector);
+  if (rawFieldsList.length > 0) {
+    console.info(
+      `[scrape] Auto-item-detection extracted ${rawFieldsList.length} records`,
+    );
+    return dedupeAndCapRawFields(rawFieldsList);
+  }
+
+  console.warn("[scrape] All extraction strategies found 0 records");
+  return [];
+}
+
+function dedupeAndCapRawFields(
+  rawFieldsList: Record<string, string>[],
+): Record<string, string>[] {
+  const seen = new Set<string>();
+  const deduped: Record<string, string>[] = [];
+
+  for (const raw of rawFieldsList) {
+    const title = (raw["title"] ?? "").trim().toLowerCase();
+    const location = (raw["location"] ?? "").trim().toLowerCase();
+    const externalJobId = (raw["externalJobId"] ?? "").trim().toLowerCase();
+    const url = (raw["title_href"] ?? raw["_detailUrl"] ?? "").trim().toLowerCase();
+
+    // Skip empty junk rows.
+    if (!title && !location && !url) continue;
+
+    const fingerprint = url || externalJobId || `${title}|${location}`;
+    if (seen.has(fingerprint)) continue;
+    seen.add(fingerprint);
+    deduped.push(raw);
+
+    if (deduped.length >= MAX_EXTRACTED_ITEMS) break;
+  }
+
+  return deduped;
+}
+
+// ---------------------------------------------------------------------------
+// Multi-page navigation flow extraction -- returns raw field maps
+// ---------------------------------------------------------------------------
+
+async function extractRawFieldsWithPageFlow(
+  page: Page,
+  fieldMappings: Record<string, FieldMappingEntry>,
+  pageFlow: PageFlowStep[],
+  listingSelector: string | null,
+  itemSelector: string | null,
+  revealSelector: string | null = null,
+  formCaptureConfig: FormCaptureConfig | null = null,
+): Promise<Record<string, string>[]> {
+  const rawFieldsList: Record<string, string>[] = [];
+
+  // Navigate to the first page flow URL (listing page)
+  const listingStep = pageFlow[0];
+  await page.goto(listingStep.url, {
+    waitUntil: "networkidle",
+    timeout: NAVIGATION_TIMEOUT_MS,
+  });
+
+  // Wait for the listing page's waitFor selector if specified
+  if (listingStep.waitFor) {
+    try {
+      await page.waitForSelector(listingStep.waitFor, {
+        timeout: NAVIGATION_TIMEOUT_MS,
+      });
+    } catch {
+      console.warn(
+        `[scrape] waitFor selector "${listingStep.waitFor}" not found on listing page`,
+      );
+    }
+  }
+
+  // If there's only one step in pageFlow, extract directly from listing page
+  if (pageFlow.length < 2) {
+    return extractRawFieldsFromListingPage(
+      page,
+      fieldMappings,
+      listingSelector,
+      itemSelector,
+      revealSelector,
+    );
+  }
+
+  // Multi-page: collect all detail page URLs first
+  const detailUrls: string[] = [];
+  const detailStep = pageFlow[1];
+  const linkSel = detailStep.action !== "navigate" ? detailStep.action : null;
+
+  if (linkSel) {
+    // Prefer the explicit link selector recorded in Navigate Mode
+    const scopedSel = listingSelector
+      ? `${listingSelector} ${linkSel}`
+      : linkSel;
+    const linkEls = await page.$$(scopedSel);
+
+    // Fall back to unscoped if scoped found nothing
+    const els = linkEls.length > 0 ? linkEls : await page.$$(linkSel);
+
+    console.info(`[scrape] Using Navigate Mode linkSelector: ${scopedSel} (found ${els.length} links)`);
+
+    for (const el of els) {
+      try {
+        const tagName = await el.evaluate((e) => e.tagName.toLowerCase());
+        let href: string | null = null;
+        if (tagName === "a") {
+          href = await el.getAttribute("href");
+        } else {
+          const anchor = await el.$("a");
+          if (anchor) {
+            href = await anchor.getAttribute("href");
+          }
+        }
+        if (href) {
+          detailUrls.push(new URL(href, page.url()).toString());
+        }
+      } catch {
+        // Skip items where URL extraction fails
+      }
+    }
+  } else {
+    // Fallback: use itemSelector + first <a> inside each item
+    const containerSelector = listingSelector ?? "body";
+    const itemSel = itemSelector ?? "a";
+
+    const linkElements = await page.$$(`${containerSelector} ${itemSel}`);
+    const elements = linkElements.length > 0 ? linkElements : await page.$$(itemSel);
+
+    console.info(`[scrape] Using itemSelector fallback: ${containerSelector} ${itemSel} (found ${elements.length} items)`);
+
+    for (const element of elements) {
+      try {
+        let href: string | null = null;
+        const tagName = await element.evaluate((el) => el.tagName.toLowerCase());
+
+        if (tagName === "a") {
+          href = await element.getAttribute("href");
+        } else {
+          const anchor = await element.$("a");
+          if (anchor) {
+            href = await anchor.getAttribute("href");
+          }
+        }
+
+        if (href) {
+          detailUrls.push(new URL(href, page.url()).toString());
+        }
+      } catch {
+        // Skip items where URL extraction fails
+      }
+    }
+  }
+
+  // Deduplicate URLs while preserving order
+  const uniqueUrls = [...new Set(detailUrls)];
+  console.info(`[scrape] Found ${uniqueUrls.length} unique detail page URLs (${detailUrls.length} total)`);
+
+  // Visit each detail page sequentially (do NOT process concurrently)
+  for (const detailUrl of uniqueUrls) {
+    try {
+      await page.goto(detailUrl, {
+        waitUntil: "networkidle",
+        timeout: DETAIL_PAGE_TIMEOUT_MS,
+      });
+
+      // Wait for detail page selector if specified
+      if (detailStep.waitFor) {
+        try {
+          await page.waitForSelector(detailStep.waitFor, {
+            timeout: DETAIL_PAGE_TIMEOUT_MS,
+          });
+        } catch {
+          console.warn(
+            `[scrape] waitFor selector "${detailStep.waitFor}" not found on detail page: ${detailUrl}`,
+          );
+        }
+      }
+
+      // Extract fields from the detail page using absolute selectors
+      const rawFields: Record<string, string> = {};
+      for (const [fieldName, mapping] of Object.entries(fieldMappings)) {
+        try {
+          const fieldEl = await page.$(mapping.selector);
+          if (fieldEl) {
+            const text = await fieldEl.innerText();
+            rawFields[fieldName] = text ?? "";
+
+            // For links, also extract href
+            const href = await fieldEl.getAttribute("href");
+            if (href) {
+              rawFields[`${fieldName}_href`] = href;
+            }
+          } else {
+            rawFields[fieldName] = "";
+          }
+        } catch {
+          rawFields[fieldName] = "";
+        }
+      }
+
+      // Add the detail page URL to raw fields
+      rawFields["_detailUrl"] = detailUrl;
+
+      // Extract application form data if configured
+      if (formCaptureConfig) {
+        // If there's an apply step (pageFlow[2]), navigate to it first
+        const applyStep = pageFlow.length > 2 ? pageFlow[2] : null;
+        if (applyStep && applyStep.action !== "navigate") {
+          try {
+            const applyLink = await page.$(applyStep.action);
+            if (applyLink) {
+              const applyHref = await applyLink.getAttribute("href");
+              if (applyHref) {
+                await page.goto(new URL(applyHref, page.url()).toString(), {
+                  waitUntil: "networkidle",
+                  timeout: DETAIL_PAGE_TIMEOUT_MS,
+                });
+              }
+            }
+          } catch {
+            // Stay on current page if apply navigation fails
+          }
+        }
+        try {
+          const formData = await extractFormData(page, formCaptureConfig);
+          if (formData) rawFields["_formData"] = formData;
+        } catch {
+          // Form extraction is best-effort
+        }
+      }
+
+      rawFieldsList.push(rawFields);
+    } catch (error) {
+      console.warn(
+        `[scrape] Failed to extract from detail page: ${detailUrl}`,
+        error instanceof Error ? error.message : String(error),
+      );
+      // Skip this detail page and continue with the next one
+    }
+  }
+
+  return dedupeAndCapRawFields(rawFieldsList);
+}
+
+// ---------------------------------------------------------------------------
+// Helper: get listing/item selectors from fieldMappings JSON
+// ---------------------------------------------------------------------------
+
+function getStructuralSelectors(
+  fieldMappingsRaw: unknown,
+): { listingSelector: string | null; itemSelector: string | null; revealSelector: string | null } {
+  if (!fieldMappingsRaw || typeof fieldMappingsRaw !== "object") {
+    return { listingSelector: null, itemSelector: null, revealSelector: null };
+  }
+
+  const raw = fieldMappingsRaw as Record<string, unknown>;
+  const meta = raw["_meta"] as Record<string, unknown> | undefined;
+
+  let listingSelector: string | null = null;
+  let itemSelector: string | null = null;
+  let revealSelector: string | null = null;
+
+  // _meta is the canonical location (set by extension save)
+  if (meta && typeof meta["listingSelector"] === "string") {
+    listingSelector = meta["listingSelector"];
+  } else if (typeof raw["listingSelector"] === "string") {
+    listingSelector = raw["listingSelector"];
+  }
+
+  if (meta && typeof meta["itemSelector"] === "string") {
+    itemSelector = meta["itemSelector"];
+  } else if (typeof raw["itemSelector"] === "string") {
+    itemSelector = raw["itemSelector"];
+  }
+
+  if (meta && typeof meta["revealSelector"] === "string") {
+    revealSelector = meta["revealSelector"];
+  }
+
+  if (listingSelector) console.info(`[scrape] listingSelector: ${listingSelector}`);
+  if (itemSelector) console.info(`[scrape] itemSelector: ${itemSelector}`);
+  if (revealSelector) console.info(`[scrape] revealSelector: ${revealSelector}`);
+
+  return { listingSelector, itemSelector, revealSelector };
+}
+
+// ---------------------------------------------------------------------------
+// Helper: get form capture config from fieldMappings JSON
+// ---------------------------------------------------------------------------
+
+interface FormCaptureConfig {
+  formSelector: string;
+  actionUrl: string;
+  method: string;
+}
+
+function getFormCaptureConfig(
+  fieldMappingsRaw: unknown,
+): FormCaptureConfig | null {
+  if (!fieldMappingsRaw || typeof fieldMappingsRaw !== "object") return null;
+  const raw = fieldMappingsRaw as Record<string, unknown>;
+  const meta = raw["_meta"] as Record<string, unknown> | undefined;
+  if (!meta) return null;
+
+  const formCapture = meta["formCapture"] as Record<string, unknown> | undefined;
+  if (!formCapture || typeof formCapture["formSelector"] !== "string") return null;
+
+  return {
+    formSelector: formCapture["formSelector"] as string,
+    actionUrl: (formCapture["actionUrl"] as string) || "",
+    method: (formCapture["method"] as string) || "GET",
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Helper: extract form data from current page
+// ---------------------------------------------------------------------------
+
+async function extractFormData(
+  page: Page,
+  formCaptureConfig: FormCaptureConfig | null,
+): Promise<string | null> {
+  const result = await page.evaluate((cfg) => {
+    let form: HTMLFormElement | null = null;
+
+    if (cfg?.formSelector) {
+      form = document.querySelector(cfg.formSelector) as HTMLFormElement | null;
+    }
+    if (!form) {
+      form = document.querySelector("form") as HTMLFormElement | null;
+    }
+    if (!form) return null;
+
+    const actionRaw = form.getAttribute("action") || "";
+    const actionUrl = actionRaw ? new URL(actionRaw, window.location.href).toString() : window.location.href;
+    const method = (form.getAttribute("method") || "GET").toUpperCase();
+
+    const fields: Array<{
+      name: string;
+      label: string;
+      fieldType: string;
+      required: boolean;
+      tagName: string;
+    }> = [];
+
+    const elements = form.querySelectorAll("input, select, textarea");
+    for (const el of elements) {
+      const tag = el.tagName.toLowerCase();
+      const type = el.getAttribute("type") || (tag === "select" ? "select" : tag === "textarea" ? "textarea" : "text");
+
+      if (type === "submit" || type === "button" || type === "image" || type === "reset") continue;
+
+      const name = el.getAttribute("name") || "";
+
+      // Infer label
+      let label = "";
+      const htmlEl = el as HTMLElement;
+      if (htmlEl.id) {
+        const labelEl = document.querySelector(`label[for="${CSS.escape(htmlEl.id)}"]`);
+        if (labelEl?.textContent) label = labelEl.textContent.trim().slice(0, 100);
+      }
+      if (!label) {
+        const parentLabel = htmlEl.closest("label");
+        if (parentLabel) {
+          const clone = parentLabel.cloneNode(true) as HTMLElement;
+          clone.querySelectorAll("input, select, textarea, button").forEach((n) => n.remove());
+          label = clone.textContent?.trim()?.slice(0, 100) || "";
+        }
+      }
+      if (!label) label = el.getAttribute("placeholder")?.trim()?.slice(0, 100) || "";
+      if (!label) label = el.getAttribute("aria-label")?.trim()?.slice(0, 100) || "";
+      if (!label && name) label = name.replace(/([a-z])([A-Z])/g, "$1 $2").replace(/[_-]/g, " ").trim();
+      if (!label) label = `${type} ${tag}`;
+
+      fields.push({
+        name,
+        label,
+        fieldType: type,
+        required: el.hasAttribute("required"),
+        tagName: tag,
+      });
+    }
+
+    return JSON.stringify({ actionUrl, method, fields });
+  }, formCaptureConfig);
+
+  return result;
+}
+
+// ---------------------------------------------------------------------------
+// Main: handleScrapeJob
+// ---------------------------------------------------------------------------
+
+export async function handleScrapeJob(
+  job: WorkerJob,
+  site: Site,
+): Promise<Record<string, unknown>> {
+  // Extract scrapeRunId and optional maxJobs from job payload
+  const payload = job.payload as Record<string, unknown> | null;
+  const scrapeRunId = payload?.scrapeRunId as string | undefined;
+  const maxJobs = typeof payload?.maxJobs === "number" ? payload.maxJobs : null;
+
+  if (!scrapeRunId) {
+    console.error("[scrape] No scrapeRunId in job payload:", job.id);
+    return {
+      success: false,
+      error: "No scrapeRunId in job payload",
+    };
+  }
+
+  console.info(
+    `[scrape] Starting scrape for site: ${site.siteUrl} (scrapeRunId: ${scrapeRunId}${maxJobs ? `, maxJobs: ${maxJobs}` : ""})`,
+  );
+
+  let browser: Browser | null = null;
+  const context: ScrapeContext = {
+    pageLoaded: false,
+    selectorsMatched: false,
+    itemsFound: 0,
+  };
+
+  // Parse site configuration
+  const fieldMappings = parseFieldMappings(site.fieldMappings);
+  const pageFlow = parsePageFlow(site.pageFlow);
+  const { listingSelector, itemSelector, revealSelector } = getStructuralSelectors(
+    site.fieldMappings,
+  );
+  const formCaptureConfig = getFormCaptureConfig(site.fieldMappings);
+
+  if (Object.keys(fieldMappings).length === 0) {
+    const result = await failScrapeRun(scrapeRunId, site.id, {
+      error: "Site has no field mappings configured",
+      failureCategory: "other",
+    });
+    return { ...result };
+  }
+
+  // Wrap entire scrape execution in a timeout (NFR2: 2 minutes)
+  const timeout = createTimeoutPromise(scrapeRunId, site.id);
+  try {
+    const scrapeResult = await Promise.race<ScrapeResult>([
+      executeScrape(
+        site,
+        scrapeRunId,
+        fieldMappings,
+        pageFlow,
+        listingSelector,
+        itemSelector,
+        revealSelector,
+        formCaptureConfig,
+        context,
+        maxJobs,
+        (b: Browser) => {
+          browser = b;
+        },
+      ),
+      timeout.promise,
+    ]);
+
+    timeout.cancel();
+    return { ...scrapeResult };
+  } catch (error) {
+    timeout.cancel();
+
+    const errorMessage =
+      error instanceof Error ? error.message : String(error);
+    const failureCategory = categorizeError(
+      error instanceof Error ? error : new Error(errorMessage),
+      context,
+    );
+
+    console.error("[scrape] Scrape failed:", {
+      siteId: site.id,
+      scrapeRunId,
+      error: errorMessage,
+      failureCategory,
+    });
+
+    const result = await failScrapeRun(scrapeRunId, site.id, {
+      error: errorMessage,
+      failureCategory,
+    });
+
+    return { ...result };
+  } finally {
+    await closeBrowser(browser);
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Core scrape execution (runs within the timeout race)
+// ---------------------------------------------------------------------------
+
+async function executeScrape(
+  site: Site,
+  scrapeRunId: string,
+  fieldMappings: Record<string, FieldMappingEntry>,
+  pageFlow: PageFlowStep[],
+  listingSelector: string | null,
+  itemSelector: string | null,
+  revealSelector: string | null,
+  formCaptureConfig: FormCaptureConfig | null,
+  context: ScrapeContext,
+  maxJobs: number | null,
+  setBrowser: (b: Browser) => void,
+): Promise<ScrapeResult> {
+  // Launch browser
+  const browser = await launchBrowser();
+  setBrowser(browser);
+  const { page } = await createPage(browser);
+
+  // Inject __name shim so tsx-transpiled function decorators don't crash
+  // inside page.evaluate calls that run in the browser context.
+  await page.addInitScript(
+    'if(typeof __name==="undefined"){globalThis.__name=function(fn){return fn}}',
+  );
+
+  // Determine scrape strategy
+  const hasPageFlow = pageFlow.length > 0;
+
+  let rawFieldsList: Record<string, string>[];
+
+  if (hasPageFlow) {
+    // Multi-page flow
+    console.info("[scrape] Using multi-page flow extraction");
+    rawFieldsList = await extractRawFieldsWithPageFlow(
+      page,
+      fieldMappings,
+      pageFlow,
+      listingSelector,
+      itemSelector,
+      revealSelector,
+      formCaptureConfig,
+    );
+    context.pageLoaded = true;
+    context.selectorsMatched = rawFieldsList.length > 0;
+    context.itemsFound = rawFieldsList.length;
+  } else {
+    // Single-page extraction
+    console.info("[scrape] Using single-page extraction");
+
+    // Navigate to the site URL -- use networkidle to let JS-rendered content load
+    await page.goto(site.siteUrl, {
+      waitUntil: "networkidle",
+      timeout: NAVIGATION_TIMEOUT_MS,
+    });
+    context.pageLoaded = true;
+
+    // Wait for the title selector to appear (dynamic / SPA sites)
+    const titleSelector = fieldMappings["title"]?.selector;
+    if (titleSelector) {
+      try {
+        await page.waitForSelector(titleSelector, { timeout: 10_000 });
+        console.info("[scrape] Title selector appeared on page");
+      } catch {
+        console.warn(
+          `[scrape] Title selector not found after 10s, proceeding anyway: ${titleSelector}`,
+        );
+      }
+    }
+
+    rawFieldsList = await extractRawFieldsFromListingPage(
+      page,
+      fieldMappings,
+      listingSelector,
+      itemSelector,
+      revealSelector,
+    );
+    context.selectorsMatched = rawFieldsList.length > 0;
+    context.itemsFound = rawFieldsList.length;
+
+    // Extract form data once from the single page and attach to all records
+    if (formCaptureConfig && rawFieldsList.length > 0) {
+      try {
+        const formData = await extractFormData(page, formCaptureConfig);
+        if (formData) {
+          for (const raw of rawFieldsList) {
+            raw["_formData"] = formData;
+          }
+        }
+      } catch {
+        // Form extraction is best-effort
+      }
+    }
+  }
+
+  // Apply maxJobs limit if set (e.g. "Test 1 Job" from dashboard)
+  if (maxJobs && rawFieldsList.length > maxJobs) {
+    console.info(`[scrape] Limiting to ${maxJobs} of ${rawFieldsList.length} extracted records (maxJobs)`);
+    rawFieldsList = rawFieldsList.slice(0, maxJobs);
+  }
+
+  console.info(`[scrape] Extracted ${rawFieldsList.length} raw job records`);
+
+  // Handle empty results (AC #5)
+  if (rawFieldsList.length === 0) {
+    const result: ScrapeResult = {
+      success: true,
+      scrapeRunId,
+      jobCount: 0,
+      totalJobs: 0,
+      validJobs: 0,
+      invalidJobs: 0,
+      failureCategory: "empty_results",
+    };
+
+    await prisma.scrapeRun.update({
+      where: { id: scrapeRunId },
+      data: {
+        status: "COMPLETED",
+        jobCount: 0,
+        totalJobs: 0,
+        validJobs: 0,
+        invalidJobs: 0,
+        failureCategory: "empty_results",
+        completedAt: new Date(),
+      },
+    });
+
+    console.info("[scrape] Scrape completed with zero results (empty_results)");
+    return result;
+  }
+
+  // Normalize and validate each record using dedicated modules
+  const validatedRecords: ValidatedRecord[] = rawFieldsList.map((rawFields) => {
+    const normalized = normalizeJobRecord(rawFields);
+    const validation = validateJobRecord(normalized);
+    return { normalized, validation };
+  });
+
+  // Log validation warnings for records with quality issues
+  for (const { normalized, validation } of validatedRecords) {
+    if (validation.warnings.length > 0) {
+      console.warn(
+        `[scrape] Quality warnings for job "${normalized.title || "(untitled)"}":`,
+        validation.warnings,
+      );
+    }
+  }
+
+  const validCount = validatedRecords.filter(
+    (r) => r.validation.isValid,
+  ).length;
+  const invalidCount = validatedRecords.length - validCount;
+
+  // Dedup using normalized values (catches edge cases the raw dedup misses,
+  // e.g. accordion wrappers matching the item selector).
+  const dedupSeen = new Set<string>();
+  const recordsToPersist = validatedRecords.filter((r) => {
+    if (!r.validation.isValid) return false;
+    const n = r.normalized;
+    const key =
+      n.externalJobId ||
+      n.url ||
+      `${(n.title || "").toLowerCase()}|${(n.location || "").toLowerCase()}`;
+    if (!key || key === "|") return true;
+    if (dedupSeen.has(key)) return false;
+    dedupSeen.add(key);
+    return true;
+  });
+
+  if (recordsToPersist.length === 0) {
+    const result: ScrapeResult = {
+      success: true,
+      scrapeRunId,
+      jobCount: 0,
+      totalJobs: validatedRecords.length,
+      validJobs: 0,
+      invalidJobs: invalidCount,
+      failureCategory: "structure_changed",
+    };
+
+    await prisma.scrapeRun.update({
+      where: { id: scrapeRunId },
+      data: {
+        status: "COMPLETED",
+        jobCount: 0,
+        totalJobs: validatedRecords.length,
+        validJobs: 0,
+        invalidJobs: invalidCount,
+        failureCategory: "structure_changed",
+        completedAt: new Date(),
+      },
+    });
+
+    console.warn("[scrape] No valid records after validation; skipping persistence", {
+      siteUrl: site.siteUrl,
+      totalExtracted: validatedRecords.length,
+      invalidCount,
+    });
+
+    return result;
+  }
+
+  // Use a Prisma transaction to create all Job records and update ScrapeRun atomically (NFR11)
+  await prisma.$transaction(async (tx) => {
+    // Delete previous jobs for this site so each scrape is a clean slate
+    await tx.job.deleteMany({ where: { siteId: site.id } });
+
+    for (const { normalized, validation } of recordsToPersist) {
+      await tx.job.create({
+        data: {
+          title: normalized.title || "Untitled",
+          description: normalized.description || null,
+          requirements: normalized.requirements || null,
+          location: normalized.location || "Unknown",
+          department: normalized.department || null,
+          externalJobId: normalized.externalJobId || null,
+          publishDate: normalized.publishDate || null,
+          applicationInfo: normalized.applicationInfo || null,
+          rawData: normalized.rawFields as Prisma.InputJsonValue,
+          validationStatus: validation.status,
+          siteId: site.id,
+          scrapeRunId,
+        },
+      });
+    }
+
+    // Update ScrapeRun with success status and counts
+    await tx.scrapeRun.update({
+      where: { id: scrapeRunId },
+      data: {
+        status: "COMPLETED",
+        jobCount: recordsToPersist.length,
+        totalJobs: validatedRecords.length,
+        validJobs: recordsToPersist.length,
+        invalidJobs: invalidCount,
+        completedAt: new Date(),
+      },
+    });
+
+    await tx.site.update({
+      where: { id: site.id },
+      data: {
+        status: "ACTIVE",
+        activeAt: new Date(),
+      },
+    });
+  });
+
+  const result: ScrapeResult = {
+    success: true,
+    scrapeRunId,
+    jobCount: recordsToPersist.length,
+    totalJobs: validatedRecords.length,
+    validJobs: recordsToPersist.length,
+    invalidJobs: invalidCount,
+  };
+
+  console.info("[scrape] Scrape completed successfully:", {
+    siteUrl: site.siteUrl,
+    jobCount: result.jobCount,
+    validJobs: result.validJobs,
+    invalidJobs: result.invalidJobs,
+  });
+
+  // Emit SSE event for scrape completion
+  await emitWorkerEvent({
+    type: "scrape:completed",
+    payload: { siteId: site.id, jobCount: result.jobCount },
+  });
+
+  await emitWorkerEvent({
+    type: "site:status-changed",
+    payload: { siteId: site.id, status: "ACTIVE" },
+  });
+
+  return result;
+}
+
+// ---------------------------------------------------------------------------
+// Timeout promise (2-minute overall scrape limit)
+// ---------------------------------------------------------------------------
+
+function createTimeoutPromise(
+  scrapeRunId: string,
+  siteId: string,
+): { promise: Promise<ScrapeResult>; cancel: () => void } {
+  let timerId: ReturnType<typeof setTimeout>;
+  const promise = new Promise<ScrapeResult>((_, reject) => {
+    timerId = setTimeout(async () => {
+      try {
+        await failScrapeRun(scrapeRunId, siteId, {
+          error: "Scrape execution exceeded 5-minute timeout",
+          failureCategory: "timeout",
+        });
+      } catch (updateError) {
+        console.error("[scrape] Failed to update ScrapeRun on timeout:", updateError);
+      }
+
+      reject(new Error("Scrape execution exceeded 5-minute timeout"));
+    }, SCRAPE_TIMEOUT_MS);
+  });
+  return { promise, cancel: () => clearTimeout(timerId) };
+}
+
+// ---------------------------------------------------------------------------
+// Helper: fail a ScrapeRun and update site status
+// ---------------------------------------------------------------------------
+
+async function failScrapeRun(
+  scrapeRunId: string,
+  siteId: string,
+  details: { error: string; failureCategory: string },
+): Promise<ScrapeResult> {
+  try {
+    await prisma.scrapeRun.update({
+      where: { id: scrapeRunId },
+      data: {
+        status: "FAILED",
+        error: details.error,
+        failureCategory: details.failureCategory,
+        completedAt: new Date(),
+      },
+    });
+
+    await prisma.site.update({
+      where: { id: siteId },
+      data: {
+        status: "FAILED",
+        failedAt: new Date(),
+      },
+    });
+  } catch (dbError) {
+    console.error("[scrape] Failed to update ScrapeRun/Site on failure:", dbError);
+  }
+
+  // Emit SSE events for scrape failure and site status change
+  await emitWorkerEvent({
+    type: "scrape:failed",
+    payload: { siteId, error: details.error, category: details.failureCategory },
+  });
+  await emitWorkerEvent({
+    type: "site:status-changed",
+    payload: { siteId, status: "FAILED" },
+  });
+
+  return {
+    success: false,
+    scrapeRunId,
+    jobCount: 0,
+    totalJobs: 0,
+    validJobs: 0,
+    invalidJobs: 0,
+    error: details.error,
+    failureCategory: details.failureCategory,
+  };
+}

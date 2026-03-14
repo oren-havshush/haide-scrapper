@@ -1,0 +1,26 @@
+{
+  "name": "scrapnew-extension",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "wxt --port 3005",
+    "build": "wxt build",
+    "zip": "wxt zip",
+    "check": "tsc --noEmit"
+  },
+  "dependencies": {
+    "react": "^19.2.3",
+    "react-dom": "^19.2.3"
+  },
+  "devDependencies": {
+    "@tailwindcss/vite": "^4",
+    "@types/chrome": "^0.0.316",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "@wxt-dev/module-react": "^1.2.1",
+    "tailwindcss": "^4",
+    "typescript": "^5",
+    "wxt": "^0.20.18"
+  }
+}

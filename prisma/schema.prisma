@@ -1,0 +1,141 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum SiteStatus {
+  ANALYZING
+  REVIEW
+  ACTIVE
+  FAILED
+  SKIPPED
+}
+
+enum ScrapeRunStatus {
+  IN_PROGRESS
+  COMPLETED
+  FAILED
+}
+
+enum AnalysisMethod {
+  PATTERN_MATCH
+  CRAWL_CLASSIFY
+  NETWORK_INTERCEPT
+}
+
+enum JobStatus {
+  PENDING
+  VALID
+  INVALID
+  NEEDS_REVIEW
+}
+
+enum WorkerJobStatus {
+  PENDING
+  IN_PROGRESS
+  COMPLETED
+  FAILED
+}
+
+enum WorkerJobType {
+  ANALYSIS
+  SCRAPE
+}
+
+model Site {
+  id              String      @id @default(cuid())
+  siteUrl         String      @unique
+  status          SiteStatus  @default(ANALYZING)
+  confidenceScore Float?
+  fieldMappings   Json?
+  pageFlow        Json?
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+  analyzingAt     DateTime?
+  reviewAt        DateTime?
+  activeAt        DateTime?
+  failedAt        DateTime?
+  skippedAt       DateTime?
+
+  jobs            Job[]
+  scrapeRuns      ScrapeRun[]
+  analysisResults AnalysisResult[]
+  workerJobs      WorkerJob[]
+}
+
+model Job {
+  id               String    @id @default(cuid())
+  title            String
+  description      String?
+  requirements     String?
+  location         String
+  department       String?
+  externalJobId    String?
+  publishDate      String?
+  applicationInfo  String?
+  rawData          Json
+  validationStatus String?
+  siteId           String
+  site             Site      @relation(fields: [siteId], references: [id])
+  scrapeRunId      String
+  scrapeRun        ScrapeRun @relation(fields: [scrapeRunId], references: [id])
+  createdAt        DateTime  @default(now())
+
+  @@index([siteId])
+  @@index([scrapeRunId])
+}
+
+model ScrapeRun {
+  id              String          @id @default(cuid())
+  siteId          String
+  site            Site            @relation(fields: [siteId], references: [id])
+  status          ScrapeRunStatus @default(IN_PROGRESS)
+  jobCount        Int             @default(0)
+  totalJobs       Int?
+  validJobs       Int?
+  invalidJobs     Int?
+  error           String?
+  failureCategory String?
+  createdAt       DateTime        @default(now())
+  completedAt     DateTime?
+
+  jobs Job[]
+
+  @@index([siteId])
+}
+
+model AnalysisResult {
+  id                String         @id @default(cuid())
+  siteId            String
+  site              Site           @relation(fields: [siteId], references: [id])
+  method            AnalysisMethod
+  fieldMappings     Json
+  confidenceScores  Json
+  overallConfidence Float
+  apiEndpoint       String?
+  createdAt         DateTime       @default(now())
+
+  @@index([siteId])
+}
+
+model WorkerJob {
+  id          String          @id @default(cuid())
+  siteId      String
+  site        Site            @relation(fields: [siteId], references: [id])
+  type        WorkerJobType
+  status      WorkerJobStatus @default(PENDING)
+  payload     Json?
+  result      Json?
+  error       String?
+  attempts    Int             @default(0)
+  createdAt   DateTime        @default(now())
+  startedAt   DateTime?
+  completedAt DateTime?
+
+  @@index([siteId])
+  @@index([status, type])
+}
