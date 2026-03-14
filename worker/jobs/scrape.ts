@@ -153,29 +153,31 @@ async function extractWithAutoItemDetection(
     selectorMap[name] = m.selector;
   }
 
-  // Log selector match status before evaluate so we can diagnose in worker logs
   for (const [name, sel] of Object.entries(selectorMap)) {
     const found = await page.$(sel).catch(() => null);
-    console.info(`[scrape] Selector "${name}": ${found ? "MATCHED" : "NOT FOUND"} — ${sel.substring(0, 80)}`);
+    console.info(
+      `[scrape] Selector "${name}": ${found ? "MATCHED" : "NOT FOUND"} — ${sel.substring(0, 80)}`,
+    );
   }
 
-  // Click all reveal/accordion elements on the page before extracting
+  // Phase 1: Expand the FIRST item only so we can discover structure from
+  // its expanded state. Clicking all reveals at once breaks mutually-exclusive
+  // accordions where only one panel can be open at a time.
   if (revealSelector) {
-    const revealEls = await page.$$(revealSelector);
-    console.info(`[scrape] Reveal selector matched ${revealEls.length} elements`);
-    for (const el of revealEls) {
+    const firstReveal = await page.$(revealSelector);
+    if (firstReveal) {
       try {
-        await el.click();
+        await firstReveal.click();
+        await page.waitForTimeout(300);
       } catch {
-        // Skip elements that can't be clicked
+        /* skip */
       }
     }
-    if (revealEls.length > 0) {
-      await page.waitForTimeout(1000);
-    }
   }
 
-  const results: Record<string, string>[] = await page.evaluate(
+  // Phase 2: Discover repeating item structure and build child-index paths
+  // from the first (now expanded) item to each field element.
+  const discovery = await page.evaluate(
     (selectors: Record<string, string>) => {
       const fieldEls: Record<string, Element> = {};
       for (const [name, sel] of Object.entries(selectors)) {
@@ -188,38 +190,32 @@ async function extractWithAutoItemDetection(
       }
 
       const titleEl = fieldEls["title"];
-      if (!titleEl) return [];
+      if (!titleEl) return null;
 
       const titleTag = titleEl.tagName.toLowerCase();
 
-      // Walk up from the title element to find the nearest ancestor whose
-      // parent has multiple sibling children that also contain the same
-      // title tag — those siblings are the repeating job-card containers.
       let itemContainer: Element | null = null;
       let current: Element | null = titleEl.parentElement;
       while (current && current !== document.body) {
         const parent = current.parentElement;
         if (!parent) break;
-
         const sameTagSiblings = Array.from(parent.children).filter(
           (sib) =>
             sib.tagName === current!.tagName &&
             sib.querySelector(titleTag) !== null,
         );
-
         if (sameTagSiblings.length >= 2) {
           itemContainer = current;
           break;
         }
         current = parent;
       }
-      if (!itemContainer) return [];
+      if (!itemContainer) return null;
 
       const itemParent = itemContainer.parentElement!;
       const itemTag = itemContainer.tagName;
       const itemClasses = Array.from(itemContainer.classList);
 
-      // Collect all sibling items with the same tag/class pattern
       const allItems = Array.from(itemParent.children).filter((child) => {
         if (child.tagName !== itemTag) return false;
         for (const cls of itemClasses) {
@@ -228,20 +224,108 @@ async function extractWithAutoItemDetection(
         return true;
       });
 
-      // Build a child-index path from `root` down to `target`
       const buildPath = (root: Element, target: Element): number[] => {
         const path: number[] = [];
         let node: Element | null = target;
         while (node && node !== root) {
-          const parent: Element | null = node.parentElement;
-          if (!parent) return [];
-          path.unshift(Array.from(parent.children).indexOf(node));
-          node = parent;
+          const p: Element | null = node.parentElement;
+          if (!p) return [];
+          path.unshift(Array.from(p.children).indexOf(node));
+          node = p;
         }
         return node === root ? path : [];
       };
 
-      const followPath = (root: Element, path: number[]): Element | null => {
+      // Classify fields into inside-paths, sibling-paths, and outside values
+      const insidePaths: Record<string, number[]> = {};
+      const outsideValues: Record<string, string> = {};
+      const siblingPaths: Record<
+        string,
+        { siblingOffset: number; path: number[] }
+      > = {};
+
+      for (const [name, el] of Object.entries(fieldEls)) {
+        if (itemContainer.contains(el)) {
+          const path = buildPath(itemContainer, el);
+          if (path.length > 0) insidePaths[name] = path;
+        } else {
+          // Check if field is in a sibling of the item (accordion content panel)
+          let sib = itemContainer.nextElementSibling;
+          let offset = 1;
+          let found = false;
+          while (sib && offset <= 3) {
+            if (sib.contains(el)) {
+              const path = buildPath(sib, el);
+              if (path.length > 0) {
+                siblingPaths[name] = { siblingOffset: offset, path };
+              }
+              found = true;
+              break;
+            }
+            sib = sib.nextElementSibling;
+            offset++;
+          }
+          if (!found) {
+            outsideValues[name] =
+              ((el as HTMLElement).innerText || "").trim();
+          }
+        }
+      }
+
+      // Build a CSS selector for the item parent so we can re-find it later
+      let parentCSS: string;
+      if (itemParent.id) {
+        parentCSS = `#${itemParent.id}`;
+      } else {
+        const pTag = itemParent.tagName.toLowerCase();
+        const pClasses = Array.from(itemParent.classList).slice(0, 3);
+        parentCSS =
+          pClasses.length > 0 ? `${pTag}.${pClasses.join(".")}` : pTag;
+      }
+
+      const itemCSS =
+        itemClasses.length > 0
+          ? `${itemTag.toLowerCase()}.${itemClasses.join(".")}`
+          : itemTag.toLowerCase();
+
+      return {
+        parentCSS,
+        itemCSS,
+        itemTag,
+        itemClasses,
+        itemCount: allItems.length,
+        insidePaths,
+        outsideValues,
+        siblingPaths,
+      };
+    },
+    selectorMap,
+  );
+
+  if (!discovery || discovery.itemCount === 0) return [];
+  console.info(
+    `[scrape] Auto-detect found ${discovery.itemCount} repeating items`,
+  );
+
+  // Phase 3: Extract ALL items in one async evaluate call.
+  // Uses native DOM click() per-item for reveals — no Playwright round-trips.
+  const results: Record<string, string>[] = await page.evaluate(
+    async (args: {
+      parentCSS: string;
+      itemTag: string;
+      itemClasses: string[];
+      insidePaths: Record<string, number[]>;
+      outsideValues: Record<string, string>;
+      siblingPaths: Record<
+        string,
+        { siblingOffset: number; path: number[] }
+      >;
+      revSel: string | null;
+    }) => {
+      const followPath = (
+        root: Element,
+        path: number[],
+      ): Element | null => {
         let node: Element = root;
         for (const idx of path) {
           const child = node.children[idx];
@@ -251,41 +335,108 @@ async function extractWithAutoItemDetection(
         return node;
       };
 
-      // Classify each field: inside the item container (relative path)
-      // or outside it (global value shared by all items).
-      const insidePaths: Record<string, number[]> = {};
-      const outsideValues: Record<string, string> = {};
-
-      for (const [name, el] of Object.entries(fieldEls)) {
-        if (itemContainer.contains(el)) {
-          const path = buildPath(itemContainer, el);
-          if (path.length > 0) insidePaths[name] = path;
-        } else {
-          outsideValues[name] = (el.innerText || "").trim();
+      function findReveal(item: Element, sel: string): HTMLElement | null {
+        try {
+          const r = item.querySelector(sel);
+          if (r) return r as HTMLElement;
+        } catch {
+          /* skip */
         }
+        if (item.parentElement) {
+          const candidates = item.parentElement.querySelectorAll(sel);
+          const itemIdx = Array.from(item.parentElement.children).indexOf(
+            item,
+          );
+          for (const c of candidates) {
+            if (c !== item && !item.contains(c)) {
+              const cIdx = Array.from(item.parentElement!.children).indexOf(c);
+              if (Math.abs(cIdx - itemIdx) <= 2)
+                return c as HTMLElement;
+            }
+          }
+        }
+        return null;
       }
 
-      // Extract fields from every item
+      function cleanTextContent(el: Element): string {
+        const clone = el.cloneNode(true) as Element;
+        clone
+          .querySelectorAll("style, script, noscript, link, template, svg, iframe")
+          .forEach((n) => n.remove());
+        return (clone.textContent || "").replace(/\s+/g, " ").trim();
+      }
+
+      const parent = document.querySelector(args.parentCSS);
+      if (!parent) return [];
+
+      const allItems = Array.from(parent.children).filter((child) => {
+        if (child.tagName !== args.itemTag) return false;
+        for (const cls of args.itemClasses) {
+          if (!child.classList.contains(cls)) return false;
+        }
+        return true;
+      });
+
       const records: Record<string, string>[] = [];
-      for (const item of allItems) {
+
+      for (let i = 0; i < allItems.length; i++) {
+        const item = allItems[i];
+
+        // Click reveal via native DOM click (instant)
+        if (args.revSel) {
+          const reveal = findReveal(item, args.revSel);
+          if (reveal) {
+            reveal.click();
+            await new Promise((r) => setTimeout(r, 250));
+          }
+        }
+
         const rec: Record<string, string> = {};
 
-        for (const [name, path] of Object.entries(insidePaths)) {
+        // Fields inside the item container
+        for (const [name, path] of Object.entries(args.insidePaths)) {
           const el = followPath(item, path);
           if (el) {
-            rec[name] = (el.innerText || "").trim();
+            rec[name] = cleanTextContent(el);
             const anchor =
               el.tagName === "A" ? el : el.closest("a");
             if (anchor) {
               const href = anchor.getAttribute("href");
-              if (href) rec[`${name}_href`] = href;
+              if (href && !href.startsWith("#") && !href.startsWith("javascript:"))
+                rec[`${name}_href`] = href;
             }
           } else {
             rec[name] = "";
           }
         }
 
-        for (const [name, val] of Object.entries(outsideValues)) {
+        // Fields in sibling panels (accordion content)
+        for (const [name, info] of Object.entries(args.siblingPaths)) {
+          let sib: Element | null = item;
+          for (let s = 0; s < info.siblingOffset; s++) {
+            sib = sib?.nextElementSibling ?? null;
+          }
+          if (sib) {
+            const el = followPath(sib, info.path);
+            if (el) {
+              rec[name] = cleanTextContent(el);
+              const anchor =
+                el.tagName === "A" ? el : el.closest("a");
+              if (anchor) {
+                const href = anchor.getAttribute("href");
+                if (href && !href.startsWith("#") && !href.startsWith("javascript:"))
+                  rec[`${name}_href`] = href;
+              }
+            } else {
+              rec[name] = "";
+            }
+          } else {
+            rec[name] = "";
+          }
+        }
+
+        // Global values (outside all items)
+        for (const [name, val] of Object.entries(args.outsideValues)) {
           rec[name] = val;
         }
 
@@ -296,9 +447,20 @@ async function extractWithAutoItemDetection(
 
       return records;
     },
-    selectorMap,
+    {
+      parentCSS: discovery.parentCSS,
+      itemTag: discovery.itemTag,
+      itemClasses: discovery.itemClasses,
+      insidePaths: discovery.insidePaths,
+      outsideValues: discovery.outsideValues,
+      siblingPaths: discovery.siblingPaths,
+      revSel: revealSelector,
+    },
   );
 
+  console.info(
+    `[scrape] Auto-detect extraction completed: ${results.length} records`,
+  );
   return results;
 }
 
@@ -317,123 +479,203 @@ async function extractWithExplicitItemSelector(
   const containerSel = listingSelector ?? "body";
   const fullSelector = `${containerSel} ${itemSelector}`;
 
-  let items = await page.$$(fullSelector);
-  if (items.length === 0) {
-    items = await page.$$(itemSelector);
+  const selectorMap: Record<string, string> = {};
+  for (const [name, m] of Object.entries(fieldMappings)) {
+    selectorMap[name] = m.selector;
   }
 
-  console.info(`[scrape] Explicit itemSelector matched ${items.length} items`);
+  // Determine which selector variant matches items on the page
+  let effectiveSelector = fullSelector;
+  const initialCount = await page
+    .$$eval(fullSelector, (els) => els.length)
+    .catch(() => 0);
+  if (initialCount === 0) {
+    const fallbackCount = await page
+      .$$eval(itemSelector, (els) => els.length)
+      .catch(() => 0);
+    if (fallbackCount > 0) effectiveSelector = itemSelector;
+  }
 
-  const rawFieldsList: Record<string, string>[] = [];
+  const itemCount =
+    initialCount > 0
+      ? initialCount
+      : await page.$$eval(itemSelector, (els) => els.length).catch(() => 0);
 
-  for (const item of items) {
-    // Click reveal/accordion element if configured (e.g. "Show details" button)
-    if (revealSelector) {
-      try {
-        let revealEl = await item.$(revealSelector);
+  console.info(
+    `[scrape] Explicit itemSelector matched ${itemCount} items (selector: ${effectiveSelector})`,
+  );
+  if (itemCount === 0) return [];
 
-        // Search siblings and parent wrapper if not found inside the item.
-        if (!revealEl) {
-          revealEl = await item.evaluateHandle(
-            (el, sel) => {
-              // Check previous siblings (button often precedes the item)
-              let sib: Element | null = el.previousElementSibling;
-              let checked = 0;
-              while (sib && checked < 3) {
-                const match = sib.matches(sel) ? sib : sib.querySelector(sel);
-                if (match) return match;
-                sib = sib.previousElementSibling;
-                checked++;
-              }
-              // Check next siblings
-              sib = el.nextElementSibling;
-              checked = 0;
-              while (sib && checked < 3) {
-                const match = sib.matches(sel) ? sib : sib.querySelector(sel);
-                if (match) return match;
-                sib = sib.nextElementSibling;
-                checked++;
-              }
-              // Check parent wrapper (the direct parent may contain both button and item)
-              if (el.parentElement) {
-                const match = el.parentElement.querySelector(sel);
-                if (match && match !== el && !el.contains(match)) return match;
-              }
-              return null;
-            },
-            revealSelector,
-          ).then((h) => h.asElement()) ?? null;
+  // ---------------------------------------------------------------------------
+  // All extraction happens inside ONE async page.evaluate call.
+  // Native DOM click() is used for reveals — no Playwright round-trips per
+  // item. For 107 items this completes in seconds instead of minutes.
+  // ---------------------------------------------------------------------------
+  const results: Record<string, string>[] = await page.evaluate(
+    async (args: {
+      selector: string;
+      fields: Record<string, string>;
+      revealSelector: string | null;
+    }) => {
+      const items = document.querySelectorAll(args.selector);
+      const records: Record<string, string>[] = [];
+
+      function findReveal(item: Element, sel: string): HTMLElement | null {
+        // Inside the item
+        try {
+          const r = item.querySelector(sel);
+          if (r) return r as HTMLElement;
+        } catch {
+          /* skip */
         }
 
-        if (revealEl) {
-          await revealEl.click();
-          await page.waitForTimeout(1000);
+        // Previous siblings (button may precede the item)
+        let sib: Element | null = item.previousElementSibling;
+        let checked = 0;
+        while (sib && checked < 3) {
+          try {
+            const m = sib.matches(sel) ? sib : sib.querySelector(sel);
+            if (m) return m as HTMLElement;
+          } catch {
+            /* skip */
+          }
+          sib = sib.previousElementSibling;
+          checked++;
         }
-      } catch {
-        // Reveal click failed for this item, continue with extraction anyway
-      }
-    }
 
-    const rawFields: Record<string, string> = {};
+        // Next siblings
+        sib = item.nextElementSibling;
+        checked = 0;
+        while (sib && checked < 3) {
+          try {
+            const m = sib.matches(sel) ? sib : sib.querySelector(sel);
+            if (m) return m as HTMLElement;
+          } catch {
+            /* skip */
+          }
+          sib = sib.nextElementSibling;
+          checked++;
+        }
 
-    for (const [fieldName, mapping] of Object.entries(fieldMappings)) {
-      try {
-        // 1. Search inside the item element
-        let fieldEl = await item.$(mapping.selector);
-
-        // 2. If not found and we clicked a reveal, check next siblings
-        //    (accordion content often renders as a sibling, not a child)
-        if (!fieldEl && revealSelector) {
-          // Search next siblings for accordion content (e.g. expanded "show more")
-          const sibText = await item.evaluate(
-            (el, sel) => {
-              let sib = el.nextElementSibling;
-              let count = 0;
-              while (sib && count < 3) {
-                const match = sib.querySelector(sel);
-                if (match) {
-                  const text = (match.innerText || "").trim();
-                  const href = match.tagName === "A" ? match.getAttribute("href") : match.querySelector("a")?.getAttribute("href");
-                  return { text, href: href || null };
-                }
-                sib = sib.nextElementSibling;
-                count++;
-              }
-              return null;
-            },
-            mapping.selector,
-          );
-          if (sibText) {
-            rawFields[fieldName] = sibText.text;
-            if (sibText.href) rawFields[`${fieldName}_href`] = sibText.href;
-            continue; // Skip the fieldEl extraction below
+        // Parent wrapper
+        if (item.parentElement) {
+          try {
+            const m = item.parentElement.querySelector(sel);
+            if (m && m !== item && !item.contains(m))
+              return m as HTMLElement;
+          } catch {
+            /* skip */
           }
         }
 
-        if (fieldEl) {
-          const text = await fieldEl.innerText();
-          rawFields[fieldName] = text ?? "";
-          const href = await fieldEl.getAttribute("href");
-          if (href) rawFields[`${fieldName}_href`] = href;
-          if (!href) {
-            const anchor = await fieldEl.$("a");
-            if (anchor) {
-              const anchorHref = await anchor.getAttribute("href");
-              if (anchorHref) rawFields[`${fieldName}_href`] = anchorHref;
+        return null;
+      }
+
+      function cleanTextContent(el: Element): string {
+        const clone = el.cloneNode(true) as Element;
+        clone
+          .querySelectorAll("style, script, noscript, link, template, svg, iframe")
+          .forEach((n) => n.remove());
+        return (clone.textContent || "").replace(/\s+/g, " ").trim();
+      }
+
+      function extractFieldsFromItem(
+        item: Element,
+        fields: Record<string, string>,
+        hasReveal: boolean,
+      ): Record<string, string> {
+        const rec: Record<string, string> = {};
+
+        for (const [fieldName, fieldSelector] of Object.entries(fields)) {
+          let fieldEl: Element | null = null;
+
+          try {
+            fieldEl = item.querySelector(fieldSelector);
+          } catch {
+            /* invalid selector */
+          }
+
+          // Check sibling panels for accordion content
+          if (!fieldEl && hasReveal) {
+            let sib = item.nextElementSibling;
+            let count = 0;
+            while (sib && count < 3) {
+              try {
+                const match = sib.querySelector(fieldSelector);
+                if (match) {
+                  fieldEl = match;
+                  break;
+                }
+              } catch {
+                /* skip */
+              }
+              sib = sib.nextElementSibling;
+              count++;
             }
           }
-        } else {
-          rawFields[fieldName] = "";
+
+          if (fieldEl) {
+            rec[fieldName] = cleanTextContent(fieldEl);
+            const anchor =
+              fieldEl.tagName === "A"
+                ? fieldEl
+                : fieldEl.closest("a") ?? fieldEl.querySelector("a");
+            if (anchor) {
+              const href = anchor.getAttribute("href");
+              if (
+                href &&
+                href !== "#" &&
+                !href.startsWith("#") &&
+                !href.startsWith("javascript:")
+              ) {
+                rec[`${fieldName}_href`] = href;
+              }
+            }
+          } else {
+            rec[fieldName] = "";
+          }
         }
-      } catch {
-        rawFields[fieldName] = "";
+
+        return rec;
       }
-    }
 
-    rawFieldsList.push(rawFields);
-  }
+      for (let i = 0; i < items.length; i++) {
+        const item = items[i];
 
-  return rawFieldsList;
+        // Click reveal via native DOM click, then yield for event handlers.
+        // 250ms is enough for most jQuery/CSS accordion toggles while keeping
+        // total time reasonable (107 items × 250ms ≈ 27s).
+        if (args.revealSelector) {
+          const reveal = findReveal(item, args.revealSelector);
+          if (reveal) {
+            reveal.click();
+            await new Promise((r) => setTimeout(r, 250));
+          }
+        }
+
+        const rec = extractFieldsFromItem(
+          item,
+          args.fields,
+          !!args.revealSelector,
+        );
+        if (Object.values(rec).some((v) => v.length > 0)) {
+          records.push(rec);
+        }
+      }
+
+      return records;
+    },
+    {
+      selector: effectiveSelector,
+      fields: selectorMap,
+      revealSelector,
+    },
+  );
+
+  console.info(
+    `[scrape] Explicit extraction completed: ${results.length} records`,
+  );
+  return results;
 }
 
 // ---------------------------------------------------------------------------
@@ -475,6 +717,15 @@ async function extractRawFieldsFromListingPage(
   return [];
 }
 
+function isUsableUrl(url: string): boolean {
+  return (
+    url.length > 0 &&
+    !url.startsWith("#") &&
+    !url.startsWith("javascript:") &&
+    url !== "/"
+  );
+}
+
 function dedupeAndCapRawFields(
   rawFieldsList: Record<string, string>[],
 ): Record<string, string>[] {
@@ -485,17 +736,31 @@ function dedupeAndCapRawFields(
     const title = (raw["title"] ?? "").trim().toLowerCase();
     const location = (raw["location"] ?? "").trim().toLowerCase();
     const externalJobId = (raw["externalJobId"] ?? "").trim().toLowerCase();
-    const url = (raw["title_href"] ?? raw["_detailUrl"] ?? "").trim().toLowerCase();
+    const rawUrl = (raw["title_href"] ?? raw["_detailUrl"] ?? "").trim().toLowerCase();
+    const url = isUsableUrl(rawUrl) ? rawUrl : "";
 
     // Skip empty junk rows.
     if (!title && !location && !url) continue;
 
     const fingerprint = url || externalJobId || `${title}|${location}`;
-    if (seen.has(fingerprint)) continue;
+    if (seen.has(fingerprint)) {
+      if (deduped.length <= 1) {
+        console.warn(
+          `[scrape] Dedup collision at item ${seen.size}: fingerprint="${fingerprint.substring(0, 60)}" title="${title.substring(0, 40)}"`,
+        );
+      }
+      continue;
+    }
     seen.add(fingerprint);
     deduped.push(raw);
 
     if (deduped.length >= MAX_EXTRACTED_ITEMS) break;
+  }
+
+  if (deduped.length < rawFieldsList.length) {
+    console.info(
+      `[scrape] Dedup: ${rawFieldsList.length} → ${deduped.length} records`,
+    );
   }
 
   return deduped;
@@ -1157,50 +1422,65 @@ async function executeScrape(
     return result;
   }
 
-  // Use a Prisma transaction to create all Job records and update ScrapeRun atomically (NFR11)
-  await prisma.$transaction(async (tx) => {
-    // Delete previous jobs for this site so each scrape is a clean slate
-    await tx.job.deleteMany({ where: { siteId: site.id } });
+  // Save jobs in chunks so progress is preserved even if a timeout occurs.
+  // Delete old jobs first, then insert in batches of CHUNK_SIZE, updating the
+  // ScrapeRun progress after each chunk.
+  const CHUNK_SIZE = 20;
+  await prisma.job.deleteMany({ where: { siteId: site.id } });
 
-    for (const { normalized, validation } of recordsToPersist) {
-      await tx.job.create({
+  let savedCount = 0;
+  for (let offset = 0; offset < recordsToPersist.length; offset += CHUNK_SIZE) {
+    const chunk = recordsToPersist.slice(offset, offset + CHUNK_SIZE);
+
+    await prisma.$transaction(async (tx) => {
+      for (const { normalized, validation } of chunk) {
+        await tx.job.create({
+          data: {
+            title: normalized.title || "Untitled",
+            description: normalized.description || null,
+            requirements: normalized.requirements || null,
+            location: normalized.location || "Unknown",
+            department: normalized.department || null,
+            externalJobId: normalized.externalJobId || null,
+            publishDate: normalized.publishDate || null,
+            applicationInfo: normalized.applicationInfo || null,
+            rawData: normalized.rawFields as Prisma.InputJsonValue,
+            validationStatus: validation.status,
+            siteId: site.id,
+            scrapeRunId,
+          },
+        });
+      }
+
+      savedCount += chunk.length;
+
+      // Update ScrapeRun progress after each chunk
+      await tx.scrapeRun.update({
+        where: { id: scrapeRunId },
         data: {
-          title: normalized.title || "Untitled",
-          description: normalized.description || null,
-          requirements: normalized.requirements || null,
-          location: normalized.location || "Unknown",
-          department: normalized.department || null,
-          externalJobId: normalized.externalJobId || null,
-          publishDate: normalized.publishDate || null,
-          applicationInfo: normalized.applicationInfo || null,
-          rawData: normalized.rawFields as Prisma.InputJsonValue,
-          validationStatus: validation.status,
-          siteId: site.id,
-          scrapeRunId,
+          status: savedCount < recordsToPersist.length ? "IN_PROGRESS" : "COMPLETED",
+          jobCount: savedCount,
+          totalJobs: validatedRecords.length,
+          validJobs: savedCount,
+          invalidJobs: invalidCount,
+          ...(savedCount >= recordsToPersist.length
+            ? { completedAt: new Date() }
+            : {}),
         },
       });
-    }
-
-    // Update ScrapeRun with success status and counts
-    await tx.scrapeRun.update({
-      where: { id: scrapeRunId },
-      data: {
-        status: "COMPLETED",
-        jobCount: recordsToPersist.length,
-        totalJobs: validatedRecords.length,
-        validJobs: recordsToPersist.length,
-        invalidJobs: invalidCount,
-        completedAt: new Date(),
-      },
     });
 
-    await tx.site.update({
-      where: { id: site.id },
-      data: {
-        status: "ACTIVE",
-        activeAt: new Date(),
-      },
-    });
+    console.info(
+      `[scrape] Saved chunk: ${savedCount}/${recordsToPersist.length} jobs`,
+    );
+  }
+
+  await prisma.site.update({
+    where: { id: site.id },
+    data: {
+      status: "ACTIVE",
+      activeAt: new Date(),
+    },
   });
 
   const result: ScrapeResult = {
