@@ -1,0 +1,35 @@
+FROM mcr.microsoft.com/playwright:v1.50.0-noble AS builder
+
+RUN npm install -g pnpm
+
+WORKDIR /app
+
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml .npmrc ./
+COPY prisma ./prisma/
+COPY prisma.config.ts ./
+
+COPY extension/package.json ./extension/
+
+RUN pnpm install --frozen-lockfile
+
+COPY tsconfig.json tsconfig.worker.json ./
+COPY src/lib ./src/lib
+COPY src/services ./src/services
+COPY src/generated ./src/generated
+COPY worker ./worker
+
+# --- runner stage ---
+FROM mcr.microsoft.com/playwright:v1.50.0-noble AS runner
+WORKDIR /app
+
+RUN groupadd --system --gid 1001 worker && \
+    useradd --system --uid 1001 --gid worker worker
+
+COPY --from=builder --chown=worker:worker /app ./
+
+ENV NODE_ENV=production
+ENV PLAYWRIGHT_BROWSERS_PATH=0
+
+USER worker
+
+CMD ["npx", "tsx", "worker/index.ts"]

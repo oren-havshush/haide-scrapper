@@ -56,7 +56,7 @@ export function NeedsAttentionTable({ data, meta, isLoading }: NeedsAttentionTab
   const triggerScrape = useTriggerScrape();
 
   function handleRetry(siteId: string, siteUrl: string) {
-    triggerScrape.mutate(siteId, {
+    triggerScrape.mutate({ siteId }, {
       onSuccess: () => {
         toast.success(`Re-scrape triggered for ${siteUrl}`);
       },

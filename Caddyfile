@@ -1,0 +1,5 @@
+# Replace YOUR_DOMAIN with your actual domain to enable automatic HTTPS
+# Example: scrapper.example.com
+{$SITE_ADDRESS::80} {
+	reverse_proxy web:3000
+}
