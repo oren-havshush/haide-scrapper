@@ -2,7 +2,7 @@
 set -e
 
 echo "[worker] applying prisma migrations"
-npx --no-install prisma migrate deploy
+node_modules/.bin/prisma migrate deploy
 
 echo "[worker] starting worker"
-exec npx --no-install tsx worker/index.ts
+exec node_modules/.bin/tsx worker/index.ts

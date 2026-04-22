@@ -46,7 +46,7 @@ services:
       - key: API_TOKEN
         value: haideScrapper
       - key: NEXT_PUBLIC_APP_URL
-        value: http://scrapnew-web:3000
+        value: https://scrapnew-web.onrender.com
       - key: NODE_ENV
         value: production
       - key: PLAYWRIGHT_BROWSERS_PATH
