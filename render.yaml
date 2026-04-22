@@ -51,3 +51,12 @@ services:
         value: production
       - key: PLAYWRIGHT_BROWSERS_PATH
         value: /ms-playwright
+      - key: SCRAPE_LOCALE
+        value: he-IL
+      - key: SCRAPE_TIMEZONE
+        value: Asia/Jerusalem
+      - key: SCRAPE_ACCEPT_LANGUAGE
+        value: he-IL,he;q=0.9,en-US;q=0.8,en;q=0.7
+      # Optional: enable AI-powered selector refinement for low-confidence sites
+      - key: OPENAI_API_KEY
+        sync: false

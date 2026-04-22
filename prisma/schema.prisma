@@ -26,6 +26,7 @@ enum AnalysisMethod {
   PATTERN_MATCH
   CRAWL_CLASSIFY
   NETWORK_INTERCEPT
+  AI_REFINE
 }
 
 enum JobStatus {

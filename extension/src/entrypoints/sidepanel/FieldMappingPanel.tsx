@@ -36,6 +36,110 @@ function ConfidenceText({ confidence }: { confidence: number }) {
   );
 }
 
+interface EditableSelectorRowProps {
+  label: string;
+  value: string;
+  onChange: (value: string | null) => void;
+}
+
+function EditableSelectorRow({ label, value, onChange }: EditableSelectorRowProps) {
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(value);
+  const [error, setError] = useState<string | null>(null);
+
+  function beginEdit() {
+    setDraft(value);
+    setError(null);
+    setEditing(true);
+  }
+
+  function save() {
+    const trimmed = draft.trim();
+    if (!trimmed) {
+      setError("Selector cannot be empty");
+      return;
+    }
+    try {
+      document.createDocumentFragment().querySelector(trimmed);
+    } catch {
+      setError("Invalid CSS selector");
+      return;
+    }
+    onChange(trimmed);
+    setEditing(false);
+  }
+
+  function cancel() {
+    setDraft(value);
+    setError(null);
+    setEditing(false);
+  }
+
+  if (editing) {
+    return (
+      <div className="px-1 space-y-1">
+        <div className="flex items-center gap-1">
+          <span className="text-[10px] text-muted-foreground font-mono shrink-0">
+            {label}:
+          </span>
+          <input
+            type="text"
+            autoFocus
+            value={draft}
+            onChange={(e) => {
+              setDraft(e.target.value);
+              setError(null);
+            }}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") save();
+              if (e.key === "Escape") cancel();
+            }}
+            className="flex-1 min-w-0 px-1.5 py-0.5 text-[10px] font-mono bg-background border border-border rounded text-foreground focus:outline-none focus:border-blue-500"
+          />
+          <button
+            onClick={save}
+            className="text-[10px] text-success hover:underline"
+          >
+            Save
+          </button>
+          <button
+            onClick={cancel}
+            className="text-[10px] text-muted-foreground hover:underline"
+          >
+            Cancel
+          </button>
+        </div>
+        {error && <div className="text-[10px] text-warning px-1">{error}</div>}
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex items-center gap-1 px-1 group">
+      <div
+        className="text-[10px] text-muted-foreground font-mono truncate flex-1 min-w-0"
+        title={value}
+      >
+        {label}: {value}
+      </div>
+      <button
+        onClick={beginEdit}
+        title="Edit selector"
+        className="text-[10px] text-muted-foreground hover:text-foreground opacity-0 group-hover:opacity-100 transition-opacity"
+      >
+        Edit
+      </button>
+      <button
+        onClick={() => onChange(null)}
+        title="Clear selector"
+        className="text-[10px] text-muted-foreground hover:text-warning opacity-0 group-hover:opacity-100 transition-opacity"
+      >
+        ✕
+      </button>
+    </div>
+  );
+}
+
 interface FieldRowProps {
   field: FieldMappingEntry;
   onConfirm: (fieldName: string) => void;
@@ -199,6 +303,9 @@ interface FieldMappingPanelProps {
   onPickListingContainer: () => void;
   onPickItemWrapper: () => void;
   onPickRevealAction: () => void;
+  onSetListingSelector: (selector: string | null) => void;
+  onSetItemSelector: (selector: string | null) => void;
+  onSetRevealSelector: (selector: string | null) => void;
   testResult: TestExtractResult | null;
   isApproving: boolean;
   approveError: string | null;
@@ -231,6 +338,9 @@ export default function FieldMappingPanel({
   onPickListingContainer,
   onPickItemWrapper,
   onPickRevealAction,
+  onSetListingSelector,
+  onSetItemSelector,
+  onSetRevealSelector,
   testResult,
   isApproving,
   approveError,
@@ -343,19 +453,25 @@ export default function FieldMappingPanel({
         </button>
 
         {listingSelector && (
-          <div className="text-[10px] text-muted-foreground font-mono truncate px-1" title={listingSelector}>
-            List: {listingSelector}
-          </div>
+          <EditableSelectorRow
+            label="List"
+            value={listingSelector}
+            onChange={onSetListingSelector}
+          />
         )}
         {itemSelector && (
-          <div className="text-[10px] text-muted-foreground font-mono truncate px-1" title={itemSelector}>
-            Item: {itemSelector}
-          </div>
+          <EditableSelectorRow
+            label="Item"
+            value={itemSelector}
+            onChange={onSetItemSelector}
+          />
         )}
         {revealSelector && (
-          <div className="text-[10px] text-muted-foreground font-mono truncate px-1" title={revealSelector}>
-            Reveal: {revealSelector}
-          </div>
+          <EditableSelectorRow
+            label="Reveal"
+            value={revealSelector}
+            onChange={onSetRevealSelector}
+          />
         )}
       </div>
 

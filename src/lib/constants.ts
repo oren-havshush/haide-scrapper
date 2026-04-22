@@ -18,6 +18,7 @@ export const ANALYSIS_METHOD_LABELS: Record<string, string> = {
   PATTERN_MATCH: "Pattern Match",
   CRAWL_CLASSIFY: "Crawl & Classify",
   NETWORK_INTERCEPT: "Network Intercept",
+  AI_REFINE: "AI Refine",
 };
 
 export const DEFAULT_PAGE_SIZE = 50;

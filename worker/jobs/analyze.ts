@@ -5,6 +5,7 @@ import type { Browser, Page } from "playwright";
 import { analyzeWithPatternMatching } from "../analysis/patternMatch";
 import { analyzeWithCrawlClassify } from "../analysis/crawlClassify";
 import { analyzeWithNetworkIntercept } from "../analysis/networkIntercept";
+import { analyzeWithAiRefine } from "../analysis/aiRefine";
 import { combineAnalysisResults } from "../analysis/combineResults";
 import { CONFIDENCE_THRESHOLD } from "../../src/lib/constants";
 import { emitWorkerEvent } from "../lib/emitEvent";
@@ -234,19 +235,87 @@ export async function handleAnalysisJob(
       },
     });
 
-    // --- Combine all three analysis results ---
-    const combinedResult = combineAnalysisResults([
+    // --- Combine the three heuristic analysis results ---
+    let combinedResult = combineAnalysisResults([
       { method: "PATTERN_MATCH", ...patternResult },
       { method: "CRAWL_CLASSIFY", ...crawlResult, detailPagePattern: crawlResult.detailPagePattern },
       { method: "NETWORK_INTERCEPT", ...networkResult, apiEndpoint: networkResult.apiEndpoint },
     ]);
 
-    console.info("[worker] Combined analysis result:", {
+    console.info("[worker] Combined analysis result (heuristic):", {
       siteUrl: site.siteUrl,
       overallConfidence: combinedResult.overallConfidence,
       fieldsDetected: Object.keys(combinedResult.fieldMappings),
       methodContributions: combinedResult.methodContributions,
     });
+
+    // --- Optional AI refinement stage ---
+    // Runs only when heuristic confidence is below threshold AND an API key is
+    // configured. It asks gpt-4o-mini to infer CSS selectors for fields the
+    // heuristics missed, validates them against the live DOM, and re-combines.
+    const heuristicPercent = combinedResult.overallConfidence * 100;
+    const aiEnabled = Boolean(process.env.OPENAI_API_KEY);
+    const aiThresholdPercent = process.env.AI_REFINE_THRESHOLD
+      ? Number(process.env.AI_REFINE_THRESHOLD)
+      : CONFIDENCE_THRESHOLD;
+
+    if (aiEnabled && heuristicPercent < aiThresholdPercent) {
+      try {
+        await navigateWithFallback(page, site.siteUrl);
+      } catch (navError) {
+        console.warn("[worker] Failed to navigate back for AI refine:", {
+          siteUrl: site.siteUrl,
+          error: navError instanceof Error ? navError.message : String(navError),
+        });
+      }
+
+      const aiResult = await analyzeWithAiRefine(page, site.siteUrl, {
+        listingSelector: combinedResult.listingSelector,
+        itemSelector: combinedResult.itemSelector,
+        alreadyDetected: Object.keys(combinedResult.fieldMappings),
+      });
+
+      await prisma.analysisResult.create({
+        data: {
+          siteId: site.id,
+          method: "AI_REFINE",
+          fieldMappings: aiResult.fieldMappings,
+          confidenceScores: aiResult.confidenceScores,
+          overallConfidence: aiResult.overallConfidence,
+        },
+      });
+
+      if (!aiResult.skipped && Object.keys(aiResult.fieldMappings).length > 0) {
+        combinedResult = combineAnalysisResults([
+          { method: "PATTERN_MATCH", ...patternResult },
+          { method: "CRAWL_CLASSIFY", ...crawlResult, detailPagePattern: crawlResult.detailPagePattern },
+          { method: "NETWORK_INTERCEPT", ...networkResult, apiEndpoint: networkResult.apiEndpoint },
+          {
+            method: "AI_REFINE",
+            fieldMappings: aiResult.fieldMappings,
+            confidenceScores: aiResult.confidenceScores,
+            overallConfidence: aiResult.overallConfidence,
+            listingSelector: aiResult.listingSelector,
+            itemSelector: aiResult.itemSelector,
+            itemCount: aiResult.itemCount,
+          },
+        ]);
+
+        console.info("[worker] Combined analysis result (post AI refine):", {
+          siteUrl: site.siteUrl,
+          overallConfidence: combinedResult.overallConfidence,
+          fieldsDetected: Object.keys(combinedResult.fieldMappings),
+          methodContributions: combinedResult.methodContributions,
+        });
+      } else {
+        console.info("[worker] AI refine produced no new mappings:", {
+          siteUrl: site.siteUrl,
+          skipReason: aiResult.skipReason,
+        });
+      }
+    } else if (!aiEnabled) {
+      console.info("[worker] AI refine skipped: OPENAI_API_KEY not configured");
+    }
 
     // Both high and low confidence sites go to REVIEW status
     // (admin sees them all, sorted by confidence -- story 3-1 handles the review queue view)

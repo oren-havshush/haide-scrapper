@@ -381,20 +381,91 @@ function buildRelativeAnchoredPath(element: Element, scope: Element): string | n
 // --- Generalized Item Selector (for repeating items) ---
 
 /**
- * Generate a CSS selector that matches ALL siblings with the same tag + classes
- * as the clicked element. Used for "Set Job Item" and "Set List Container"
- * where we need to match every repeating item, not just the one clicked.
- *
- * Strategy:
- * 1. tag.class1.class2 (no positional pseudo-classes)
- * 2. If that's too broad, scope it within the parent
- * 3. If still only 1 match, strip to just the tag within parent context
+ * Walk up from `element` to find the nearest ancestor with a unique ID,
+ * then build a short structural path from that ancestor to the element.
+ * Returns null if no suitable ID ancestor is found.
  */
-export function generateItemSelector(element: Element): string {
+function buildIdAnchoredPath(element: Element): string | null {
+  let ancestor: Element | null = element.parentElement;
+  while (ancestor && ancestor !== document.body) {
+    if (
+      ancestor.id &&
+      document.querySelectorAll(`#${CSS.escape(ancestor.id)}`).length === 1
+    ) {
+      const anchorSel = `#${CSS.escape(ancestor.id)}`;
+
+      const pathParts: string[] = [];
+      let node: Element | null = element;
+      while (node && node !== ancestor) {
+        const nodeTag = node.tagName.toLowerCase();
+        const parentEl: Element | null = node.parentElement;
+        if (!parentEl) break;
+
+        const nodeClasses = Array.from(node.classList).filter(
+          (cls) => !cls.startsWith("scrapnew-"),
+        );
+        if (nodeClasses.length > 0) {
+          pathParts.unshift(
+            `${nodeTag}.${nodeClasses.slice(0, 2).map((c) => CSS.escape(c)).join(".")}`,
+          );
+        } else {
+          pathParts.unshift(nodeTag);
+        }
+        node = parentEl;
+      }
+
+      const sel =
+        pathParts.length > 0 ? `${anchorSel} ${pathParts.join(" ")}` : anchorSel;
+      if (document.querySelectorAll(sel).length === 1) return sel;
+    }
+    ancestor = ancestor.parentElement;
+  }
+  return null;
+}
+
+export interface ItemSelectorOptions {
+  /**
+   * Whether we expect this selector to match multiple elements (true for
+   * repeating job items) or exactly one (false for list container / reveal
+   * button). When false, a unique `id` on the element or an ancestor takes
+   * priority over class-based selectors.
+   */
+  expectMultiple?: boolean;
+}
+
+/**
+ * Generate a CSS selector for a "container-ish" element.
+ *
+ * - Used for "Set List Container", "Set Job Item", and "Set Reveal Action".
+ * - When `expectMultiple: false`, prefers unique `#id` (on element or
+ *   ancestor) because exactly one match is expected.
+ * - When `expectMultiple: true` (default), matches repeating siblings by
+ *   tag + classes, and tries patterned IDs like `job_123`.
+ */
+export function generateItemSelector(
+  element: Element,
+  options: ItemSelectorOptions = {},
+): string {
+  const { expectMultiple = true } = options;
   const tag = element.tagName.toLowerCase();
   const classes = Array.from(element.classList).filter(
     (cls) => !cls.startsWith("scrapnew-"),
   );
+
+  // For single-match selectors (list container / reveal), prefer unique IDs.
+  if (!expectMultiple) {
+    // 1. Element's own unique ID
+    if (
+      element.id &&
+      document.querySelectorAll(`#${CSS.escape(element.id)}`).length === 1
+    ) {
+      return `#${CSS.escape(element.id)}`;
+    }
+
+    // 2. Nearest ancestor with a unique ID, then structural path down
+    const idAnchored = buildIdAnchoredPath(element);
+    if (idAnchored) return idAnchored;
+  }
 
   // Try tag + all classes (no nth-child / nth-of-type)
   if (classes.length > 0) {

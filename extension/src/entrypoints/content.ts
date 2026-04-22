@@ -82,7 +82,9 @@ export default defineContentScript({
           case "START_PICKER":
             startPicker((selector: string, element: Element) => {
               const finalSelector = message.useItemSelector
-                ? generateItemSelector(element)
+                ? generateItemSelector(element, {
+                    expectMultiple: message.expectMultiple ?? true,
+                  })
                 : selector;
               chrome.runtime.sendMessage({
                 type: "ELEMENT_PICKED",

@@ -473,6 +473,113 @@ async function extractWithAutoItemDetection(
 // This is the preferred path when the extension has set up container/item structure.
 // ---------------------------------------------------------------------------
 
+/**
+ * Dump rich diagnostics when an explicit item selector matches nothing, so we
+ * can tell apart: wrong selector vs empty container vs page never rendered vs
+ * blocked/challenged page. Runs entirely best-effort; errors are swallowed.
+ */
+async function logSelectorDiagnostics(
+  page: Page,
+  listingSelector: string | null,
+  itemSelector: string,
+): Promise<void> {
+  try {
+    const diag = await page.evaluate(
+      ({ listingSel, itemSel }) => {
+        const safeCount = (sel: string): number => {
+          try {
+            return document.querySelectorAll(sel).length;
+          } catch {
+            return -1; // selector parse error
+          }
+        };
+
+        // Break the item selector into fragments so we can see which part fails.
+        // e.g. "div.warp_jobs_list_order.row" -> ["div", ".warp_jobs_list_order", ".row"]
+        const itemFragments: string[] = [];
+        {
+          const tagMatch = itemSel.match(/^[a-zA-Z][\w-]*/);
+          if (tagMatch) itemFragments.push(tagMatch[0]);
+          for (const cls of itemSel.match(/\.[\w-]+/g) || []) itemFragments.push(cls);
+          for (const id of itemSel.match(/#[\w-]+/g) || []) itemFragments.push(id);
+          for (const attr of itemSel.match(/\[[^\]]+\]/g) || []) itemFragments.push(attr);
+        }
+        const fragmentCounts: Record<string, number> = {};
+        for (const frag of itemFragments) fragmentCounts[frag] = safeCount(frag);
+
+        // Inspect the listing container
+        let listingContainer: Element | null = null;
+        let listingChildrenSample: Array<{ tag: string; classes: string; id: string }> = [];
+        let listingInnerHtmlLen = 0;
+        let listingInnerHtmlPreview = "";
+        if (listingSel) {
+          try {
+            listingContainer = document.querySelector(listingSel);
+          } catch {
+            listingContainer = null;
+          }
+          if (listingContainer) {
+            listingInnerHtmlLen = listingContainer.innerHTML.length;
+            listingInnerHtmlPreview = listingContainer.innerHTML.slice(0, 800);
+            listingChildrenSample = Array.from(listingContainer.children)
+              .slice(0, 10)
+              .map((c) => ({
+                tag: c.tagName.toLowerCase(),
+                classes: Array.from((c as Element).classList).join(" "),
+                id: (c as Element).id || "",
+              }));
+          }
+        }
+
+        // Find elements whose class list contains any of the item's class tokens
+        const itemClassTokens = (itemSel.match(/\.[\w-]+/g) || []).map((c) => c.slice(1));
+        const partialMatches: Array<{ tag: string; classes: string; id: string }> = [];
+        if (itemClassTokens.length > 0) {
+          const all = document.querySelectorAll("body *");
+          for (const el of Array.from(all)) {
+            const cls = Array.from(el.classList);
+            const hits = itemClassTokens.filter((t) => cls.includes(t)).length;
+            if (hits > 0) {
+              partialMatches.push({
+                tag: el.tagName.toLowerCase(),
+                classes: cls.join(" "),
+                id: el.id || "",
+              });
+              if (partialMatches.length >= 8) break;
+            }
+          }
+        }
+
+        return {
+          url: location.href,
+          title: document.title,
+          htmlLen: document.documentElement.outerHTML.length,
+          bodyTextLen: (document.body?.innerText || "").length,
+          bodyTextSample: (document.body?.innerText || "").trim().slice(0, 400),
+          listingSelector: listingSel,
+          listingSelectorCount: listingSel ? safeCount(listingSel) : null,
+          listingInnerHtmlLen,
+          listingInnerHtmlPreview,
+          listingChildrenSample,
+          itemSelector: itemSel,
+          itemSelectorCount: safeCount(itemSel),
+          itemFragmentCounts: fragmentCounts,
+          partialClassMatches: partialMatches,
+          hasCloudflare:
+            !!document.querySelector('[class*="cf-"]') ||
+            /cloudflare|challenge|just a moment|access denied|forbidden/i.test(
+              document.body?.innerText || "",
+            ),
+        };
+      },
+      { listingSel: listingSelector, itemSel: itemSelector },
+    );
+    console.warn("[scrape] Selector diagnostics:", JSON.stringify(diag, null, 2));
+  } catch (err) {
+    console.warn("[scrape] Could not collect selector diagnostics:", err);
+  }
+}
+
 async function extractWithExplicitItemSelector(
   page: Page,
   fieldMappings: Record<string, FieldMappingEntry>,
@@ -508,7 +615,10 @@ async function extractWithExplicitItemSelector(
   console.info(
     `[scrape] Explicit itemSelector matched ${itemCount} items (selector: ${effectiveSelector})`,
   );
-  if (itemCount === 0) return [];
+  if (itemCount === 0) {
+    await logSelectorDiagnostics(page, listingSelector, itemSelector);
+    return [];
+  }
 
   // ---------------------------------------------------------------------------
   // All extraction happens inside ONE async page.evaluate call.
@@ -1393,6 +1503,34 @@ async function executeScrape(
       itemSelector,
       revealSelector,
     );
+
+    // If nothing matched, give the page a chance: scroll to bottom to trigger
+    // lazy-load, wait a beat, then retry once. This recovers many SPAs that
+    // hadn't finished hydrating when `networkidle` fired.
+    if (rawFieldsList.length === 0 && itemSelector) {
+      console.warn("[scrape] 0 items on first pass — scrolling to trigger lazy-load and retrying");
+      try {
+        await page.evaluate(async () => {
+          const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+          for (let y = 0; y < 3; y++) {
+            window.scrollTo(0, document.body.scrollHeight);
+            await sleep(800);
+          }
+          window.scrollTo(0, 0);
+        });
+        await page.waitForTimeout(1500);
+      } catch {
+        /* scroll is best-effort */
+      }
+
+      rawFieldsList = await extractRawFieldsFromListingPage(
+        page, fieldMappings, listingSelector, itemSelector, revealSelector,
+      );
+    }
+
+    // Still nothing → rich selector-level diagnostics are already emitted by
+    // extractWithExplicitItemSelector; nothing to add here.
+
     context.selectorsMatched = rawFieldsList.length > 0;
     context.itemsFound = rawFieldsList.length;
 

@@ -212,7 +212,7 @@ export type ContentMessage =
 /** Messages sent FROM side panel TO background/content script */
 export type PanelMessage =
   | { type: "SHOW_HIGHLIGHTS"; fields: FieldMappingEntry[] }
-  | { type: "START_PICKER"; fieldName: string | null; scopeSelector?: string; useItemSelector?: boolean }
+  | { type: "START_PICKER"; fieldName: string | null; scopeSelector?: string; useItemSelector?: boolean; expectMultiple?: boolean }
   | { type: "STOP_PICKER" }
   | { type: "UPDATE_HIGHLIGHT"; fieldName: string; config: HighlightConfig }
   | { type: "REMOVE_HIGHLIGHT"; fieldName: string }

@@ -664,7 +664,12 @@ export default function App() {
     setPickerTarget(null);
     setIsAddingField(false);
     setPickingContainer("listing");
-    sendMessage({ type: "START_PICKER", fieldName: null, useItemSelector: true });
+    sendMessage({
+      type: "START_PICKER",
+      fieldName: null,
+      useItemSelector: true,
+      expectMultiple: false,
+    });
   }
 
   function handlePickRevealAction() {
@@ -679,6 +684,7 @@ export default function App() {
       fieldName: null,
       scopeSelector: itemSelector ?? undefined,
       useItemSelector: true,
+      expectMultiple: false,
     });
   }
 
@@ -894,6 +900,9 @@ export default function App() {
       onPickListingContainer={handlePickListingContainer}
       onPickItemWrapper={handlePickItemWrapper}
       onPickRevealAction={handlePickRevealAction}
+      onSetListingSelector={setListingSelector}
+      onSetItemSelector={setItemSelector}
+      onSetRevealSelector={setRevealSelector}
       testResult={testResult}
       isApproving={isApproving}
       approveError={approveError}

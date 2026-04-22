@@ -67,12 +67,19 @@ function resolveBundledChromiumExecutable(): string | undefined {
   return undefined;
 }
 
+const DEFAULT_USER_AGENT =
+  "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36";
+const DEFAULT_LOCALE = "he-IL";
+const DEFAULT_TIMEZONE = "Asia/Jerusalem";
+const DEFAULT_ACCEPT_LANGUAGE = "he-IL,he;q=0.9,en-US;q=0.8,en;q=0.7";
+
 export async function launchBrowser(): Promise<Browser> {
   console.info("[worker] Launching Playwright browser...");
   const executablePath = resolveBundledChromiumExecutable();
   if (executablePath) {
     console.info("[worker] Using local Chromium executable:", executablePath);
   }
+  const locale = process.env.SCRAPE_LOCALE || DEFAULT_LOCALE;
   const browser = await chromium.launch({
     headless: true,
     executablePath,
@@ -81,17 +88,38 @@ export async function launchBrowser(): Promise<Browser> {
       "--disable-setuid-sandbox",
       "--disable-dev-shm-usage",
       "--disable-gpu",
+      "--disable-blink-features=AutomationControlled",
+      `--lang=${locale}`,
     ],
   });
   return browser;
 }
 
 export async function createPage(browser: Browser): Promise<{ context: BrowserContext; page: Page }> {
+  const locale = process.env.SCRAPE_LOCALE || DEFAULT_LOCALE;
+  const timezoneId = process.env.SCRAPE_TIMEZONE || DEFAULT_TIMEZONE;
+  const acceptLanguage = process.env.SCRAPE_ACCEPT_LANGUAGE || DEFAULT_ACCEPT_LANGUAGE;
+  const userAgent = process.env.SCRAPE_USER_AGENT || DEFAULT_USER_AGENT;
+
   const context = await browser.newContext({
     viewport: { width: 1280, height: 800 },
-    userAgent:
-      "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+    userAgent,
+    locale,
+    timezoneId,
+    extraHTTPHeaders: { "Accept-Language": acceptLanguage },
   });
+
+  // Mask obvious headless-browser fingerprints. Many Israeli sites (Cloudflare
+  // / DataDome-fronted) gate content behind these checks and serve an empty
+  // shell to automated visitors, which otherwise manifests as "0 items".
+  await context.addInitScript(() => {
+    Object.defineProperty(navigator, "webdriver", { get: () => false });
+    Object.defineProperty(navigator, "languages", {
+      get: () => ["he-IL", "he", "en-US", "en"],
+    });
+    Object.defineProperty(navigator, "plugins", { get: () => [1, 2, 3, 4, 5] });
+  });
+
   const page = await context.newPage();
   return { context, page };
 }
