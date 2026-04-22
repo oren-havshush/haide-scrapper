@@ -18,18 +18,21 @@ COPY src/lib ./src/lib
 COPY src/services ./src/services
 COPY worker ./worker
 
+RUN chmod +x worker/entrypoint.sh
+
 # --- runner stage ---
 FROM mcr.microsoft.com/playwright:v1.58.2-noble AS runner
 WORKDIR /app
 
 RUN groupadd --system --gid 1002 worker && \
-    useradd --system --uid 1002 --gid worker worker
+    useradd --system --uid 1002 --gid worker --create-home worker
 
 COPY --from=builder --chown=worker:worker /app ./
 
 ENV NODE_ENV=production
 ENV PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
+ENV HOME=/home/worker
 
 USER worker
 
-CMD ["npx", "tsx", "worker/index.ts"]
+CMD ["./worker/entrypoint.sh"]

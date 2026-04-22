@@ -35,7 +35,6 @@ services:
     runtime: docker
     dockerfilePath: ./Dockerfile.worker
     dockerContext: .
-    dockerCommand: sh -c "npx prisma migrate deploy && exec npx tsx worker/index.ts"
     plan: starter
     region: frankfurt
     autoDeploy: true
