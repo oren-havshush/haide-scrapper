@@ -10,8 +10,6 @@ services:
   - type: web
     name: scrapnew-web
     runtime: docker
-    repo: https://github.com/CHANGE_ME/scrapnew
-    branch: main
     dockerfilePath: ./Dockerfile
     dockerContext: .
     plan: starter
@@ -35,8 +33,6 @@ services:
   - type: worker
     name: scrapnew-worker
     runtime: docker
-    repo: https://github.com/CHANGE_ME/scrapnew
-    branch: main
     dockerfilePath: ./Dockerfile.worker
     dockerContext: .
     dockerCommand: sh -c "npx prisma migrate deploy && exec npx tsx worker/index.ts"
