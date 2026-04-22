@@ -139,7 +139,9 @@ export default function App() {
 
   useEffect(() => {
     async function loadSiteInfo() {
+      console.log("[scrapnew] loadSiteInfo: start");
       const configured = await hasToken();
+      console.log("[scrapnew] hasToken:", configured);
       setTokenConfigured(configured);
 
       if (!configured) {
@@ -148,12 +150,19 @@ export default function App() {
       }
 
       try {
-        const response = await chrome.runtime.sendMessage({ type: "GET_SITE_INFO" });
+        const response = (await Promise.race([
+          chrome.runtime.sendMessage({ type: "GET_SITE_INFO" }),
+          new Promise((_, reject) =>
+            setTimeout(() => reject(new Error("GET_SITE_INFO timeout after 8s")), 8000)
+          ),
+        ])) as { site?: SiteInfo } | undefined;
+
+        console.log("[scrapnew] GET_SITE_INFO response:", response);
         if (response?.site) {
           setSite(response.site as SiteInfo);
         }
-      } catch {
-        // Background script not ready or error
+      } catch (err) {
+        console.warn("[scrapnew] GET_SITE_INFO failed:", err);
       } finally {
         setLoading(false);
       }

@@ -56,15 +56,22 @@ cd "$REMOTE_DIR"
 
 COMPOSE_PROJECT=$(basename "$REMOTE_DIR" | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9]/-/g')
 
+# Tag current images as "previous" BEFORE building (for rollback)
+for svc in web worker; do
+  IMAGE="${COMPOSE_PROJECT}-${svc}"
+  if docker image inspect "$IMAGE" &>/dev/null; then
+    docker tag "$IMAGE" "$IMAGE:previous"
+  fi
+done
+
 echo "==> Building images tagged $DEPLOY_TAG..."
 docker compose build
 
-# Tag images for rollback
+# Tag new images with deploy tag
 for svc in web worker; do
   IMAGE="${COMPOSE_PROJECT}-${svc}"
   if docker image inspect "$IMAGE" &>/dev/null; then
     docker tag "$IMAGE" "$IMAGE:$DEPLOY_TAG"
-    docker tag "$IMAGE" "$IMAGE:previous" 2>/dev/null || true
   fi
 done
 
@@ -73,7 +80,7 @@ set -a && source .env 2>/dev/null || true && set +a
 
 NETWORK=$(docker network ls --filter "name=${COMPOSE_PROJECT}" --format '{{.Name}}' | grep default | head -1)
 if [ -z "$NETWORK" ]; then
-  NETWORK="${COMPOSE_PROJECT}_default"
+  NETWORK="${COMPOSE_PROJECT}-default"
 fi
 
 docker compose up -d db

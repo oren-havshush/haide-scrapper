@@ -25,6 +25,10 @@ COPY . .
 ENV NEXT_TELEMETRY_DISABLED=1
 ENV DATABASE_URL="postgresql://placeholder:placeholder@localhost:5432/placeholder"
 ENV API_TOKEN="build-placeholder"
+
+ARG NEXT_PUBLIC_API_TOKEN
+ENV NEXT_PUBLIC_API_TOKEN=${NEXT_PUBLIC_API_TOKEN}
+
 RUN pnpm build
 
 # --- runner stage: minimal production image ---

@@ -27,8 +27,14 @@ export function proxy(request: NextRequest) {
     return addCorsHeaders(response, origin);
   }
 
-  // SSE stream is accessed via EventSource which cannot set custom headers.
   const { pathname } = request.nextUrl;
+
+  // Skip auth for health check (used by Docker healthcheck)
+  if (pathname === "/api/health") {
+    return NextResponse.next();
+  }
+
+  // SSE stream is accessed via EventSource which cannot set custom headers.
   if (pathname === "/api/events" && request.method === "GET") {
     return NextResponse.next();
   }

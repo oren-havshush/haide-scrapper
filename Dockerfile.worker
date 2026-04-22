@@ -1,4 +1,4 @@
-FROM mcr.microsoft.com/playwright:v1.50.0-noble AS builder
+FROM mcr.microsoft.com/playwright:v1.58.2-noble AS builder
 
 RUN npm install -g pnpm
 
@@ -19,16 +19,16 @@ COPY src/generated ./src/generated
 COPY worker ./worker
 
 # --- runner stage ---
-FROM mcr.microsoft.com/playwright:v1.50.0-noble AS runner
+FROM mcr.microsoft.com/playwright:v1.58.2-noble AS runner
 WORKDIR /app
 
-RUN groupadd --system --gid 1001 worker && \
-    useradd --system --uid 1001 --gid worker worker
+RUN groupadd --system --gid 1002 worker && \
+    useradd --system --uid 1002 --gid worker worker
 
 COPY --from=builder --chown=worker:worker /app ./
 
 ENV NODE_ENV=production
-ENV PLAYWRIGHT_BROWSERS_PATH=0
+ENV PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
 
 USER worker
 

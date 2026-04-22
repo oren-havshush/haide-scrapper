@@ -12,22 +12,36 @@ import { emitWorkerEvent } from "../lib/emitEvent";
 async function navigateWithFallback(page: Page, siteUrl: string): Promise<void> {
   try {
     await page.goto(siteUrl, {
-      waitUntil: "domcontentloaded",
-      timeout: 30_000,
+      waitUntil: "networkidle",
+      timeout: 45_000,
     });
-    return;
   } catch (error) {
-    console.warn("[worker] domcontentloaded navigation failed, retrying with commit:", {
+    console.warn("[worker] networkidle navigation failed, retrying with domcontentloaded:", {
       siteUrl,
       error: error instanceof Error ? error.message : String(error),
     });
+
+    await page.goto(siteUrl, {
+      waitUntil: "domcontentloaded",
+      timeout: 45_000,
+    });
   }
 
-  await page.goto(siteUrl, {
-    waitUntil: "commit",
-    timeout: 45_000,
-  });
-  await page.waitForTimeout(2_000);
+  // Wait for the page to actually render meaningful content (SPAs need this)
+  try {
+    await page.waitForFunction(
+      () => {
+        const body = document.body;
+        if (!body) return false;
+        const textLen = (body.innerText || "").trim().length;
+        const childCount = body.querySelectorAll("*").length;
+        return textLen > 100 && childCount > 20;
+      },
+      { timeout: 15_000 },
+    );
+  } catch {
+    console.warn("[worker] Page did not render substantial content within 15s, proceeding anyway:", siteUrl);
+  }
 }
 
 async function patchEvaluateRuntime(page: Page): Promise<void> {

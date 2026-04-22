@@ -76,6 +76,12 @@ export async function launchBrowser(): Promise<Browser> {
   const browser = await chromium.launch({
     headless: true,
     executablePath,
+    args: [
+      "--no-sandbox",
+      "--disable-setuid-sandbox",
+      "--disable-dev-shm-usage",
+      "--disable-gpu",
+    ],
   });
   return browser;
 }

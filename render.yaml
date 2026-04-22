@@ -1,0 +1,61 @@
+databases:
+  - name: scrapnew-db
+    databaseName: scrapnew
+    user: scrapnew
+    plan: basic-256mb
+    postgresMajorVersion: "16"
+    region: frankfurt
+
+services:
+  - type: web
+    name: scrapnew-web
+    runtime: docker
+    repo: https://github.com/CHANGE_ME/scrapnew
+    branch: main
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    plan: starter
+    region: frankfurt
+    autoDeploy: true
+    healthCheckPath: /api/health
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: scrapnew-db
+          property: connectionString
+      - key: API_TOKEN
+        generateValue: true
+      - key: NEXT_PUBLIC_API_TOKEN
+        sync: false
+      - key: NODE_ENV
+        value: production
+      - key: NEXT_TELEMETRY_DISABLED
+        value: "1"
+
+  - type: worker
+    name: scrapnew-worker
+    runtime: docker
+    repo: https://github.com/CHANGE_ME/scrapnew
+    branch: main
+    dockerfilePath: ./Dockerfile.worker
+    dockerContext: .
+    dockerCommand: sh -c "npx prisma migrate deploy && exec npx tsx worker/index.ts"
+    plan: starter
+    region: frankfurt
+    autoDeploy: true
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: scrapnew-db
+          property: connectionString
+      - key: API_TOKEN
+        fromService:
+          type: web
+          name: scrapnew-web
+          envVarKey: API_TOKEN
+      - key: NEXT_PUBLIC_APP_URL
+        value: http://scrapnew-web:3000
+      - key: NODE_ENV
+        value: production
+      - key: PLAYWRIGHT_BROWSERS_PATH
+        value: /ms-playwright
