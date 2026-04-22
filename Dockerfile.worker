@@ -11,11 +11,11 @@ COPY prisma.config.ts ./
 COPY extension/package.json ./extension/
 
 RUN pnpm install --frozen-lockfile
+RUN pnpm exec prisma generate
 
 COPY tsconfig.json tsconfig.worker.json ./
 COPY src/lib ./src/lib
 COPY src/services ./src/services
-COPY src/generated ./src/generated
 COPY worker ./worker
 
 # --- runner stage ---

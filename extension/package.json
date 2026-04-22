@@ -6,7 +6,9 @@
   "scripts": {
     "dev": "wxt --port 3005",
     "build": "wxt build",
+    "build:prod": "wxt build --mode production",
     "zip": "wxt zip",
+    "zip:prod": "wxt zip --mode production",
     "check": "tsc --noEmit"
   },
   "dependencies": {

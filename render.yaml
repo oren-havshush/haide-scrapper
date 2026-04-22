@@ -22,9 +22,9 @@ services:
           name: scrapnew-db
           property: connectionString
       - key: API_TOKEN
-        generateValue: true
+        value: haideScrapper
       - key: NEXT_PUBLIC_API_TOKEN
-        sync: false
+        value: haideScrapper
       - key: NODE_ENV
         value: production
       - key: NEXT_TELEMETRY_DISABLED
@@ -45,10 +45,7 @@ services:
           name: scrapnew-db
           property: connectionString
       - key: API_TOKEN
-        fromService:
-          type: web
-          name: scrapnew-web
-          envVarKey: API_TOKEN
+        value: haideScrapper
       - key: NEXT_PUBLIC_APP_URL
         value: http://scrapnew-web:3000
       - key: NODE_ENV

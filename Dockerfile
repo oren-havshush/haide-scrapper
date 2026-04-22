@@ -12,15 +12,16 @@ COPY prisma.config.ts ./
 COPY extension/package.json ./extension/
 
 RUN pnpm install --frozen-lockfile
+RUN pnpm exec prisma generate
 
 # --- builder stage: build the Next.js app ---
 FROM base AS builder
 WORKDIR /app
 
 COPY --from=deps /app/node_modules ./node_modules
-COPY --from=deps /app/src/generated ./src/generated
 
 COPY . .
+RUN pnpm exec prisma generate
 
 ENV NEXT_TELEMETRY_DISABLED=1
 ENV DATABASE_URL="postgresql://placeholder:placeholder@localhost:5432/placeholder"
