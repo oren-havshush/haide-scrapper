@@ -1476,12 +1476,54 @@ async function executeScrape(
     // Single-page extraction
     console.info("[scrape] Using single-page extraction");
 
+    // ---- Diagnostic listeners (capture console + JS errors + key responses)
+    const consoleMessages: Array<{ type: string; text: string }> = [];
+    const pageErrors: string[] = [];
+    const subResources: Array<{ url: string; status: number }> = [];
+    const onConsole = (msg: import("playwright").ConsoleMessage) => {
+      if (consoleMessages.length < 50) {
+        consoleMessages.push({ type: msg.type(), text: msg.text().slice(0, 300) });
+      }
+    };
+    const onPageError = (err: Error) => {
+      if (pageErrors.length < 20) pageErrors.push(err.message.slice(0, 300));
+    };
+    const onResponse = (r: import("playwright").Response) => {
+      const url = r.url();
+      // Capture WAF-relevant assets: anti-bot lib, all sub-document HTML, any
+      // response with a "rbz" / "akamai" / "datadome" hint
+      if (
+        /\.lib\.js$|rbz|akamai|datadome|cf_chl|challenge/i.test(url) ||
+        r.request().resourceType() === "document"
+      ) {
+        if (subResources.length < 30) {
+          subResources.push({ url, status: r.status() });
+        }
+      }
+    };
+    page.on("console", onConsole);
+    page.on("pageerror", onPageError);
+    page.on("response", onResponse);
+
     // Navigate to the site URL -- use networkidle to let JS-rendered content load
     const navResponse = await page.goto(site.siteUrl, {
       waitUntil: "networkidle",
       timeout: NAVIGATION_TIMEOUT_MS,
     });
     context.pageLoaded = true;
+
+    // Many Israeli sites sit behind Reblaze (kramericaindustries.ac_v2.lib.js
+    // → winsocks() → reload). The challenge page has an empty <body> until
+    // the PoW completes and the page reloads. Give that reload a chance to
+    // land before we try to extract.
+    try {
+      await page.waitForFunction(
+        () => !!document.body && document.body.children.length > 0,
+        { timeout: 25_000 },
+      );
+    } catch {
+      console.warn("[scrape] Body never populated within 25s (likely WAF challenge stuck)");
+    }
 
     // Log the main navigation response so we can see status / redirect / size
     // when the page comes back empty. This is the single most important signal
@@ -1566,8 +1608,20 @@ async function executeScrape(
       );
     }
 
-    // Still nothing → rich selector-level diagnostics are already emitted by
-    // extractWithExplicitItemSelector; nothing to add here.
+    // Still nothing → dump WAF-challenge diagnostics: did lib.js load? did
+    // winsocks() throw? did any subsequent navigation happen?
+    if (rawFieldsList.length === 0) {
+      console.warn("[scrape] WAF/challenge diagnostics:", {
+        subResources,
+        consoleMessages,
+        pageErrors,
+        cookies: await page.context().cookies(site.siteUrl).catch(() => []),
+      });
+    }
+
+    page.off("console", onConsole);
+    page.off("pageerror", onPageError);
+    page.off("response", onResponse);
 
     context.selectorsMatched = rawFieldsList.length > 0;
     context.itemsFound = rawFieldsList.length;
