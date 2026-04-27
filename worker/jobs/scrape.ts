@@ -1477,11 +1477,49 @@ async function executeScrape(
     console.info("[scrape] Using single-page extraction");
 
     // Navigate to the site URL -- use networkidle to let JS-rendered content load
-    await page.goto(site.siteUrl, {
+    const navResponse = await page.goto(site.siteUrl, {
       waitUntil: "networkidle",
       timeout: NAVIGATION_TIMEOUT_MS,
     });
     context.pageLoaded = true;
+
+    // Log the main navigation response so we can see status / redirect / size
+    // when the page comes back empty. This is the single most important signal
+    // for distinguishing "blocked" vs "empty SPA shell" vs "geo redirect".
+    if (navResponse) {
+      try {
+        const status = navResponse.status();
+        const finalUrl = navResponse.url();
+        const headers = navResponse.headers();
+        const bodyBuf = await navResponse.body().catch(() => Buffer.alloc(0));
+        const bodyLen = bodyBuf.length;
+        const requestChain: Array<{ url: string; status: number }> = [];
+        let req = navResponse.request();
+        while (req) {
+          const r = await req.response().catch(() => null);
+          requestChain.push({ url: req.url(), status: r ? r.status() : -1 });
+          const redirectedFrom = req.redirectedFrom();
+          if (!redirectedFrom) break;
+          req = redirectedFrom;
+        }
+        console.info("[scrape] Main navigation response:", {
+          requestedUrl: site.siteUrl,
+          finalUrl,
+          status,
+          contentType: headers["content-type"],
+          contentLength: headers["content-length"],
+          server: headers["server"],
+          setCookie: headers["set-cookie"]?.slice(0, 200),
+          bodyBytes: bodyLen,
+          bodyPreview: bodyBuf.toString("utf8").slice(0, 1500),
+          redirectChain: requestChain.reverse(),
+        });
+      } catch (err) {
+        console.warn("[scrape] Could not inspect navigation response:", err);
+      }
+    } else {
+      console.warn("[scrape] page.goto returned null response (no main document loaded)");
+    }
 
     // Wait for the title selector to appear (dynamic / SPA sites)
     const titleSelector = fieldMappings["title"]?.selector;
