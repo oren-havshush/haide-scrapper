@@ -73,6 +73,28 @@ const DEFAULT_LOCALE = "he-IL";
 const DEFAULT_TIMEZONE = "Asia/Jerusalem";
 const DEFAULT_ACCEPT_LANGUAGE = "he-IL,he;q=0.9,en-US;q=0.8,en;q=0.7";
 
+/**
+ * Parse a proxy URL like `http://user:pass@host:port` into Playwright's
+ * `proxy` launch option. Returns undefined when the input is empty.
+ */
+function parseProxyConfig(): { server: string; username?: string; password?: string; bypass?: string } | undefined {
+  const proxyUrl = process.env.SCRAPE_PROXY_URL;
+  if (!proxyUrl) return undefined;
+  try {
+    const u = new URL(proxyUrl);
+    const cfg: { server: string; username?: string; password?: string; bypass?: string } = {
+      server: `${u.protocol}//${u.host}`,
+    };
+    if (u.username) cfg.username = decodeURIComponent(u.username);
+    if (u.password) cfg.password = decodeURIComponent(u.password);
+    if (process.env.SCRAPE_PROXY_BYPASS) cfg.bypass = process.env.SCRAPE_PROXY_BYPASS;
+    return cfg;
+  } catch (err) {
+    console.warn("[worker] Invalid SCRAPE_PROXY_URL — ignoring proxy:", err);
+    return undefined;
+  }
+}
+
 export async function launchBrowser(): Promise<Browser> {
   console.info("[worker] Launching Playwright browser...");
   const executablePath = resolveBundledChromiumExecutable();
@@ -80,9 +102,18 @@ export async function launchBrowser(): Promise<Browser> {
     console.info("[worker] Using local Chromium executable:", executablePath);
   }
   const locale = process.env.SCRAPE_LOCALE || DEFAULT_LOCALE;
+  const proxy = parseProxyConfig();
+  if (proxy) {
+    console.info("[worker] Using upstream proxy:", {
+      server: proxy.server,
+      hasAuth: Boolean(proxy.username),
+      bypass: proxy.bypass,
+    });
+  }
   const browser = await chromium.launch({
     headless: true,
     executablePath,
+    proxy,
     args: [
       "--no-sandbox",
       "--disable-setuid-sandbox",

@@ -60,3 +60,11 @@ services:
       # Optional: enable AI-powered selector refinement for low-confidence sites
       - key: OPENAI_API_KEY
         sync: false
+      # Optional: route scrape traffic through an upstream proxy
+      # Format: http(s)://user:pass@host:port  -- required for sites behind
+      # IP-reputation WAFs (e.g. Reblaze on many .co.il sites)
+      - key: SCRAPE_PROXY_URL
+        sync: false
+      # Optional: comma-separated list of hosts to bypass the proxy for
+      - key: SCRAPE_PROXY_BYPASS
+        sync: false
