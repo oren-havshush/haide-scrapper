@@ -223,7 +223,7 @@ export default defineBackground(() => {
   async function handleSaveConfig(payload: SaveConfigPayload): Promise<SaveConfigResult> {
     try {
       // Save config via PUT /api/sites/[id]/config
-      await apiFetch<ApiResponse<{ status: string }>>(`/api/sites/${payload.siteId}/config`, {
+      const response = await apiFetch<ApiResponse<{ status: string }>>(`/api/sites/${payload.siteId}/config`, {
         method: "PUT",
         body: JSON.stringify({
           listingSelector: payload.listingSelector,
@@ -236,7 +236,7 @@ export default defineBackground(() => {
         }),
       });
 
-      return { success: true, siteStatus: "REVIEW" };
+      return { success: true, siteStatus: response.data.status };
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : "Failed to save config";
       return { success: false, error: message };

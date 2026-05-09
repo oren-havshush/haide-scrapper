@@ -19,6 +19,12 @@ interface FieldMappingEntry {
   sample: string;
   sourceMethod: string;
   methodsDetected: number;
+  /**
+   * URL of the page the selector was captured on (set by the extension's
+   * Element Picker). Used to route fields to the correct pageFlow step
+   * during multi-page scrapes. Optional for legacy mappings.
+   */
+  capturedOnUrl?: string;
 }
 
 /** A single page flow step from Site.pageFlow JSON */
@@ -57,10 +63,83 @@ interface ValidatedRecord {
 // Constants
 // ---------------------------------------------------------------------------
 
-const SCRAPE_TIMEOUT_MS = 300_000; // 5 minutes
+const SCRAPE_TIMEOUT_MS = 600_000; // 10 minutes (large infinite-scroll listings + per-row extraction)
 const DETAIL_PAGE_TIMEOUT_MS = 15_000; // 15 seconds per detail page
 const NAVIGATION_TIMEOUT_MS = 30_000; // 30 seconds for page navigation
 const MAX_EXTRACTED_ITEMS = 500;
+
+/** Best-effort `networkidle` after `domcontentloaded` (non-blocking on timeout). */
+const NETWORKIDLE_GRACE_MS = 8_000;
+
+/**
+ * Navigate without hanging on sites that never reach `networkidle` (chat widgets, analytics).
+ */
+async function gotoForgiving(
+  page: Page,
+  url: string,
+  navTimeoutMs: number = NAVIGATION_TIMEOUT_MS,
+): Promise<import("playwright").Response | null> {
+  const response = await page.goto(url, {
+    waitUntil: "domcontentloaded",
+    timeout: navTimeoutMs,
+  });
+  await page
+    .waitForLoadState("networkidle", { timeout: NETWORKIDLE_GRACE_MS })
+    .catch(() => {
+      /* ignore */
+    });
+  return response;
+}
+
+function sleepMs(ms: number): Promise<void> {
+  return new Promise((r) => setTimeout(r, ms));
+}
+
+/**
+ * Scroll the listing to load infinite-scroll / virtualized job rows, then return to top.
+ * No-op when `itemSelector` is missing.
+ */
+async function autoScrollUntilStable(
+  page: Page,
+  itemSelector: string | null,
+  opts: { maxScrolls: number; settleMs: number; maxNoGrowth: number; maxItems: number } = {
+    maxScrolls: 30,
+    settleMs: 800,
+    maxNoGrowth: 2,
+    /** Stop loading more DOM rows — avoids megabytes of nodes + multi-minute extraction */
+    maxItems: 200,
+  },
+): Promise<void> {
+  if (!itemSelector) return;
+
+  const countItems = async (): Promise<number> => {
+    return page.evaluate((sel) => {
+      try {
+        return document.querySelectorAll(sel).length;
+      } catch {
+        return 0;
+      }
+    }, itemSelector);
+  };
+
+  let prevCount = await countItems();
+  let noGrowth = 0;
+  for (let i = 0; i < opts.maxScrolls; i++) {
+    if (prevCount >= opts.maxItems) break;
+    await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
+    await sleepMs(opts.settleMs);
+    const count = await countItems();
+    if (count <= prevCount) {
+      noGrowth++;
+      if (noGrowth >= opts.maxNoGrowth) break;
+    } else {
+      noGrowth = 0;
+    }
+    prevCount = count;
+    if (prevCount >= opts.maxItems) break;
+  }
+  await page.evaluate(() => window.scrollTo(0, 0));
+}
 
 // ---------------------------------------------------------------------------
 // Helper: error categorization
@@ -109,10 +188,68 @@ function parseFieldMappings(
       sample: (entry.sample as string) ?? "",
       sourceMethod: (entry.sourceMethod as string) ?? "UNKNOWN",
       methodsDetected: (entry.methodsDetected as number) ?? 1,
+      capturedOnUrl: typeof entry.capturedOnUrl === "string" ? entry.capturedOnUrl : undefined,
     };
   }
 
   return mappings;
+}
+
+// ---------------------------------------------------------------------------
+// Helper: classify each field as "listing" or "detail" based on its
+// capturedOnUrl vs. the saved pageFlow steps. Fields without capturedOnUrl
+// fall back to the legacy default of "detail" when there is a multi-page
+// flow (preserves prior behavior).
+// ---------------------------------------------------------------------------
+
+type FieldPageScope = "listing" | "detail";
+
+/** Test if `url` matches `pattern` (with `*` wildcard). */
+function urlMatchesPagePattern(url: string, pattern: string): boolean {
+  if (!url || !pattern) return false;
+  if (url === pattern) return true;
+  const escaped = pattern.replace(/[.+?^${}()|[\]\\]/g, "\\$&").replace(/\*/g, ".*");
+  try {
+    return new RegExp("^" + escaped + "$").test(url);
+  } catch {
+    return false;
+  }
+}
+
+function classifyFieldsByPage(
+  fieldMappings: Record<string, FieldMappingEntry>,
+  pageFlow: PageFlowStep[],
+): { listingFields: Record<string, FieldMappingEntry>; detailFields: Record<string, FieldMappingEntry> } {
+  const listingFields: Record<string, FieldMappingEntry> = {};
+  const detailFields: Record<string, FieldMappingEntry> = {};
+
+  // Single-step or no flow → everything is listing-scoped.
+  if (pageFlow.length < 2) {
+    return { listingFields: fieldMappings, detailFields: {} };
+  }
+
+  const listingPattern = pageFlow[0]?.url ?? "";
+  // The detail pattern is the URL recorded on step 2+. Patterns may include `*`.
+  const detailPattern = pageFlow[1]?.url ?? "";
+
+  for (const [name, m] of Object.entries(fieldMappings)) {
+    const capUrl = m.capturedOnUrl;
+    if (!capUrl) {
+      // Legacy mapping: keep previous behavior (extract on detail page).
+      detailFields[name] = m;
+      continue;
+    }
+    if (listingPattern && urlMatchesPagePattern(capUrl, listingPattern)) {
+      listingFields[name] = m;
+    } else if (detailPattern && urlMatchesPagePattern(capUrl, detailPattern)) {
+      detailFields[name] = m;
+    } else {
+      // Unknown — default to detail (most field-rich page).
+      detailFields[name] = m;
+    }
+  }
+
+  return { listingFields, detailFields };
 }
 
 // ---------------------------------------------------------------------------
@@ -359,6 +496,22 @@ async function extractWithAutoItemDetection(
       }
 
       function cleanTextContent(el: Element): string {
+        const tag = el.tagName.toLowerCase();
+        if (
+          [
+            "style",
+            "script",
+            "noscript",
+            "link",
+            "template",
+            "head",
+            "meta",
+            "title",
+            "base",
+          ].includes(tag)
+        ) {
+          return "";
+        }
         const clone = el.cloneNode(true) as Element;
         clone
           .querySelectorAll("style, script, noscript, link, template, svg, iframe")
@@ -686,6 +839,22 @@ async function extractWithExplicitItemSelector(
       }
 
       function cleanTextContent(el: Element): string {
+        const tag = el.tagName.toLowerCase();
+        if (
+          [
+            "style",
+            "script",
+            "noscript",
+            "link",
+            "template",
+            "head",
+            "meta",
+            "title",
+            "base",
+          ].includes(tag)
+        ) {
+          return "";
+        }
         const clone = el.cloneNode(true) as Element;
         clone
           .querySelectorAll("style, script, noscript, link, template, svg, iframe")
@@ -702,6 +871,7 @@ async function extractWithExplicitItemSelector(
 
         for (const [fieldName, fieldSelector] of Object.entries(fields)) {
           let fieldEl: Element | null = null;
+          let source: "item" | "sibling" = "item";
 
           try {
             fieldEl = item.querySelector(fieldSelector);
@@ -718,6 +888,7 @@ async function extractWithExplicitItemSelector(
                 const match = sib.querySelector(fieldSelector);
                 if (match) {
                   fieldEl = match;
+                  source = "sibling";
                   break;
                 }
               } catch {
@@ -748,6 +919,18 @@ async function extractWithExplicitItemSelector(
           } else {
             rec[fieldName] = "";
           }
+
+          if (fieldName === "description") {
+            const rootTag = fieldEl ? fieldEl.tagName.toLowerCase() : null;
+            const rawTextLength = fieldEl ? (fieldEl.textContent ?? "").length : 0;
+            rec["_debugDescription"] = JSON.stringify({
+              selector: fieldSelector,
+              matched: !!fieldEl,
+              rootTag,
+              rawTextLength,
+              source: fieldEl ? source : null,
+            });
+          }
         }
 
         return rec;
@@ -760,19 +943,45 @@ async function extractWithExplicitItemSelector(
         (item as HTMLElement).scrollIntoView({ block: "center" });
         await new Promise((r) => setTimeout(r, 100));
 
+        let revealFound = false;
+        let revealClicked = false;
         if (args.revealSelector) {
           const reveal = findReveal(item, args.revealSelector);
           if (reveal) {
-            reveal.click();
+            revealFound = true;
+            try {
+              reveal.click();
+              revealClicked = true;
+            } catch {
+              /* click can throw on detached/disabled nodes */
+            }
             await new Promise((r) => setTimeout(r, 250));
           }
         }
+
+        const wrapperHasOpen = item.classList.contains("open") ||
+          !!item.querySelector(".open") ||
+          (item.nextElementSibling?.classList.contains("open") ?? false);
 
         const rec = extractFieldsFromItem(
           item,
           args.fields,
           !!args.revealSelector,
         );
+
+        if (rec["_debugDescription"]) {
+          try {
+            const dbg = JSON.parse(rec["_debugDescription"]);
+            dbg.revealConfigured = !!args.revealSelector;
+            dbg.revealFound = revealFound;
+            dbg.revealClicked = revealClicked;
+            dbg.wrapperHasOpen = wrapperHasOpen;
+            rec["_debugDescription"] = JSON.stringify(dbg);
+          } catch {
+            /* ignore */
+          }
+        }
+
         if (Object.values(rec).some((v) => v.length > 0)) {
           records.push(rec);
         }
@@ -898,10 +1107,7 @@ async function extractRawFieldsWithPageFlow(
 
   // Navigate to the first page flow URL (listing page)
   const listingStep = pageFlow[0];
-  await page.goto(listingStep.url, {
-    waitUntil: "networkidle",
-    timeout: NAVIGATION_TIMEOUT_MS,
-  });
+  await gotoForgiving(page, listingStep.url, NAVIGATION_TIMEOUT_MS);
 
   // Wait for the listing page's waitFor selector if specified
   if (listingStep.waitFor) {
@@ -916,6 +1122,8 @@ async function extractRawFieldsWithPageFlow(
     }
   }
 
+  await autoScrollUntilStable(page, itemSelector);
+
   // If there's only one step in pageFlow, extract directly from listing page
   if (pageFlow.length < 2) {
     return extractRawFieldsFromListingPage(
@@ -927,10 +1135,57 @@ async function extractRawFieldsWithPageFlow(
     );
   }
 
-  // Multi-page: collect all detail page URLs first
+  // Split fields into listing-page fields (extracted from each item card)
+  // vs detail-page fields (extracted from each detail page after navigation).
+  // This is what unlocks multi-page sites where, e.g., title lives only on
+  // the listing card and description lives only on the detail page.
+  const { listingFields, detailFields } = classifyFieldsByPage(
+    fieldMappings,
+    pageFlow,
+  );
+  console.info(
+    `[scrape] Field classification: ${Object.keys(listingFields).length} listing-scope, ${Object.keys(detailFields).length} detail-scope`,
+  );
+
+  // Multi-page: collect all detail page URLs first.
+  // We also remember each URL's containing listing item so we can extract
+  // listing-scope fields from it before navigating away.
   const detailUrls: string[] = [];
+  const listingFieldsByUrl: Record<string, Record<string, string>> = {};
   const detailStep = pageFlow[1];
   const linkSel = detailStep.action !== "navigate" ? detailStep.action : null;
+
+  // Helper: extract listingFields from a single item element.
+  async function extractListingFieldsFromItem(
+    itemHandle: import("playwright").ElementHandle<Element>,
+  ): Promise<Record<string, string>> {
+    const out: Record<string, string> = {};
+    if (Object.keys(listingFields).length === 0) return out;
+    for (const [fieldName, mapping] of Object.entries(listingFields)) {
+      try {
+        // 1. Inside the item.
+        let fieldEl = await itemHandle.$(mapping.selector);
+        // 2. Anchored fall-back: search the document for the same selector
+        //    and pick the closest match by DOM proximity (used when the
+        //    selector is a global one like `p.position-title` recorded on
+        //    the listing — it should still match inside the item).
+        if (!fieldEl) {
+          fieldEl = await itemHandle.$(mapping.selector);
+        }
+        if (fieldEl) {
+          const text = await fieldEl.innerText();
+          out[fieldName] = text ?? "";
+          const href = await fieldEl.getAttribute("href");
+          if (href) out[`${fieldName}_href`] = href;
+        } else {
+          out[fieldName] = "";
+        }
+      } catch {
+        out[fieldName] = "";
+      }
+    }
+    return out;
+  }
 
   if (linkSel) {
     // The Navigate Mode records the full selector of the ONE item the user
@@ -994,7 +1249,30 @@ async function extractRawFieldsWithPageFlow(
           }
         }
         if (href) {
-          detailUrls.push(new URL(href, page.url()).toString());
+          const absUrl = new URL(href, page.url()).toString();
+          detailUrls.push(absUrl);
+          // Walk up to a likely "item" wrapper to extract listing-fields.
+          // Item is either the link itself or the closest itemSelector
+          // ancestor (when itemSelector is configured). We fall back to
+          // the link's parent.
+          if (Object.keys(listingFields).length > 0 && !listingFieldsByUrl[absUrl]) {
+            try {
+              let itemHandle: import("playwright").ElementHandle<Element> | null = null;
+              if (itemSelector) {
+                itemHandle = await el.evaluateHandle(
+                  (node, sel) => (node as Element).closest(sel) ?? node,
+                  itemSelector,
+                ) as import("playwright").ElementHandle<Element>;
+              } else {
+                itemHandle = await el.evaluateHandle((node) => (node as Element).parentElement ?? node) as import("playwright").ElementHandle<Element>;
+              }
+              if (itemHandle) {
+                listingFieldsByUrl[absUrl] = await extractListingFieldsFromItem(itemHandle);
+              }
+            } catch {
+              // Listing-field extraction failed for this item — leave empty.
+            }
+          }
         }
       } catch {
         // Skip items where URL extraction fails
@@ -1025,7 +1303,15 @@ async function extractRawFieldsWithPageFlow(
         }
 
         if (href) {
-          detailUrls.push(new URL(href, page.url()).toString());
+          const absUrl = new URL(href, page.url()).toString();
+          detailUrls.push(absUrl);
+          if (Object.keys(listingFields).length > 0 && !listingFieldsByUrl[absUrl]) {
+            try {
+              listingFieldsByUrl[absUrl] = await extractListingFieldsFromItem(element);
+            } catch {
+              // Listing-field extraction failed — leave empty.
+            }
+          }
         }
       } catch {
         // Skip items where URL extraction fails
@@ -1043,11 +1329,15 @@ async function extractRawFieldsWithPageFlow(
     console.info(
       `[scrape] Visiting detail page ${urlIdx + 1}/${uniqueUrls.length}: ${detailUrl}`,
     );
+    let detailNavStatus: "ok" | "timeout" | "http_error" | "skipped_no_url" = "ok";
+    if (!detailUrl) {
+      detailNavStatus = "skipped_no_url";
+    }
     try {
-      await page.goto(detailUrl, {
-        waitUntil: "networkidle",
-        timeout: DETAIL_PAGE_TIMEOUT_MS,
-      });
+      const response = await gotoForgiving(page, detailUrl, DETAIL_PAGE_TIMEOUT_MS);
+      if (response && !response.ok()) {
+        detailNavStatus = "http_error";
+      }
 
       // Wait for detail page selector if specified
       if (detailStep.waitFor) {
@@ -1062,28 +1352,86 @@ async function extractRawFieldsWithPageFlow(
         }
       }
 
-      // Extract fields from the detail page using absolute selectors
-      const rawFields: Record<string, string> = {};
-      for (const [fieldName, mapping] of Object.entries(fieldMappings)) {
+      // Seed the row with listing-scope fields collected earlier from the
+      // item card on the listing page. Detail-scope fields are extracted
+      // below from the detail page DOM and overwrite empty seeds.
+      const rawFields: Record<string, string> = {
+        ...(listingFieldsByUrl[detailUrl] ?? {}),
+      };
+      let descDebug: {
+        selector: string;
+        matched: boolean;
+        rootTag: string | null;
+        rawTextLength: number;
+      } | null = null;
+
+      // Choose which fields to run on the detail page. If we already
+      // collected something for the field on the listing, prefer the
+      // detail-page value only when it is non-empty.
+      const fieldsToRunOnDetail = Object.keys(detailFields).length > 0
+        ? detailFields
+        : fieldMappings; // legacy fall-through: no capturedOnUrl info
+
+      for (const [fieldName, mapping] of Object.entries(fieldsToRunOnDetail)) {
         try {
           const fieldEl = await page.$(mapping.selector);
           if (fieldEl) {
             const text = await fieldEl.innerText();
-            rawFields[fieldName] = text ?? "";
+            // Only overwrite the listing-side seed when the detail page
+            // produced non-empty content (avoid clobbering valid listing
+            // data with an empty detail-page match).
+            if ((text ?? "").trim().length > 0 || !rawFields[fieldName]) {
+              rawFields[fieldName] = text ?? "";
+            }
 
             // For links, also extract href
             const href = await fieldEl.getAttribute("href");
             if (href) {
               rawFields[`${fieldName}_href`] = href;
             }
+
+            if (fieldName === "description") {
+              const rootTag = await fieldEl.evaluate((el) => el.tagName.toLowerCase());
+              descDebug = {
+                selector: mapping.selector,
+                matched: true,
+                rootTag,
+                rawTextLength: (text ?? "").length,
+              };
+            }
           } else {
-            rawFields[fieldName] = "";
+            // Detail page didn't have it. Keep the listing seed if any.
+            if (rawFields[fieldName] === undefined) rawFields[fieldName] = "";
+            if (fieldName === "description") {
+              descDebug = {
+                selector: mapping.selector,
+                matched: false,
+                rootTag: null,
+                rawTextLength: 0,
+              };
+            }
           }
         } catch {
-          rawFields[fieldName] = "";
+          if (rawFields[fieldName] === undefined) rawFields[fieldName] = "";
+          if (fieldName === "description") {
+            descDebug = {
+              selector: mapping.selector,
+              matched: false,
+              rootTag: null,
+              rawTextLength: 0,
+            };
+          }
         }
       }
 
+      if (descDebug) {
+        rawFields["_debugDescription"] = JSON.stringify({
+          ...descDebug,
+          source: "detailPage",
+        });
+      }
+
+      rawFields["_detailNavStatus"] = detailNavStatus;
       // Add the detail page URL to raw fields
       rawFields["_detailUrl"] = detailUrl;
 
@@ -1097,10 +1445,11 @@ async function extractRawFieldsWithPageFlow(
             if (applyLink) {
               const applyHref = await applyLink.getAttribute("href");
               if (applyHref) {
-                await page.goto(new URL(applyHref, page.url()).toString(), {
-                  waitUntil: "networkidle",
-                  timeout: DETAIL_PAGE_TIMEOUT_MS,
-                });
+                await gotoForgiving(
+                  page,
+                  new URL(applyHref, page.url()).toString(),
+                  DETAIL_PAGE_TIMEOUT_MS,
+                );
               }
             }
           } catch {
@@ -1117,11 +1466,26 @@ async function extractRawFieldsWithPageFlow(
 
       rawFieldsList.push(rawFields);
     } catch (error) {
+      const msg = error instanceof Error ? error.message : String(error);
       console.warn(
         `[scrape] Failed to extract from detail page: ${detailUrl}`,
-        error instanceof Error ? error.message : String(error),
+        msg,
       );
-      // Skip this detail page and continue with the next one
+      const status: "timeout" | "http_error" = /timeout/i.test(msg)
+        ? "timeout"
+        : "http_error";
+      rawFieldsList.push({
+        _detailUrl: detailUrl,
+        _detailNavStatus: status,
+        _debugDescription: JSON.stringify({
+          selector: fieldMappings.description?.selector ?? "",
+          matched: false,
+          rootTag: null,
+          rawTextLength: 0,
+          source: "detailPage",
+          navError: msg.slice(0, 200),
+        }),
+      });
     }
   }
 
@@ -1472,6 +1836,26 @@ async function executeScrape(
     context.pageLoaded = true;
     context.selectorsMatched = rawFieldsList.length > 0;
     context.itemsFound = rawFieldsList.length;
+
+    // Multi-page may visit detail pages and capture per-job form data inline,
+    // but a single-step pageFlow leaves us back on the listing page with the
+    // form embedded there. Capture once and attach to every record.
+    if (
+      formCaptureConfig &&
+      rawFieldsList.length > 0 &&
+      !rawFieldsList.some((r) => r["_formData"])
+    ) {
+      try {
+        const formData = await extractFormData(page, formCaptureConfig);
+        if (formData) {
+          for (const raw of rawFieldsList) {
+            raw["_formData"] = formData;
+          }
+        }
+      } catch {
+        // Form extraction is best-effort
+      }
+    }
   } else {
     // Single-page extraction
     console.info("[scrape] Using single-page extraction");
@@ -1505,11 +1889,8 @@ async function executeScrape(
     page.on("pageerror", onPageError);
     page.on("response", onResponse);
 
-    // Navigate to the site URL -- use networkidle to let JS-rendered content load
-    const navResponse = await page.goto(site.siteUrl, {
-      waitUntil: "networkidle",
-      timeout: NAVIGATION_TIMEOUT_MS,
-    });
+    // Navigate to the site URL -- domcontentloaded + best-effort networkidle
+    const navResponse = await gotoForgiving(page, site.siteUrl, NAVIGATION_TIMEOUT_MS);
     context.pageLoaded = true;
 
     // Many Israeli sites sit behind Reblaze (kramericaindustries.ac_v2.lib.js
@@ -1524,6 +1905,8 @@ async function executeScrape(
     } catch {
       console.warn("[scrape] Body never populated within 25s (likely WAF challenge stuck)");
     }
+
+    await autoScrollUntilStable(page, itemSelector);
 
     // Log the main navigation response so we can see status / redirect / size
     // when the page comes back empty. This is the single most important signal
@@ -1772,7 +2155,10 @@ async function executeScrape(
             publishDate: normalized.publishDate || null,
             applicationInfo: normalized.applicationInfo || null,
             rawData: normalized.rawFields as Prisma.InputJsonValue,
-            validationStatus: validation.status,
+            validationStatus:
+              validation.warnings.length > 0
+                ? `${validation.status};warn:${validation.warnings.join(",")}`
+                : validation.status,
             siteId: site.id,
             scrapeRunId,
           },
@@ -1890,7 +2276,7 @@ function createTimeoutPromise(
           });
         } else {
           await failScrapeRun(scrapeRunId, siteId, {
-            error: "Scrape execution exceeded 5-minute timeout",
+            error: "Scrape execution exceeded 10-minute timeout",
             failureCategory: "timeout",
           });
         }
@@ -1898,7 +2284,7 @@ function createTimeoutPromise(
         console.error("[scrape] Failed to update ScrapeRun on timeout:", updateError);
       }
 
-      reject(new Error("Scrape execution exceeded 5-minute timeout"));
+      reject(new Error("Scrape execution exceeded 10-minute timeout"));
     }, SCRAPE_TIMEOUT_MS);
   });
   return { promise, cancel: () => clearTimeout(timerId) };

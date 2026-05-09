@@ -67,6 +67,19 @@ export function normalizeField(rawValue: string | null | undefined): string {
   return normalizeWhitespace(stripHtmlTags(rawValue));
 }
 
+/**
+ * Heuristic: reject plain-text that is actually CSS rules (no HTML tags).
+ */
+export function looksLikeCss(text: string): boolean {
+  if (!text || text.length < 20) return false;
+  const ruleBlocks = text.match(/[.#][\w-]+\s*\{[^}]*\}/g);
+  if (ruleBlocks && ruleBlocks.length >= 2) return true;
+  if (/@(?:media|keyframes|import|supports|charset)\b/i.test(text)) return true;
+  const punct = (text.match(/[{};:]/g) || []).length;
+  if (text.length > 0 && punct / text.length > 0.1) return true;
+  return false;
+}
+
 // ---------------------------------------------------------------------------
 // Main normalization function
 // ---------------------------------------------------------------------------
@@ -78,20 +91,41 @@ export function normalizeField(rawValue: string | null | undefined): string {
  *   through the normalization pipeline
  * - Extracts URL: prefers title_href, falls back to _detailUrl, then ""
  * - Collects non-standard, non-internal fields into additionalFields
- * - Preserves the original rawFields without modification
+ * - Returns rawFields as a shallow copy, optionally extended with
+ *   `_cssRejected_description` / `_cssRejected_requirements` when CSS-shaped
+ *   content was stripped from long-form fields.
  */
 export function normalizeJobRecord(
   rawFields: Record<string, string>,
 ): NormalizedJobRecord {
+  const rawOut: Record<string, string> = { ...rawFields };
+
   // Map standard fields through normalization
   const title = normalizeField(rawFields["title"]);
-  const description = normalizeField(rawFields["description"]);
-  const requirements = normalizeField(rawFields["requirements"]);
+  let description = normalizeField(rawFields["description"]);
+  if (looksLikeCss(description)) {
+    rawOut["_cssRejected_description"] = "true";
+    description = "";
+  }
+
+  let requirements = normalizeField(rawFields["requirements"]);
+  if (looksLikeCss(requirements)) {
+    rawOut["_cssRejected_requirements"] = "true";
+    requirements = "";
+  }
   const location = normalizeField(rawFields["location"]);
   const department = normalizeField(rawFields["department"]);
   const externalJobId = normalizeField(rawFields["externalJobId"]);
   const publishDate = normalizeField(rawFields["publishDate"]);
-  const applicationInfo = normalizeField(rawFields["applicationInfo"]);
+  // applicationInfo is populated either by:
+  //   - an explicit "applicationInfo" field mapping (rare), or
+  //   - the worker's form-capture pipeline, which writes a JSON blob to
+  //     rawFields._formData (one of formSelector/method/actionUrl/fields).
+  // Prefer the explicit mapping; fall back to the form-capture blob, which
+  // is already JSON and shouldn't be re-normalized to plain text.
+  const explicitAppInfo = normalizeField(rawFields["applicationInfo"]);
+  const applicationInfo =
+    explicitAppInfo || (rawFields["_formData"] ?? "");
 
   // Extract URL: prefer title_href, fall back to _detailUrl, then ""
   const url = rawFields["title_href"] ?? rawFields["_detailUrl"] ?? "";
@@ -117,6 +151,6 @@ export function normalizeJobRecord(
     applicationInfo,
     url,
     additionalFields,
-    rawFields, // Preserve original untouched (FR27)
+    rawFields: rawOut,
   };
 }

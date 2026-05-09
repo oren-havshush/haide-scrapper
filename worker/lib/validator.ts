@@ -66,6 +66,19 @@ export function validateJobRecord(
     warnings.push("missing_url");
   }
 
+  // Raw description present but normalized empty (e.g. CSS stripped by normalizer).
+  const rawDesc = record.rawFields["description"] ?? "";
+  if (rawDesc.trim().length > 0 && (!record.description || record.description.trim().length === 0)) {
+    warnings.push("description_empty_or_invalid");
+  }
+
+  // Possible truncation: short normalized text vs long raw scrape.
+  const rawDescLen = rawDesc.trim().length;
+  const descLen = record.description.trim().length;
+  if (rawDescLen > 100 && descLen >= 1 && descLen <= 20) {
+    warnings.push("description_truncated");
+  }
+
   // Reject obvious non-job/navigation/footer snippets frequently captured by broad selectors.
   for (const pattern of NON_JOB_VALUE_PATTERNS) {
     if (pattern.test(record.location) || pattern.test(record.title)) {

@@ -250,16 +250,11 @@ export async function handleAnalysisJob(
     });
 
     // --- Optional AI refinement stage ---
-    // Runs only when heuristic confidence is below threshold AND an API key is
-    // configured. It asks gpt-4o-mini to infer CSS selectors for fields the
-    // heuristics missed, validates them against the live DOM, and re-combines.
-    const heuristicPercent = combinedResult.overallConfidence * 100;
+    // Runs when an API key is configured. It asks gpt-5 to infer CSS selectors
+    // for all target fields, validates them against the live DOM, and re-combines.
     const aiEnabled = Boolean(process.env.OPENAI_API_KEY);
-    const aiThresholdPercent = process.env.AI_REFINE_THRESHOLD
-      ? Number(process.env.AI_REFINE_THRESHOLD)
-      : CONFIDENCE_THRESHOLD;
 
-    if (aiEnabled && heuristicPercent < aiThresholdPercent) {
+    if (aiEnabled) {
       try {
         await navigateWithFallback(page, site.siteUrl);
       } catch (navError) {
@@ -272,7 +267,6 @@ export async function handleAnalysisJob(
       const aiResult = await analyzeWithAiRefine(page, site.siteUrl, {
         listingSelector: combinedResult.listingSelector,
         itemSelector: combinedResult.itemSelector,
-        alreadyDetected: Object.keys(combinedResult.fieldMappings),
       });
 
       await prisma.analysisResult.create({

@@ -44,6 +44,8 @@ export interface AIFieldMapping {
   selector: string;
   confidence: number; // 0-100
   source: string; // "PATTERN_MATCH" | "CRAWL_CLASSIFY" | "NETWORK_INTERCEPT"
+  /** URL of the page the selector was captured on. Optional for legacy mappings. */
+  capturedOnUrl?: string;
 }
 
 /** AI-produced field mappings keyed by field name */
@@ -58,6 +60,12 @@ export interface FieldMappingEntry {
   selector: string;
   confidence: number;
   status: FieldMappingStatus;
+  /**
+   * URL of the page the selector was captured on. Used to route the field
+   * to the right page during multi-page scrapes and to skip off-page fields
+   * during the in-tab test extraction. Optional for legacy mappings.
+   */
+  capturedOnUrl?: string;
 }
 
 /** State of Review Mode in the side panel */
@@ -139,6 +147,7 @@ export interface SaveConfigPayload {
     selector: string;
     confidence: number;
     source: string;
+    capturedOnUrl?: string;
   }>;
   pageFlow: Array<{
     url: string;
@@ -150,6 +159,7 @@ export interface SaveConfigPayload {
     selector: string;
     confidence: number;
     source: string;
+    capturedOnUrl?: string;
   }>;
 }
 
@@ -166,6 +176,14 @@ export interface FieldDiagnostic {
   matched: boolean;
   elementTag?: string;
   extractedText: string;
+  /**
+   * If true, the field was not tested on the current page because it was
+   * captured on a different page (e.g. a detail page reached via Navigate
+   * Mode). The actual scrape will extract it from `capturedOnUrl`.
+   */
+  skipped?: boolean;
+  /** The URL the selector was captured on, when skipped. */
+  capturedOnUrl?: string;
 }
 
 /** Diagnostics for the reveal/accordion click */
@@ -224,7 +242,26 @@ export type PanelMessage =
   | { type: "FORM_RECORD_START" }
   | { type: "FORM_RECORD_STOP" }
   | { type: "SAVE_CONFIG"; payload: SaveConfigPayload }
-  | { type: "TEST_EXTRACT"; fieldMappings: Record<string, string>; listingSelector: string | null; itemSelector: string | null; revealSelector: string | null }
+  | {
+      type: "TEST_EXTRACT";
+      /**
+       * Map of fieldName -> { selector, capturedOnUrl }. Fields whose
+       * `capturedOnUrl` does not match the active tab's URL pattern are
+       * skipped (rendered as "pending — captured on different page" in the
+       * UI), since the in-tab test only sees the current page's DOM.
+       */
+      fieldMappings: Record<string, { selector: string; capturedOnUrl?: string }>;
+      listingSelector: string | null;
+      itemSelector: string | null;
+      revealSelector: string | null;
+      /** Active tab URL when the test was triggered. */
+      currentUrl: string;
+      /**
+       * URL patterns from saved pageFlow used to recognize listing vs
+       * detail pages (e.g. `https://www.hye.co.il/job/index/detail/id/*`).
+       */
+      pageFlowUrls: string[];
+    }
   | { type: "APPROVE_AND_SCRAPE"; siteId: string };
 
 /** Messages for state check between content script and background */

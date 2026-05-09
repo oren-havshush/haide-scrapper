@@ -48,6 +48,12 @@ export interface CombinedAnalysisResult {
 
 const AGREEMENT_BONUS_TWO = 0.10;   // 2 methods agree
 const AGREEMENT_BONUS_THREE = 0.15; // 3 methods agree
+const METHOD_WEIGHTS: Record<string, number> = {
+  AI_REFINE: 1.2,
+  PATTERN_MATCH: 1.0,
+  CRAWL_CLASSIFY: 1.0,
+  NETWORK_INTERCEPT: 1.0,
+};
 
 /**
  * Apply a cross-method agreement bonus to a per-field confidence score.
@@ -70,10 +76,10 @@ function applyAgreementBonus(
 /**
  * Combine results from all analysis methods into a single unified result.
  *
- * For each standard field, the method with the highest per-field confidence
- * wins. On ties, DOM-based selectors (CSS) are preferred over API-based
- * selectors (JSON path starting with `$.`). A cross-method agreement bonus
- * is applied when multiple methods detected the same field.
+ * For each standard field, DOM mappings win over JSONPath (`$.`) whenever both
+ * exist; JSONPath-only fields are omitted (scrape cannot execute them). Among
+ * DOM candidates, highest per-field confidence wins. A cross-method agreement
+ * bonus is applied when multiple methods detected the same field.
  *
  * NEVER throws -- if inputs are empty, returns a zero-confidence result.
  */
@@ -115,21 +121,34 @@ export function combineAnalysisResults(results: MethodResult[]): CombinedAnalysi
         selector: r.fieldMappings[field].selector,
         sample: r.fieldMappings[field].sample,
         confidence: r.confidenceScores[field] ?? 0,
+        weightedConfidence: (r.confidenceScores[field] ?? 0) * (METHOD_WEIGHTS[r.method] ?? 1.0),
         overallConfidence: r.overallConfidence,
         isApiSelector: r.fieldMappings[field].selector.startsWith("$."),
       }));
 
     if (detections.length === 0) continue;
 
+    // JSONPath selectors ($...) cannot run in scrape.ts (no DOM querySelector). Prefer DOM only.
+    const domDetections = detections.filter((d) => !d.isApiSelector);
+    const pool = domDetections.length > 0 ? domDetections : [];
+    if (pool.length === 0) {
+      // Only network/API mappings exist — scrape cannot execute them; omit field.
+      continue;
+    }
+
     // Sort by: confidence DESC, then prefer DOM over API, then by overall method confidence DESC
-    detections.sort((a, b) => {
-      if (b.confidence !== a.confidence) return b.confidence - a.confidence;
+    pool.sort((a, b) => {
+      if (b.weightedConfidence !== a.weightedConfidence) {
+        return b.weightedConfidence - a.weightedConfidence;
+      }
+      if (a.method === "AI_REFINE" && b.method !== "AI_REFINE") return -1;
+      if (b.method === "AI_REFINE" && a.method !== "AI_REFINE") return 1;
       if (a.isApiSelector !== b.isApiSelector) return a.isApiSelector ? 1 : -1;
       return b.overallConfidence - a.overallConfidence;
     });
 
-    const winner = detections[0];
-    const methodsDetected = detections.length;
+    const winner = pool[0];
+    const methodsDetected = pool.length;
 
     // Apply cross-method agreement bonus
     const boostedConfidence = applyAgreementBonus(winner.confidence, methodsDetected);

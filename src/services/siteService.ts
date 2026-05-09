@@ -232,17 +232,30 @@ export async function saveSiteConfig(
     },
   };
 
-  // Build update data — save config only, do NOT auto-transition status.
-  // User must approve test extraction results before triggering full scrape.
+  const transitionToReview = site.status === "ACTIVE";
+
+  // Build update data for config save.
+  // When editing an ACTIVE site, send it back to REVIEW until re-approved.
   const updateData: Record<string, unknown> = {
     fieldMappings: fieldMappingsWithMeta,
     pageFlow: config.pageFlow,
   };
+  if (transitionToReview) {
+    updateData.status = "REVIEW";
+    updateData.reviewAt = new Date();
+  }
 
   const updatedSite = await prisma.site.update({
     where: { id: siteId },
     data: updateData,
   });
+
+  if (transitionToReview) {
+    emitEvent({
+      type: "site:status-changed",
+      payload: { siteId, status: "REVIEW" },
+    });
+  }
 
   return updatedSite;
 }

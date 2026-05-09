@@ -1,5 +1,5 @@
 import { useState } from "react";
-import type { FieldMappingEntry, ExtensionMessage, ExtensionMode, TestExtractResult, FieldDiagnostic, RevealDiagnostic } from "../../lib/types";
+import type { FieldMappingEntry, ExtensionMessage, ExtensionMode, TestExtractResult } from "../../lib/types";
 import { FIELD_TYPES, CONFIDENCE_HIGH_THRESHOLD } from "../../lib/constants";
 import { ModeTabs } from "./NavigateFlowPanel";
 import SaveConfigButton from "./SaveConfigButton";
@@ -142,13 +142,47 @@ function EditableSelectorRow({ label, value, onChange }: EditableSelectorRowProp
 
 interface FieldRowProps {
   field: FieldMappingEntry;
+  /** Active tab URL — used to highlight when stamp would change the field. */
+  currentUrl: string;
   onConfirm: (fieldName: string) => void;
   onEdit: (fieldName: string) => void;
   onRemove: (fieldName: string) => void;
+  onStampCurrentPage: (fieldName: string) => void;
 }
 
-function FieldRow({ field, onConfirm, onEdit, onRemove }: FieldRowProps) {
+/** Render a short, human-friendly label for a captured URL. */
+function shortenUrl(url: string): string {
+  if (!url) return "no page";
+  try {
+    const u = new URL(url);
+    const path = u.pathname.length > 24 ? u.pathname.slice(0, 21) + "…" : u.pathname;
+    return u.host + path;
+  } catch {
+    return url.slice(0, 30);
+  }
+}
+
+function FieldRow({ field, currentUrl, onConfirm, onEdit, onRemove, onStampCurrentPage }: FieldRowProps) {
   const [hovered, setHovered] = useState(false);
+
+  // Three states for the page chip:
+  //  - missing  : capturedOnUrl is empty → highlight as "needs stamp"
+  //  - sameTab  : capturedOnUrl matches the active tab → muted (already correct)
+  //  - otherTab : capturedOnUrl differs from active tab → muted info
+  const captured = field.capturedOnUrl ?? "";
+  const chipState: "missing" | "sameTab" | "otherTab" = !captured
+    ? "missing"
+    : captured === currentUrl
+    ? "sameTab"
+    : "otherTab";
+  const chipClass = {
+    missing: "bg-warning/15 text-warning border border-warning/30",
+    sameTab: "bg-success/10 text-success/80 border border-success/20",
+    otherTab: "bg-border/40 text-muted-foreground border border-border",
+  }[chipState];
+  const chipTitle = !captured
+    ? "No page bound — click the link icon to stamp the current tab URL"
+    : `Captured on: ${captured}`;
 
   return (
     <div
@@ -164,8 +198,16 @@ function FieldRow({ field, onConfirm, onEdit, onRemove }: FieldRowProps) {
     >
       <StatusDot status={field.status} confidence={field.confidence} />
 
-      <span className="text-sm text-foreground flex-1 truncate" title={field.fieldName}>
+      <span className="text-sm text-foreground flex-1 truncate min-w-0" title={field.fieldName}>
         {field.fieldName}
+      </span>
+
+      {/* Per-field captured-page chip */}
+      <span
+        className={`text-[9px] font-mono px-1 py-0 rounded shrink-0 ${chipClass}`}
+        title={chipTitle}
+      >
+        {shortenUrl(captured)}
       </span>
 
       <ConfidenceText confidence={field.confidence} />
@@ -190,6 +232,31 @@ function FieldRow({ field, onConfirm, onEdit, onRemove }: FieldRowProps) {
             </svg>
           </span>
         )}
+
+        {/* Stamp current-tab URL onto the field's capturedOnUrl
+            (no selector change). Use this to bind a field to the page
+            it should be extracted from without re-picking. */}
+        <button
+          onClick={() => onStampCurrentPage(field.fieldName)}
+          className={`p-1 rounded transition-colors ${
+            chipState === "missing"
+              ? "bg-warning/15 text-warning hover:bg-warning/30"
+              : chipState === "sameTab"
+              ? "text-success/70"
+              : "hover:bg-blue-500/20 text-muted-foreground hover:text-blue-400"
+          }`}
+          title={
+            chipState === "sameTab"
+              ? "Already bound to this page"
+              : "Stamp current tab URL onto this field"
+          }
+        >
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            {/* link icon */}
+            <path d="M10 13a5 5 0 0 0 7.07 0l3-3a5 5 0 1 0-7.07-7.07l-1.5 1.5" />
+            <path d="M14 11a5 5 0 0 0-7.07 0l-3 3a5 5 0 1 0 7.07 7.07l1.5-1.5" />
+          </svg>
+        </button>
 
         <button
           onClick={() => onEdit(field.fieldName)}
@@ -289,6 +356,9 @@ interface FieldMappingPanelProps {
   onConfirmField: (fieldName: string) => void;
   onEditField: (fieldName: string) => void;
   onRemoveField: (fieldName: string) => void;
+  onStampCurrentPage: (fieldName: string) => void;
+  /** Active tab URL — used to highlight per-field "page chips". */
+  currentTabUrl: string;
   onAddField: () => void;
   onSelectFieldType: (fieldType: string) => void;
   onCancelAddField: () => void;
@@ -298,7 +368,7 @@ interface FieldMappingPanelProps {
   onSaveConfig: () => void;
   listingSelector: string | null;
   itemSelector: string | null;
-  pickingContainer: "listing" | "item" | null;
+  pickingContainer: "listing" | "item" | "reveal" | null;
   revealSelector: string | null;
   onPickListingContainer: () => void;
   onPickItemWrapper: () => void;
@@ -324,6 +394,8 @@ export default function FieldMappingPanel({
   onConfirmField,
   onEditField,
   onRemoveField,
+  onStampCurrentPage,
+  currentTabUrl,
   onAddField,
   onSelectFieldType,
   onCancelAddField,
@@ -509,9 +581,11 @@ export default function FieldMappingPanel({
           <FieldRow
             key={field.fieldName}
             field={field}
+            currentUrl={currentTabUrl}
             onConfirm={onConfirmField}
             onEdit={onEditField}
             onRemove={onRemoveField}
+            onStampCurrentPage={onStampCurrentPage}
           />
         ))}
         {fields.length === 0 && (
@@ -627,28 +701,63 @@ export default function FieldMappingPanel({
             <div className="mb-2 space-y-1">
               <div className="text-[10px] font-medium text-muted-foreground uppercase">Field Results</div>
               <div className="bg-background rounded-lg border border-border p-2 space-y-1.5 max-h-72 overflow-y-auto">
-                {Object.entries(testResult.diagnostics.fieldDiagnostics).map(([fieldName, diag]) => (
-                  <div key={fieldName} className={`rounded-md px-2 py-1.5 ${diag.matched ? "bg-success/5 border border-success/20" : "bg-error/5 border border-error/20"}`}>
-                    <div className="flex items-center gap-1.5 mb-0.5">
-                      <span className={`inline-block w-2 h-2 rounded-full flex-shrink-0 ${diag.matched ? "bg-success" : "bg-error"}`} />
-                      <span className="text-xs font-medium text-foreground capitalize">{fieldName}</span>
-                      {diag.matched && diag.elementTag && (
-                        <span className="text-[10px] text-muted-foreground ml-auto">&lt;{diag.elementTag}&gt;</span>
+                {Object.entries(testResult.diagnostics.fieldDiagnostics).map(([fieldName, diag]) => {
+                  // Three states:
+                  //  - skipped: field was captured on a different page (gray/info)
+                  //  - matched: green
+                  //  - failed:  red
+                  const state: "skipped" | "matched" | "failed" = diag.skipped
+                    ? "skipped"
+                    : diag.matched
+                    ? "matched"
+                    : "failed";
+                  const styles = {
+                    skipped: "bg-muted/30 border border-border",
+                    matched: "bg-success/5 border border-success/20",
+                    failed: "bg-error/5 border border-error/20",
+                  }[state];
+                  const dotStyles = {
+                    skipped: "bg-muted-foreground",
+                    matched: "bg-success",
+                    failed: "bg-error",
+                  }[state];
+
+                  return (
+                    <div key={fieldName} className={`rounded-md px-2 py-1.5 ${styles}`}>
+                      <div className="flex items-center gap-1.5 mb-0.5">
+                        <span className={`inline-block w-2 h-2 rounded-full flex-shrink-0 ${dotStyles}`} />
+                        <span className="text-xs font-medium text-foreground capitalize">{fieldName}</span>
+                        {state === "matched" && diag.elementTag && (
+                          <span className="text-[10px] text-muted-foreground ml-auto">&lt;{diag.elementTag}&gt;</span>
+                        )}
+                        {state === "skipped" && (
+                          <span className="text-[10px] text-muted-foreground ml-auto">OTHER PAGE</span>
+                        )}
+                        {state === "failed" && (
+                          <span className="text-[10px] text-error ml-auto">NOT FOUND</span>
+                        )}
+                      </div>
+                      <div className="text-[10px] text-muted-foreground font-mono truncate" title={diag.selector}>
+                        {diag.selector}
+                      </div>
+                      {state === "matched" && (
+                        <p className="text-xs text-foreground mt-0.5 break-words">
+                          {diag.extractedText ? (diag.extractedText.length > 200 ? diag.extractedText.slice(0, 200) + "…" : diag.extractedText) : <span className="text-warning italic">matched but empty</span>}
+                        </p>
                       )}
-                      {!diag.matched && (
-                        <span className="text-[10px] text-error ml-auto">NOT FOUND</span>
+                      {state === "skipped" && (
+                        <p className="text-[10px] text-muted-foreground mt-0.5 break-words">
+                          Captured on a different page — will be tested by the full scrape.
+                          {diag.capturedOnUrl && (
+                            <span className="block truncate font-mono text-[9px] mt-0.5" title={diag.capturedOnUrl}>
+                              {diag.capturedOnUrl}
+                            </span>
+                          )}
+                        </p>
                       )}
                     </div>
-                    <div className="text-[10px] text-muted-foreground font-mono truncate" title={diag.selector}>
-                      {diag.selector}
-                    </div>
-                    {diag.matched && (
-                      <p className="text-xs text-foreground mt-0.5 break-words">
-                        {diag.extractedText ? (diag.extractedText.length > 200 ? diag.extractedText.slice(0, 200) + "…" : diag.extractedText) : <span className="text-warning italic">matched but empty</span>}
-                      </p>
-                    )}
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
           )}

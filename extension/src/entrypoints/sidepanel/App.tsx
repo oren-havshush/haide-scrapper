@@ -48,7 +48,19 @@ function parseFieldMappings(raw: Record<string, unknown> | null): FieldMappingEn
       selector: mapping.selector || "",
       confidence: typeof mapping.confidence === "number" ? mapping.confidence : 0,
       status: "unconfirmed" as const,
+      capturedOnUrl: typeof mapping.capturedOnUrl === "string" ? mapping.capturedOnUrl : undefined,
     }));
+}
+
+// --- Helper: get the active tab URL (for stamping capturedOnUrl) ---
+
+async function getActiveTabUrl(): Promise<string | undefined> {
+  try {
+    const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
+    return tabs[0]?.url ?? undefined;
+  } catch {
+    return undefined;
+  }
 }
 
 // --- Helper: build HighlightConfig from FieldMappingEntry ---
@@ -90,6 +102,50 @@ function createInitialNavigateSteps(listingUrl?: string): NavigateFlowStep[] {
   ];
 }
 
+function mapPageFlowToNavigateSteps(
+  pageFlow: SiteConfig["pageFlow"] | null | undefined,
+  listingUrl?: string
+): NavigateFlowStep[] {
+  const initial = createInitialNavigateSteps(listingUrl);
+  if (!Array.isArray(pageFlow) || pageFlow.length === 0) return initial;
+
+  const mapped = [...initial];
+  const listing = pageFlow[0];
+  if (listing?.url) {
+    mapped[0] = {
+      type: "listing",
+      url: listing.url,
+      urlPattern: deriveUrlPattern(listing.url),
+      linkSelector: null,
+      status: "recorded",
+    };
+  }
+
+  const detail = pageFlow[1];
+  if (detail?.url) {
+    mapped[1] = {
+      type: "detail",
+      url: detail.url,
+      urlPattern: deriveUrlPattern(detail.url),
+      linkSelector: detail.action && detail.action !== "navigate" ? detail.action : null,
+      status: "recorded",
+    };
+  }
+
+  const apply = pageFlow[2];
+  if (apply?.url) {
+    mapped[2] = {
+      type: "apply",
+      url: apply.url,
+      urlPattern: deriveUrlPattern(apply.url),
+      linkSelector: apply.action && apply.action !== "navigate" ? apply.action : null,
+      status: "recorded",
+    };
+  }
+
+  return mapped;
+}
+
 export default function App() {
   // --- Core state from story 3-2 ---
   const [site, setSite] = useState<SiteInfo | null>(null);
@@ -105,7 +161,11 @@ export default function App() {
   const [isAddingField, setIsAddingField] = useState(false);
   const [showFieldTypeDropdown, setShowFieldTypeDropdown] = useState(false);
   const [pendingSelector, setPendingSelector] = useState<string | null>(null);
-  const [configLoaded, setConfigLoaded] = useState(false);
+  const [pendingCapturedUrl, setPendingCapturedUrl] = useState<string | undefined>(undefined);
+
+  // The active tab's URL, refreshed on tab/url changes so the field-row
+  // page chips reflect the current browsing context.
+  const [currentTabUrl, setCurrentTabUrl] = useState<string>("");
 
   // --- Container/Item/Reveal selector state ---
   const [listingSelector, setListingSelector] = useState<string | null>(null);
@@ -135,52 +195,91 @@ export default function App() {
   const [approveError, setApproveError] = useState<string | null>(null);
   const [approveSuccess, setApproveSuccess] = useState(false);
 
-  // --- Load site info on mount ---
+  const loadSiteInfo = useCallback(async () => {
+    console.log("[scrapnew] loadSiteInfo: start");
+    const configured = await hasToken();
+    console.log("[scrapnew] hasToken:", configured);
+    setTokenConfigured(configured);
 
-  useEffect(() => {
-    async function loadSiteInfo() {
-      console.log("[scrapnew] loadSiteInfo: start");
-      const configured = await hasToken();
-      console.log("[scrapnew] hasToken:", configured);
-      setTokenConfigured(configured);
-
-      if (!configured) {
-        setLoading(false);
-        return;
-      }
-
-      try {
-        const response = (await Promise.race([
-          chrome.runtime.sendMessage({ type: "GET_SITE_INFO" }),
-          new Promise((_, reject) =>
-            setTimeout(() => reject(new Error("GET_SITE_INFO timeout after 8s")), 8000)
-          ),
-        ])) as { site?: SiteInfo } | undefined;
-
-        console.log("[scrapnew] GET_SITE_INFO response:", response);
-        if (response?.site) {
-          setSite(response.site as SiteInfo);
-        }
-      } catch (err) {
-        console.warn("[scrapnew] GET_SITE_INFO failed:", err);
-      } finally {
-        setLoading(false);
-      }
+    if (!configured) {
+      setLoading(false);
+      return;
     }
 
-    loadSiteInfo();
+    try {
+      const response = (await Promise.race([
+        chrome.runtime.sendMessage({ type: "GET_SITE_INFO" }),
+        new Promise((_, reject) =>
+          setTimeout(() => reject(new Error("GET_SITE_INFO timeout after 8s")), 8000)
+        ),
+      ])) as { site?: SiteInfo } | undefined;
+
+      console.log("[scrapnew] GET_SITE_INFO response:", response);
+      if (response?.site) {
+        setSite(response.site as SiteInfo);
+      } else {
+        setSite(null);
+      }
+    } catch (err) {
+      console.warn("[scrapnew] GET_SITE_INFO failed:", err);
+    } finally {
+      setLoading(false);
+    }
   }, []);
+
+  // --- Load site info on mount ---
+  useEffect(() => {
+    void loadSiteInfo();
+  }, [loadSiteInfo]);
+
+  // --- Refresh site info + currentTabUrl when active tab/url changes ---
+  useEffect(() => {
+    if (!tokenConfigured) return;
+
+    const refreshUrl = () => {
+      void getActiveTabUrl().then((u) => setCurrentTabUrl(u ?? ""));
+    };
+    refreshUrl(); // initial
+    const handleTabActivated = () => {
+      void loadSiteInfo();
+      refreshUrl();
+    };
+    const handleTabUpdated = (
+      _tabId: number,
+      changeInfo: chrome.tabs.TabChangeInfo,
+      tab: chrome.tabs.Tab
+    ) => {
+      if (!tab.active) return;
+      if (typeof changeInfo.url === "string" || changeInfo.status === "complete") {
+        void loadSiteInfo();
+        refreshUrl();
+      }
+    };
+
+    chrome.tabs.onActivated.addListener(handleTabActivated);
+    chrome.tabs.onUpdated.addListener(handleTabUpdated);
+    return () => {
+      chrome.tabs.onActivated.removeListener(handleTabActivated);
+      chrome.tabs.onUpdated.removeListener(handleTabUpdated);
+    };
+  }, [loadSiteInfo, tokenConfigured]);
+
+  useEffect(() => {
+    originalMappingsRef.current = null;
+  }, [site?.id]);
 
   // --- Load site config when site is recognized and has REVIEW status ---
 
   useEffect(() => {
-    if (!site || configLoaded) return;
+    if (!site) return;
+    const siteId = site.id;
+    const siteUrl = site.siteUrl;
 
     async function loadConfig() {
       try {
         const response = await chrome.runtime.sendMessage({
           type: "GET_SITE_CONFIG",
-          siteId: site!.id,
+          siteId,
         } satisfies ExtensionMessage);
 
         if (response?.config) {
@@ -188,7 +287,10 @@ export default function App() {
           const rawMappings = config.fieldMappings as unknown as Record<string, unknown>;
           const parsed = parseFieldMappings(rawMappings);
           setFields(parsed);
-          setConfigLoaded(true);
+          setTestResult(null);
+          setSaveSuccess(false);
+          setApproveSuccess(false);
+          setApproveError(null);
 
           // Restore container/item selectors from _meta if saved previously
           const meta = rawMappings?.["_meta"] as Record<string, unknown> | undefined;
@@ -202,9 +304,19 @@ export default function App() {
             if (typeof meta["revealSelector"] === "string") {
               setRevealSelector(meta["revealSelector"]);
             }
+            setCapturedForm(
+              meta["formCapture"] && typeof meta["formCapture"] === "object"
+                ? (meta["formCapture"] as FormCapture)
+                : null
+            );
+          } else {
+            setListingSelector(null);
+            setItemSelector(null);
+            setRevealSelector(null);
+            setCapturedForm(null);
           }
 
-          if (rawMappings && !originalMappingsRef.current) {
+          if (rawMappings) {
             const original: Record<string, AIFieldMapping> = {};
             for (const [key, value] of Object.entries(rawMappings)) {
               if (key === "_meta") continue; // Skip meta key
@@ -220,6 +332,8 @@ export default function App() {
             originalMappingsRef.current = original;
           }
 
+          setNavigateSteps(mapPageFlowToNavigateSteps(config.pageFlow, siteUrl));
+
           // Send highlights to content script
           sendMessage({
             type: "SHOW_HIGHLIGHTS",
@@ -227,16 +341,14 @@ export default function App() {
           });
         } else if (response?.error) {
           console.error("Failed to load site config:", response.error);
-          setConfigLoaded(true);
         }
       } catch {
         // Failed to fetch config
-        setConfigLoaded(true);
       }
     }
 
-    loadConfig();
-  }, [site, configLoaded]);
+    void loadConfig();
+  }, [site?.id]);
 
   // --- Listen for messages from content script (via background) ---
 
@@ -259,26 +371,32 @@ export default function App() {
             setPendingSelector(selector);
             setShowFieldTypeDropdown(true);
             setIsAddingField(false);
+            // Stash the URL for stamping when the user picks the field type
+            void getActiveTabUrl().then((u) => setPendingCapturedUrl(u));
           } else if (pickerTarget) {
-            setFields((prev) =>
-              prev.map((f) => {
-                if (f.fieldName === pickerTarget) {
-                  const updated: FieldMappingEntry = {
-                    ...f,
-                    selector,
-                    status: "confirmed",
-                  };
-                  sendMessage({
-                    type: "SHOW_HIGHLIGHTS",
-                    fields: prev.map((pf) =>
-                      pf.fieldName === pickerTarget ? updated : pf
-                    ),
-                  });
-                  return updated;
-                }
-                return f;
-              })
-            );
+            const targetFieldName = pickerTarget;
+            void getActiveTabUrl().then((capturedOnUrl) => {
+              setFields((prev) =>
+                prev.map((f) => {
+                  if (f.fieldName === targetFieldName) {
+                    const updated: FieldMappingEntry = {
+                      ...f,
+                      selector,
+                      status: "confirmed",
+                      capturedOnUrl,
+                    };
+                    sendMessage({
+                      type: "SHOW_HIGHLIGHTS",
+                      fields: prev.map((pf) =>
+                        pf.fieldName === targetFieldName ? updated : pf
+                      ),
+                    });
+                    return updated;
+                  }
+                  return f;
+                })
+              );
+            });
             setPickerTarget(null);
           }
           break;
@@ -324,6 +442,9 @@ export default function App() {
           if (result.success) {
             setSaveSuccess(true);
             setSaveError(null);
+            if (site && result.siteStatus) {
+              setSite({ ...site, status: result.siteStatus });
+            }
             // Trigger test extraction immediately after save
             triggerTestExtract();
           } else {
@@ -583,6 +704,23 @@ export default function App() {
     }
   }
 
+  /**
+   * Stamp the active tab's URL onto a field's `capturedOnUrl` without
+   * changing its selector. This is the easy way to bind a field to the
+   * page it should be extracted from when re-picking is awkward (e.g.
+   * the picker state is lost across page navigations).
+   */
+  function handleStampCurrentPage(fieldName: string) {
+    void getActiveTabUrl().then((url) => {
+      if (!url) return;
+      setFields((prev) =>
+        prev.map((f) =>
+          f.fieldName === fieldName ? { ...f, capturedOnUrl: url } : f
+        )
+      );
+    });
+  }
+
   function handleAddField() {
     if (pickerTarget) {
       sendMessage({ type: "STOP_PICKER" });
@@ -613,6 +751,7 @@ export default function App() {
       selector: pendingSelector,
       confidence: 100, // manually added = 100% confidence
       status: "confirmed",
+      capturedOnUrl: pendingCapturedUrl,
     };
 
     // Ensure unique field name
@@ -637,6 +776,7 @@ export default function App() {
 
     setShowFieldTypeDropdown(false);
     setPendingSelector(null);
+    setPendingCapturedUrl(undefined);
     setIsAddingField(false);
   }
 
@@ -645,6 +785,7 @@ export default function App() {
     setIsAddingField(false);
     setShowFieldTypeDropdown(false);
     setPendingSelector(null);
+    setPendingCapturedUrl(undefined);
     setPickerTarget(null);
     setPickingContainer(null);
 
@@ -712,20 +853,33 @@ export default function App() {
   // --- Test Extraction handler ---
 
   function triggerTestExtract() {
-    // Build selector map from current fields
-    const selectorMap: Record<string, string> = {};
+    // Build selector map from current fields, carrying capturedOnUrl so the
+    // content script can skip fields whose page is not the active tab.
+    const selectorMap: Record<string, { selector: string; capturedOnUrl?: string }> = {};
     for (const field of fields) {
-      selectorMap[field.fieldName] = field.selector;
+      selectorMap[field.fieldName] = {
+        selector: field.selector,
+        capturedOnUrl: field.capturedOnUrl,
+      };
     }
 
     setTestResult(null);
 
-    sendMessage({
-      type: "TEST_EXTRACT",
-      fieldMappings: selectorMap,
-      listingSelector: listingSelector,
-      itemSelector: itemSelector,
-      revealSelector: revealSelector,
+    void getActiveTabUrl().then((currentUrl) => {
+      const pageFlowUrls = navigateSteps
+        .filter((step) => step.status === "recorded")
+        .map((step) => step.urlPattern || step.url || "")
+        .filter((u): u is string => Boolean(u));
+
+      sendMessage({
+        type: "TEST_EXTRACT",
+        fieldMappings: selectorMap,
+        listingSelector: listingSelector,
+        itemSelector: itemSelector,
+        revealSelector: revealSelector,
+        currentUrl: currentUrl ?? "",
+        pageFlowUrls,
+      });
     });
   }
 
@@ -752,12 +906,13 @@ export default function App() {
     setSaveSuccess(false);
 
     // Build field mappings payload from current Review Mode fields
-    const fieldMappingsPayload: Record<string, { selector: string; confidence: number; source: string }> = {};
+    const fieldMappingsPayload: Record<string, { selector: string; confidence: number; source: string; capturedOnUrl?: string }> = {};
     for (const field of fields) {
       fieldMappingsPayload[field.fieldName] = {
         selector: field.selector,
         confidence: field.confidence,
         source: field.status === "confirmed" ? "MANUAL" : "AI",
+        capturedOnUrl: field.capturedOnUrl,
       };
     }
 
@@ -771,12 +926,12 @@ export default function App() {
       }));
 
     // Build original mappings for training data
-    const originalMappingsPayload: Record<string, { selector: string; confidence: number; source: string }> | undefined =
+    const originalMappingsPayload: Record<string, { selector: string; confidence: number; source: string; capturedOnUrl?: string }> | undefined =
       originalMappingsRef.current
         ? Object.fromEntries(
             Object.entries(originalMappingsRef.current).map(([key, val]) => [
               key,
-              { selector: val.selector, confidence: val.confidence, source: val.source },
+              { selector: val.selector, confidence: val.confidence, source: val.source, capturedOnUrl: val.capturedOnUrl },
             ])
           )
         : undefined;
@@ -886,6 +1041,8 @@ export default function App() {
       onConfirmField={handleConfirmField}
       onEditField={handleEditField}
       onRemoveField={handleRemoveField}
+      onStampCurrentPage={handleStampCurrentPage}
+      currentTabUrl={currentTabUrl}
       onAddField={handleAddField}
       onSelectFieldType={handleSelectFieldType}
       onCancelAddField={handleCancelAddField}

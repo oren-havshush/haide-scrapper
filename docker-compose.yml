@@ -60,6 +60,8 @@ services:
       DATABASE_URL: postgresql://postgres:${POSTGRES_PASSWORD}@db:5432/scrapnew
       API_TOKEN: ${API_TOKEN}
       NEXT_PUBLIC_APP_URL: http://web:3000
+      OPENAI_API_KEY: ${OPENAI_API_KEY}
+      AI_REFINE_MODEL: ${AI_REFINE_MODEL:-gpt-5}
     healthcheck:
       test: ["CMD-SHELL", "ps aux | grep -v grep | grep 'worker/index.ts' || exit 1"]
       interval: 30s
@@ -78,6 +80,8 @@ services:
     depends_on:
       web:
         condition: service_healthy
+    environment:
+      SITE_ADDRESS: ${SITE_ADDRESS:-}
     ports:
       - "80:80"
       - "443:443"

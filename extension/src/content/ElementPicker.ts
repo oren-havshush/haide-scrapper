@@ -14,18 +14,57 @@ let activeScopeSelector: string | null = null;
 // --- Selector Generation ---
 
 /**
+ * Heuristic: returns false for IDs that look auto-generated / per-instance
+ * (e.g. `jobs_order_open_btn_117601`, UUIDs, React `:R...:` aria ids).
+ *
+ * These IDs are unique on the page but bind to a single item, so they make
+ * terrible selectors for list-driven scraping. A stable ID is usually a
+ * short, mostly-alphabetic string like `#scroll_to_here` or `#main-content`.
+ */
+function isStableId(id: string): boolean {
+  if (!id) return false;
+
+  // React aria/portal ids: `:R1abc:`
+  if (/^:R/.test(id)) return false;
+
+  // UUID v1-v5 patterns
+  if (/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i.test(id)) {
+    return false;
+  }
+
+  // Tokenized form (split on common separators) — reject if any token is
+  // a pure number, or has 4+ digits (typical for entity-id suffixes).
+  const tokens = id.split(/[-_:.]/).filter(Boolean);
+  for (const t of tokens) {
+    if (/^\d+$/.test(t)) return false;
+    const digits = (t.match(/\d/g) ?? []).length;
+    if (digits >= 4) return false;
+  }
+
+  // Reject very long ids (likely encoded state)
+  if (id.length > 40) return false;
+
+  return true;
+}
+
+/**
  * Generate a unique, stable CSS selector for the target element.
  *
  * Priority:
- * 1. Element with unique `id` -- `#job-title`
+ * 1. Element with stable, unique `id` -- `#scroll_to_here`
+ *    (auto-generated ids like `jobs_open_btn_117601` are rejected)
  * 2. Data attributes -- `[data-field="title"]`
  * 3. Unique class combination -- `tag.class1.class2`
  * 4. Tag + class + parent context -- `div.listing > h2.title`
  * 5. Full path with nth-child as last resort
  */
 export function generateSelector(element: Element): string {
-  // 1. Unique ID
-  if (element.id && document.querySelectorAll(`#${CSS.escape(element.id)}`).length === 1) {
+  // 1. Unique, stable ID
+  if (
+    element.id &&
+    isStableId(element.id) &&
+    document.querySelectorAll(`#${CSS.escape(element.id)}`).length === 1
+  ) {
     return `#${CSS.escape(element.id)}`;
   }
 
@@ -114,6 +153,7 @@ function buildAnchoredPath(element: Element): string | null {
     );
     const hasUniqueId =
       !!ancestor.id &&
+      isStableId(ancestor.id) &&
       document.querySelectorAll(`#${CSS.escape(ancestor.id)}`).length === 1;
 
     if (hasUniqueId || ancClasses.length > 0) {

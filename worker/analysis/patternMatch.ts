@@ -514,6 +514,22 @@ async function classifyFields(
         if (hasChildWithSameText && desc.children.length > 0) continue;
 
         const tag = desc.tagName.toLowerCase();
+        // Never treat stylesheet/script/metadata nodes as job fields (CSS text wins length heuristics).
+        const skipTags = new Set([
+          "style",
+          "script",
+          "noscript",
+          "link",
+          "template",
+          "svg",
+          "iframe",
+          "head",
+          "meta",
+          "base",
+          "title",
+        ]);
+        if (skipTags.has(tag)) continue;
+
         const computed = window.getComputedStyle(desc);
         const fontSize = parseFloat(computed.fontSize) || 14;
         const rect = desc.getBoundingClientRect();

@@ -193,10 +193,69 @@ export default defineContentScript({
             }
 
             try {
-              const { fieldMappings, listingSelector, itemSelector, revealSelector } = message;
+              const {
+                fieldMappings,
+                listingSelector,
+                itemSelector,
+                revealSelector,
+                currentUrl,
+                pageFlowUrls,
+              } = message;
               const extracted: Record<string, string> = {};
-              const fieldDiagnostics: Record<string, { selector: string; matched: boolean; elementTag?: string; extractedText: string }> = {};
+              const fieldDiagnostics: Record<string, { selector: string; matched: boolean; elementTag?: string; extractedText: string; skipped?: boolean; capturedOnUrl?: string }> = {};
               let revealDiag: { selector: string | null; found: number; clicked: number } = { selector: revealSelector, found: 0, clicked: 0 };
+
+              /**
+               * URL-pattern matcher used to recognize the active tab as
+               * "the same page" a field was captured on. Patterns may use
+               * `*` as a wildcard (e.g. `https://x.com/job/detail/id/*`).
+               * Returns true when:
+               *   - capturedOnUrl is missing/empty (legacy → assume same page), or
+               *   - capturedOnUrl matches currentUrl exactly, or
+               *   - capturedOnUrl and currentUrl both match the same pageFlow URL pattern.
+               */
+              function urlMatchesPattern(url: string, pattern: string): boolean {
+                if (!url || !pattern) return false;
+                if (url === pattern) return true;
+                const escaped = pattern
+                  .replace(/[.+?^${}()|[\]\\]/g, "\\$&")
+                  .replace(/\*/g, ".*");
+                try {
+                  return new RegExp("^" + escaped + "$").test(url);
+                } catch {
+                  return false;
+                }
+              }
+              function fieldBelongsToCurrentPage(capturedOnUrl?: string): boolean {
+                if (!capturedOnUrl) return true; // legacy (pre-tagging) — test on whatever page we're on
+                if (capturedOnUrl === currentUrl) return true;
+                // Both URLs match same pageFlow pattern → same step
+                for (const p of pageFlowUrls ?? []) {
+                  if (urlMatchesPattern(currentUrl, p) && urlMatchesPattern(capturedOnUrl, p)) {
+                    return true;
+                  }
+                }
+                return false;
+              }
+
+              // Split fields: those that belong to the current page (test
+              // them inline) vs those captured on a different page (mark
+              // skipped — they will be exercised by the full scrape).
+              const activeFields: Record<string, string> = {};
+              for (const [fieldName, mapping] of Object.entries(fieldMappings)) {
+                if (fieldBelongsToCurrentPage(mapping.capturedOnUrl)) {
+                  activeFields[fieldName] = mapping.selector;
+                } else {
+                  fieldDiagnostics[fieldName] = {
+                    selector: mapping.selector,
+                    matched: false,
+                    extractedText: "",
+                    skipped: true,
+                    capturedOnUrl: mapping.capturedOnUrl,
+                  };
+                  extracted[fieldName] = "";
+                }
+              }
 
               if (itemSelector) {
                 // --- Item-scoped strategy ---
@@ -265,7 +324,7 @@ export default defineContentScript({
                     return null;
                   }
 
-                  for (const [fieldName, selector] of Object.entries(fieldMappings)) {
+                  for (const [fieldName, selector] of Object.entries(activeFields)) {
                     try {
                       const el = findField(selector);
                       const matched = !!el;
@@ -295,13 +354,19 @@ export default defineContentScript({
                   }
 
                   const hasAnyData = Object.values(extracted).some((v) => v.length > 0);
+                  // Tested-or-skipped fields are all considered "handled".
+                  // Only fail if every field for the current page returned empty.
+                  const activeFieldNames = Object.keys(activeFields);
+                  const anyActiveMatched = activeFieldNames.length === 0
+                    ? true
+                    : activeFieldNames.some((n) => (extracted[n] ?? "").length > 0);
 
                   chrome.runtime.sendMessage({
                     type: "TEST_EXTRACT_RESULT",
                     result: {
-                      success: hasAnyData,
+                      success: hasAnyData || (anyActiveMatched && activeFieldNames.length > 0),
                       fields: extracted,
-                      error: hasAnyData ? undefined : "All field selectors matched empty content",
+                      error: anyActiveMatched ? undefined : "All field selectors for this page matched empty content",
                       diagnostics: {
                         listingSelector,
                         listingFound,
@@ -314,8 +379,10 @@ export default defineContentScript({
                     },
                   } satisfies ExtensionMessage);
                 } else {
-                  // No items found — build diagnostics for why
-                  for (const [fieldName, selector] of Object.entries(fieldMappings)) {
+                  // No items found — build diagnostics for why.
+                  // Active fields get a normal "matched: false". Skipped
+                  // fields keep their pending diagnostic from above.
+                  for (const [fieldName, selector] of Object.entries(activeFields)) {
                     fieldDiagnostics[fieldName] = {
                       selector,
                       matched: false,
@@ -349,7 +416,7 @@ export default defineContentScript({
                   revealDiag = { selector: revealSelector, ...(await clickRevealElements(document.body, revealSelector)) };
                 }
 
-                for (const [fieldName, selector] of Object.entries(fieldMappings)) {
+                for (const [fieldName, selector] of Object.entries(activeFields)) {
                   try {
                     const el = document.querySelector(selector);
                     const matched = !!el;
@@ -379,13 +446,17 @@ export default defineContentScript({
                 }
 
                 const hasAnyData = Object.values(extracted).some((v) => v.length > 0);
+                const activeFieldNames = Object.keys(activeFields);
+                const anyActiveMatched = activeFieldNames.length === 0
+                  ? true
+                  : activeFieldNames.some((n) => (extracted[n] ?? "").length > 0);
 
                 chrome.runtime.sendMessage({
                   type: "TEST_EXTRACT_RESULT",
                   result: {
-                    success: hasAnyData,
+                    success: hasAnyData || (anyActiveMatched && activeFieldNames.length > 0),
                     fields: extracted,
-                    error: hasAnyData ? undefined : "No field selectors matched any elements on the page",
+                    error: anyActiveMatched ? undefined : "No field selectors for this page matched any elements",
                     diagnostics: {
                       listingSelector: null,
                       listingFound: false,

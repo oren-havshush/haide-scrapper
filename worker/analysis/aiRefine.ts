@@ -1,32 +1,6 @@
 import type { Page } from "playwright";
+import OpenAI from "openai";
 import { calculateOverallConfidence } from "../lib/confidence";
-
-// openai is loaded lazily so the worker keeps building when the optional
-// dependency isn't installed. The AI refine stage silently no-ops unless
-// both OPENAI_API_KEY is set AND the `openai` package is available.
-type OpenAIClient = {
-  chat: {
-    completions: {
-      create: (args: unknown) => Promise<{
-        choices: Array<{ message?: { content?: string | null } }>;
-      }>;
-    };
-  };
-};
-
-async function loadOpenAIClient(apiKey: string): Promise<OpenAIClient | null> {
-  try {
-    // Use an indirect import so TypeScript doesn't require `openai` at build
-    // time; it's a runtime-optional dependency.
-    const dynamicImport = new Function("m", "return import(m)") as (m: string) => Promise<unknown>;
-    const mod = (await dynamicImport("openai")) as {
-      default: new (opts: { apiKey: string; timeout?: number }) => OpenAIClient;
-    };
-    return new mod.default({ apiKey, timeout: MODEL_TIMEOUT_MS });
-  } catch {
-    return null;
-  }
-}
 
 // ---------------------------------------------------------------------------
 // Types
@@ -53,18 +27,16 @@ interface AiRefineInput {
   listingSelector: string | null;
   /** Best item selector from heuristics so far (may be null). */
   itemSelector: string | null;
-  /** Fields the heuristics already detected — we only ask AI for the rest. */
-  alreadyDetected: string[];
 }
 
 // ---------------------------------------------------------------------------
 // Constants
 // ---------------------------------------------------------------------------
 
-const DEFAULT_MODEL = "gpt-4o-mini";
-const MAX_ITEMS_IN_PROMPT = 4;
-const MAX_HTML_PER_ITEM = 2_500;
-const MODEL_TIMEOUT_MS = 30_000;
+const DEFAULT_MODEL = "gpt-5";
+const MAX_ITEMS_IN_PROMPT = 6;
+const MAX_HTML_PER_ITEM = 5_000;
+const MODEL_TIMEOUT_MS = 90_000;
 
 const TARGET_FIELDS = [
   "title",
@@ -154,9 +126,6 @@ async function extractSamples(
 // ---------------------------------------------------------------------------
 
 function buildPrompt(samples: string[], input: AiRefineInput): string {
-  const wantedFields = TARGET_FIELDS.filter((f) => !input.alreadyDetected.includes(f));
-  const fieldsList = wantedFields.length > 0 ? wantedFields : [...TARGET_FIELDS];
-
   const fieldDescriptions: Record<(typeof TARGET_FIELDS)[number], string> = {
     title: "The job title / position name",
     company: "The hiring company or employer name",
@@ -168,7 +137,7 @@ function buildPrompt(samples: string[], input: AiRefineInput): string {
     applyUrl: "The URL used to view or apply to this specific job listing",
   };
 
-  const wantedList = fieldsList
+  const wantedList = TARGET_FIELDS
     .map((f) => `  - ${f}: ${fieldDescriptions[f]}`)
     .join("\n");
 
@@ -353,13 +322,9 @@ export async function analyzeWithAiRefine(
     itemSelector: input.itemSelector,
     samplesUsed: samples.length,
     itemsMatched: matched,
-    alreadyDetected: input.alreadyDetected,
   });
 
-  const client = await loadOpenAIClient(apiKey);
-  if (!client) {
-    return zero("openai package not installed (run: npm i openai)");
-  }
+  const client = new OpenAI({ apiKey, timeout: MODEL_TIMEOUT_MS });
   const model = process.env.AI_REFINE_MODEL || DEFAULT_MODEL;
 
   let rawContent: string;
@@ -367,7 +332,6 @@ export async function analyzeWithAiRefine(
     const completion = await client.chat.completions.create({
       model,
       response_format: { type: "json_object" },
-      temperature: 0,
       messages: [
         {
           role: "system",
