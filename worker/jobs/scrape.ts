@@ -8,6 +8,7 @@ import { validateJobRecord } from "../lib/validator";
 import type { ValidationResult } from "../lib/validator";
 import type { Browser, Page } from "playwright";
 import { emitWorkerEvent } from "../lib/emitEvent";
+import { DOM_FIELD_EXTRACT_SOURCE } from "../lib/domFieldExtract";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -25,6 +26,13 @@ interface FieldMappingEntry {
    * during multi-page scrapes. Optional for legacy mappings.
    */
   capturedOnUrl?: string;
+  /**
+   * Optional attribute name (e.g. `data-job-id`, `href`). When set, we
+   * extract `el.getAttribute(extractAttr)` for this field instead of the
+   * element's visible text. Set by the extension's per-field advanced
+   * editor; opaque to the rest of the worker.
+   */
+  extractAttr?: string;
 }
 
 /** A single page flow step from Site.pageFlow JSON */
@@ -93,6 +101,45 @@ async function gotoForgiving(
 
 function sleepMs(ms: number): Promise<void> {
   return new Promise((r) => setTimeout(r, ms));
+}
+
+async function extractMappedFieldFromElement(
+  fieldEl: import("playwright").ElementHandle<Element>,
+  fieldName: string,
+  attrName?: string,
+): Promise<string> {
+  return fieldEl.evaluate(
+    (
+      el,
+      payload: { extractSrc: string; fieldName: string; attrName?: string },
+    ) => {
+      const fn = (0, eval)("(" + payload.extractSrc + ")");
+      return fn(el, payload.fieldName, payload.attrName) as string;
+    },
+    {
+      extractSrc: DOM_FIELD_EXTRACT_SOURCE,
+      fieldName,
+      attrName: attrName && attrName.length > 0 ? attrName : undefined,
+    },
+  );
+}
+
+async function readHrefFromFieldElement(
+  fieldEl: import("playwright").ElementHandle<Element>,
+): Promise<string | null> {
+  return fieldEl.evaluate((el) => {
+    const e = el as Element;
+    if (e.tagName.toLowerCase() === "a") {
+      return e.getAttribute("href");
+    }
+    const a = e.closest("a");
+    if (a) return a.getAttribute("href");
+    return (
+      e.getAttribute("data-href") ||
+      e.getAttribute("data-url") ||
+      e.getAttribute("data-link")
+    );
+  });
 }
 
 /**
@@ -183,12 +230,19 @@ function parseFieldMappings(
     const entry = value as Record<string, unknown>;
     if (typeof entry.selector !== "string") continue;
 
+    const extractAttrRaw = entry.extractAttr;
+    const extractAttr =
+      typeof extractAttrRaw === "string" && extractAttrRaw.trim()
+        ? extractAttrRaw.trim()
+        : undefined;
+
     mappings[key] = {
       selector: entry.selector as string,
       sample: (entry.sample as string) ?? "",
       sourceMethod: (entry.sourceMethod as string) ?? "UNKNOWN",
       methodsDetected: (entry.methodsDetected as number) ?? 1,
       capturedOnUrl: typeof entry.capturedOnUrl === "string" ? entry.capturedOnUrl : undefined,
+      extractAttr,
     };
   }
 
@@ -286,8 +340,10 @@ async function extractWithAutoItemDetection(
   revealSelector: string | null = null,
 ): Promise<Record<string, string>[]> {
   const selectorMap: Record<string, string> = {};
+  const attrMap: Record<string, string> = {};
   for (const [name, m] of Object.entries(fieldMappings)) {
     selectorMap[name] = m.selector;
+    if (m.extractAttr) attrMap[name] = m.extractAttr;
   }
 
   for (const [name, sel] of Object.entries(selectorMap)) {
@@ -315,7 +371,18 @@ async function extractWithAutoItemDetection(
   // Phase 2: Discover repeating item structure and build child-index paths
   // from the first (now expanded) item to each field element.
   const discovery = await page.evaluate(
-    (selectors: Record<string, string>) => {
+    (payload: {
+      selectors: Record<string, string>;
+      attrs: Record<string, string>;
+      extractSrc: string;
+    }) => {
+      const domFieldExtract = (0, eval)("(" + payload.extractSrc + ")") as (
+        el: Element,
+        fieldName: string,
+        attrName?: string,
+      ) => string;
+      const selectors = payload.selectors;
+      const attrs = payload.attrs;
       const fieldEls: Record<string, Element> = {};
       for (const [name, sel] of Object.entries(selectors)) {
         try {
@@ -403,8 +470,7 @@ async function extractWithAutoItemDetection(
             offset++;
           }
           if (!found) {
-            outsideValues[name] =
-              ((el as HTMLElement).innerText || "").trim();
+            outsideValues[name] = domFieldExtract(el, name, attrs[name]);
           }
         }
       }
@@ -436,7 +502,11 @@ async function extractWithAutoItemDetection(
         siblingPaths,
       };
     },
-    selectorMap,
+    {
+      selectors: selectorMap,
+      attrs: attrMap,
+      extractSrc: DOM_FIELD_EXTRACT_SOURCE,
+    },
   );
 
   if (!discovery || discovery.itemCount === 0) return [];
@@ -458,7 +528,16 @@ async function extractWithAutoItemDetection(
         { siblingOffset: number; path: number[] }
       >;
       revSel: string | null;
+      extractSrc: string;
+      attrs: Record<string, string>;
     }) => {
+      const domFieldExtract = (0, eval)("(" + args.extractSrc + ")") as (
+        el: Element,
+        fieldName: string,
+        attrName?: string,
+      ) => string;
+      const attrs = args.attrs;
+
       const followPath = (
         root: Element,
         path: number[],
@@ -493,30 +572,6 @@ async function extractWithAutoItemDetection(
           }
         }
         return null;
-      }
-
-      function cleanTextContent(el: Element): string {
-        const tag = el.tagName.toLowerCase();
-        if (
-          [
-            "style",
-            "script",
-            "noscript",
-            "link",
-            "template",
-            "head",
-            "meta",
-            "title",
-            "base",
-          ].includes(tag)
-        ) {
-          return "";
-        }
-        const clone = el.cloneNode(true) as Element;
-        clone
-          .querySelectorAll("style, script, noscript, link, template, svg, iframe")
-          .forEach((n) => n.remove());
-        return (clone.textContent || "").replace(/\s+/g, " ").trim();
       }
 
       const parent = document.querySelector(args.parentCSS);
@@ -554,9 +609,11 @@ async function extractWithAutoItemDetection(
         for (const [name, path] of Object.entries(args.insidePaths)) {
           const el = followPath(item, path);
           if (el) {
-            rec[name] = cleanTextContent(el);
+            rec[name] = domFieldExtract(el, name, attrs[name]);
             const anchor =
-              el.tagName === "A" ? el : el.closest("a");
+              el.tagName === "A"
+                ? el
+                : el.closest("a") ?? el.querySelector("a");
             if (anchor) {
               const href = anchor.getAttribute("href");
               if (href && !href.startsWith("#") && !href.startsWith("javascript:"))
@@ -576,9 +633,11 @@ async function extractWithAutoItemDetection(
           if (sib) {
             const el = followPath(sib, info.path);
             if (el) {
-              rec[name] = cleanTextContent(el);
+              rec[name] = domFieldExtract(el, name, attrs[name]);
               const anchor =
-                el.tagName === "A" ? el : el.closest("a");
+                el.tagName === "A"
+                  ? el
+                  : el.closest("a") ?? el.querySelector("a");
               if (anchor) {
                 const href = anchor.getAttribute("href");
                 if (href && !href.startsWith("#") && !href.startsWith("javascript:"))
@@ -612,6 +671,8 @@ async function extractWithAutoItemDetection(
       outsideValues: discovery.outsideValues,
       siblingPaths: discovery.siblingPaths,
       revSel: revealSelector,
+      extractSrc: DOM_FIELD_EXTRACT_SOURCE,
+      attrs: attrMap,
     },
   );
 
@@ -739,13 +800,18 @@ async function extractWithExplicitItemSelector(
   listingSelector: string | null,
   itemSelector: string,
   revealSelector: string | null,
-): Promise<Record<string, string>[]> {
+): Promise<{
+  records: Record<string, string>[];
+  matchedItemCount: number;
+}> {
   const containerSel = listingSelector ?? "body";
   const fullSelector = `${containerSel} ${itemSelector}`;
 
   const selectorMap: Record<string, string> = {};
+  const attrMap: Record<string, string> = {};
   for (const [name, m] of Object.entries(fieldMappings)) {
     selectorMap[name] = m.selector;
+    if (m.extractAttr) attrMap[name] = m.extractAttr;
   }
 
   // Determine which selector variant matches items on the page
@@ -770,7 +836,7 @@ async function extractWithExplicitItemSelector(
   );
   if (itemCount === 0) {
     await logSelectorDiagnostics(page, listingSelector, itemSelector);
-    return [];
+    return { records: [], matchedItemCount: 0 };
   }
 
   // ---------------------------------------------------------------------------
@@ -782,8 +848,17 @@ async function extractWithExplicitItemSelector(
     async (args: {
       selector: string;
       fields: Record<string, string>;
+      attrs: Record<string, string>;
       revealSelector: string | null;
+      extractSrc: string;
     }) => {
+      const domFieldExtract = (0, eval)("(" + args.extractSrc + ")") as (
+        el: Element,
+        fieldName: string,
+        attrName?: string,
+      ) => string;
+      const attrs = args.attrs;
+
       const items = document.querySelectorAll(args.selector);
       const records: Record<string, string>[] = [];
 
@@ -838,30 +913,6 @@ async function extractWithExplicitItemSelector(
         return null;
       }
 
-      function cleanTextContent(el: Element): string {
-        const tag = el.tagName.toLowerCase();
-        if (
-          [
-            "style",
-            "script",
-            "noscript",
-            "link",
-            "template",
-            "head",
-            "meta",
-            "title",
-            "base",
-          ].includes(tag)
-        ) {
-          return "";
-        }
-        const clone = el.cloneNode(true) as Element;
-        clone
-          .querySelectorAll("style, script, noscript, link, template, svg, iframe")
-          .forEach((n) => n.remove());
-        return (clone.textContent || "").replace(/\s+/g, " ").trim();
-      }
-
       function extractFieldsFromItem(
         item: Element,
         fields: Record<string, string>,
@@ -900,7 +951,7 @@ async function extractWithExplicitItemSelector(
           }
 
           if (fieldEl) {
-            rec[fieldName] = cleanTextContent(fieldEl);
+            rec[fieldName] = domFieldExtract(fieldEl, fieldName, attrs[fieldName]);
             const anchor =
               fieldEl.tagName === "A"
                 ? fieldEl
@@ -992,14 +1043,16 @@ async function extractWithExplicitItemSelector(
     {
       selector: effectiveSelector,
       fields: selectorMap,
+      attrs: attrMap,
       revealSelector,
+      extractSrc: DOM_FIELD_EXTRACT_SOURCE,
     },
   );
 
   console.info(
-    `[scrape] Explicit extraction completed: ${results.length} records`,
+    `[scrape] Explicit extraction completed: ${results.length} records (${itemCount} DOM item(s))`,
   );
-  return results;
+  return { records: results, matchedItemCount: itemCount };
 }
 
 // ---------------------------------------------------------------------------
@@ -1012,18 +1065,90 @@ async function extractRawFieldsFromListingPage(
   listingSelector: string | null,
   itemSelector: string | null,
   revealSelector: string | null = null,
+  pagination: PaginationConfig | null = null,
+): Promise<Record<string, string>[]> {
+  // If pagination is configured, repeat extraction per page and merge.
+  // We dedupe across pages so the same item from page 1 doesn't double up if
+  // the SPA leaves it in the DOM. Uses the same key tuple as
+  // dedupeAndCapRawFields (title + location + externalJobId + url).
+  if (pagination) {
+    const all: Record<string, string>[] = [];
+    for (let pageIdx = 1; pageIdx <= pagination.maxPages; pageIdx++) {
+      const sig = await firstItemSignature(page, itemSelector);
+      const pageResults = await extractRawFieldsFromListingPageOnce(
+        page,
+        fieldMappings,
+        listingSelector,
+        itemSelector,
+        revealSelector,
+      );
+      console.info(
+        `[scrape] pagination page ${pageIdx}: extracted ${pageResults.length} items`,
+      );
+      all.push(...pageResults);
+      if (pageIdx === pagination.maxPages) break;
+      const advanced = await advanceToNextPage(page, itemSelector, pagination, sig);
+      if (!advanced) break;
+      // Some sites trigger their own scroll-to-load after the page change.
+      await autoScrollUntilStable(page, itemSelector);
+    }
+    return dedupeAndCapRawFields(all);
+  }
+
+  return extractRawFieldsFromListingPageOnce(
+    page,
+    fieldMappings,
+    listingSelector,
+    itemSelector,
+    revealSelector,
+  );
+}
+
+async function extractRawFieldsFromListingPageOnce(
+  page: Page,
+  fieldMappings: Record<string, FieldMappingEntry>,
+  listingSelector: string | null,
+  itemSelector: string | null,
+  revealSelector: string | null = null,
 ): Promise<Record<string, string>[]> {
   // Preferred path: explicit itemSelector from extension container setup.
   // Field selectors are relative to each item element.
   if (itemSelector) {
-    const rawFieldsList = await extractWithExplicitItemSelector(
-      page, fieldMappings, listingSelector, itemSelector, revealSelector,
-    );
-    if (rawFieldsList.length > 0) {
-      console.info(
-        `[scrape] Explicit item-scoped extraction: ${rawFieldsList.length} records`,
+    const { records: rawFieldsList, matchedItemCount } =
+      await extractWithExplicitItemSelector(
+        page,
+        fieldMappings,
+        listingSelector,
+        itemSelector,
+        revealSelector,
       );
-      return dedupeAndCapRawFields(rawFieldsList);
+    if (rawFieldsList.length > 0) {
+      const explicitDeduped = dedupeAndCapRawFields(rawFieldsList);
+      // If itemSelector hits one wrapper that contains many rows (e.g.
+      // `.cvs_wrapper` around multiple `.cv_item`), querySelector inside the
+      // wrapper only ever returns the first card — one row. Auto-detect finds
+      // repeating row containers from global field selectors and fixes this.
+      const likelyWrongItemScope =
+        (matchedItemCount === 1 && rawFieldsList.length > 0) ||
+        rawFieldsList.length < matchedItemCount;
+      if (likelyWrongItemScope) {
+        const autoList = await extractWithAutoItemDetection(
+          page,
+          fieldMappings,
+          revealSelector,
+        );
+        const autoDeduped = dedupeAndCapRawFields(autoList);
+        if (autoDeduped.length > explicitDeduped.length) {
+          console.info(
+            `[scrape] Preferring auto-detect (${autoDeduped.length} vs ${explicitDeduped.length} explicit rows); itemSelector matched ${matchedItemCount} DOM node(s)`,
+          );
+          return autoDeduped;
+        }
+      }
+      console.info(
+        `[scrape] Explicit item-scoped extraction: ${explicitDeduped.length} records`,
+      );
+      return explicitDeduped;
     }
     console.warn("[scrape] Explicit itemSelector matched 0 items, falling through to auto-detect");
   }
@@ -1102,6 +1227,7 @@ async function extractRawFieldsWithPageFlow(
   itemSelector: string | null,
   revealSelector: string | null = null,
   formCaptureConfig: FormCaptureConfig | null = null,
+  pagination: PaginationConfig | null = null,
 ): Promise<Record<string, string>[]> {
   const rawFieldsList: Record<string, string>[] = [];
 
@@ -1173,9 +1299,13 @@ async function extractRawFieldsWithPageFlow(
           fieldEl = await itemHandle.$(mapping.selector);
         }
         if (fieldEl) {
-          const text = await fieldEl.innerText();
+          const text = await extractMappedFieldFromElement(
+            fieldEl,
+            fieldName,
+            mapping.extractAttr,
+          );
           out[fieldName] = text ?? "";
-          const href = await fieldEl.getAttribute("href");
+          const href = await readHrefFromFieldElement(fieldEl);
           if (href) out[`${fieldName}_href`] = href;
         } else {
           out[fieldName] = "";
@@ -1186,6 +1316,16 @@ async function extractRawFieldsWithPageFlow(
     }
     return out;
   }
+
+  // The URL-collection block below runs per listing page. With pagination,
+  // we run it for each clicked page, accumulating into the same detailUrls /
+  // listingFieldsByUrl. With no pagination, this loop runs once.
+  const maxListingPages = pagination ? pagination.maxPages : 1;
+  for (let listingPageIdx = 1; listingPageIdx <= maxListingPages; listingPageIdx++) {
+    const sigBefore = pagination
+      ? await firstItemSignature(page, itemSelector)
+      : "";
+    const urlsBefore = detailUrls.length;
 
   if (linkSel) {
     // The Navigate Mode records the full selector of the ONE item the user
@@ -1319,6 +1459,19 @@ async function extractRawFieldsWithPageFlow(
     }
   }
 
+    // ---- Pagination: advance to next listing page or stop. ----
+    if (!pagination) break;
+    const gainedUrls = detailUrls.length - urlsBefore;
+    console.info(
+      `[scrape] listing page ${listingPageIdx}: collected ${gainedUrls} detail URLs (running total ${detailUrls.length})`,
+    );
+    if (listingPageIdx === maxListingPages) break;
+    const advanced = await advanceToNextPage(page, itemSelector, pagination, sigBefore);
+    if (!advanced) break;
+    // Some sites lazy-load rows after the pagination click (in-page scroll).
+    await autoScrollUntilStable(page, itemSelector);
+  }
+
   // Deduplicate URLs while preserving order
   const uniqueUrls = [...new Set(detailUrls)];
   console.info(`[scrape] Found ${uniqueUrls.length} unique detail page URLs (${detailUrls.length} total)`);
@@ -1376,16 +1529,19 @@ async function extractRawFieldsWithPageFlow(
         try {
           const fieldEl = await page.$(mapping.selector);
           if (fieldEl) {
-            const text = await fieldEl.innerText();
-            // Only overwrite the listing-side seed when the detail page
-            // produced non-empty content (avoid clobbering valid listing
-            // data with an empty detail-page match).
-            if ((text ?? "").trim().length > 0 || !rawFields[fieldName]) {
-              rawFields[fieldName] = text ?? "";
+            const extracted = await extractMappedFieldFromElement(
+              fieldEl,
+              fieldName,
+              mapping.extractAttr,
+            );
+            const trimmed = (extracted ?? "").trim();
+            // Overwrite listing seed when detail produced any stored value
+            // (including identifiers from hidden inputs / data-*).
+            if (trimmed.length > 0 || !rawFields[fieldName]) {
+              rawFields[fieldName] = extracted ?? "";
             }
 
-            // For links, also extract href
-            const href = await fieldEl.getAttribute("href");
+            const href = await readHrefFromFieldElement(fieldEl);
             if (href) {
               rawFields[`${fieldName}_href`] = href;
             }
@@ -1396,7 +1552,7 @@ async function extractRawFieldsWithPageFlow(
                 selector: mapping.selector,
                 matched: true,
                 rootTag,
-                rawTextLength: (text ?? "").length,
+                rawTextLength: (extracted ?? "").length,
               };
             }
           } else {
@@ -1532,6 +1688,129 @@ function getStructuralSelectors(
   if (revealSelector) console.info(`[scrape] revealSelector: ${revealSelector}`);
 
   return { listingSelector, itemSelector, revealSelector };
+}
+
+// ---------------------------------------------------------------------------
+// Pagination config (currently click-based only): worker clicks the "next"
+// button until it disappears, becomes disabled, the first item stops
+// changing, or maxPages is hit. SPA-friendly because we don't trust URL.
+// ---------------------------------------------------------------------------
+
+interface PaginationConfig {
+  type: "click";
+  nextSelector: string;
+  maxPages: number;
+  settleMs: number;
+}
+
+function getPaginationConfig(
+  fieldMappingsRaw: unknown,
+): PaginationConfig | null {
+  if (!fieldMappingsRaw || typeof fieldMappingsRaw !== "object") return null;
+  const raw = fieldMappingsRaw as Record<string, unknown>;
+  const meta = raw["_meta"] as Record<string, unknown> | undefined;
+  if (!meta) return null;
+
+  const p = meta["pagination"] as Record<string, unknown> | null | undefined;
+  if (!p || typeof p !== "object") return null;
+  if (p["type"] !== "click") return null;
+  if (typeof p["nextSelector"] !== "string" || !p["nextSelector"]) return null;
+
+  const maxPages = typeof p["maxPages"] === "number" && p["maxPages"]! > 0
+    ? Math.min(p["maxPages"] as number, 100)
+    : 20;
+  const settleMs = typeof p["settleMs"] === "number" && p["settleMs"]! > 0
+    ? Math.min(p["settleMs"] as number, 10_000)
+    : 1200;
+
+  console.info(
+    `[scrape] pagination: type=click nextSelector="${p["nextSelector"]}" maxPages=${maxPages} settleMs=${settleMs}`,
+  );
+  return {
+    type: "click",
+    nextSelector: p["nextSelector"] as string,
+    maxPages,
+    settleMs,
+  };
+}
+
+/**
+ * Advance to the next listing page by clicking the configured selector.
+ * Returns true if the click happened and content changed; false if there's
+ * no next page (button missing, disabled, or list content didn't update).
+ *
+ * "Content changed" = the first item's outerHTML signature changes within
+ * `settleMs * 4` ms. Avoids matching the same page twice on SPAs that don't
+ * touch the URL.
+ */
+async function advanceToNextPage(
+  page: Page,
+  itemSelector: string | null,
+  cfg: PaginationConfig,
+  signatureBefore: string,
+): Promise<boolean> {
+  const btn = await page.$(cfg.nextSelector).catch(() => null);
+  if (!btn) {
+    console.info("[scrape] pagination: next button not found — stopping");
+    return false;
+  }
+  const isDisabled = await btn
+    .evaluate((el) => {
+      const e = el as HTMLElement;
+      return (
+        (e as HTMLButtonElement).disabled ||
+        e.getAttribute("aria-disabled") === "true" ||
+        e.classList.contains("Mui-disabled") ||
+        e.classList.contains("disabled")
+      );
+    })
+    .catch(() => false);
+  if (isDisabled) {
+    console.info("[scrape] pagination: next button is disabled — stopping");
+    return false;
+  }
+
+  try {
+    await btn.click({ timeout: 4_000 });
+  } catch (e) {
+    console.warn(`[scrape] pagination: click failed — ${(e as Error).message}`);
+    return false;
+  }
+
+  if (itemSelector) {
+    try {
+      await page.waitForFunction(
+        ({ sel, prev }) => {
+          const first = document.querySelector(sel);
+          if (!first) return false;
+          return first.outerHTML.slice(0, 4000) !== prev;
+        },
+        { sel: itemSelector, prev: signatureBefore },
+        { timeout: cfg.settleMs * 4 },
+      );
+    } catch {
+      console.info("[scrape] pagination: content did not change after click — stopping");
+      return false;
+    }
+  } else {
+    await page.waitForTimeout(cfg.settleMs);
+  }
+  // small extra settle for downstream queries
+  await page.waitForTimeout(300);
+  return true;
+}
+
+async function firstItemSignature(
+  page: Page,
+  itemSelector: string | null,
+): Promise<string> {
+  if (!itemSelector) return "";
+  return page
+    .evaluate(
+      (sel) => document.querySelector(sel)?.outerHTML.slice(0, 4000) ?? "",
+      itemSelector,
+    )
+    .catch(() => "");
 }
 
 // ---------------------------------------------------------------------------
@@ -1676,6 +1955,7 @@ export async function handleScrapeJob(
     site.fieldMappings,
   );
   const formCaptureConfig = getFormCaptureConfig(site.fieldMappings);
+  const pagination = getPaginationConfig(site.fieldMappings);
 
   if (Object.keys(fieldMappings).length === 0) {
     const result = await failScrapeRun(scrapeRunId, site.id, {
@@ -1703,6 +1983,7 @@ export async function handleScrapeJob(
         (b: Browser) => {
           browser = b;
         },
+        pagination,
       ),
       timeout.promise,
     ]);
@@ -1804,6 +2085,7 @@ async function executeScrape(
   context: ScrapeContext,
   maxJobs: number | null,
   setBrowser: (b: Browser) => void,
+  pagination: PaginationConfig | null = null,
 ): Promise<ScrapeResult> {
   // Launch browser
   const browser = await launchBrowser();
@@ -1832,6 +2114,7 @@ async function executeScrape(
       itemSelector,
       revealSelector,
       formCaptureConfig,
+      pagination,
     );
     context.pageLoaded = true;
     context.selectorsMatched = rawFieldsList.length > 0;
@@ -1965,6 +2248,7 @@ async function executeScrape(
       listingSelector,
       itemSelector,
       revealSelector,
+      pagination,
     );
 
     // If nothing matched, give the page a chance: scroll to bottom to trigger
@@ -1987,7 +2271,7 @@ async function executeScrape(
       }
 
       rawFieldsList = await extractRawFieldsFromListingPage(
-        page, fieldMappings, listingSelector, itemSelector, revealSelector,
+        page, fieldMappings, listingSelector, itemSelector, revealSelector, pagination,
       );
     }
 
