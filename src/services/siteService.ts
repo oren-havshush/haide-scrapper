@@ -213,6 +213,8 @@ export async function saveSiteConfig(
     pageFlow: Array<{ url: string; action: string; waitFor?: string }>;
     formCapture: { formSelector: string; actionUrl: string; method: string; fields: Array<{ name: string; label: string; fieldType: string; required: boolean; tagName: string }> } | null;
     originalMappings?: Record<string, unknown>;
+    pagination?: { type: "click"; nextSelector: string; maxPages?: number; settleMs?: number };
+    setupScript?: string;
   }
 ) {
   const site = await prisma.site.findUnique({ where: { id: siteId } });
@@ -228,6 +230,8 @@ export async function saveSiteConfig(
       revealSelector: config.revealSelector || null,
       originalMappings: config.originalMappings || null,
       formCapture: config.formCapture,
+      pagination: config.pagination || null,
+      setupScript: config.setupScript || null,
       savedAt: new Date().toISOString(),
     },
   };
