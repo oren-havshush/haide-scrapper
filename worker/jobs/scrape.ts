@@ -1814,6 +1814,35 @@ async function firstItemSignature(
 }
 
 // ---------------------------------------------------------------------------
+// Helper: get setup script from fieldMappings JSON. Runs once in the page
+// context after page load and before extraction. Use when an SPA hides
+// content behind app state (e.g. Angular scope) and needs a poke to render.
+// ---------------------------------------------------------------------------
+
+function getSetupScript(fieldMappingsRaw: unknown): string | null {
+  if (!fieldMappingsRaw || typeof fieldMappingsRaw !== "object") return null;
+  const raw = fieldMappingsRaw as Record<string, unknown>;
+  const meta = raw["_meta"] as Record<string, unknown> | undefined;
+  if (!meta) return null;
+  const s = meta["setupScript"];
+  if (typeof s !== "string" || !s.trim()) return null;
+  return s;
+}
+
+async function runSetupScript(page: Page, script: string): Promise<void> {
+  try {
+    await page.evaluate((src: string) => {
+      // eslint-disable-next-line @typescript-eslint/no-implied-eval
+      new Function(src)();
+    }, script);
+    await page.waitForTimeout(1_500);
+    console.info(`[scrape] setupScript executed (${script.length} chars)`);
+  } catch (e) {
+    console.warn(`[scrape] setupScript error — ${(e as Error).message}`);
+  }
+}
+
+// ---------------------------------------------------------------------------
 // Helper: get form capture config from fieldMappings JSON
 // ---------------------------------------------------------------------------
 
@@ -1956,6 +1985,7 @@ export async function handleScrapeJob(
   );
   const formCaptureConfig = getFormCaptureConfig(site.fieldMappings);
   const pagination = getPaginationConfig(site.fieldMappings);
+  const setupScript = getSetupScript(site.fieldMappings);
 
   if (Object.keys(fieldMappings).length === 0) {
     const result = await failScrapeRun(scrapeRunId, site.id, {
@@ -1984,6 +2014,7 @@ export async function handleScrapeJob(
           browser = b;
         },
         pagination,
+        setupScript,
       ),
       timeout.promise,
     ]);
@@ -2086,6 +2117,7 @@ async function executeScrape(
   maxJobs: number | null,
   setBrowser: (b: Browser) => void,
   pagination: PaginationConfig | null = null,
+  setupScript: string | null = null,
 ): Promise<ScrapeResult> {
   // Launch browser
   const browser = await launchBrowser();
@@ -2187,6 +2219,13 @@ async function executeScrape(
       );
     } catch {
       console.warn("[scrape] Body never populated within 25s (likely WAF challenge stuck)");
+    }
+
+    // Optional setupScript: SPA hook for sites that hide most content behind
+    // app state (Angular scope, React store). Runs once after page load and
+    // before any extraction step.
+    if (setupScript) {
+      await runSetupScript(page, setupScript);
     }
 
     await autoScrollUntilStable(page, itemSelector);
