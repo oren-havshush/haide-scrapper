@@ -81,6 +81,160 @@ export function looksLikeCss(text: string): boolean {
 }
 
 // ---------------------------------------------------------------------------
+// Description-text fallback extraction
+// ---------------------------------------------------------------------------
+// Many sites embed location / department / job ID / publish date / requirements
+// inside the description prose instead of exposing them as separate selectors.
+// When the dedicated field selector is missing or empty, we scan the
+// description (and requirements) text for label-value patterns and use what
+// we find. Conservative by design: every extraction requires an explicit
+// label (e.g. "Location:", "מיקום:", "Job ID:") to avoid false positives.
+// ---------------------------------------------------------------------------
+
+/** Fields populated by description-text fallback. */
+export interface ExtractedFromText {
+  location: string | null;
+  department: string | null;
+  externalJobId: string | null;
+  publishDate: string | null;
+  requirements: string | null;
+  applicationInfo: string | null;
+  jobType: string | null;
+}
+
+// Known job-listing section labels. A value extracted after one label is
+// considered to end when one of these labels (followed by ":" / "-" / "–")
+// appears next. This is intentionally a closed set — using "any Hebrew word
+// followed by colon" as the terminator was too eager and would cut multi-word
+// values like "באר שבע" off at the first whitespace if the next word
+// happened to be followed by a colon.
+const KNOWN_NEXT_LABELS = String.raw`(?:` +
+  // Hebrew
+  String.raw`מיקום(?:\s+המשרה)?|אזור\s+(?:גיאוגרפי|גאוגרפי)|אזור|` +
+  String.raw`שם\s+המחלקה|מחלקה|אגף|צוות|` +
+  String.raw`מספר\s+(?:משרה|דרושים)|קוד\s+משרה|` +
+  String.raw`פורסם(?:\s+בתאריך)?|תאריך\s+פרסום|` +
+  String.raw`סוג\s+(?:ה)?משרה|היקף\s+(?:ה)?משרה|` +
+  String.raw`תיאור(?:\s+המשרה)?|פרטי\s+המשרה|אחריות|יתרון|` +
+  String.raw`דרישות(?:\s+(?:המשרה|תפקיד))?|אודות|` +
+  // English
+  String.raw`Location|Based\s+in|City|` +
+  String.raw`Department|Team|Division|` +
+  String.raw`Job\s+(?:ID|Number|Type)|Employment\s+Type|Position\s+Type|` +
+  String.raw`Requisition(?:\s+ID)?|Position\s+ID|Vacancy\s+(?:ID|Number)|` +
+  String.raw`Posted(?:\s+on)?|Published(?:\s+on)?|Date\s+Posted|Publish\s+Date|` +
+  String.raw`Description|About\s+(?:us|the\s+role)|Responsibilities|Benefits|` +
+  String.raw`Qualifications|Requirements|Nice\s+to\s+have|Bonus` +
+  String.raw`)`;
+
+// Where to stop the captured value: a known-label terminator, a hard
+// separator (| ) (newline), a sentence break, or end of string.
+const VALUE_TERMINATOR =
+  String.raw`(?=\s+` + KNOWN_NEXT_LABELS + String.raw`\s*[:\-–]|\s*[|\n)]|\.\s|$)`;
+
+function matchLabeled(text: string, labelAlt: string): string | null {
+  const re = new RegExp(
+    String.raw`(?:^|[\s|.(])` +
+      String.raw`(?:` + labelAlt + String.raw`)` +
+      String.raw`\s*[:\-–]\s*` +
+      String.raw`(.+?)` +
+      VALUE_TERMINATOR,
+    "iu",
+  );
+  const m = re.exec(text);
+  if (!m) return null;
+  const v = m[1].trim().replace(/[\s,;|]+$/g, "");
+  return v.length > 0 && v.length <= 200 ? v : null;
+}
+
+// Per-field label alternations. Order matters: more specific labels first so
+// "מיקום המשרה" wins over "מיקום" (which would match a prefix and stop short).
+const LABELS = {
+  location: String.raw`מיקום\s+המשרה|אזור\s+(?:גיאוגרפי|גאוגרפי)|מיקום|אזור|Location|Based\s+in|City`,
+  department: String.raw`שם\s+המחלקה|מחלקה|אגף|צוות|Department|Team|Division`,
+  externalJobId: String.raw`מספר\s+משרה|מספר\s+דרושים|קוד\s+משרה|Job\s+ID|Job\s+Number|Requisition(?:\s+ID)?|Req(?:\s*ID)?|Position\s+ID|Vacancy\s+(?:ID|Number)`,
+  jobType: String.raw`סוג\s+(?:ה)?משרה|היקף\s+(?:ה)?משרה|Job\s+Type|Employment\s+Type|Position\s+Type`,
+};
+
+// Date labels frequently appear without a "Label: value" separator
+// (e.g. "פורסם בתאריך 15/01/2026", "Posted on Jan 15, 2026"). We accept any
+// of dd/mm/yyyy, yyyy-mm-dd, or Month name + day + year as the value.
+const DATE_LABEL =
+  String.raw`(?:פורסם(?:\s+בתאריך)?|תאריך\s+פרסום|Posted(?:\s+on)?|Published(?:\s+on)?|Date\s+Posted|Publish\s+Date)`;
+const DATE_VALUE =
+  String.raw`(?:\d{1,2}[\/.\-]\d{1,2}[\/.\-]\d{2,4}|\d{4}-\d{2}-\d{2}|` +
+  String.raw`(?:Jan(?:uary)?|Feb(?:ruary)?|Mar(?:ch)?|Apr(?:il)?|May|Jun(?:e)?|Jul(?:y)?|Aug(?:ust)?|Sep(?:tember)?|Oct(?:ober)?|Nov(?:ember)?|Dec(?:ember)?)` +
+  String.raw`\s+\d{1,2},?\s+\d{4})`;
+
+function extractPublishDate(text: string): string | null {
+  const re = new RegExp(
+    String.raw`(?:^|[\s|.(])` + DATE_LABEL + String.raw`\s*[:\-–]?\s*(` + DATE_VALUE + String.raw`)`,
+    "iu",
+  );
+  const m = re.exec(text);
+  return m ? m[1].trim() : null;
+}
+
+// Standalone patterns that don't require a label.
+function extractExternalJobIdFallback(text: string): string | null {
+  // (#ID), [ID], or REQ-1234 / JR-1234 / R-12345 standalone, anywhere.
+  const m =
+    /(?:[(\[#]|\bID\s+)\s*((?:REQ|JR|R|JOB|POS)[-_]?\d{2,8})\b/i.exec(text) ||
+    /\b((?:REQ|JR|JOB)[-_]\d{2,8})\b/i.exec(text);
+  return m ? m[1].toUpperCase().replace(/_/g, "-") : null;
+}
+
+function extractApplicationInfoFallback(text: string): string | null {
+  // Prefer email; fall back to IL phone (03-..., 050-..., 02-...).
+  const email = /([A-Z0-9._%+\-]+@[A-Z0-9.\-]+\.[A-Z]{2,})/i.exec(text);
+  if (email) return email[1];
+  const phone = /(\b0\d{1,2}[\s\-]?\d{3}[\s\-]?\d{4}\b)/.exec(text);
+  return phone ? phone[1] : null;
+}
+
+function extractRequirementsBlock(text: string): string | null {
+  // Capture from "Requirements:" / "דרישות:" to the next labeled section,
+  // a sentence ending the block, or end of string.
+  const re =
+    /(?:^|[\s|.])(?:דרישות(?:\s+המשרה)?|דרישות\s+תפקיד|Requirements|Qualifications|What\s+we'?re\s+looking\s+for|What\s+you'?ll\s+bring)\s*[:\-–]\s*(.+?)(?=\s+(?:יתרון|תיאור\s+המשרה|אודות|אחריות|Responsibilities|About\s+(?:us|the\s+role)|Benefits|Nice\s+to\s+have|Bonus)\s*[:\-–]|\.\s+[A-Z\u0590-\u05FF]|\.$|$)/iu;
+  const m = re.exec(text);
+  if (!m) return null;
+  const v = m[1].trim().replace(/[\s,;|.]+$/g, "");
+  return v.length >= 10 && v.length <= 4000 ? v : null;
+}
+
+/**
+ * Scan a chunk of text (typically description, optionally + requirements)
+ * for label-value pairs and return any standard fields it can recover.
+ * Returns null per field when no confident match was found.
+ */
+export function extractFieldsFromText(text: string): ExtractedFromText {
+  const t = (text ?? "").trim();
+  if (!t) {
+    return {
+      location: null,
+      department: null,
+      externalJobId: null,
+      publishDate: null,
+      requirements: null,
+      applicationInfo: null,
+      jobType: null,
+    };
+  }
+
+  return {
+    location: matchLabeled(t, LABELS.location),
+    department: matchLabeled(t, LABELS.department),
+    externalJobId:
+      matchLabeled(t, LABELS.externalJobId) ?? extractExternalJobIdFallback(t),
+    publishDate: extractPublishDate(t),
+    requirements: extractRequirementsBlock(t),
+    applicationInfo: extractApplicationInfoFallback(t),
+    jobType: matchLabeled(t, LABELS.jobType),
+  };
+}
+
+// ---------------------------------------------------------------------------
 // Main normalization function
 // ---------------------------------------------------------------------------
 
@@ -113,10 +267,10 @@ export function normalizeJobRecord(
     rawOut["_cssRejected_requirements"] = "true";
     requirements = "";
   }
-  const location = normalizeField(rawFields["location"]);
-  const department = normalizeField(rawFields["department"]);
-  const externalJobId = normalizeField(rawFields["externalJobId"]);
-  const publishDate = normalizeField(rawFields["publishDate"]);
+  let location = normalizeField(rawFields["location"]);
+  let department = normalizeField(rawFields["department"]);
+  let externalJobId = normalizeField(rawFields["externalJobId"]);
+  let publishDate = normalizeField(rawFields["publishDate"]);
   // applicationInfo is populated either by:
   //   - an explicit "applicationInfo" field mapping (rare), or
   //   - the worker's form-capture pipeline, which writes a JSON blob to
@@ -124,7 +278,7 @@ export function normalizeJobRecord(
   // Prefer the explicit mapping; fall back to the form-capture blob, which
   // is already JSON and shouldn't be re-normalized to plain text.
   const explicitAppInfo = normalizeField(rawFields["applicationInfo"]);
-  const applicationInfo =
+  let applicationInfo =
     explicitAppInfo || (rawFields["_formData"] ?? "");
 
   // Extract URL: prefer title_href, fall back to _detailUrl, then ""
@@ -135,9 +289,46 @@ export function normalizeJobRecord(
   for (const [key, value] of Object.entries(rawFields)) {
     if (STANDARD_FIELDS.has(key)) continue;
     if (key.startsWith("_")) continue;
-    // Skip href variants of standard fields
     if (key.endsWith("_href") && STANDARD_FIELDS.has(key.replace(/_href$/, ""))) continue;
     additionalFields[key] = normalizeField(value);
+  }
+
+  // Description-text fallback: for every standard field still empty, try to
+  // recover it from the description (and requirements) prose. See
+  // extractFieldsFromText above for the label/regex strategy. We never
+  // overwrite a value that the dedicated selector already provided.
+  const fallbackSource = [description, requirements].filter(Boolean).join("\n");
+  if (fallbackSource) {
+    const recovered = extractFieldsFromText(fallbackSource);
+    const applyFallback = (
+      name: keyof ExtractedFromText,
+      current: string,
+    ): string => {
+      const found = recovered[name];
+      if (current && current.trim().length > 0) return current;
+      if (!found) return current;
+      rawOut[`_enrichedFromDescription_${name}`] = found;
+      return found;
+    };
+    location = applyFallback("location", location);
+    department = applyFallback("department", department);
+    externalJobId = applyFallback("externalJobId", externalJobId);
+    publishDate = applyFallback("publishDate", publishDate);
+    if (!requirements && recovered.requirements) {
+      requirements = recovered.requirements;
+      rawOut["_enrichedFromDescription_requirements"] = recovered.requirements;
+    }
+    if (!applicationInfo && recovered.applicationInfo) {
+      applicationInfo = recovered.applicationInfo;
+      rawOut["_enrichedFromDescription_applicationInfo"] =
+        recovered.applicationInfo;
+    }
+    // jobType isn't a standard column — drop it into additionalFields if it
+    // wasn't already present from a site-specific selector.
+    if (recovered.jobType && !additionalFields["jobType"]) {
+      additionalFields["jobType"] = recovered.jobType;
+      rawOut["_enrichedFromDescription_jobType"] = recovered.jobType;
+    }
   }
 
   return {

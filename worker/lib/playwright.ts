@@ -67,8 +67,15 @@ function resolveBundledChromiumExecutable(): string | undefined {
   return undefined;
 }
 
-const DEFAULT_USER_AGENT =
-  "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36";
+// We deliberately do NOT ship a hardcoded UA default. Setting `userAgent`
+// to a string that doesn't match the bundled Chromium build's actual
+// version causes a Client-Hints (`sec-ch-ua-*`) mismatch which several WAFs
+// (Imperva/Incapsula on tikshoov.co.il in particular) treat as a strong
+// automation signal — 403 with an "Incapsula incident" challenge page.
+// Letting Playwright send Chromium's own UA + self-consistent client hints
+// passes most Israeli WAFs in practice. Set SCRAPE_USER_AGENT explicitly
+// only when you need to impersonate a specific browser for a particular
+// site, and make sure it matches the bundled Chromium major version.
 const DEFAULT_LOCALE = "he-IL";
 const DEFAULT_TIMEZONE = "Asia/Jerusalem";
 const DEFAULT_ACCEPT_LANGUAGE = "he-IL,he;q=0.9,en-US;q=0.8,en;q=0.7";
@@ -130,11 +137,11 @@ export async function createPage(browser: Browser): Promise<{ context: BrowserCo
   const locale = process.env.SCRAPE_LOCALE || DEFAULT_LOCALE;
   const timezoneId = process.env.SCRAPE_TIMEZONE || DEFAULT_TIMEZONE;
   const acceptLanguage = process.env.SCRAPE_ACCEPT_LANGUAGE || DEFAULT_ACCEPT_LANGUAGE;
-  const userAgent = process.env.SCRAPE_USER_AGENT || DEFAULT_USER_AGENT;
+  const userAgent = process.env.SCRAPE_USER_AGENT?.trim();
 
   const context = await browser.newContext({
     viewport: { width: 1280, height: 800 },
-    userAgent,
+    ...(userAgent ? { userAgent } : {}),
     locale,
     timezoneId,
     extraHTTPHeaders: { "Accept-Language": acceptLanguage },
