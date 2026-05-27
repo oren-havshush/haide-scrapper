@@ -1,8 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
 import { successResponse } from "@/lib/api-utils";
 import { formatErrorResponse, ValidationError } from "@/lib/errors";
-import { updateSiteStatusSchema } from "@/lib/validators";
-import { updateSiteStatus, deleteSite } from "@/services/siteService";
+import {
+  updateSiteStatusSchema,
+  updateSiteAdminNoteSchema,
+} from "@/lib/validators";
+import {
+  updateSiteStatus,
+  updateSiteAdminNote,
+  deleteSite,
+} from "@/services/siteService";
 
 export async function PATCH(
   request: NextRequest,
@@ -11,8 +18,21 @@ export async function PATCH(
   try {
     const { id } = await params;
     const body = await request.json();
-    const parsed = updateSiteStatusSchema.safeParse(body);
 
+    // Accept either { status } or { adminNote }. Inferred from which key is
+    // present so the existing status PATCH callers don't need to change.
+    if (Object.prototype.hasOwnProperty.call(body, "adminNote")) {
+      const parsed = updateSiteAdminNoteSchema.safeParse(body);
+      if (!parsed.success) {
+        throw new ValidationError(
+          parsed.error.issues.map((i: { message: string }) => i.message).join(", ")
+        );
+      }
+      const site = await updateSiteAdminNote(id, parsed.data.adminNote);
+      return successResponse(site);
+    }
+
+    const parsed = updateSiteStatusSchema.safeParse(body);
     if (!parsed.success) {
       throw new ValidationError(
         parsed.error.issues.map((i: { message: string }) => i.message).join(", ")

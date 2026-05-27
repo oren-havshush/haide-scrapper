@@ -13,7 +13,12 @@ import { ChevronUp, ChevronDown, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { SiteActions } from "@/components/sites/SiteActions";
 import { DeleteSiteDialog } from "@/components/sites/DeleteSiteDialog";
-import { useUpdateSiteStatus, useDeleteSite } from "@/hooks/useSites";
+import { SiteNoteDialog } from "@/components/sites/SiteNoteDialog";
+import {
+  useUpdateSiteStatus,
+  useDeleteSite,
+  useUpdateSiteNote,
+} from "@/hooks/useSites";
 import { useTriggerScrape, useClearJobs } from "@/hooks/useScrapeRuns";
 
 interface LatestScrapeRun {
@@ -30,6 +35,7 @@ interface Site {
   status: "ANALYZING" | "REVIEW" | "ACTIVE" | "FAILED" | "SKIPPED";
   confidenceScore: number | null;
   fieldMappings: Record<string, unknown> | null;
+  adminNote: string | null;
   createdAt: string;
   latestScrapeRun: LatestScrapeRun | null;
 }
@@ -118,11 +124,17 @@ export function SitesTable({
   onPageChange,
 }: SitesTableProps) {
   const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null);
+  const [noteTargetId, setNoteTargetId] = useState<string | null>(null);
   const [scrapingSiteId, setScrapingSiteId] = useState<string | null>(null);
   const updateStatus = useUpdateSiteStatus();
+  const updateNote = useUpdateSiteNote();
   const deleteSiteMutation = useDeleteSite();
   const triggerScrape = useTriggerScrape();
   const clearJobs = useClearJobs();
+
+  const noteTargetSite = noteTargetId
+    ? sites.find((s) => s.id === noteTargetId) ?? null
+    : null;
 
   const handleSkip = (siteId: string) => {
     updateStatus.mutate(
@@ -185,6 +197,20 @@ export function SitesTable({
     window.open(siteUrl, "_blank", "noopener,noreferrer");
   };
 
+  const handleSaveNote = (note: string | null) => {
+    if (!noteTargetId) return;
+    updateNote.mutate(
+      { siteId: noteTargetId, adminNote: note },
+      {
+        onSuccess: () => {
+          toast.success(note ? "Note saved" : "Note cleared");
+          setNoteTargetId(null);
+        },
+        onError: (err: Error) => toast.error(err.message),
+      },
+    );
+  };
+
   const handleDeleteConfirm = () => {
     if (!deleteTargetId) return;
     deleteSiteMutation.mutate(deleteTargetId, {
@@ -242,6 +268,7 @@ export function SitesTable({
             >
               Date Added <SortIndicator column="createdAt" sortBy={sortBy} sortOrder={sortOrder} />
             </TableHead>
+            <TableHead className="w-[220px]">Note</TableHead>
             <TableHead className="w-[200px]">Actions</TableHead>
           </TableRow>
         </TableHeader>
@@ -274,6 +301,17 @@ export function SitesTable({
                 </TableCell>
                 <TableCell className="text-sm" style={{ color: "#a1a1aa" }}>
                   {new Date(site.createdAt).toLocaleString([], { month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" })}
+                </TableCell>
+                <TableCell>
+                  <button
+                    type="button"
+                    onClick={() => setNoteTargetId(site.id)}
+                    className="text-xs text-left w-full truncate hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50 rounded px-1 py-0.5"
+                    style={{ color: site.adminNote ? "#e4e4e7" : "#71717a" }}
+                    title={site.adminNote ?? "Click to add a note"}
+                  >
+                    {site.adminNote ?? "+ Add note"}
+                  </button>
                 </TableCell>
                 <TableCell>
                   <SiteActions
@@ -332,6 +370,17 @@ export function SitesTable({
         }}
         onConfirm={handleDeleteConfirm}
         isDeleting={deleteSiteMutation.isPending}
+      />
+
+      <SiteNoteDialog
+        open={noteTargetId !== null}
+        onOpenChange={(open) => {
+          if (!open) setNoteTargetId(null);
+        }}
+        siteUrl={noteTargetSite?.siteUrl ?? ""}
+        initialNote={noteTargetSite?.adminNote ?? null}
+        onSave={handleSaveNote}
+        isSaving={updateNote.isPending}
       />
     </div>
   );

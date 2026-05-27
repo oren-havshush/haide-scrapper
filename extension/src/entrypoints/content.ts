@@ -379,34 +379,106 @@ export default defineContentScript({
                     },
                   } satisfies ExtensionMessage);
                 } else {
-                  // No items found — build diagnostics for why.
-                  // Active fields get a normal "matched: false". Skipped
-                  // fields keep their pending diagnostic from above.
-                  for (const [fieldName, selector] of Object.entries(activeFields)) {
-                    fieldDiagnostics[fieldName] = {
-                      selector,
-                      matched: false,
-                      extractedText: "",
-                    };
-                  }
+                  // itemSelector matched 0 elements on this page. This is the
+                  // common case when the user is on a NON-listing page in a
+                  // multi-page flow (e.g. the detail page) — itemSelector was
+                  // captured for the listing. If any fields actually belong
+                  // to *this* page, fall back to absolute extraction for them
+                  // so the test can still succeed and unlock the Approve
+                  // button. Otherwise we'd block the entire approval flow on
+                  // a selector that's irrelevant to the current page.
+                  const activeFieldNames = Object.keys(activeFields);
 
-                  chrome.runtime.sendMessage({
-                    type: "TEST_EXTRACT_RESULT",
-                    result: {
-                      success: false,
-                      fields: {},
-                      error: `No job items found. Item selector "${itemSelector}" matched 0 elements${listingSelector ? ` inside listing container "${listingSelector}"${listingFound ? " (container found)" : " (container NOT found)"}` : ""}.`,
-                      diagnostics: {
-                        listingSelector,
-                        listingFound,
-                        itemSelector,
-                        itemsFound: 0,
-                        revealDiag,
-                        fieldDiagnostics,
-                        strategy: "item-scoped",
+                  if (activeFieldNames.length > 0) {
+                    if (revealSelector) {
+                      revealDiag = {
+                        selector: revealSelector,
+                        ...(await clickRevealElements(document.body, revealSelector)),
+                      };
+                    }
+
+                    for (const [fieldName, selector] of Object.entries(activeFields)) {
+                      try {
+                        const el = document.querySelector(selector);
+                        const matched = !!el;
+                        const text = el ? (el.textContent || "").trim() : "";
+                        extracted[fieldName] = text;
+                        fieldDiagnostics[fieldName] = {
+                          selector,
+                          matched,
+                          elementTag: el ? el.tagName.toLowerCase() : undefined,
+                          extractedText: text.slice(0, 300),
+                        };
+                        if (el) {
+                          const anchor = el.tagName === "A" ? el : el.closest("a");
+                          if (anchor) {
+                            const href = anchor.getAttribute("href");
+                            if (href) extracted[`${fieldName}_href`] = href;
+                          }
+                        }
+                      } catch {
+                        extracted[fieldName] = "";
+                        fieldDiagnostics[fieldName] = {
+                          selector,
+                          matched: false,
+                          extractedText: "",
+                        };
+                      }
+                    }
+
+                    const hasAnyData = Object.values(extracted).some((v) => v.length > 0);
+                    const anyActiveMatched = activeFieldNames.some(
+                      (n) => (extracted[n] ?? "").length > 0,
+                    );
+
+                    chrome.runtime.sendMessage({
+                      type: "TEST_EXTRACT_RESULT",
+                      result: {
+                        success: hasAnyData || anyActiveMatched,
+                        fields: extracted,
+                        error: anyActiveMatched
+                          ? undefined
+                          : `Item selector "${itemSelector}" matched 0 elements on this page and no field selectors matched either.`,
+                        diagnostics: {
+                          listingSelector,
+                          listingFound,
+                          itemSelector,
+                          itemsFound: 0,
+                          revealDiag,
+                          fieldDiagnostics,
+                          strategy: "absolute",
+                        },
                       },
-                    },
-                  } satisfies ExtensionMessage);
+                    } satisfies ExtensionMessage);
+                  } else {
+                    // Truly nothing to test on this page (no active fields,
+                    // listing items not found). Keep the original failure.
+                    for (const [fieldName, selector] of Object.entries(activeFields)) {
+                      fieldDiagnostics[fieldName] = {
+                        selector,
+                        matched: false,
+                        extractedText: "",
+                      };
+                    }
+
+                    chrome.runtime.sendMessage({
+                      type: "TEST_EXTRACT_RESULT",
+                      result: {
+                        success: false,
+                        fields: {},
+                        error: `No job items found. Item selector "${itemSelector}" matched 0 elements${listingSelector ? ` inside listing container "${listingSelector}"${listingFound ? " (container found)" : " (container NOT found)"}` : ""}.`,
+                        diagnostics: {
+                          listingSelector,
+                          listingFound,
+                          itemSelector,
+                          itemsFound: 0,
+                          revealDiag,
+                          fieldDiagnostics,
+                          strategy: "item-scoped",
+                        },
+                      },
+                    } satisfies ExtensionMessage);
+                  }
                 }
               } else {
                 // --- Absolute selector strategy ---

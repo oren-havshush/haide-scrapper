@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { FieldMappingEntry, ExtensionMessage, ExtensionMode, TestExtractResult } from "../../lib/types";
 import { FIELD_TYPES, CONFIDENCE_HIGH_THRESHOLD } from "../../lib/constants";
 import { ModeTabs } from "./NavigateFlowPanel";
@@ -148,6 +148,84 @@ interface FieldRowProps {
   onEdit: (fieldName: string) => void;
   onRemove: (fieldName: string) => void;
   onStampCurrentPage: (fieldName: string) => void;
+  onSetSelector: (fieldName: string, selector: string) => void;
+  onSetExtractAttr: (fieldName: string, attr: string) => void;
+}
+
+/** Inline labeled text input used in the per-field advanced editor. */
+function AdvancedTextField({
+  label,
+  value,
+  placeholder,
+  monospace,
+  validate,
+  onCommit,
+  helpText,
+}: {
+  label: string;
+  value: string;
+  placeholder: string;
+  monospace?: boolean;
+  validate?: (raw: string) => string | null;
+  onCommit: (next: string) => void;
+  helpText?: string;
+}) {
+  const [draft, setDraft] = useState(value);
+  const [error, setError] = useState<string | null>(null);
+
+  // Resync draft when the upstream value changes (e.g. user re-picks).
+  useEffect(() => {
+    setDraft(value);
+    setError(null);
+  }, [value]);
+
+  function commit() {
+    const trimmed = draft.trim();
+    if (validate) {
+      const v = validate(trimmed);
+      if (v) {
+        setError(v);
+        return;
+      }
+    }
+    setError(null);
+    onCommit(trimmed);
+  }
+
+  return (
+    <div className="px-1 py-1">
+      <div className="flex items-center gap-1">
+        <span className="text-[10px] text-muted-foreground shrink-0 w-14">
+          {label}
+        </span>
+        <input
+          type="text"
+          value={draft}
+          placeholder={placeholder}
+          onChange={(e) => {
+            setDraft(e.target.value);
+            setError(null);
+          }}
+          onBlur={commit}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") {
+              (e.target as HTMLInputElement).blur();
+            }
+            if (e.key === "Escape") {
+              setDraft(value);
+              setError(null);
+              (e.target as HTMLInputElement).blur();
+            }
+          }}
+          className={`flex-1 min-w-0 px-1.5 py-0.5 text-[10px] bg-background border border-border rounded text-foreground focus:outline-none focus:border-blue-500 ${monospace ? "font-mono" : ""}`}
+        />
+      </div>
+      {error && <div className="text-[10px] text-warning px-1 mt-0.5">{error}</div>}
+      {helpText && !error && (
+        <div className="text-[9px] text-muted-foreground px-1 mt-0.5">{helpText}</div>
+      )}
+    </div>
+  );
 }
 
 /** Render a short, human-friendly label for a captured URL. */
@@ -162,8 +240,18 @@ function shortenUrl(url: string): string {
   }
 }
 
-function FieldRow({ field, currentUrl, onConfirm, onEdit, onRemove, onStampCurrentPage }: FieldRowProps) {
+function FieldRow({
+  field,
+  currentUrl,
+  onConfirm,
+  onEdit,
+  onRemove,
+  onStampCurrentPage,
+  onSetSelector,
+  onSetExtractAttr,
+}: FieldRowProps) {
   const [hovered, setHovered] = useState(false);
+  const [expanded, setExpanded] = useState(false);
 
   // Three states for the page chip:
   //  - missing  : capturedOnUrl is empty → highlight as "needs stamp"
@@ -186,25 +274,27 @@ function FieldRow({ field, currentUrl, onConfirm, onEdit, onRemove, onStampCurre
 
   return (
     <div
-      className={`flex items-center gap-2 px-2 py-1.5 rounded-md transition-colors ${
+      className={`rounded-md transition-colors ${
         field.status === "editing"
           ? "bg-blue-500/10 border border-blue-500/30"
-          : hovered
+          : hovered || expanded
           ? "bg-border/30"
           : ""
       }`}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
     >
+    <div className="flex items-center gap-2 px-2 py-1.5">
       <StatusDot status={field.status} confidence={field.confidence} />
 
       <span className="text-sm text-foreground flex-1 truncate min-w-0" title={field.fieldName}>
         {field.fieldName}
       </span>
 
-      {/* Per-field captured-page chip */}
+      {/* Per-field captured-page chip — must shrink so action icons stay
+          on-screen in narrow sidepanels. Full URL still in the title tooltip. */}
       <span
-        className={`text-[9px] font-mono px-1 py-0 rounded shrink-0 ${chipClass}`}
+        className={`text-[9px] font-mono px-1 py-0 rounded min-w-0 max-w-[80px] truncate ${chipClass}`}
         title={chipTitle}
       >
         {shortenUrl(captured)}
@@ -212,8 +302,9 @@ function FieldRow({ field, currentUrl, onConfirm, onEdit, onRemove, onStampCurre
 
       <ConfidenceText confidence={field.confidence} />
 
-      {/* Action icons on hover */}
-      <div className={`flex items-center gap-0.5 ${hovered || field.status === "editing" ? "opacity-100" : "opacity-0"}`}>
+      {/* Action icons on hover — pinned to the right edge with shrink-0 so
+          they never get pushed off-screen by long chip / field-name content. */}
+      <div className={`flex items-center gap-0.5 shrink-0 ${hovered || field.status === "editing" ? "opacity-100" : "opacity-0"}`}>
         {field.status !== "confirmed" && (
           <button
             onClick={() => onConfirm(field.fieldName)}
@@ -282,7 +373,71 @@ function FieldRow({ field, currentUrl, onConfirm, onEdit, onRemove, onStampCurre
             <line x1="6" y1="6" x2="18" y2="18" />
           </svg>
         </button>
+
+        {/* Disclosure: open the advanced editor (manual selector + attr name) */}
+        <button
+          onClick={() => setExpanded((v) => !v)}
+          className={`p-1 rounded transition-colors ${
+            expanded || field.extractAttr
+              ? "bg-blue-500/15 text-blue-400"
+              : "hover:bg-blue-500/20 text-muted-foreground hover:text-blue-400"
+          }`}
+          title={
+            field.extractAttr
+              ? `Advanced: extracting from attribute "${field.extractAttr}"`
+              : "Advanced: override selector / extract from attribute"
+          }
+          aria-expanded={expanded}
+        >
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            {/* chevron */}
+            {expanded ? (
+              <polyline points="18 15 12 9 6 15" />
+            ) : (
+              <polyline points="6 9 12 15 18 9" />
+            )}
+          </svg>
+        </button>
       </div>
+    </div>
+
+    {expanded && (
+      <div className="border-t border-border/60 mt-0.5 pb-1">
+        <AdvancedTextField
+          label="Selector"
+          value={field.selector}
+          placeholder=".job-card h2 a"
+          monospace
+          validate={(raw) => {
+            if (!raw) return "Selector cannot be empty";
+            try {
+              document.createDocumentFragment().querySelector(raw);
+            } catch {
+              return "Invalid CSS selector";
+            }
+            return null;
+          }}
+          onCommit={(next) => {
+            if (next && next !== field.selector) {
+              onSetSelector(field.fieldName, next);
+            }
+          }}
+          helpText="CSS selector — overrides the picked element."
+        />
+        <AdvancedTextField
+          label="Attribute"
+          value={field.extractAttr ?? ""}
+          placeholder="data-job-id"
+          monospace
+          onCommit={(next) => {
+            if ((next || "") !== (field.extractAttr ?? "")) {
+              onSetExtractAttr(field.fieldName, next);
+            }
+          }}
+          helpText="Empty = extract visible text. Set (e.g. data-job-id, href) to read that attribute instead."
+        />
+      </div>
+    )}
     </div>
   );
 }
@@ -357,6 +512,8 @@ interface FieldMappingPanelProps {
   onEditField: (fieldName: string) => void;
   onRemoveField: (fieldName: string) => void;
   onStampCurrentPage: (fieldName: string) => void;
+  onSetFieldSelector: (fieldName: string, selector: string) => void;
+  onSetFieldExtractAttr: (fieldName: string, attr: string) => void;
   /** Active tab URL — used to highlight per-field "page chips". */
   currentTabUrl: string;
   onAddField: () => void;
@@ -395,6 +552,8 @@ export default function FieldMappingPanel({
   onEditField,
   onRemoveField,
   onStampCurrentPage,
+  onSetFieldSelector,
+  onSetFieldExtractAttr,
   currentTabUrl,
   onAddField,
   onSelectFieldType,
@@ -586,6 +745,8 @@ export default function FieldMappingPanel({
             onEdit={onEditField}
             onRemove={onRemoveField}
             onStampCurrentPage={onStampCurrentPage}
+            onSetSelector={onSetFieldSelector}
+            onSetExtractAttr={onSetFieldExtractAttr}
           />
         ))}
         {fields.length === 0 && (

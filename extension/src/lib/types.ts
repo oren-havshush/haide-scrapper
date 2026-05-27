@@ -46,6 +46,12 @@ export interface AIFieldMapping {
   source: string; // "PATTERN_MATCH" | "CRAWL_CLASSIFY" | "NETWORK_INTERCEPT"
   /** URL of the page the selector was captured on. Optional for legacy mappings. */
   capturedOnUrl?: string;
+  /**
+   * If set, the worker reads `element.getAttribute(extractAttr)` instead of
+   * visible text. Common case: `data-job-id` on an apply <a> tag. Empty/
+   * undefined means: extract visible text (default).
+   */
+  extractAttr?: string;
 }
 
 /** AI-produced field mappings keyed by field name */
@@ -66,6 +72,13 @@ export interface FieldMappingEntry {
    * during the in-tab test extraction. Optional for legacy mappings.
    */
   capturedOnUrl?: string;
+  /**
+   * Optional attribute name (e.g. `data-job-id`, `href`). When set, the
+   * worker reads `element.getAttribute(extractAttr)` for this field instead
+   * of the element's visible text. Used for ids hidden in data-* attrs on
+   * links/buttons.
+   */
+  extractAttr?: string;
 }
 
 /** State of Review Mode in the side panel */
@@ -148,6 +161,7 @@ export interface SaveConfigPayload {
     confidence: number;
     source: string;
     capturedOnUrl?: string;
+    extractAttr?: string;
   }>;
   pageFlow: Array<{
     url: string;
@@ -160,6 +174,7 @@ export interface SaveConfigPayload {
     confidence: number;
     source: string;
     capturedOnUrl?: string;
+    extractAttr?: string;
   }>;
 }
 

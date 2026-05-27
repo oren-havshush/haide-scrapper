@@ -49,3 +49,6 @@ next-env.d.ts
 # WXT extension build output
 extension/.output/
 extension/.wxt/
+
+# Local Claude Code scrap onboarding token (do NOT commit)
+.claude/scrap-token

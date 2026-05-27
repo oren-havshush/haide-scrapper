@@ -1,5 +1,8 @@
 # Scrapnew
 
+to deploy to prod:
+./deploy.sh root@194.88.110.149
+
 A Next.js web app with a background worker (Playwright-based) and an optional browser extension. Postgres is used as the database via Prisma.
 
 ## Architecture
@@ -61,12 +64,15 @@ npm run db:seed
 You'll need **two terminals**:
 
 **Terminal 1 — Web app**
+
 ```bash
 npm run dev
 ```
+
 Opens on http://localhost:3000
 
 **Terminal 2 — Worker**
+
 ```bash
 npm run worker:dev
 ```
@@ -97,26 +103,27 @@ This starts `db`, `web`, `worker`, and `caddy` (reverse proxy on :80/:443).
 
 ## Useful commands
 
-| Command | What it does |
-| --- | --- |
-| `npm run dev` | Start Next.js dev server |
-| `npm run build` | Build the Next.js app |
-| `npm run start` | Run the production Next.js build |
-| `npm run worker:dev` | Start the worker with file watching |
-| `npm run worker:start` | Run the worker once (no watch) |
-| `npm run playwright:install` | Install Chromium for Playwright |
-| `npm run lint` | Run ESLint |
-| `npm run db:seed` | Insert sample sites into the DB |
-| `npx prisma migrate deploy` | Apply pending migrations |
-| `npx prisma migrate dev --name <name>` | Create a new migration |
-| `npx prisma studio` | Open Prisma Studio (DB GUI) |
-| `docker compose up -d db` | Start only the Postgres container |
-| `docker compose down` | Stop all containers |
+| Command                                | What it does                        |
+| -------------------------------------- | ----------------------------------- |
+| `npm run dev`                          | Start Next.js dev server            |
+| `npm run build`                        | Build the Next.js app               |
+| `npm run start`                        | Run the production Next.js build    |
+| `npm run worker:dev`                   | Start the worker with file watching |
+| `npm run worker:start`                 | Run the worker once (no watch)      |
+| `npm run playwright:install`           | Install Chromium for Playwright     |
+| `npm run lint`                         | Run ESLint                          |
+| `npm run db:seed`                      | Insert sample sites into the DB     |
+| `npx prisma migrate deploy`            | Apply pending migrations            |
+| `npx prisma migrate dev --name <name>` | Create a new migration              |
+| `npx prisma studio`                    | Open Prisma Studio (DB GUI)         |
+| `docker compose up -d db`              | Start only the Postgres container   |
+| `docker compose down`                  | Stop all containers                 |
 
 ## Troubleshooting
 
 **`ECONNREFUSED` on `localhost:5432`**
 The DB container isn't running or isn't publishing port 5432. Run:
+
 ```bash
 docker compose up -d db
 docker compose ps    # confirm it's healthy and 5432 is exposed
@@ -124,17 +131,20 @@ docker compose ps    # confirm it's healthy and 5432 is exposed
 
 **Prisma errors about missing tables**
 Migrations haven't been applied yet:
+
 ```bash
 npx prisma migrate deploy
 ```
 
 **Worker crashes on startup about Playwright / browser not found**
+
 ```bash
 npm run playwright:install
 ```
 
 **Port 3000 already in use**
 Stop whatever is using it, or run Next.js on another port:
+
 ```bash
 npm run dev -- -p 3001
 ```

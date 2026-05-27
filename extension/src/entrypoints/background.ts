@@ -236,7 +236,22 @@ export default defineBackground(() => {
         }),
       });
 
-      return { success: true, siteStatus: response.data.status };
+      // Refresh every cached tab pointing at this site so a subsequent
+      // Approve sees the post-save status (saveSiteConfig auto-transitions
+      // ACTIVE → REVIEW server-side; a stale cache caused Approve to skip
+      // its PATCH and silently leave the site in REVIEW).
+      const newStatus = response.data.status;
+      for (const [tabId, site] of tabSites) {
+        if (site.id === payload.siteId) {
+          tabSites.set(tabId, { ...site, status: newStatus as SiteInfo["status"] });
+          const badgeText = newStatus === "REVIEW" ? "R" : newStatus === "ACTIVE" ? "A" : "";
+          const badgeColor = newStatus === "REVIEW" ? "#f59e0b" : "#22c55e";
+          await setBadgeTextSafe(tabId, badgeText);
+          await setBadgeBackgroundSafe(tabId, badgeColor);
+        }
+      }
+
+      return { success: true, siteStatus: newStatus };
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : "Failed to save config";
       return { success: false, error: message };
@@ -248,23 +263,32 @@ export default defineBackground(() => {
    */
   async function handleApproveSite(siteId: string): Promise<{ success: boolean; error?: string }> {
     try {
-      // Transition site to ACTIVE (skip if already ACTIVE)
-      const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
-      const tabId = tabs[0]?.id;
-      const cachedSite = tabId ? tabSites.get(tabId) : undefined;
-      if (!cachedSite || cachedSite.status !== "ACTIVE") {
+      // Always send the PATCH — the local cache can be stale after a save
+      // (saveSiteConfig auto-transitions ACTIVE → REVIEW server-side, and the
+      // old "skip if cached status === ACTIVE" optimization would then drop
+      // the Approve request on the floor). Server validates the transition.
+      try {
         await apiFetch<ApiResponse<unknown>>(`/api/sites/${siteId}`, {
           method: "PATCH",
           body: JSON.stringify({ status: "ACTIVE" }),
         });
+      } catch (err: unknown) {
+        // The status state-machine forbids ACTIVE → ACTIVE; treat that
+        // specific case as success so re-approving an already-active site
+        // is idempotent.
+        const msg = err instanceof Error ? err.message : String(err);
+        if (!/ACTIVE.*ACTIVE|invalid transition|already/i.test(msg)) {
+          throw err;
+        }
       }
 
-      // Update cached site status
-      if (tabId && tabSites.has(tabId)) {
-        const site = tabSites.get(tabId)!;
-        tabSites.set(tabId, { ...site, status: "ACTIVE" });
-        await setBadgeTextSafe(tabId, "A");
-        await setBadgeBackgroundSafe(tabId, "#22c55e");
+      // Update cached site status for every tab pointing at this site.
+      for (const [tabId, site] of tabSites) {
+        if (site.id === siteId) {
+          tabSites.set(tabId, { ...site, status: "ACTIVE" });
+          await setBadgeTextSafe(tabId, "A");
+          await setBadgeBackgroundSafe(tabId, "#22c55e");
+        }
       }
 
       return { success: true };

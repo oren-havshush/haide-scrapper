@@ -188,6 +188,93 @@ async function autoScrollUntilStable(
   await page.evaluate(() => window.scrollTo(0, 0));
 }
 
+/**
+ * Click a "Load more" button repeatedly until items stop appearing or caps
+ * are hit. Designed for append-style listings (each click adds rows to the
+ * existing list — different from `pagination` which expects content to
+ * replace). No-op when `loadMoreSelector` or `itemSelector` is missing.
+ */
+async function clickLoadMoreUntilStable(
+  page: Page,
+  loadMoreSelector: string | null,
+  itemSelector: string | null,
+  opts: { maxClicks: number; settleMs: number; maxNoGrowth: number; maxItems: number } = {
+    maxClicks: 30,
+    settleMs: 3_000,
+    maxNoGrowth: 2,
+    maxItems: 500,
+  },
+): Promise<void> {
+  if (!loadMoreSelector || !itemSelector) return;
+
+  const countItems = async (): Promise<number> => {
+    return page.evaluate((sel) => {
+      try {
+        return document.querySelectorAll(sel).length;
+      } catch {
+        return 0;
+      }
+    }, itemSelector);
+  };
+
+  let prevCount = await countItems();
+  let noGrowth = 0;
+  let totalClicks = 0;
+  for (let i = 0; i < opts.maxClicks; i++) {
+    if (prevCount >= opts.maxItems) break;
+    const btn = await page.$(loadMoreSelector).catch(() => null);
+    if (!btn) {
+      console.info(`[scrape] loadMore: button not found after ${totalClicks} clicks (count=${prevCount})`);
+      break;
+    }
+    const usable = await btn
+      .evaluate((el) => {
+        const e = el as HTMLElement;
+        const disabled =
+          (e as HTMLButtonElement).disabled ||
+          e.getAttribute("aria-disabled") === "true" ||
+          e.classList.contains("disabled");
+        const visible = e.offsetParent !== null;
+        return { disabled, visible };
+      })
+      .catch(() => ({ disabled: false, visible: true }));
+    if (usable.disabled || !usable.visible) {
+      console.info(`[scrape] loadMore: button disabled/hidden after ${totalClicks} clicks (count=${prevCount})`);
+      break;
+    }
+    try {
+      await btn.click({ timeout: 4_000 });
+    } catch (e) {
+      console.warn(`[scrape] loadMore: click failed — ${(e as Error).message}`);
+      break;
+    }
+    totalClicks++;
+
+    // Wait for the item count to grow, polling up to settleMs.
+    const deadline = Date.now() + opts.settleMs;
+    let count = prevCount;
+    while (Date.now() < deadline) {
+      await sleepMs(200);
+      count = await countItems();
+      if (count > prevCount) break;
+    }
+
+    if (count <= prevCount) {
+      noGrowth++;
+      if (noGrowth >= opts.maxNoGrowth) {
+        console.info(`[scrape] loadMore: no growth after ${totalClicks} clicks (count=${prevCount})`);
+        break;
+      }
+    } else {
+      noGrowth = 0;
+    }
+    prevCount = count;
+  }
+  if (totalClicks > 0) {
+    console.info(`[scrape] loadMore: ${totalClicks} clicks done, final count=${prevCount}`);
+  }
+}
+
 // ---------------------------------------------------------------------------
 // Helper: error categorization
 // ---------------------------------------------------------------------------
@@ -1843,6 +1930,23 @@ async function runSetupScript(page: Page, script: string): Promise<void> {
 }
 
 // ---------------------------------------------------------------------------
+// Helper: get loadMoreSelector from fieldMappings JSON. When set, the worker
+// clicks the matching element repeatedly after page load to expand
+// append-style listings (e.g. "טען עוד" / "Load more"). Independent from
+// `pagination` (which expects content to replace, not grow).
+// ---------------------------------------------------------------------------
+
+function getLoadMoreSelector(fieldMappingsRaw: unknown): string | null {
+  if (!fieldMappingsRaw || typeof fieldMappingsRaw !== "object") return null;
+  const raw = fieldMappingsRaw as Record<string, unknown>;
+  const meta = raw["_meta"] as Record<string, unknown> | undefined;
+  if (!meta) return null;
+  const s = meta["loadMoreSelector"];
+  if (typeof s !== "string" || !s.trim()) return null;
+  return s.trim();
+}
+
+// ---------------------------------------------------------------------------
 // Helper: get form capture config from fieldMappings JSON
 // ---------------------------------------------------------------------------
 
@@ -1986,6 +2090,7 @@ export async function handleScrapeJob(
   const formCaptureConfig = getFormCaptureConfig(site.fieldMappings);
   const pagination = getPaginationConfig(site.fieldMappings);
   const setupScript = getSetupScript(site.fieldMappings);
+  const loadMoreSelector = getLoadMoreSelector(site.fieldMappings);
 
   if (Object.keys(fieldMappings).length === 0) {
     const result = await failScrapeRun(scrapeRunId, site.id, {
@@ -2015,6 +2120,7 @@ export async function handleScrapeJob(
         },
         pagination,
         setupScript,
+        loadMoreSelector,
       ),
       timeout.promise,
     ]);
@@ -2118,6 +2224,7 @@ async function executeScrape(
   setBrowser: (b: Browser) => void,
   pagination: PaginationConfig | null = null,
   setupScript: string | null = null,
+  loadMoreSelector: string | null = null,
 ): Promise<ScrapeResult> {
   // Launch browser
   const browser = await launchBrowser();
@@ -2229,6 +2336,16 @@ async function executeScrape(
     }
 
     await autoScrollUntilStable(page, itemSelector);
+    await clickLoadMoreUntilStable(page, loadMoreSelector, itemSelector);
+
+    // If load-more was configured, re-run setupScript so newly-appended items
+    // get the same enrichment (hidden data attrs, noscript stripping, etc.).
+    // setupScripts are expected to be idempotent — they guard with
+    // `if (!el.querySelector(injected))` so a second pass only touches the
+    // items that arrived after the first run.
+    if (setupScript && loadMoreSelector) {
+      await runSetupScript(page, setupScript);
+    }
 
     // Log the main navigation response so we can see status / redirect / size
     // when the page comes back empty. This is the single most important signal

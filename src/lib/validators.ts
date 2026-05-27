@@ -28,6 +28,11 @@ export const updateSiteStatusSchema = z.object({
   status: z.enum(["ANALYZING", "REVIEW", "ACTIVE", "FAILED", "SKIPPED"]),
 });
 
+export const updateSiteAdminNoteSchema = z.object({
+  // null clears the note, empty string is normalized to null in the service.
+  adminNote: z.string().max(2_000).nullable(),
+});
+
 export const jobsFilterSchema = z.object({
   siteId: z.string().optional(),
   scrapeRunId: z.string().optional(),
@@ -73,4 +78,8 @@ export const updateSiteConfigSchema = z.object({
   // (Angular scope flags, React store slices) render the full listing so the
   // extractor sees everything. Body is executed verbatim via page.evaluate.
   setupScript: z.string().max(8_000).optional(),
+  // Optional CSS selector for an append-style "Load more" button. The worker
+  // clicks it repeatedly after page load until item count stabilizes or caps
+  // hit. Different from `pagination` (which expects content replacement).
+  loadMoreSelector: z.string().max(500).optional(),
 });

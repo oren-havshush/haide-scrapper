@@ -49,6 +49,9 @@ function parseFieldMappings(raw: Record<string, unknown> | null): FieldMappingEn
       confidence: typeof mapping.confidence === "number" ? mapping.confidence : 0,
       status: "unconfirmed" as const,
       capturedOnUrl: typeof mapping.capturedOnUrl === "string" ? mapping.capturedOnUrl : undefined,
+      extractAttr: typeof mapping.extractAttr === "string" && mapping.extractAttr.trim()
+        ? mapping.extractAttr.trim()
+        : undefined,
     }));
 }
 
@@ -705,6 +708,39 @@ export default function App() {
   }
 
   /**
+   * Manually override the CSS selector for a field — bypasses the picker.
+   * Useful when the auto-picked selector is fragile and the user wants to
+   * target by class/attribute themselves.
+   */
+  function handleSetFieldSelector(fieldName: string, selector: string) {
+    const trimmed = selector.trim();
+    if (!trimmed) return;
+    setFields((prev) =>
+      prev.map((f) =>
+        f.fieldName === fieldName
+          ? { ...f, selector: trimmed, status: "unconfirmed" as const }
+          : f,
+      ),
+    );
+  }
+
+  /**
+   * Set (or clear) the attribute name to extract for a field. When set, the
+   * worker reads `el.getAttribute(extractAttr)` instead of visible text. An
+   * empty string clears the override (back to text extraction).
+   */
+  function handleSetFieldExtractAttr(fieldName: string, attr: string) {
+    const trimmed = attr.trim();
+    setFields((prev) =>
+      prev.map((f) =>
+        f.fieldName === fieldName
+          ? { ...f, extractAttr: trimmed ? trimmed : undefined }
+          : f,
+      ),
+    );
+  }
+
+  /**
    * Stamp the active tab's URL onto a field's `capturedOnUrl` without
    * changing its selector. This is the easy way to bind a field to the
    * page it should be extracted from when re-picking is awkward (e.g.
@@ -906,13 +942,14 @@ export default function App() {
     setSaveSuccess(false);
 
     // Build field mappings payload from current Review Mode fields
-    const fieldMappingsPayload: Record<string, { selector: string; confidence: number; source: string; capturedOnUrl?: string }> = {};
+    const fieldMappingsPayload: Record<string, { selector: string; confidence: number; source: string; capturedOnUrl?: string; extractAttr?: string }> = {};
     for (const field of fields) {
       fieldMappingsPayload[field.fieldName] = {
         selector: field.selector,
         confidence: field.confidence,
         source: field.status === "confirmed" ? "MANUAL" : "AI",
         capturedOnUrl: field.capturedOnUrl,
+        extractAttr: field.extractAttr,
       };
     }
 
@@ -1042,6 +1079,8 @@ export default function App() {
       onEditField={handleEditField}
       onRemoveField={handleRemoveField}
       onStampCurrentPage={handleStampCurrentPage}
+      onSetFieldSelector={handleSetFieldSelector}
+      onSetFieldExtractAttr={handleSetFieldExtractAttr}
       currentTabUrl={currentTabUrl}
       onAddField={handleAddField}
       onSelectFieldType={handleSelectFieldType}

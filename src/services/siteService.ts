@@ -129,6 +129,18 @@ export async function getStatusCounts(): Promise<Record<string, number> & { tota
   return { ...result, total };
 }
 
+export async function updateSiteAdminNote(siteId: string, note: string | null) {
+  const site = await prisma.site.findUnique({ where: { id: siteId } });
+  if (!site) {
+    throw new NotFoundError("Site", siteId);
+  }
+  const trimmed = note?.trim() ?? null;
+  return prisma.site.update({
+    where: { id: siteId },
+    data: { adminNote: trimmed && trimmed.length > 0 ? trimmed : null },
+  });
+}
+
 export async function updateSiteStatus(siteId: string, newStatus: SiteStatus) {
   const site = await prisma.site.findUnique({ where: { id: siteId } });
   if (!site) {
@@ -215,6 +227,7 @@ export async function saveSiteConfig(
     originalMappings?: Record<string, unknown>;
     pagination?: { type: "click"; nextSelector: string; maxPages?: number; settleMs?: number };
     setupScript?: string;
+    loadMoreSelector?: string;
   }
 ) {
   const site = await prisma.site.findUnique({ where: { id: siteId } });
@@ -232,6 +245,7 @@ export async function saveSiteConfig(
       formCapture: config.formCapture,
       pagination: config.pagination || null,
       setupScript: config.setupScript || null,
+      loadMoreSelector: config.loadMoreSelector || null,
       savedAt: new Date().toISOString(),
     },
   };

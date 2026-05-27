@@ -67,6 +67,21 @@ export function useUpdateSiteStatus() {
   });
 }
 
+export function useUpdateSiteNote() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ siteId, adminNote }: { siteId: string; adminNote: string | null }) =>
+      apiFetch(`/api/sites/${siteId}`, {
+        method: "PATCH",
+        body: JSON.stringify({ adminNote }),
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["sites"] });
+    },
+  });
+}
+
 export function useDeleteSite() {
   const queryClient = useQueryClient();
 
