@@ -74,7 +74,7 @@ interface ValidatedRecord {
 const SCRAPE_TIMEOUT_MS = 600_000; // 10 minutes (large infinite-scroll listings + per-row extraction)
 const DETAIL_PAGE_TIMEOUT_MS = 15_000; // 15 seconds per detail page
 const NAVIGATION_TIMEOUT_MS = 30_000; // 30 seconds for page navigation
-const MAX_EXTRACTED_ITEMS = 500;
+const MAX_EXTRACTED_ITEMS = 2000;
 
 /** Best-effort `networkidle` after `domcontentloaded` (non-blocking on timeout). */
 const NETWORKIDLE_GRACE_MS = 8_000;
@@ -199,10 +199,10 @@ async function clickLoadMoreUntilStable(
   loadMoreSelector: string | null,
   itemSelector: string | null,
   opts: { maxClicks: number; settleMs: number; maxNoGrowth: number; maxItems: number } = {
-    maxClicks: 30,
+    maxClicks: 100,
     settleMs: 3_000,
     maxNoGrowth: 2,
-    maxItems: 500,
+    maxItems: 2000,
   },
 ): Promise<void> {
   if (!loadMoreSelector || !itemSelector) return;
