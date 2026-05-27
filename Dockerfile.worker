@@ -1,6 +1,6 @@
 FROM mcr.microsoft.com/playwright:v1.58.2-noble AS builder
 
-RUN npm install -g pnpm
+RUN npm install -g pnpm@10
 
 WORKDIR /app
 

@@ -1,5 +1,7 @@
 FROM node:20-alpine AS base
-RUN corepack enable && corepack prepare pnpm@latest --activate
+# pnpm 11.x requires Node 22+ (uses node:sqlite built-in). Pin to 10.x while
+# the base image is still on Node 20.
+RUN corepack enable && corepack prepare pnpm@10 --activate
 
 # --- deps stage: install all dependencies ---
 FROM base AS deps
