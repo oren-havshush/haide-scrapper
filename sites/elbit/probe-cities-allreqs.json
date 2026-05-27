@@ -1,0 +1,434 @@
+[
+  {
+    "url": "https://elbitsystemscareer.com/jobs/",
+    "method": "GET",
+    "rt": "document",
+    "status": 200,
+    "ct": "text/html",
+    "bodySize": 10204,
+    "isHebrew": false
+  },
+  {
+    "url": "https://elbitsystemscareer.com/_next/static/css/0fdf151fe04ab112.css",
+    "method": "GET",
+    "rt": "stylesheet",
+    "status": 200,
+    "ct": "text/css",
+    "bodySize": 11746,
+    "isHebrew": false
+  },
+  {
+    "url": "https://elbitsystemscareer.com/_next/static/chunks/webpack-b18589d9c63fef49.js",
+    "method": "GET",
+    "rt": "script",
+    "status": 200,
+    "ct": "application/x-javascript",
+    "bodySize": 3822,
+    "isHebrew": false
+  },
+  {
+    "url": "https://www.googletagmanager.com/gtag/js?id=AW-10790115246",
+    "method": "GET",
+    "rt": "script",
+    "status": 200,
+    "ct": "application/javascript; charset=UTF-8",
+    "bodySize": 433324,
+    "isHebrew": false
+  },
+  {
+    "url": "https://www.googletagmanager.com/gtag/js?id=G-3Z4RJPDVMX",
+    "method": "GET",
+    "rt": "script",
+    "status": 200,
+    "ct": "application/javascript; charset=UTF-8",
+    "bodySize": 430550,
+    "isHebrew": false
+  },
+  {
+    "url": "https://elbitsystemscareer.com/nagishli/nagishli.js",
+    "method": "GET",
+    "rt": "script",
+    "status": 200,
+    "ct": "application/x-javascript",
+    "bodySize": 199122,
+    "isHebrew": false
+  },
+  {
+    "url": "https://elbitsystemscareer.com/_next/static/chunks/main-app-1ec75f8068799bb0.js",
+    "method": "GET",
+    "rt": "script",
+    "status": 200,
+    "ct": "application/x-javascript",
+    "bodySize": 557,
+    "isHebrew": false
+  },
+  {
+    "url": "https://elbitsystemscareer.com/_next/static/chunks/4bd1b696-cf72ae8a39fa05aa.js",
+    "method": "GET",
+    "rt": "script",
+    "status": 200,
+    "ct": "application/x-javascript",
+    "bodySize": 172729,
+    "isHebrew": false
+  },
+  {
+    "url": "https://elbitsystemscareer.com/_next/static/media/e4af272ccee01ff0-s.p.woff2",
+    "method": "GET",
+    "rt": "font",
+    "status": 200,
+    "ct": "font/woff2",
+    "bodySize": 48432,
+    "isHebrew": false
+  },
+  {
+    "url": "https://elbitsystemscareer.com/_next/static/chunks/311-87218029971de839.js",
+    "method": "GET",
+    "rt": "script",
+    "status": 200,
+    "ct": "application/x-javascript",
+    "bodySize": 8984,
+    "isHebrew": false
+  },
+  {
+    "url": "https://elbitsystemscareer.com/_next/static/chunks/app/layout-1a7a32978a915e32.js",
+    "method": "GET",
+    "rt": "script",
+    "status": 200,
+    "ct": "application/x-javascript",
+    "bodySize": 16755,
+    "isHebrew": false
+  },
+  {
+    "url": "https://elbitsystemscareer.com/_next/static/chunks/13-27bef9593db4b615.js",
+    "method": "GET",
+    "rt": "script",
+    "status": 200,
+    "ct": "application/x-javascript",
+    "bodySize": 95374,
+    "isHebrew": false
+  },
+  {
+    "url": "https://elbitsystemscareer.com/_next/static/chunks/app/jobs/page-d0a01d7298139591.js",
+    "method": "GET",
+    "rt": "script",
+    "status": 200,
+    "ct": "application/x-javascript",
+    "bodySize": 3611,
+    "isHebrew": false
+  },
+  {
+    "url": "https://elbitsystemscareer.com/_next/static/chunks/964-9b249bc0ac5a9a8b.js",
+    "method": "GET",
+    "rt": "script",
+    "status": 200,
+    "ct": "application/x-javascript",
+    "bodySize": 166013,
+    "isHebrew": false
+  },
+  {
+    "url": "https://elbitsystemscareer.com/_next/static/chunks/464-6a020d149256888a.js",
+    "method": "GET",
+    "rt": "script",
+    "status": 200,
+    "ct": "application/x-javascript",
+    "bodySize": 56954,
+    "isHebrew": false
+  },
+  {
+    "url": "https://elbitsystemscareer.com/_next/static/chunks/577-6f2dad26a13e203d.js",
+    "method": "GET",
+    "rt": "script",
+    "status": 200,
+    "ct": "application/x-javascript",
+    "bodySize": 45638,
+    "isHebrew": false
+  },
+  {
+    "url": "https://analytics.google.com/g/collect?v=2&tid=G-3Z4RJPDVMX&gtm=45je65m1v9136831252za200zd9136831252&_p=1779880849328&_gaz=1&gcd=13l3l3l3l1l1&npa=0&dma=0&ecid=216571554&_eu=EAAAAGA&are=1&cid=534327673.1779880849&frm=0&ir=1&pscdl=noapi&rcb=5&sr=1280x720&uaa=x86&uab=64&uafvl=Chromium%3B148.0.7778.96%7CHeadlessChrome%3B148.0.7778.96%7CNot%252FA)Brand%3B99.0.0.0&uam=&uamb=0&uap=Windows&uapv=19.0.0&uaw=0&ul=he-il&gaf=2&_s=1&tag_exp=0~115938465~115938468~118228215&sid=1779880849&sct=1&seg=0&dl=https%3A%2F%2Felbitsystemscareer.com%2Fjobs%2F&dt=Elbit%20Systems&en=page_view&_fv=1&_nsi=1&_ss=1&_ee=1&tfd=7015",
+    "method": "POST",
+    "rt": "fetch",
+    "status": 204,
+    "ct": "text/plain",
+    "bodySize": 0,
+    "isHebrew": false
+  },
+  {
+    "url": "https://www.google.co.il/ads/ga-audiences?v=1&t=sr&slf_rd=1&_r=4&tid=G-3Z4RJPDVMX&cid=534327673.1779880849&gtm=45je65m1v9136831252za200zd9136831252&rcb=5&aip=1&dma=0&gcd=13l3l3l3l1l1&npa=0&frm=0&tag_exp=0~115938465~115938468~118228215&z=64520418",
+    "method": "GET",
+    "rt": "image",
+    "status": 200,
+    "ct": "image/gif",
+    "bodySize": 42,
+    "isHebrew": false
+  },
+  {
+    "url": "https://www.google.com/ccm/collect?rcb=12&frm=0&auid=1720522738.1779880849&dt=Elbit%20Systems&en=page_view&dl=https%3A%2F%2Felbitsystemscareer.com%2Fjobs%2F&scrsrc=www.googletagmanager.com&rnd=668701786.1779880849&navt=n&npa=0&gtm=45be65m1h1v876830015za200zd876830015xec&gcd=13l3l3l3l1l1&dma=0&tag_exp=0~115616985~115938465~115938468~116701381~118228215~118694324&apve=1&apvf=f&apvc=1&tids=AW-10790115246&tid=AW-10790115246&tft=1779880849464&tfd=7051",
+    "method": "POST",
+    "rt": "fetch",
+    "status": 200,
+    "ct": "",
+    "bodySize": 0,
+    "isHebrew": false
+  },
+  {
+    "url": "https://www.google.com/rmkt/collect/10790115246/?random=1779880849438&cv=11&fst=1779880849438&fmt=8&bg=ffffff&guid=ON&async=1&en=gtag.config&gtm=45be65m1h1v876830015za200zd876830015xec&gcd=13l3l3l3l1l1&dma=0&tag_exp=0~115616985~115938465~115938468~116701381~118228215~118694324&u_w=1280&u_h=720&url=https%3A%2F%2Felbitsystemscareer.com%2Fjobs%2F&rcb=12&frm=0&tiba=Elbit%20Systems&hn=www.googleadservices.com&npa=0&pscdl=noapi&auid=1720522738.1779880849&uaa=x86&uab=64&uafvl=Chromium%3B148.0.7778.96%7CHeadlessChrome%3B148.0.7778.96%7CNot%252FA)Brand%3B99.0.0.0&uamb=0&uam=&uap=Windows&uapv=19.0.0&uaw=0&data=event%3Dgtag.config&gcp=5",
+    "method": "POST",
+    "rt": "fetch",
+    "status": 200,
+    "ct": "",
+    "bodySize": 0,
+    "isHebrew": false
+  },
+  {
+    "url": "https://googleads.g.doubleclick.net/pagead/viewthroughconversion/10790115246/?random=1779880849438&cv=11&fst=1779880849438&bg=ffffff&guid=ON&async=1&en=gtag.config&gtm=45be65m1h1v876830015za200zd876830015xec&gcd=13l3l3l3l1l1&dma=0&tag_exp=0~115616985~115938465~115938468~116701381~118228215~118694324&u_w=1280&u_h=720&url=https%3A%2F%2Felbitsystemscareer.com%2Fjobs%2F&rcb=12&frm=0&tiba=Elbit%20Systems&hn=www.googleadservices.com&npa=0&pscdl=noapi&auid=1720522738.1779880849&uaa=x86&uab=64&uafvl=Chromium%3B148.0.7778.96%7CHeadlessChrome%3B148.0.7778.96%7CNot%252FA)Brand%3B99.0.0.0&uamb=0&uam=&uap=Windows&uapv=19.0.0&uaw=0&data=event%3Dgtag.config&rfmt=3&fmt=4",
+    "method": "GET",
+    "rt": "script",
+    "status": 200,
+    "ct": "text/javascript; charset=UTF-8",
+    "bodySize": 5393,
+    "isHebrew": false
+  },
+  {
+    "url": "https://stats.g.doubleclick.net/g/collect?v=2&tid=G-3Z4RJPDVMX&cid=534327673.1779880849&gtm=45je65m1v9136831252za200zd9136831252&rcb=5&aip=1&dma=0&gcd=13l3l3l3l1l1&npa=0&frm=0&tag_exp=0~115938465~115938468~118228215",
+    "method": "POST",
+    "rt": "ping",
+    "status": 204,
+    "ct": "text/plain",
+    "bodySize": 0,
+    "isHebrew": false
+  },
+  {
+    "url": "https://code.jquery.com/jquery-1.8.0.min.js",
+    "method": "GET",
+    "rt": "script",
+    "status": 200,
+    "ct": "application/javascript; charset=utf-8",
+    "bodySize": 92555,
+    "isHebrew": false
+  },
+  {
+    "url": "https://www.google.com/pagead/1p-user-list/10790115246/?random=1779880849438&cv=11&fst=1779879600000&bg=ffffff&guid=ON&async=1&en=gtag.config&gtm=45be65m1h1v876830015za200zd876830015xec&gcd=13l3l3l3l1l1&dma=0&tag_exp=0~115616985~115938465~115938468~116701381~118228215~118694324&u_w=1280&u_h=720&url=https%3A%2F%2Felbitsystemscareer.com%2Fjobs%2F&rcb=12&frm=0&tiba=Elbit%20Systems&hn=www.googleadservices.com&npa=0&pscdl=noapi&auid=1720522738.1779880849&uaa=x86&uab=64&uafvl=Chromium%3B148.0.7778.96%7CHeadlessChrome%3B148.0.7778.96%7CNot%252FA)Brand%3B99.0.0.0&uamb=0&uam=&uap=Windows&uapv=19.0.0&uaw=0&data=event%3Dgtag.config&rfmt=3&fmt=3&is_vtc=1&cid=CAQS0wEABaugfbKhA7d3oJfM07D0DpFo69R9mrh5tz2cKTp10iQcNK21RyzSSr3ZfVr1Sg30hgYkMywBUX8tsvzJgcZozlsgOxI4CL1-4slc9E_uywnNDq1i1RQLr2pYHFbJZCTGgo_Gfg5vK2EVJCzbRD0K9H-5i2yRd3jWad7Gf9YBa3cz9QGnWLww-qNLf-9YKkKf5jSKBtbgXsWuJ_RfHFzhk25nrmmdb1af1lyOABVFQv7A76boe7MiKOjHaWiYmfk_wQNQHzKBoGqPCO_GhbrITXZJ&random=1897432524&rmt_tld=0&ipr=y",
+    "method": "GET",
+    "rt": "image",
+    "status": 200,
+    "ct": "image/gif",
+    "bodySize": 42,
+    "isHebrew": false
+  },
+  {
+    "url": "https://www.google.co.il/pagead/1p-user-list/10790115246/?random=1779880849438&cv=11&fst=1779879600000&bg=ffffff&guid=ON&async=1&en=gtag.config&gtm=45be65m1h1v876830015za200zd876830015xec&gcd=13l3l3l3l1l1&dma=0&tag_exp=0~115616985~115938465~115938468~116701381~118228215~118694324&u_w=1280&u_h=720&url=https%3A%2F%2Felbitsystemscareer.com%2Fjobs%2F&rcb=12&frm=0&tiba=Elbit%20Systems&hn=www.googleadservices.com&npa=0&pscdl=noapi&auid=1720522738.1779880849&uaa=x86&uab=64&uafvl=Chromium%3B148.0.7778.96%7CHeadlessChrome%3B148.0.7778.96%7CNot%252FA)Brand%3B99.0.0.0&uamb=0&uam=&uap=Windows&uapv=19.0.0&uaw=0&data=event%3Dgtag.config&rfmt=3&fmt=3&is_vtc=1&cid=CAQS0wEABaugfbKhA7d3oJfM07D0DpFo69R9mrh5tz2cKTp10iQcNK21RyzSSr3ZfVr1Sg30hgYkMywBUX8tsvzJgcZozlsgOxI4CL1-4slc9E_uywnNDq1i1RQLr2pYHFbJZCTGgo_Gfg5vK2EVJCzbRD0K9H-5i2yRd3jWad7Gf9YBa3cz9QGnWLww-qNLf-9YKkKf5jSKBtbgXsWuJ_RfHFzhk25nrmmdb1af1lyOABVFQv7A76boe7MiKOjHaWiYmfk_wQNQHzKBoGqPCO_GhbrITXZJ&random=1897432524&rmt_tld=1&ipr=y",
+    "method": "GET",
+    "rt": "image",
+    "status": 200,
+    "ct": "image/gif",
+    "bodySize": 42,
+    "isHebrew": false
+  },
+  {
+    "url": "https://elbitsystemscareer.com/_next/static/chunks/481-f499b3f2ca49d263.js",
+    "method": "GET",
+    "rt": "script",
+    "status": 200,
+    "ct": "application/x-javascript",
+    "bodySize": 114827,
+    "isHebrew": false
+  },
+  {
+    "url": "https://connect.facebook.net/en_US/fbevents.js",
+    "method": "GET",
+    "rt": "script",
+    "status": 200,
+    "ct": "application/x-javascript; charset=utf-8",
+    "bodySize": 378648,
+    "isHebrew": false
+  },
+  {
+    "url": "https://elbitsystemscareer.com/_next/static/chunks/101-81902a66503fe275.js",
+    "method": "GET",
+    "rt": "script",
+    "status": 200,
+    "ct": "application/x-javascript",
+    "bodySize": 10920,
+    "isHebrew": false
+  },
+  {
+    "url": "https://elbitsystemscareer.com/_next/static/chunks/120-0d22b86ae3758d29.js",
+    "method": "GET",
+    "rt": "script",
+    "status": 200,
+    "ct": "application/x-javascript",
+    "bodySize": 47413,
+    "isHebrew": false
+  },
+  {
+    "url": "https://elbitsystemscareer.com/_next/static/chunks/561-c14ed924d4e5f70f.js",
+    "method": "GET",
+    "rt": "script",
+    "status": 200,
+    "ct": "application/x-javascript",
+    "bodySize": 30579,
+    "isHebrew": false
+  },
+  {
+    "url": "https://connect.facebook.net/signals/config/323327025283028?v=2.9.326&r=stable&domain=elbitsystemscareer.com&hme=af8aa31887db259becaf70277daef60bd8bc35c2df82c2acd4258de27ecac4b5&ex_m=104%2C207%2C155%2C22%2C72%2C73%2C146%2C68%2C67%2C11%2C164%2C90%2C16%2C138%2C127%2C39%2C75%2C78%2C134%2C160%2C166%2C8%2C4%2C5%2C7%2C6%2C3%2C91%2C101%2C167%2C172%2C221%2C62%2C188%2C189%2C55%2C279%2C30%2C74%2C233%2C232%2C231%2C23%2C33%2C103%2C61%2C10%2C63%2C97%2C98%2C99%2C105%2C130%2C31%2C29%2C132%2C133%2C129%2C128%2C156%2C76%2C159%2C157%2C158%2C50%2C60%2C123%2C15%2C163%2C45%2C266%2C267%2C265%2C26%2C27%2C28%2C48%2C147%2C77%2C112%2C18%2C20%2C44%2C40%2C42%2C41%2C83%2C92%2C96%2C110%2C145%2C148%2C46%2C111%2C24%2C21%2C119%2C69%2C36%2C150%2C149%2C151%2C142%2C140%2C25%2C35%2C59%2C109%2C162%2C70%2C17%2C153%2C114%2C81%2C66%2C19%2C85%2C86%2C116%2C84%2C136%2C135%2C139%2C161%2C34%2C281%2C297%2C214%2C203%2C204%2C202%2C300%2C291%2C52%2C215%2C107%2C131%2C80%2C121%2C54%2C47%2C49%2C113%2C120%2C126%2C125%2C58%2C64%2C152%2C115%2C37%2C32%2C53%2C56%2C100%2C165%2C1%2C124%2C14%2C122%2C12%2C2%2C57%2C93%2C65%2C118%2C89%2C88%2C168%2C169%2C94%2C95%2C9%2C102%2C51%2C143%2C87%2C79%2C71%2C117%2C106%2C43%2C144%2C0%2C82%2C137%2C141%2C154%2C38%2C108%2C13%2C170",
+    "method": "GET",
+    "rt": "script",
+    "status": 200,
+    "ct": "application/x-javascript; charset=utf-8",
+    "bodySize": 457160,
+    "isHebrew": false
+  },
+  {
+    "url": "https://elbitsystemscareer.com/_next/static/chunks/768.d47e0c87df3a62b7.js",
+    "method": "GET",
+    "rt": "script",
+    "status": 200,
+    "ct": "application/x-javascript",
+    "bodySize": 16900,
+    "isHebrew": false
+  },
+  {
+    "url": "https://elbitsystemscareer.com/_next/static/chunks/583-399b999cf9f030a6.js",
+    "method": "GET",
+    "rt": "script",
+    "status": 200,
+    "ct": "application/x-javascript",
+    "bodySize": 7448,
+    "isHebrew": false
+  },
+  {
+    "url": "https://elbitsystemscareer.com/_next/static/chunks/116.0cec4a055d72af3f.js",
+    "method": "GET",
+    "rt": "script",
+    "status": 200,
+    "ct": "application/x-javascript",
+    "bodySize": 26355,
+    "isHebrew": false
+  },
+  {
+    "url": "https://elbitsystemscareer.com/nagishli/nl-files/gfx/tl.png",
+    "method": "GET",
+    "rt": "image",
+    "status": 200,
+    "ct": "image/png",
+    "bodySize": 280,
+    "isHebrew": false
+  },
+  {
+    "url": "https://elbitsystemscareer.com/nagishli/nl-files/gfx/sprite.png?v=2.3",
+    "method": "GET",
+    "rt": "image",
+    "status": 200,
+    "ct": "image/png",
+    "bodySize": 5382,
+    "isHebrew": false
+  },
+  {
+    "url": "https://elbitsystemscareer.com/nagishli/nl-files/gfx/tr.png",
+    "method": "GET",
+    "rt": "image",
+    "status": 200,
+    "ct": "image/png",
+    "bodySize": 285,
+    "isHebrew": false
+  },
+  {
+    "url": "https://elbitsystemscareer.com/nagishli/nl-files/gfx/br.png",
+    "method": "GET",
+    "rt": "image",
+    "status": 200,
+    "ct": "image/png",
+    "bodySize": 283,
+    "isHebrew": false
+  },
+  {
+    "url": "https://elbitsystemscareer.com/nagishli/nl-files/gfx/bl.png",
+    "method": "GET",
+    "rt": "image",
+    "status": 200,
+    "ct": "image/png",
+    "bodySize": 280,
+    "isHebrew": false
+  },
+  {
+    "url": "https://elbitsystemscareer.com/logo-he.png",
+    "method": "GET",
+    "rt": "image",
+    "status": 200,
+    "ct": "image/png",
+    "bodySize": 15779,
+    "isHebrew": false
+  },
+  {
+    "url": "https://niloo-server.herokuapp.com/actions-elbit",
+    "method": "POST",
+    "rt": "xhr",
+    "status": 201,
+    "ct": "application/json; charset=utf-8",
+    "bodySize": 2675104,
+    "isHebrew": false
+  },
+  {
+    "url": "https://niloo-server.herokuapp.com/actions-elbit",
+    "method": "POST",
+    "rt": "fetch",
+    "status": 201,
+    "ct": "application/json; charset=utf-8",
+    "bodySize": 15,
+    "isHebrew": false
+  },
+  {
+    "url": "https://niloo-server.herokuapp.com/actions-elbit",
+    "method": "POST",
+    "rt": "fetch",
+    "status": 201,
+    "ct": "application/json; charset=utf-8",
+    "bodySize": 15,
+    "isHebrew": false
+  },
+  {
+    "url": "https://niloo-server.herokuapp.com/actions-elbit",
+    "method": "POST",
+    "rt": "fetch",
+    "status": 201,
+    "ct": "application/json; charset=utf-8",
+    "bodySize": 15,
+    "isHebrew": false
+  },
+  {
+    "url": "https://niloo-server.herokuapp.com/actions-elbit",
+    "method": "POST",
+    "rt": "fetch",
+    "status": 201,
+    "ct": "application/json; charset=utf-8",
+    "bodySize": 15,
+    "isHebrew": false
+  },
+  {
+    "url": "https://niloo-server.herokuapp.com/actions-elbit",
+    "method": "POST",
+    "rt": "fetch",
+    "status": 201,
+    "ct": "application/json; charset=utf-8",
+    "bodySize": 15,
+    "isHebrew": false
+  },
+  {
+    "url": "https://niloo-server.herokuapp.com/actions-elbit",
+    "method": "POST",
+    "rt": "fetch",
+    "status": 201,
+    "ct": "application/json; charset=utf-8",
+    "bodySize": 15,
+    "isHebrew": false
+  },
+  {
+    "url": "https://niloo-server.herokuapp.com/actions-elbit",
+    "method": "POST",
+    "rt": "fetch",
+    "status": 201,
+    "ct": "application/json; charset=utf-8",
+    "bodySize": 15,
+    "isHebrew": false
+  }
+]

@@ -1,0 +1,53 @@
+{
+    "itemSelector":  ".wrap_order_item",
+    "setupScript":  ";(function () {\r\n  function extractFormSchema(form) {\r\n    var action = form.getAttribute(\u0027action\u0027) || \u0027\u0027;\r\n    var method = (form.getAttribute(\u0027method\u0027) || \u0027GET\u0027).toUpperCase();\r\n    var fields = [];\r\n    var els = form.querySelectorAll(\u0027input, select, textarea\u0027);\r\n    for (var i = 0; i \u003c els.length; i++) {\r\n      var el = els[i];\r\n      var tag = el.tagName.toLowerCase();\r\n      var type = tag === \u0027input\u0027 ? ((el.getAttribute(\u0027type\u0027) || \u0027text\u0027).toLowerCase()) : tag;\r\n      if (type === \u0027submit\u0027 || type === \u0027button\u0027 || type === \u0027image\u0027 || type === \u0027reset\u0027) continue;\r\n      var name = el.getAttribute(\u0027name\u0027) || \u0027\u0027;\r\n      var style = (el.getAttribute(\u0027style\u0027) || \u0027\u0027).toLowerCase();\r\n      var isOffscreen = style.indexOf(\u0027-99999\u0027) !== -1 || style.indexOf(\u0027display:none !important\u0027) !== -1 || style.indexOf(\u0027display: none !important\u0027) !== -1;\r\n      var isHpName = /\\b(hp[_-]|honeypot|maspik|nickname)/i.test(name + \u0027 \u0027 + (el.id || \u0027\u0027) + \u0027 \u0027 + (el.className || \u0027\u0027));\r\n      if ((isOffscreen || isHpName) \u0026\u0026 type !== \u0027hidden\u0027) continue;\r\n      var label = \u0027\u0027;\r\n      if (el.id) {\r\n        var safeId = el.id.replace(/\"/g, \u0027\\\\\"\u0027);\r\n        var lab = form.querySelector(\u0027label[for=\"\u0027 + safeId + \u0027\"]\u0027);\r\n        if (lab) label = (lab.textContent || \u0027\u0027).replace(/\\s+/g, \u0027 \u0027).trim();\r\n      }\r\n      if (!label) {\r\n        var parentLabel = el.closest(\u0027label\u0027);\r\n        if (parentLabel) label = (parentLabel.textContent || \u0027\u0027).replace(/\\s+/g, \u0027 \u0027).trim();\r\n      }\r\n      if (!label) label = el.getAttribute(\u0027placeholder\u0027) || el.getAttribute(\u0027aria-label\u0027) || \u0027\u0027;\r\n      var required = el.hasAttribute(\u0027required\u0027) || el.getAttribute(\u0027aria-required\u0027) === \u0027true\u0027;\r\n      var rec = { name: name, fieldType: type, label: label, required: required, tagName: tag };\r\n      if (type === \u0027hidden\u0027) rec.value = el.getAttribute(\u0027value\u0027) || \u0027\u0027;\r\n      if (type === \u0027file\u0027) {\r\n        var accept = el.getAttribute(\u0027accept\u0027);\r\n        if (accept) rec.accept = accept;\r\n      }\r\n      if (tag === \u0027select\u0027) {\r\n        var opts = el.querySelectorAll(\u0027option\u0027); var options = [];\r\n        for (var k = 0; k \u003c opts.length; k++) {\r\n          options.push({ value: opts[k].value, label: (opts[k].textContent || \u0027\u0027).replace(/\\s+/g, \u0027 \u0027).trim() });\r\n        }\r\n        rec.options = options;\r\n      }\r\n      fields.push(rec);\r\n    }\r\n    return { actionUrl: action, method: method, fields: fields };\r\n  }\r\n  function pickForm(scope) {\r\n    var forms = scope.querySelectorAll(\u0027form\u0027);\r\n    var best = null, bestScore = -1;\r\n    for (var i = 0; i \u003c forms.length; i++) {\r\n      var f = forms[i];\r\n      var name = (f.getAttribute(\u0027name\u0027) || \u0027\u0027).toLowerCase();\r\n      var role = (f.getAttribute(\u0027role\u0027) || \u0027\u0027).toLowerCase();\r\n      if (role === \u0027search\u0027 || /search/.test(name)) continue;\r\n      var inputs = f.querySelectorAll(\u0027input:not([type=\"hidden\"]), select, textarea\u0027);\r\n      var visibleCount = 0;\r\n      for (var j = 0; j \u003c inputs.length; j++) {\r\n        var t = (inputs[j].getAttribute(\u0027type\u0027) || \u0027\u0027).toLowerCase();\r\n        if (t === \u0027submit\u0027 || t === \u0027button\u0027 || t === \u0027image\u0027 || t === \u0027reset\u0027) continue;\r\n        visibleCount++;\r\n      }\r\n      if (visibleCount \u003e bestScore) { bestScore = visibleCount; best = f; }\r\n    }\r\n    return bestScore \u003e= 1 ? best : null;\r\n  }\r\n  try {\r\n    document.querySelectorAll(\u0027.wrap_order_item\u0027).forEach(function (item) {\r\n      if (item.querySelector(\u0027[data-extracted-form]\u0027)) return;\r\n      var f = pickForm(item);\r\n      if (!f) return;\r\n      var schema = extractFormSchema(f);\r\n      var s = document.createElement(\u0027span\u0027);\r\n      s.setAttribute(\u0027data-extracted-form\u0027, \u00271\u0027);\r\n      s.style.display = \u0027none\u0027;\r\n      s.textContent = JSON.stringify(schema);\r\n      item.appendChild(s);\r\n    });\r\n  } catch (e) {}\r\n})();\r\n",
+    "fieldMappings":  {
+                          "title":  {
+                                        "selector":  ".text_big",
+                                        "confidence":  100,
+                                        "source":  "MANUAL",
+                                        "capturedOnUrl":  "https://tafkid-plus.co.il/"
+                                    },
+                          "location":  {
+                                           "selector":  "li:has(.hm-map-pointer2) .text_icon",
+                                           "confidence":  100,
+                                           "source":  "MANUAL",
+                                           "capturedOnUrl":  "https://tafkid-plus.co.il/"
+                                       },
+                          "department":  {
+                                             "selector":  "li:has(.hm-man-range) .text_icon",
+                                             "confidence":  100,
+                                             "source":  "MANUAL",
+                                             "capturedOnUrl":  "https://tafkid-plus.co.il/"
+                                         },
+                          "description":  {
+                                              "selector":  ".text_description",
+                                              "confidence":  100,
+                                              "source":  "MANUAL",
+                                              "capturedOnUrl":  "https://tafkid-plus.co.il/"
+                                          },
+                          "publishDate":  {
+                                              "selector":  "li:has(.hm-calendar2) .text_icon",
+                                              "confidence":  100,
+                                              "source":  "MANUAL",
+                                              "capturedOnUrl":  "https://tafkid-plus.co.il/"
+                                          },
+                          "externalJobId":  {
+                                                "selector":  "input[name=\"jobId\"]",
+                                                "confidence":  100,
+                                                "source":  "MANUAL",
+                                                "capturedOnUrl":  "https://tafkid-plus.co.il/",
+                                                "extractAttr":  "value"
+                                            },
+                          "applicationFormSchema":  {
+                                                        "selector":  "[data-extracted-form]",
+                                                        "confidence":  100,
+                                                        "source":  "MANUAL",
+                                                        "capturedOnUrl":  "https://tafkid-plus.co.il/"
+                                                    }
+                      },
+    "pageFlow":  [
+
+                 ],
+    "formCapture":  null
+}

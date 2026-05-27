@@ -1,0 +1,7 @@
+﻿count: 1
+--- job cmpbcouzp012s1loir4o2lxv9
+externalJobId: DEBUG_0000
+title:         DEBUG {"stage":"start","title":"Radware Captcha Page","url":"https://validate.perfdrive.com/?ssa=717b4b90-9e68-499f-8fe8-39dafa2ac97f&ssb=41149241289&ssc=https%3A%2F%2Fwww.assuta.co.il%2Fjobs%2Fsearch%2F&ssi=65d8a679-ckmr-4999-9fe1-28b4db8a1a56&ssk=botmanager_support@radware.com&ssm=10929127530095703109501224537160&ssn=4f6f57f69f41a37dc008e8b35612813f7bc8d81414ef-7ff4-4b50-bca2e3&sso=45504c48-6c8c5e0f42
+location:      DEBUG
+detailUrl:     undefined
+description:   {"stage":"start","title":"Radware Captcha Page","url":"https://validate.perfdrive.com/?ssa=717b4b90-9e68-499f-8fe8-39dafa2ac97f&ssb=41149241289&ssc=https%3A%2F%2Fwww.assuta.co.il%2Fjobs%2Fsearch%2F&ssi=65d8a679-ckmr-4999-9fe1-28b4db8a1a56&ssk=botmanager_support@radware.com&ssm=10929127530095703109501224537160&ssn=4f6f57f69f41a37dc008e8b35612813f7bc8d81414ef-7ff4-4b50-bca2e3&sso=45504c48-6c8c5e0f42

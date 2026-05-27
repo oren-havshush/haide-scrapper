@@ -1,0 +1,18 @@
+﻿--- Evaluating setupScript ---
+setupScript completed in 18455ms
+itemCount: 710
+field coverage: {
+  "title": 710,
+  "externalJobId": 710,
+  "description": 710,
+  "requirements": 2,
+  "location": 682,
+  "department": 710,
+  "publishDate": 710
+}
+--- first 5 samples ---
+{"title":"╫æ╫ò╫ù╫á.╫¬ ╫É╫Ö╫¢╫ò╫¬ ╫É╫£╫₧╫á╫ÿ╫Ö╫¥ ╫É╫ò╫ñ╫ÿ╫Ö╫Ö╫¥ - ╫₧╫⌐╫¿╫ö ╫û╫₧╫á╫Ö╫¬ ╫£╫⌐╫á╫ö","externalJobId":"3444","location":"Shfela","department":"╫₧╫ò╫ô╫Ö╫ó╫Ö╫ƒ ╫ò╫£\"╫É","publishDate":"2024-11-28T02:16:00","descriptionLen":715,"requirementsLen":0,"descriptionStart":"╫£╫É╫¬╫¿ ╫ö╫ù╫æ╫¿╫ö ╫æ╫¿╫ù╫ò╫æ╫ò╫¬ ╫ô╫¿╫ò╫⌐.╫ö ╫æ╫ò╫ù╫á.╫¬ ╫É╫Ö╫¢╫ò╫¬ ╫É╫£╫₧╫á╫ÿ╫Ö╫¥ ╫É╫ò╫ñ╫ÿ╫Ö╫Ö╫¥ ╫£╫₧╫⌐╫¿╫ö ╫û╫₧╫á╫Ö╫¬ ╫£╫⌐╫á╫ö ╫æ╫₧╫í╫Æ╫¿╫¬ ╫ö╫¬╫ñ╫º╫Ö╫ô: ╫æ╫Ö╫º╫ò╫¿╫¬ ╫É╫Ö╫¢╫ò╫¬ "}
+{"title":"Technical Product Manager \\ Systems Engineer - AI And Innovation","externalJobId":"5811","location":"Sharon","department":"╫¬╫º╫⌐╫ò╫æ ╫ò╫í╫Ö╫Ö╫æ╫¿","publishDate":"2025-12-10T10:46:00","descriptionLen":1523,"requirementsLen":0,"descriptionStart":"Do you have a strong engineering background and a passion for building AI-driven products?WeΓÇÖre look"}
+{"title":"╫₧╫á╫ö╫£.╫¬ ╫ñ╫Ö╫á╫á╫í╫Ö ╫ó╫í╫º╫Ö Financial Planning and Analysis","externalJobId":"6317","location":"Sharon","department":"╫¬╫º╫⌐╫ò╫æ ╫ò╫í╫Ö╫Ö╫æ╫¿","publishDate":"2026-03-11T04:16:00","descriptionLen":1276,"requirementsLen":0,"descriptionStart":"╫£╫É╫¬╫¿╫Ö ╫ö╫ù╫æ╫¿╫ö ╫æ╫á╫¬╫á╫Ö╫ö ╫ò╫æ╫ù╫ò╫£╫ò╫ƒ ╫ô╫¿╫ò╫⌐.╫ö ╫₧╫á╫ö╫£.╫¬ ╫ñ╫Ö╫á╫á╫í╫Ö ╫ó╫í╫º╫Ö FP&A╫£╫¬╫ñ╫º╫Ö╫ô ╫₧╫⌐╫₧╫ó╫ò╫¬╫Ö ╫ö╫₧╫⌐╫£╫æ ╫É╫ù╫¿╫Ö╫ò╫¬ ╫á╫Ö╫ö╫ò╫£╫Ö╫¬ ╫ò╫ñ╫Ö╫á╫á╫í╫Ö"}
+{"title":"QA And Automation Team Leader","externalJobId":"6471","location":"Center","department":"╫¬╫º╫⌐╫ò╫æ ╫ò╫í╫Ö╫Ö╫æ╫¿","publishDate":"2026-04-14T07:46:00","descriptionLen":2912,"requirementsLen":0,"descriptionStart":"We are looking forFor our site in Rosh Ha'Ayin, we are seeking a QA & Automation Team Leader to join"}
+{"title":"Full Stack Java And React Developer","externalJobId":"5957","location":"Center","department":"╫¬╫º╫⌐╫ò╫æ ╫ò╫í╫Ö╫Ö╫æ╫¿","publishDate":"2026-01-04T01:46:00","descriptionLen":1157,"requirementsLen":0,"descriptionStart":"Job SummaryWe are seeking a skilled developer with a strong background in both backend and frontend "}

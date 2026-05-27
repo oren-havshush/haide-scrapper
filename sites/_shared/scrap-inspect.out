@@ -1,0 +1,50 @@
+﻿cardCount: 25
+nilooRequestBody: {"cmd":"get-jobs"}
+links sample: [
+  {
+    "i": 0,
+    "title": "╫æ╫ò╫ù╫á.╫¬ ╫É╫Ö╫¢╫ò╫¬ ╫É╫£╫₧╫á╫ÿ╫Ö╫¥ ╫É╫ò╫ñ╫ÿ╫Ö╫Ö╫¥ - ╫₧╫⌐╫¿╫ö ╫û╫₧╫á╫Ö╫¬ ╫£╫⌐╫á╫ö",
+    "anchors": [],
+    "dataAttrs": {
+      "class": "MuiPaper-root MuiPaper-elevation MuiPaper-rounded MuiPaper-elevation1 MuiCard-root css-8g9nvw",
+      "style": "--Paper-shadow: 0px 2px 1px -1px rgba(0,0,0,0.2),0px 1px 1px 0px rgba(0,0,0,0.14),0px 1px 3px 0px rgba(0,0,0,0.12);"
+    }
+  },
+  {
+    "i": 1,
+    "title": "Technical Product Manager \\ Systems Engineer - AI And Innovation",
+    "anchors": [],
+    "dataAttrs": {
+      "class": "MuiPaper-root MuiPaper-elevation MuiPaper-rounded MuiPaper-elevation1 MuiCard-root css-8g9nvw",
+      "style": "--Paper-shadow: 0px 2px 1px -1px rgba(0,0,0,0.2),0px 1px 1px 0px rgba(0,0,0,0.14),0px 1px 3px 0px rgba(0,0,0,0.12);"
+    }
+  },
+  {
+    "i": 2,
+    "title": "╫₧╫á╫ö╫£.╫¬ ╫ñ╫Ö╫á╫á╫í╫Ö ╫ó╫í╫º╫Ö Financial Planning and Analysis",
+    "anchors": [],
+    "dataAttrs": {
+      "class": "MuiPaper-root MuiPaper-elevation MuiPaper-rounded MuiPaper-elevation1 MuiCard-root css-8g9nvw",
+      "style": "--Paper-shadow: 0px 2px 1px -1px rgba(0,0,0,0.2),0px 1px 1px 0px rgba(0,0,0,0.14),0px 1px 3px 0px rgba(0,0,0,0.12);"
+    }
+  },
+  {
+    "i": 3,
+    "title": "QA And Automation Team Leader",
+    "anchors": [],
+    "dataAttrs": {
+      "class": "MuiPaper-root MuiPaper-elevation MuiPaper-rounded MuiPaper-elevation1 MuiCard-root css-8g9nvw",
+      "style": "--Paper-shadow: 0px 2px 1px -1px rgba(0,0,0,0.2),0px 1px 1px 0px rgba(0,0,0,0.14),0px 1px 3px 0px rgba(0,0,0,0.12);"
+    }
+  },
+  {
+    "i": 4,
+    "title": "Full Stack Java And React Developer",
+    "anchors": [],
+    "dataAttrs": {
+      "class": "MuiPaper-root MuiPaper-elevation MuiPaper-rounded MuiPaper-elevation1 MuiCard-root css-8g9nvw",
+      "style": "--Paper-shadow: 0px 2px 1px -1px rgba(0,0,0,0.2),0px 1px 1px 0px rgba(0,0,0,0.14),0px 1px 3px 0px rgba(0,0,0,0.12);"
+    }
+  }
+]
+pagination controls: []

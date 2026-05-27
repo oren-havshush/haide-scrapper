@@ -1,0 +1,41 @@
+{
+    "itemSelector":  "#haide-jobs-root [data-haide-job]",
+    "setupScript":  "(function(){try{\n  if (document.querySelector(\u0027#haide-jobs-root\u0027)) return;\n  var container = document.querySelector(\u0027.page-content\u0027);\n  if (!container) return;\n  var root = document.createElement(\u0027div\u0027);\n  root.id = \u0027haide-jobs-root\u0027;\n  root.style.display = \u0027none\u0027;\n  var children = Array.prototype.slice.call(container.children);\n  var current = null;\n  for (var i = 0; i \u003c children.length; i++) {\n    var el = children[i];\n    var tag = el.tagName ? el.tagName.toLowerCase() : \u0027\u0027;\n    if (tag === \u0027h3\u0027) {\n      current = document.createElement(\u0027div\u0027);\n      var slug = (el.textContent || \u0027\u0027).trim().slice(0, 100);\n      current.setAttribute(\u0027data-haide-job\u0027, slug || (\u0027job-\u0027 + i));\n      current.appendChild(el.cloneNode(true));\n      var idSpan = document.createElement(\u0027span\u0027);\n      idSpan.setAttribute(\u0027data-haide-job-id\u0027, \u00271\u0027);\n      idSpan.style.display = \u0027none\u0027;\n      idSpan.textContent = slug || (\u0027job-\u0027 + i);\n      current.appendChild(idSpan);\n      root.appendChild(current);\n    } else if (tag === \u0027hr\u0027 || tag === \u0027h1\u0027 || tag === \u0027h2\u0027) {\n      current = null;\n    } else if (current) {\n      current.appendChild(el.cloneNode(true));\n    }\n  }\n  document.body.appendChild(root);\n} catch(e){}})();",
+    "fieldMappings":  {
+                          "title":  {
+                                        "selector":  "h3",
+                                        "confidence":  100,
+                                        "source":  "MANUAL",
+                                        "capturedOnUrl":  "https://kedmi770.co.il/%D7%93%D7%A8%D7%95%D7%A9%D7%99%D7%9D-%D7%9E%D7%97%D7%A4%D7%A9%D7%99%D7%9D-%D7%A2%D7%95%D7%91%D7%93%D7%99%D7%9D/"
+                                    },
+                          "description":  {
+                                              "selector":  "p",
+                                              "confidence":  100,
+                                              "source":  "MANUAL",
+                                              "capturedOnUrl":  "https://kedmi770.co.il/%D7%93%D7%A8%D7%95%D7%A9%D7%99%D7%9D-%D7%9E%D7%97%D7%A4%D7%A9%D7%99%D7%9D-%D7%A2%D7%95%D7%91%D7%93%D7%99%D7%9D/"
+                                          },
+                          "requirements":  {
+                                               "selector":  "ul",
+                                               "confidence":  100,
+                                               "source":  "MANUAL",
+                                               "capturedOnUrl":  "https://kedmi770.co.il/%D7%93%D7%A8%D7%95%D7%A9%D7%99%D7%9D-%D7%9E%D7%97%D7%A4%D7%A9%D7%99%D7%9D-%D7%A2%D7%95%D7%91%D7%93%D7%99%D7%9D/"
+                                           },
+                          "applicationInfo":  {
+                                                  "selector":  "a[href^=\"mailto:\"]",
+                                                  "extractAttr":  "href",
+                                                  "confidence":  100,
+                                                  "source":  "MANUAL",
+                                                  "capturedOnUrl":  "https://kedmi770.co.il/%D7%93%D7%A8%D7%95%D7%A9%D7%99%D7%9D-%D7%9E%D7%97%D7%A4%D7%A9%D7%99%D7%9D-%D7%A2%D7%95%D7%91%D7%93%D7%99%D7%9D/"
+                                              },
+                          "externalJobId":  {
+                                                "selector":  "[data-haide-job-id]",
+                                                "confidence":  100,
+                                                "source":  "MANUAL",
+                                                "capturedOnUrl":  "https://kedmi770.co.il/%D7%93%D7%A8%D7%95%D7%A9%D7%99%D7%9D-%D7%9E%D7%97%D7%A4%D7%A9%D7%99%D7%9D-%D7%A2%D7%95%D7%91%D7%93%D7%99%D7%9D/"
+                                            }
+                      },
+    "pageFlow":  [
+
+                 ],
+    "formCapture":  null
+}

@@ -1,0 +1,216 @@
+﻿Saved niloo response: 2672784 bytes status=201 ct=application/json; charset=utf-8
+HTML size: 113182
+{
+  "summary": [
+    {
+      "sig": "DIV > DIV|MuiCard-root.MuiPaper-elevation.MuiPaper-elevation1.MuiPaper-root.MuiPaper-rounded.css-8g9nvw",
+      "count": 25,
+      "sampleClass": "MuiPaper-root MuiPaper-elevation MuiPaper-rounded MuiPaper-elevation1 MuiCard-root css-8g9nvw",
+      "parentTag": "DIV",
+      "sampleText": "╫æ╫ò╫ù╫á.╫¬ ╫É╫Ö╫¢╫ò╫¬ ╫É╫£╫₧╫á╫ÿ╫Ö╫¥ ╫É╫ò╫ñ╫ÿ╫Ö╫Ö╫¥ - ╫₧╫⌐╫¿╫ö ╫û╫₧╫á╫Ö╫¬ ╫£╫⌐╫á╫ö╫û╫Ö╫ö╫ò╫Ö ╫ô╫¿╫Ö╫⌐╫ö:3444╫₧╫Ö╫º╫ò╫¥: ╫¿╫ù╫ò╫æ╫ò╫¬"
+    },
+    {
+      "sig": "DIV > DIV|MuiCardContent-root.css-1r2ifds",
+      "count": 25,
+      "sampleClass": "MuiCardContent-root css-1r2ifds",
+      "parentTag": "DIV",
+      "sampleText": "╫æ╫ò╫ù╫á.╫¬ ╫É╫Ö╫¢╫ò╫¬ ╫É╫£╫₧╫á╫ÿ╫Ö╫¥ ╫É╫ò╫ñ╫ÿ╫Ö╫Ö╫¥ - ╫₧╫⌐╫¿╫ö ╫û╫₧╫á╫Ö╫¬ ╫£╫⌐╫á╫ö╫û╫Ö╫ö╫ò╫Ö ╫ô╫¿╫Ö╫⌐╫ö:3444╫₧╫Ö╫º╫ò╫¥: ╫¿╫ù╫ò╫æ╫ò╫¬"
+    },
+    {
+      "sig": "DIV > DIV|MuiBox-root.css-qut7qw",
+      "count": 25,
+      "sampleClass": "MuiBox-root css-qut7qw",
+      "parentTag": "DIV",
+      "sampleText": "╫æ╫ò╫ù╫á.╫¬ ╫É╫Ö╫¢╫ò╫¬ ╫É╫£╫₧╫á╫ÿ╫Ö╫¥ ╫É╫ò╫ñ╫ÿ╫Ö╫Ö╫¥ - ╫₧╫⌐╫¿╫ö ╫û╫₧╫á╫Ö╫¬ ╫£╫⌐╫á╫ö╫û╫Ö╫ö╫ò╫Ö ╫ô╫¿╫Ö╫⌐╫ö:3444╫₧╫Ö╫º╫ò╫¥: ╫¿╫ù╫ò╫æ╫ò╫¬"
+    },
+    {
+      "sig": "DIV > DIV|MuiBox-root.css-1j9emjn",
+      "count": 25,
+      "sampleClass": "MuiBox-root css-1j9emjn",
+      "parentTag": "DIV",
+      "sampleText": "╫æ╫ò╫ù╫á.╫¬ ╫É╫Ö╫¢╫ò╫¬ ╫É╫£╫₧╫á╫ÿ╫Ö╫¥ ╫É╫ò╫ñ╫ÿ╫Ö╫Ö╫¥ - ╫₧╫⌐╫¿╫ö ╫û╫₧╫á╫Ö╫¬ ╫£╫⌐╫á╫ö╫û╫Ö╫ö╫ò╫Ö ╫ô╫¿╫Ö╫⌐╫ö:3444╫₧╫Ö╫º╫ò╫¥: ╫¿╫ù╫ò╫æ╫ò╫¬"
+    },
+    {
+      "sig": "DIV > H3|MuiTypography-h6.MuiTypography-root.css-1n0wf61",
+      "count": 25,
+      "sampleClass": "MuiTypography-root MuiTypography-h6 css-1n0wf61",
+      "parentTag": "DIV",
+      "sampleText": "╫æ╫ò╫ù╫á.╫¬ ╫É╫Ö╫¢╫ò╫¬ ╫É╫£╫₧╫á╫ÿ╫Ö╫¥ ╫É╫ò╫ñ╫ÿ╫Ö╫Ö╫¥ - ╫₧╫⌐╫¿╫ö ╫û╫₧╫á╫Ö╫¬ ╫£╫⌐╫á╫ö"
+    },
+    {
+      "sig": "DIV > DIV|MuiBox-root.css-angi7t",
+      "count": 25,
+      "sampleClass": "MuiBox-root css-angi7t",
+      "parentTag": "DIV",
+      "sampleText": "╫û╫Ö╫ö╫ò╫Ö ╫ô╫¿╫Ö╫⌐╫ö:3444╫₧╫Ö╫º╫ò╫¥: ╫¿╫ù╫ò╫æ╫ò╫¬"
+    },
+    {
+      "sig": "DIV > P|MuiTypography-body2.MuiTypography-root.css-xlzdoe",
+      "count": 25,
+      "sampleClass": "MuiTypography-root MuiTypography-body2 css-xlzdoe",
+      "parentTag": "DIV",
+      "sampleText": "╫û╫Ö╫ö╫ò╫Ö ╫ô╫¿╫Ö╫⌐╫ö:3444"
+    },
+    {
+      "sig": "DIV > SPAN|nagishli-sr-only",
+      "count": 25,
+      "sampleClass": "nagishli-sr-only",
+      "parentTag": "DIV",
+      "sampleText": "╫£╫ñ╫¬╫ò╫ù ╫É╫¬ ╫ö╫¬╫ñ╫¿╫Ö╫ÿ ╫₧╫Ö╫ô╫ó ╫ò╫ö╫Æ╫ô╫¿╫ò╫¬"
+    },
+    {
+      "sig": "DIV > SPAN|help",
+      "count": 23,
+      "sampleClass": "help",
+      "parentTag": "DIV",
+      "sampleText": "Γ¥ô∩╕Ä"
+    },
+    {
+      "sig": "DIV > SPAN|nagishli-option-title",
+      "count": 19,
+      "sampleClass": "nagishli-option-title",
+      "parentTag": "DIV",
+      "sampleText": "╫ö╫ª╫ö╫¿╫¬ ╫á╫Æ╫Ö╫⌐╫ò╫¬"
+    },
+    {
+      "sig": "DIV > DIV|MuiBox-root.css-hmsj17",
+      "count": 16,
+      "sampleClass": "MuiBox-root css-hmsj17",
+      "parentTag": "DIV",
+      "sampleText": "╫₧╫Ö╫º╫ò╫¥: ╫¿╫ù╫ò╫æ╫ò╫¬"
+    },
+    {
+      "sig": "DIV > SPAN|notice",
+      "count": 8,
+      "sampleClass": "notice",
+      "parentTag": "DIV",
+      "sampleText": "ΓÜá∩╕Ä"
+    },
+    {
+      "sig": "UL > LI|MuiListItem-gutters.MuiListItem-root.css-1ohqk82",
+      "count": 6,
+      "sampleClass": "MuiListItem-root MuiListItem-gutters css-1ohqk82",
+      "parentTag": "UL",
+      "sampleText": "╫ö╫í╫Ö╫ñ╫ò╫¿ ╫⌐╫£╫á╫ò"
+    },
+    {
+      "sig": "UL > LI|nl-dropdown",
+      "count": 6,
+      "sampleClass": "nl-dropdown",
+      "parentTag": "UL",
+      "sampleText": "╫₧╫Ö╫ô╫ó ╫ò╫ö╫Æ╫ô╫¿╫ò╫¬╫£╫ñ╫¬╫ò╫ù ╫É╫¬ ╫ö╫¬╫ñ╫¿╫Ö╫ÿ ╫₧╫Ö╫ô╫ó ╫ò╫ö╫Æ╫ô╫¿╫ò╫¬Γ¥ô∩╕Ä ╫ö╫ª╫ö╫¿╫¬ ╫ö╫á╫Æ╫Ö╫⌐╫ò╫¬ ╫⌐╫£ ╫É╫¬╫¿ ╫û╫ö╫ö╫ª╫ö╫¿╫¬ ╫á╫Æ╫Ö╫⌐╫ò╫¬Γ¥ô∩╕Ä ╫É╫ò╫ô╫ò╫¬ ╫¬╫ò╫í╫ú ╫ö╫á╫Æ╫Ö╫⌐╫ò╫¬╫¢"
+    },
+    {
+      "sig": "LI > DIV|nl-dropdown-toggle",
+      "count": 6,
+      "sampleClass": "nl-dropdown-toggle",
+      "parentTag": "LI",
+      "sampleText": "╫₧╫Ö╫ô╫ó ╫ò╫ö╫Æ╫ô╫¿╫ò╫¬╫£╫ñ╫¬╫ò╫ù ╫É╫¬ ╫ö╫¬╫ñ╫¿╫Ö╫ÿ ╫₧╫Ö╫ô╫ó ╫ò╫ö╫Æ╫ô╫¿╫ò╫¬"
+    },
+    {
+      "sig": "DIV > SPAN|nl-dropdown-title",
+      "count": 6,
+      "sampleClass": "nl-dropdown-title",
+      "parentTag": "DIV",
+      "sampleText": "╫₧╫Ö╫ô╫ó ╫ò╫ö╫Æ╫ô╫¿╫ò╫¬"
+    },
+    {
+      "sig": "DIV > SPAN|nl-dropdown-arrow",
+      "count": 6,
+      "sampleClass": "nl-dropdown-arrow",
+      "parentTag": "DIV",
+      "sampleText": ""
+    },
+    {
+      "sig": "LI > UL|nl-dropdown-menu",
+      "count": 6,
+      "sampleClass": "nl-dropdown-menu",
+      "parentTag": "LI",
+      "sampleText": "Γ¥ô∩╕Ä ╫ö╫ª╫ö╫¿╫¬ ╫ö╫á╫Æ╫Ö╫⌐╫ò╫¬ ╫⌐╫£ ╫É╫¬╫¿ ╫û╫ö╫ö╫ª╫ö╫¿╫¬ ╫á╫Æ╫Ö╫⌐╫ò╫¬Γ¥ô∩╕Ä ╫É╫ò╫ô╫ò╫¬ ╫¬╫ò╫í╫ú ╫ö╫á╫Æ╫Ö╫⌐╫ò╫¬╫¢╫Ö╫ª╫ô ╫ö╫ò╫á╫Æ╫⌐ ╫É╫¬╫¿ ╫û╫öΓ¥ô∩╕Ä ╫º╫Ö╫ª╫ò╫¿╫Ö ╫₧╫º╫⌐╫Ö╫¥ ╫ò╫ö╫ò╫¿╫É╫ò╫¬ "
+    },
+    {
+      "sig": "UL > LI|not-clickable",
+      "count": 6,
+      "sampleClass": "not-clickable",
+      "parentTag": "UL",
+      "sampleText": "╫ô╫ñ╫ô╫ñ╫á╫Ö╫¥ ╫á╫¬╫₧╫¢╫Ö╫¥:"
+    },
+    {
+      "sig": "DIV > A|MuiLink-root.MuiLink-underlineAlways.MuiTypography-inherit.MuiTypography-root.css-16bbj2",
+      "count": 5,
+      "sampleClass": "MuiTypography-root MuiTypography-inherit MuiLink-root MuiLink-underlineAlways css-16bbj2",
+      "parentTag": "DIV",
+      "sampleText": ""
+    },
+    {
+      "sig": "DIV > A|MuiLink-root.MuiLink-underlineNone.MuiTypography-inherit.MuiTypography-root.css-9r975f",
+      "count": 5,
+      "sampleClass": "MuiTypography-root MuiTypography-inherit MuiLink-root MuiLink-underlineNone css-9r975f",
+      "parentTag": "DIV",
+      "sampleText": "╫₧╫ñ╫¬ ╫É╫¬╫¿"
+    },
+    {
+      "sig": "LI > DIV|MuiButtonBase-root.MuiListItemButton-gutters.MuiListItemButton-root.css-1qm8dkc",
+      "count": 5,
+      "sampleClass": "MuiButtonBase-root MuiListItemButton-root MuiListItemButton-gutters css-1qm8dkc",
+      "parentTag": "LI",
+      "sampleText": "╫ö╫í╫Ö╫ñ╫ò╫¿ ╫⌐╫£╫á╫ò"
+    },
+    {
+      "sig": "DIV > P|MuiTypography-body1.MuiTypography-root.css-vtx4wk",
+      "count": 4,
+      "sampleClass": "MuiTypography-root MuiTypography-body1 css-vtx4wk",
+      "parentTag": "DIV",
+      "sampleText": "╫ö╫í╫Ö╫ñ╫ò╫¿ ╫⌐╫£╫á╫ò"
+    },
+    {
+      "sig": "DIV > DIV|MuiBox-root.css-h2mawl",
+      "count": 4,
+      "sampleClass": "MuiBox-root css-h2mawl",
+      "parentTag": "DIV",
+      "sampleText": "╫ù╫Ö╫ñ╫ò╫⌐ ╫ù╫ò╫ñ╫⌐╫ÖΓÇï"
+    },
+    {
+      "sig": "DIV > BUTTON|react-share__ShareButton",
+      "count": 4,
+      "sampleClass": "react-share__ShareButton",
+      "parentTag": "DIV",
+      "sampleText": ""
+    },
+    {
+      "sig": "DIV > P|MuiTypography-body2.MuiTypography-root.css-p4kby0",
+      "count": 4,
+      "sampleClass": "MuiTypography-root MuiTypography-body2 css-p4kby0",
+      "parentTag": "DIV",
+      "sampleText": "|"
+    },
+    {
+      "sig": "DIV > P|MuiTypography-body1.MuiTypography-root.css-1qdmz5h",
+      "count": 4,
+      "sampleClass": "MuiTypography-root MuiTypography-body1 css-1qdmz5h",
+      "parentTag": "DIV",
+      "sampleText": "╫ö╫í╫Ö╫ñ╫ò╫¿ ╫⌐╫£╫á╫ò"
+    },
+    {
+      "sig": "P > svg|MuiSvgIcon-fontSizeMedium.MuiSvgIcon-root.css-1s0hah4",
+      "count": 3,
+      "sampleClass": "MuiSvgIcon-root MuiSvgIcon-fontSizeMedium css-1s0hah4",
+      "parentTag": "P",
+      "sampleText": ""
+    },
+    {
+      "sig": "DIV > P|MuiTypography-body2.MuiTypography-root.css-hytwxr",
+      "count": 3,
+      "sampleClass": "MuiTypography-root MuiTypography-body2 css-hytwxr",
+      "parentTag": "DIV",
+      "sampleText": "╫ù╫Ö╫ñ╫ò╫⌐ ╫ù╫ò╫ñ╫⌐╫Ö"
+    },
+    {
+      "sig": "DIV > FIELDSET|MuiOutlinedInput-notchedOutline.css-5v2ak0",
+      "count": 3,
+      "sampleClass": "MuiOutlinedInput-notchedOutline css-5v2ak0",
+      "parentTag": "DIV",
+      "sampleText": "ΓÇï"
+    }
+  ]
+}

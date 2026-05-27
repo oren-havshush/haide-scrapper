@@ -1,0 +1,47 @@
+{
+    "listingSelector":  ".elementor-posts-container.elementor-posts",
+    "itemSelector":  "article.elementor-post.jobs",
+    "setupScript":  "(function () {\n  function extractFormSchema(form) {\n    var action = form.getAttribute(\u0027action\u0027) || \u0027\u0027;\n    var method = (form.getAttribute(\u0027method\u0027) || \u0027GET\u0027).toUpperCase();\n    var fields = [];\n    var els = form.querySelectorAll(\u0027input, select, textarea\u0027);\n    for (var i = 0; i \u003c els.length; i++) {\n      var el = els[i];\n      var tag = el.tagName.toLowerCase();\n      var type = tag === \u0027input\u0027 ? ((el.getAttribute(\u0027type\u0027) || \u0027text\u0027).toLowerCase()) : tag;\n      if (type === \u0027submit\u0027 || type === \u0027button\u0027 || type === \u0027image\u0027 || type === \u0027reset\u0027) continue;\n      var name = el.getAttribute(\u0027name\u0027) || \u0027\u0027;\n      var style = (el.getAttribute(\u0027style\u0027) || \u0027\u0027).toLowerCase();\n      var isOffscreen = style.indexOf(\u0027-99999\u0027) !== -1 || style.indexOf(\u0027display:none !important\u0027) !== -1 || style.indexOf(\u0027display: none !important\u0027) !== -1;\n      var isHpName = /\\b(hp[_-]|honeypot|maspik|nickname)/i.test(name + \u0027 \u0027 + (el.id || \u0027\u0027) + \u0027 \u0027 + (el.className || \u0027\u0027));\n      if ((isOffscreen || isHpName) \u0026\u0026 type !== \u0027hidden\u0027) continue;\n      var label = \u0027\u0027;\n      if (el.id) {\n        var lab = form.querySelector(\u0027label[for=\"\u0027 + el.id.replace(/\"/g, \u0027\\\\\"\u0027) + \u0027\"]\u0027);\n        if (lab) label = (lab.textContent || \u0027\u0027).replace(/\\s+/g, \u0027 \u0027).trim();\n      }\n      if (!label) {\n        var parentLabel = el.closest(\u0027label\u0027);\n        if (parentLabel) label = (parentLabel.textContent || \u0027\u0027).replace(/\\s+/g, \u0027 \u0027).trim();\n      }\n      if (!label) label = el.getAttribute(\u0027placeholder\u0027) || el.getAttribute(\u0027aria-label\u0027) || \u0027\u0027;\n      var required = el.hasAttribute(\u0027required\u0027) || el.getAttribute(\u0027aria-required\u0027) === \u0027true\u0027;\n      var rec = { name: name, fieldType: type, label: label, required: required, tagName: tag };\n      if (type === \u0027hidden\u0027) rec.value = el.getAttribute(\u0027value\u0027) || \u0027\u0027;\n      if (type === \u0027file\u0027) {\n        var accept = el.getAttribute(\u0027accept\u0027);\n        if (accept) rec.accept = accept;\n      }\n      if (tag === \u0027select\u0027) {\n        var opts = el.querySelectorAll(\u0027option\u0027);\n        var options = [];\n        for (var k = 0; k \u003c opts.length; k++) {\n          options.push({ value: opts[k].value, label: (opts[k].textContent || \u0027\u0027).replace(/\\s+/g, \u0027 \u0027).trim() });\n        }\n        rec.options = options;\n      }\n      fields.push(rec);\n    }\n    return { actionUrl: action, method: method, fields: fields };\n  }\n  function pickForm(scope) {\n    var forms = scope.querySelectorAll(\u0027form\u0027);\n    var best = null, bestScore = -1;\n    for (var i = 0; i \u003c forms.length; i++) {\n      var f = forms[i];\n      var name = (f.getAttribute(\u0027name\u0027) || \u0027\u0027).toLowerCase();\n      var role = (f.getAttribute(\u0027role\u0027) || \u0027\u0027).toLowerCase();\n      if (role === \u0027search\u0027 || /search/.test(name)) continue;\n      var inputs = f.querySelectorAll(\u0027input:not([type=\"hidden\"]), select, textarea\u0027);\n      var visibleCount = 0;\n      for (var j = 0; j \u003c inputs.length; j++) {\n        var t = (inputs[j].getAttribute(\u0027type\u0027) || \u0027\u0027).toLowerCase();\n        if (t === \u0027submit\u0027 || t === \u0027button\u0027 || t === \u0027image\u0027 || t === \u0027reset\u0027) continue;\n        visibleCount++;\n      }\n      if (visibleCount \u003e bestScore) { bestScore = visibleCount; best = f; }\n    }\n    return bestScore \u003e= 1 ? best : null;\n  }\n  try {\n    document.querySelectorAll(\u0027article.elementor-post.jobs\u0027).forEach(function (art) {\n      if (!art.querySelector(\u0027[data-extracted-jobid]\u0027)) {\n        var m = (art.className || \u0027\u0027).match(/\\bpost-(\\d+)\\b/);\n        if (m) {\n          var span = document.createElement(\u0027span\u0027);\n          span.setAttribute(\u0027data-extracted-jobid\u0027, \u00271\u0027);\n          span.style.display = \u0027none\u0027;\n          span.textContent = m[1];\n          art.appendChild(span);\n        }\n      }\n      if (!art.querySelector(\u0027[data-extracted-form]\u0027)) {\n        var f = pickForm(art);\n        if (f) {\n          var schema = extractFormSchema(f);\n          var fs = document.createElement(\u0027span\u0027);\n          fs.setAttribute(\u0027data-extracted-form\u0027, \u00271\u0027);\n          fs.style.display = \u0027none\u0027;\n          fs.textContent = JSON.stringify(schema);\n          art.appendChild(fs);\n        }\n      }\n    });\n  } catch (e) {}\n})();",
+    "fieldMappings":  {
+                          "title":  {
+                                        "selector":  ".elementor-element-3ea7ddfb .elementor-heading-title",
+                                        "confidence":  100,
+                                        "source":  "MANUAL",
+                                        "capturedOnUrl":  "https://www.teleclalcc.co.il/jobs/"
+                                    },
+                          "department":  {
+                                             "selector":  ".elementor-element-1379431c .elementor-heading-title",
+                                             "confidence":  100,
+                                             "source":  "MANUAL",
+                                             "capturedOnUrl":  "https://www.teleclalcc.co.il/jobs/"
+                                         },
+                          "location":  {
+                                           "selector":  ".elementor-element-281d57dc .elementor-heading-title",
+                                           "confidence":  100,
+                                           "source":  "MANUAL",
+                                           "capturedOnUrl":  "https://www.teleclalcc.co.il/jobs/"
+                                       },
+                          "description":  {
+                                              "selector":  ".elementor-element-62dfb0d .elementor-widget-container",
+                                              "confidence":  100,
+                                              "source":  "MANUAL",
+                                              "capturedOnUrl":  "https://www.teleclalcc.co.il/jobs/"
+                                          },
+                          "externalJobId":  {
+                                                "selector":  "[data-extracted-jobid]",
+                                                "confidence":  100,
+                                                "source":  "MANUAL",
+                                                "capturedOnUrl":  "https://www.teleclalcc.co.il/jobs/"
+                                            },
+                          "applicationFormSchema":  {
+                                                        "selector":  "[data-extracted-form]",
+                                                        "confidence":  100,
+                                                        "source":  "MANUAL",
+                                                        "capturedOnUrl":  "https://www.teleclalcc.co.il/jobs/"
+                                                    }
+                      },
+    "pageFlow":  [
+
+                 ],
+    "formCapture":  null
+}

@@ -1,0 +1,154 @@
+{
+    "data":  [
+                 {
+                     "id":  "cmpmrglv200g31ko3vi73y90l",
+                     "title":  "××©××××.×ª ×¨×× ××× ×××¡× ×××¤× ××©×\"×¦",
+                     "description":  "×¢×××× ××ª××× ××©×××××ª ××¨××, ××××× ×ª×§×××ª ××××× ××¡×××§×, ×××××.×ª××§×× ×ª×§×××ª ××©×× ×××××× ×××××¨, ×××××¨×£, ×××¦××¢ ×¢×××××ª ××©×× ××¨×× ×××- ×××××××¡××.",
+                     "requirements":  "â¢ × ××¡××× ××ª××× ××©×××××ª ×¨×× â¢ ×××¢ ××× × ×××©××â¢ ×ª×¢×××ª ×× ××¡×× ××©××- ××ª×¨××â¢ ××¡××× ×××©×× â××ª×¨×× â¢ ×× ××××ª ××× ××ª - ××××",
+                     "location":  "Unknown",
+                     "department":  "×ª××××§×",
+                     "externalJobId":  "626",
+                     "publishDate":  null,
+                     "applicationInfo":  null,
+                     "rawData":  {
+                                     "title":  "××©××××.×ª ×¨×× ××× ×××¡× ×××¤× ××©×\"×¦",
+                                     "detailUrl":  "https://www.egged.co.il/career/headquarters/626",
+                                     "department":  "×ª××××§×",
+                                     "description":  "×¢×××× ××ª××× ××©×××××ª ××¨××, ××××× ×ª×§×××ª ××××× ××¡×××§×, ×××××.×ª××§×× ×ª×§×××ª ××©×× ×××××× ×××××¨, ×××××¨×£, ×××¦××¢ ×¢×××××ª ××©×× ××¨×× ×××- ×××××××¡××.",
+                                     "requirements":  "â¢ × ××¡××× ××ª××× ××©×××××ª ×¨×× â¢ ×××¢ ××× × ×××©××â¢ ×ª×¢×××ª ×× ××¡×× ××©××- ××ª×¨××â¢ ××¡××× ×××©×× â××ª×¨×× â¢ ×× ××××ª ××× ××ª - ××××",
+                                     "externalJobId":  "626",
+                                     "detailUrl_href":  "https://www.egged.co.il/career/headquarters/626",
+                                     "_debugDescription":  "{\"selector\":\".haide-description\",\"matched\":true,\"rootTag\":\"div\",\"rawTextLength\":134,\"source\":\"item\",\"revealConfigured\":false,\"revealFound\":false,\"revealClicked\":false,\"wrapperHasOpen\":false}"
+                                 },
+                     "validationStatus":  "valid;warn:missing_url",
+                     "siteId":  "cmpmr8di4001r01mvgx4qc6cy",
+                     "scrapeRunId":  "cmpmrg42w001t01mv2exg2s47",
+                     "createdAt":  "2026-05-26T14:59:08.846Z",
+                     "site":  {
+                                  "id":  "cmpmr8di4001r01mvgx4qc6cy",
+                                  "siteUrl":  "https://www.egged.co.il/career/headquarters"
+                              }
+                 },
+                 {
+                     "id":  "cmpmrglv100g21ko3fzjhtuy9",
+                     "title":  "×××× ××.×ª ×¨×× ××× ×××¡× ××©×××",
+                     "description":  "×¢×××× ××ª××× ×××× ×××ª ××¨×× ××××¡××××ª××¨ ×ª×§×××ª ××¨×××× ××××× ××ª××§×× × â ×××××××¡×× ××× ××¡××××",
+                     "requirements":  "× ××¡××× ××ª××× ××××× ×××ª- ×©× × ××¤×××ª ×ª×¢×××ª ××××××¨×× ××§×- ××ª×¨×× ×¨××©××× × ×××× ×¢× ×××××××¡- ××ª×¨××",
+                     "location":  "Unknown",
+                     "department":  "×ª××××§×",
+                     "externalJobId":  "290",
+                     "publishDate":  null,
+                     "applicationInfo":  null,
+                     "rawData":  {
+                                     "title":  "×××× ××.×ª ×¨×× ××× ×××¡× ××©×××",
+                                     "detailUrl":  "https://www.egged.co.il/career/headquarters/290",
+                                     "department":  "×ª××××§×",
+                                     "description":  "×¢×××× ××ª××× ×××× ×××ª ××¨×× ××××¡××××ª××¨ ×ª×§×××ª ××¨×××× ××××× ××ª××§×× × â ×××××××¡×× ××× ××¡××××",
+                                     "requirements":  "× ××¡××× ××ª××× ××××× ×××ª- ×©× × ××¤×××ª ×ª×¢×××ª ××××××¨×× ××§×- ××ª×¨×× ×¨××©××× × ×××× ×¢× ×××××××¡- ××ª×¨××",
+                                     "externalJobId":  "290",
+                                     "detailUrl_href":  "https://www.egged.co.il/career/headquarters/290",
+                                     "_debugDescription":  "{\"selector\":\".haide-description\",\"matched\":true,\"rootTag\":\"div\",\"rawTextLength\":85,\"source\":\"item\",\"revealConfigured\":false,\"revealFound\":false,\"revealClicked\":false,\"wrapperHasOpen\":false}"
+                                 },
+                     "validationStatus":  "valid;warn:missing_url",
+                     "siteId":  "cmpmr8di4001r01mvgx4qc6cy",
+                     "scrapeRunId":  "cmpmrg42w001t01mv2exg2s47",
+                     "createdAt":  "2026-05-26T14:59:08.845Z",
+                     "site":  {
+                                  "id":  "cmpmr8di4001r01mvgx4qc6cy",
+                                  "siteUrl":  "https://www.egged.co.il/career/headquarters"
+                              }
+                 },
+                 {
+                     "id":  "cmpmrglv000g11ko3lgdiev2q",
+                     "title":  "×××× ××.×ª ×¨×× ××× ×××¡× ××©×§×××",
+                     "description":  "×¢×××× ××ª××× ×××× ×××ª ××¨×× ××××¡××××ª××¨ ×ª×§×××ª ××¨×××× ××××× ××ª××§×× × â ×××××××¡×× ××× ××¡××××",
+                     "requirements":  "× ××¡××× ××ª××× ××××× ×××ª- ×©× × ××¤×××ª×ª×¢×××ª ××××××¨×× ××§×- ××ª×¨×××¨××©××× × ×××× ×¢× ×××××××¡- ××ª×¨××",
+                     "location":  "Unknown",
+                     "department":  "×ª××××§×",
+                     "externalJobId":  "677",
+                     "publishDate":  null,
+                     "applicationInfo":  null,
+                     "rawData":  {
+                                     "title":  "×××× ××.×ª ×¨×× ××× ×××¡× ××©×§×××",
+                                     "detailUrl":  "https://www.egged.co.il/career/headquarters/677",
+                                     "department":  "×ª××××§×",
+                                     "description":  "×¢×××× ××ª××× ×××× ×××ª ××¨×× ××××¡××××ª××¨ ×ª×§×××ª ××¨×××× ××××× ××ª××§×× × â ×××××××¡×× ××× ××¡××××",
+                                     "requirements":  "× ××¡××× ××ª××× ××××× ×××ª- ×©× × ××¤×××ª×ª×¢×××ª ××××××¨×× ××§×- ××ª×¨×××¨××©××× × ×××× ×¢× ×××××××¡- ××ª×¨××",
+                                     "externalJobId":  "677",
+                                     "detailUrl_href":  "https://www.egged.co.il/career/headquarters/677",
+                                     "_debugDescription":  "{\"selector\":\".haide-description\",\"matched\":true,\"rootTag\":\"div\",\"rawTextLength\":85,\"source\":\"item\",\"revealConfigured\":false,\"revealFound\":false,\"revealClicked\":false,\"wrapperHasOpen\":false}"
+                                 },
+                     "validationStatus":  "valid;warn:missing_url",
+                     "siteId":  "cmpmr8di4001r01mvgx4qc6cy",
+                     "scrapeRunId":  "cmpmrg42w001t01mv2exg2s47",
+                     "createdAt":  "2026-05-26T14:59:08.844Z",
+                     "site":  {
+                                  "id":  "cmpmr8di4001r01mvgx4qc6cy",
+                                  "siteUrl":  "https://www.egged.co.il/career/headquarters"
+                              }
+                 },
+                 {
+                     "id":  "cmpmrgluz00g01ko34jjzn29x",
+                     "title":  "×××× ××.×ª ××¢×.×ª ××¡××× ×× ×××× ×××¡× ××©×××",
+                     "description":  "×¢×××× ××ª××× ××©×××××ª ××¨××, ××××× ×ª×§×××ª ××××× ××¡×××§×, ×××××.×ª××§×× ×ª×§×××ª ××©×× ×××××× ×××××¨, ×××××¨×£, ×××¦××¢ ×¢×××××ª ××©×× ××¨×× ×××- ×××××××¡××.",
+                     "requirements":  "××¤×××ª ×××ª ×××× ×©×ª× ×××¡××××ª ×××××ª: ××¡×××ª × ×××× ×××¡× \"××××××§\" / ××¡××× ×××××× ×××××¨ ××××¢×× ×©×××× ×¢××× ×¢× 60 ×©× ×× ××¡××£ ×©× ×ª 2025. ××¡××× ××ª××§×× ××××× ×××××¨×£.",
+                     "location":  "Unknown",
+                     "department":  "×ª××××§×",
+                     "externalJobId":  "674",
+                     "publishDate":  null,
+                     "applicationInfo":  null,
+                     "rawData":  {
+                                     "title":  "×××× ××.×ª ××¢×.×ª ××¡××× ×× ×××× ×××¡× ××©×××",
+                                     "detailUrl":  "https://www.egged.co.il/career/headquarters/674",
+                                     "department":  "×ª××××§×",
+                                     "description":  "×¢×××× ××ª××× ××©×××××ª ××¨××, ××××× ×ª×§×××ª ××××× ××¡×××§×, ×××××.×ª××§×× ×ª×§×××ª ××©×× ×××××× ×××××¨, ×××××¨×£, ×××¦××¢ ×¢×××××ª ××©×× ××¨×× ×××- ×××××××¡××.",
+                                     "requirements":  "××¤×××ª ×××ª ×××× ×©×ª× ×××¡××××ª ×××××ª: ××¡×××ª × ×××× ×××¡× \"××××××§\" / ××¡××× ×××××× ×××××¨ ××××¢×× ×©×××× ×¢××× ×¢× 60 ×©× ×× ××¡××£ ×©× ×ª 2025. ××¡××× ××ª××§×× ××××× ×××××¨×£.",
+                                     "externalJobId":  "674",
+                                     "detailUrl_href":  "https://www.egged.co.il/career/headquarters/674",
+                                     "_debugDescription":  "{\"selector\":\".haide-description\",\"matched\":true,\"rootTag\":\"div\",\"rawTextLength\":134,\"source\":\"item\",\"revealConfigured\":false,\"revealFound\":false,\"revealClicked\":false,\"wrapperHasOpen\":false}"
+                                 },
+                     "validationStatus":  "valid;warn:missing_url",
+                     "siteId":  "cmpmr8di4001r01mvgx4qc6cy",
+                     "scrapeRunId":  "cmpmrg42w001t01mv2exg2s47",
+                     "createdAt":  "2026-05-26T14:59:08.843Z",
+                     "site":  {
+                                  "id":  "cmpmr8di4001r01mvgx4qc6cy",
+                                  "siteUrl":  "https://www.egged.co.il/career/headquarters"
+                              }
+                 },
+                 {
+                     "id":  "cmpmrgluy00fz1ko36h49pbwu",
+                     "title":  "××©×.×ª ×©××¨",
+                     "description":  "× ×××× ××××¤×× ××× ××××× ××©××¨, ××¨×××ª: ××× ×ª ××©×××¨××ª ××× ×ª ×××××ª ×©××¨ ××××©××× × ×××× ××¤×¡× ×§×××× × ×¢×××× (××¤×¡× 101/161 ×××\u0027) ×©××¨××¨ ×§××¤××ª ××¡××× ××¢×¡×§× ×××¤×× ××××××ª ×¢××§×××× ×××¤×× ×××××××× ×××¤×× ××§×¨× ××ª ×¤× ×¡××",
+                     "requirements":  "×ª×¢×××ª ××©× ×©××¨ ××××¨ ×××©××ª ×¨×\"×- ×××× × ××¡××× ×©× 3 ×©× ×× ×××©×.×ª ×©××¨ ××§×¡× ××¨×× ×××××- ××ª×¨×× ××©××¢××ª×××¢ ××ª××× ×ª ××××- ××ª×¨××× ××¡××× ×SAP ×× ×\"× â ××ª×¨××",
+                     "location":  "Unknown",
+                     "department":  "××©××× ×× ××©",
+                     "externalJobId":  "676",
+                     "publishDate":  null,
+                     "applicationInfo":  null,
+                     "rawData":  {
+                                     "title":  "××©×.×ª ×©××¨",
+                                     "detailUrl":  "https://www.egged.co.il/career/headquarters/676",
+                                     "department":  "××©××× ×× ××©",
+                                     "description":  "× ×××× ××××¤×× ××× ××××× ××©××¨, ××¨×××ª: ××× ×ª ××©×××¨××ª ××× ×ª ×××××ª ×©××¨ ××××©××× × ×××× ××¤×¡× ×§×××× × ×¢×××× (××¤×¡× 101/161 ×××\u0027) ×©××¨××¨ ×§××¤××ª ××¡××× ××¢×¡×§× ×××¤×× ××××××ª ×¢××§×××× ×××¤×× ×××××××× ×××¤×× ××§×¨× ××ª ×¤× ×¡××",
+                                     "requirements":  "×ª×¢×××ª ××©× ×©××¨ ××××¨ ×××©××ª ×¨×\"×- ×××× × ××¡××× ×©× 3 ×©× ×× ×××©×.×ª ×©××¨ ××§×¡× ××¨×× ×××××- ××ª×¨×× ××©××¢××ª×××¢ ××ª××× ×ª ××××- ××ª×¨××× ××¡××× ×SAP ×× ×\"× â ××ª×¨××",
+                                     "externalJobId":  "676",
+                                     "detailUrl_href":  "https://www.egged.co.il/career/headquarters/676",
+                                     "_debugDescription":  "{\"selector\":\".haide-description\",\"matched\":true,\"rootTag\":\"div\",\"rawTextLength\":195,\"source\":\"item\",\"revealConfigured\":false,\"revealFound\":false,\"revealClicked\":false,\"wrapperHasOpen\":false}"
+                                 },
+                     "validationStatus":  "valid;warn:missing_url",
+                     "siteId":  "cmpmr8di4001r01mvgx4qc6cy",
+                     "scrapeRunId":  "cmpmrg42w001t01mv2exg2s47",
+                     "createdAt":  "2026-05-26T14:59:08.842Z",
+                     "site":  {
+                                  "id":  "cmpmr8di4001r01mvgx4qc6cy",
+                                  "siteUrl":  "https://www.egged.co.il/career/headquarters"
+                              }
+                 }
+             ],
+    "meta":  {
+                 "total":  40,
+                 "page":  1,
+                 "pageSize":  5
+             }
+}

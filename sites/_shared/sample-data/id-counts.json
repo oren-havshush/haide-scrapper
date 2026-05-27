@@ -1,0 +1,321 @@
+﻿{
+  "totalItems": 48,
+  "uniqueIds": 14,
+  "nullIds": 0,
+  "duplicateIds": [
+    [
+      "JB-108",
+      4
+    ],
+    [
+      "JB-109",
+      6
+    ],
+    [
+      "JB-107",
+      16
+    ],
+    [
+      "JB-111",
+      7
+    ],
+    [
+      "JB-110",
+      4
+    ],
+    [
+      "JB-113",
+      3
+    ]
+  ],
+  "sampleRecords": [
+    {
+      "i": 0,
+      "title": "בנקאי/ת לסניפי מזרחי-טפחות Live",
+      "externalJobId": "JB-2883",
+      "detailHref": "mizrahiliveteler"
+    },
+    {
+      "i": 1,
+      "title": "בנקאי טלפוני - מרכז מכירות בלוד",
+      "externalJobId": "JB-11",
+      "detailHref": "lodseller"
+    },
+    {
+      "i": 2,
+      "title": "בנקאי טלפוני – מרכז בנקאות",
+      "externalJobId": "JB-10 | 10",
+      "detailHref": "phone-banker-banking-center"
+    },
+    {
+      "i": 3,
+      "title": "בנקאי/ת לקוחות בסניף גן העיר בת\"א",
+      "externalJobId": "JB-1072",
+      "detailHref": "banker-ganhaer"
+    },
+    {
+      "i": 4,
+      "title": "בנקאי מרחבי באזור השרון המרכזי",
+      "externalJobId": "JB-108",
+      "detailHref": "banker-central-sharon"
+    },
+    {
+      "i": 5,
+      "title": "בנקאי מרחבי באזור ירושלים",
+      "externalJobId": "JB-109",
+      "detailHref": "area-banker-jerusalem"
+    },
+    {
+      "i": 6,
+      "title": "טלר בסניף הוד השרון",
+      "externalJobId": "JB-108",
+      "detailHref": "teller-hodash"
+    },
+    {
+      "i": 7,
+      "title": "בנקאי/ת משכנתאות מתנייד לאזור ירושלים",
+      "externalJobId": "JB-1985",
+      "detailHref": "mobilebanker-jerusalem"
+    },
+    {
+      "i": 8,
+      "title": "טלר בסניף חצרות יפו",
+      "externalJobId": "JB-107",
+      "detailHref": "teler-jaffa-gardens"
+    },
+    {
+      "i": 9,
+      "title": "טלר בסניף סקיי טאוור בת\"א",
+      "externalJobId": "JB-107",
+      "detailHref": "teller-skytower"
+    },
+    {
+      "i": 10,
+      "title": "טלר מתנייד באזור ת\"א, ר\"ג ובת ים",
+      "externalJobId": "JB-107",
+      "detailHref": "teller-tlv-batyam-ramatgan"
+    },
+    {
+      "i": 11,
+      "title": "טלר בסניף בכפר סבא",
+      "externalJobId": "JB-108",
+      "detailHref": "teller-kfar-saba"
+    },
+    {
+      "i": 12,
+      "title": "מנהל/ת לקוחות בסניף חצרות יפו",
+      "externalJobId": "JB-111",
+      "detailHref": "customer-yaffo"
+    },
+    {
+      "i": 13,
+      "title": "טלר בסניף קרית עתידים ברמת החייל בת\"א",
+      "externalJobId": "JB-107",
+      "detailHref": "teller-kiryat-atidim"
+    },
+    {
+      "i": 14,
+      "title": "בנקאי/ת עסקי בסניף המגדל בבורסה ברמת גן",
+      "externalJobId": "JB-107",
+      "detailHref": "business-banker-hamigdal"
+    },
+    {
+      "i": 15,
+      "title": "בנקאי טלפוני - מרכז משכנתאות בירושלים",
+      "externalJobId": "JB-7",
+      "detailHref": "jerusalem-phone"
+    },
+    {
+      "i": 16,
+      "title": "טלר מתנייד באזור שפלת יהודה",
+      "externalJobId": "JB-109",
+      "detailHref": "teller-shfelat-yehuda"
+    },
+    {
+      "i": 17,
+      "title": "בנקאי משכנתאות בסניף חשמונאים בת\"א",
+      "externalJobId": "JB-107",
+      "detailHref": "mortgage-banker-tlv"
+    },
+    {
+      "i": 18,
+      "title": "טלר בסניף פתח תקווה",
+      "externalJobId": "JB-110",
+      "detailHref": "teller-petah-tikva"
+    },
+    {
+      "i": 19,
+      "title": "טלר מתנייד באזור פתח תקווה, בני ברק והסביבה",
+      "externalJobId": "JB-110",
+      "detailHref": "teller-petah-tikva-bnei-brak"
+    },
+    {
+      "i": 20,
+      "title": "טלר מתנייד ב-60% משרה במרחב מרכז",
+      "externalJobId": "JB-107",
+      "detailHref": "teller-center"
+    },
+    {
+      "i": 21,
+      "title": "טלר מתנייד באזור ערד ובאר שבע",
+      "externalJobId": "JB-111",
+      "detailHref": "teller-arad-Beer-sheva"
+    },
+    {
+      "i": 22,
+      "title": "בנקאי עסקי במרכז עסקים קרית שדה התעופה באירפורט סיטי",
+      "externalJobId": "JB-109",
+      "detailHref": "businessbankerairport"
+    },
+    {
+      "i": 23,
+      "title": "טלר בסניף מט\"ל בלוד",
+      "externalJobId": "JB-109",
+      "detailHref": "teller-matal-lod"
+    },
+    {
+      "i": 24,
+      "title": "טלר לסניף הבנק בבאר שבע",
+      "externalJobId": "JB-111",
+      "detailHref": "teller-business-beer-sheva"
+    },
+    {
+      "i": 25,
+      "title": "טלר במרכז עסקים יהלומים בבורסה ברמת גן",
+      "externalJobId": "JB-107",
+      "detailHref": "teller-ramat-gan"
+    },
+    {
+      "i": 26,
+      "title": "טלר בסניף פארק המדע ברחובות",
+      "externalJobId": "JB-111",
+      "detailHref": "teller-rehovot"
+    },
+    {
+      "i": 27,
+      "title": "טלר בסניף אזור תעשייה ראשון לציון",
+      "externalJobId": "JB-111",
+      "detailHref": "teller-rishon-lezion"
+    },
+    {
+      "i": 28,
+      "title": "בנקאי עסקי בפארק עסקים חולון",
+      "externalJobId": "JB-110",
+      "detailHref": "business-banker-holon"
+    },
+    {
+      "i": 29,
+      "title": "בנקאי עסקי במרכז עסקים תל אביב",
+      "externalJobId": "JB-107",
+      "detailHref": "businesses-banker-tel-aviv"
+    },
+    {
+      "i": 30,
+      "title": "טלר בסניף מידטאון בתל אביב",
+      "externalJobId": "JB-107",
+      "detailHref": "teler-tel-aviv"
+    },
+    {
+      "i": 31,
+      "title": "טלר בסניף שמאי בירושלים",
+      "externalJobId": "JB-109",
+      "detailHref": "teller-jeusalem"
+    },
+    {
+      "i": 32,
+      "title": "טלר בסניף כיכר המדינה בתל אביב",
+      "externalJobId": "JB-107",
+      "detailHref": "teler-tel-aviv-kikar-hamedina"
+    },
+    {
+      "i": 33,
+      "title": "טלר בסניף הבנק בבת ים",
+      "externalJobId": "JB-107",
+      "detailHref": "teller-bat-yam"
+    },
+    {
+      "i": 34,
+      "title": "טלר בסניף אפרת",
+      "externalJobId": "JB-109",
+      "detailHref": "teller-efrat"
+    },
+    {
+      "i": 35,
+      "title": "טלר בסניף קרית ים",
+      "externalJobId": "JB-113",
+      "detailHref": "teller-kiryat-yam"
+    },
+    {
+      "i": 36,
+      "title": "טלר מתנייד באזור אשדוד ואשקלון",
+      "externalJobId": "JB-111",
+      "detailHref": "teller-ashdod-ashkelon"
+    },
+    {
+      "i": 37,
+      "title": "טלר מתנייד באזור ראשל\"צ ורחובות",
+      "externalJobId": "JB-111",
+      "detailHref": "teller-rehovot-rishon-lezion"
+    },
+    {
+      "i": 38,
+      "title": "טלר מתנייד באזור הקריות ויקנעם",
+      "externalJobId": "JB-113",
+      "detailHref": "teller-krayot-yoqneam"
+    },
+    {
+      "i": 39,
+      "title": "טלר בסניף גבעתיים",
+      "externalJobId": "JB-110",
+      "detailHref": "teller-givatiam"
+    },
+    {
+      "i": 40,
+      "title": "בנקאי עסקי בסניף לב דיזנגוף בתל אביב",
+      "externalJobId": "JB-107",
+      "detailHref": "business-banker-tel-aviv-disengoff"
+    },
+    {
+      "i": 41,
+      "title": "בנקאי משכנתאות בסניף חצרות יפו",
+      "externalJobId": "JB-107",
+      "detailHref": "mortgage-banker-jaffa"
+    },
+    {
+      "i": 42,
+      "title": "בנקאי משכנתאות בסניף פארק הים בבת ים",
+      "externalJobId": "JB-107",
+      "detailHref": "mortgage-banker-bat-yam"
+    },
+    {
+      "i": 43,
+      "title": "בנקאי עסקי בסניף הבנק בהוד השרון",
+      "externalJobId": "JB-108",
+      "detailHref": "business-banker-hod-hasharon"
+    },
+    {
+      "i": 44,
+      "title": "בנקאי משכנתאות בסניף נצרת",
+      "externalJobId": "JB-113",
+      "detailHref": "mortgage-banker-nazerat"
+    },
+    {
+      "i": 45,
+      "title": "מנהל לקוחות בסניף קרית עתידים בת\"א",
+      "externalJobId": "JB-107",
+      "detailHref": "customer-tel-aviv"
+    },
+    {
+      "i": 46,
+      "title": "רכז/ת תפעול דירקטוריון להנהלת הבנק",
+      "externalJobId": "JB-5270",
+      "detailHref": "operation-officer-management"
+    },
+    {
+      "i": 47,
+      "title": "כלכלן/ית לחטיבה העסקית",
+      "externalJobId": "JB-5171",
+      "detailHref": "business-economist"
+    }
+  ]
+}

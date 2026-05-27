@@ -1,0 +1,109 @@
+﻿{
+    "id":  "cmp5k0she000v01lsrrw43uor",
+    "siteUrl":  "https://www.ness-tech.co.il/careers/",
+    "status":  "ACTIVE",
+    "confidenceScore":  0.78,
+    "fieldMappings":  {
+                          "_meta":  {
+                                        "savedAt":  "2026-05-14T14:22:30.963Z",
+                                        "pagination":  null,
+                                        "formCapture":  null,
+                                        "setupScript":  "(function () {\n  try {\n    var DETAIL_PREFIX = \u0027https://www.ness-tech.co.il/careers/job/\u0027;\n    var xhr = new XMLHttpRequest();\n    xhr.open(\u0027GET\u0027, \u0027/careers/api/Careers/GetAllItems\u0027, false);\n    try { xhr.setRequestHeader(\u0027accept\u0027, \u0027application/json\u0027); } catch (e) {}\n    xhr.send();\n    if (xhr.status !== 200) {\n      var em = document.createElement(\u0027span\u0027);\n      em.setAttribute(\u0027data-haide-setup-error\u0027, \u0027http_\u0027 + xhr.status);\n      em.style.display = \u0027none\u0027;\n      document.body.appendChild(em);\n      return;\n    }\n    var data = JSON.parse(xhr.responseText);\n    var list = (data \u0026\u0026 data.allOrderDetailsList) || [];\n    var cards = document.querySelectorAll(\u0027.card-job-container\u0027);\n    for (var i = 0; i \u003c cards.length \u0026\u0026 i \u003c list.length; i++) {\n      var card = cards[i];\n      if (card.querySelector(\u0027.haide-enrich\u0027)) continue;\n      var d = list[i] || {};\n      var domTitle = \u0027\u0027;\n      try {\n        var liTitle = card.querySelectorAll(\u0027ul li\u0027)[1];\n        if (liTitle) domTitle = (liTitle.textContent || \u0027\u0027).replace(/\\s+/g, \u0027 \u0027).trim();\n      } catch (e) {}\n      if (domTitle \u0026\u0026 d.title \u0026\u0026 domTitle.indexOf(d.title.replace(/\\s+/g, \u0027 \u0027).trim()) === -1 \u0026\u0026\n          d.title.replace(/\\s+/g, \u0027 \u0027).trim().indexOf(domTitle) === -1) {\n        var found = null;\n        for (var k = 0; k \u003c list.length; k++) {\n          if (list[k] \u0026\u0026 list[k].title \u0026\u0026 (list[k].title.indexOf(domTitle) !== -1 || domTitle.indexOf(list[k].title) !== -1)) {\n            found = list[k]; break;\n          }\n        }\n        if (found) { d = found; } else { continue; }\n      }\n      var wrap = document.createElement(\u0027div\u0027);\n      wrap.className = \u0027haide-enrich\u0027;\n      wrap.style.display = \u0027none\u0027;\n      function addSpan(cls, text) {\n        var s = document.createElement(\u0027span\u0027);\n        s.className = cls;\n        s.textContent = text == null ? \u0027\u0027 : String(text);\n        wrap.appendChild(s);\n      }\n      function addLink(cls, href) {\n        var a = document.createElement(\u0027a\u0027);\n        a.className = cls;\n        a.setAttribute(\u0027href\u0027, href);\n        a.textContent = href;\n        wrap.appendChild(a);\n      }\n      var descClean = (d.posDescription || \u0027\u0027).replace(/\u003cBR\\s*\\/?\u003e/gi, \u0027\\n\u0027).replace(/\u0026nbsp;/gi, \u0027 \u0027);\n      addSpan(\u0027haide-title\u0027, d.title);\n      addSpan(\u0027haide-location\u0027, d.posLocation);\n      addSpan(\u0027haide-description\u0027, descClean);\n      addSpan(\u0027haide-jobid\u0027, d.index);\n      addSpan(\u0027haide-publish-date\u0027, d.lastUpdated);\n      addSpan(\u0027haide-department\u0027, d.profName);\n      addSpan(\u0027haide-subdept\u0027, d.subProfName);\n      addSpan(\u0027haide-contact-name\u0027, d.rakazName);\n      addSpan(\u0027haide-contact-email\u0027, d.rakazEmail);\n      addSpan(\u0027haide-is-hot\u0027, d.isHot);\n      if (d.index) addLink(\u0027haide-detail-url\u0027, DETAIL_PREFIX + d.index);\n      card.appendChild(wrap);\n    }\n  } catch (e) {\n    var em2 = document.createElement(\u0027span\u0027);\n    em2.setAttribute(\u0027data-haide-setup-error\u0027, String(e).slice(0, 300));\n    em2.style.display = \u0027none\u0027;\n    document.body.appendChild(em2);\n  }\n})();",
+                                        "itemSelector":  ".card-job-container",
+                                        "revealSelector":  null,
+                                        "listingSelector":  null,
+                                        "originalMappings":  null
+                                    },
+                          "isHot":  {
+                                        "source":  "MANUAL",
+                                        "selector":  ".haide-is-hot",
+                                        "confidence":  100,
+                                        "capturedOnUrl":  "https://www.ness-tech.co.il/careers/"
+                                    },
+                          "title":  {
+                                        "source":  "MANUAL",
+                                        "selector":  ".haide-title",
+                                        "confidence":  100,
+                                        "capturedOnUrl":  "https://www.ness-tech.co.il/careers/"
+                                    },
+                          "location":  {
+                                           "source":  "MANUAL",
+                                           "selector":  ".haide-location",
+                                           "confidence":  100,
+                                           "capturedOnUrl":  "https://www.ness-tech.co.il/careers/"
+                                       },
+                          "detailUrl":  {
+                                            "source":  "MANUAL",
+                                            "selector":  ".haide-detail-url",
+                                            "confidence":  100,
+                                            "extractAttr":  "href",
+                                            "capturedOnUrl":  "https://www.ness-tech.co.il/careers/"
+                                        },
+                          "department":  {
+                                             "source":  "MANUAL",
+                                             "selector":  ".haide-department",
+                                             "confidence":  100,
+                                             "capturedOnUrl":  "https://www.ness-tech.co.il/careers/"
+                                         },
+                          "contactName":  {
+                                              "source":  "MANUAL",
+                                              "selector":  ".haide-contact-name",
+                                              "confidence":  100,
+                                              "capturedOnUrl":  "https://www.ness-tech.co.il/careers/"
+                                          },
+                          "description":  {
+                                              "source":  "MANUAL",
+                                              "selector":  ".haide-description",
+                                              "confidence":  100,
+                                              "capturedOnUrl":  "https://www.ness-tech.co.il/careers/"
+                                          },
+                          "publishDate":  {
+                                              "source":  "MANUAL",
+                                              "selector":  ".haide-publish-date",
+                                              "confidence":  100,
+                                              "capturedOnUrl":  "https://www.ness-tech.co.il/careers/"
+                                          },
+                          "contactEmail":  {
+                                               "source":  "MANUAL",
+                                               "selector":  ".haide-contact-email",
+                                               "confidence":  100,
+                                               "capturedOnUrl":  "https://www.ness-tech.co.il/careers/"
+                                           },
+                          "externalJobId":  {
+                                                "source":  "MANUAL",
+                                                "selector":  ".haide-jobid",
+                                                "confidence":  100,
+                                                "capturedOnUrl":  "https://www.ness-tech.co.il/careers/"
+                                            },
+                          "subDepartment":  {
+                                                "source":  "MANUAL",
+                                                "selector":  ".haide-subdept",
+                                                "confidence":  100,
+                                                "capturedOnUrl":  "https://www.ness-tech.co.il/careers/"
+                                            },
+                          "applicationInfo":  {
+                                                  "source":  "MANUAL",
+                                                  "selector":  ".haide-detail-url",
+                                                  "confidence":  100,
+                                                  "capturedOnUrl":  "https://www.ness-tech.co.il/careers/"
+                                              }
+                      },
+    "pageFlow":  [
+
+                 ],
+    "adminNote":  null,
+    "createdAt":  "2026-05-14T13:58:48.626Z",
+    "updatedAt":  "2026-05-14T14:23:08.844Z",
+    "analyzingAt":  "2026-05-14T13:58:48.625Z",
+    "reviewAt":  "2026-05-14T14:22:30.964Z",
+    "activeAt":  "2026-05-14T14:23:08.843Z",
+    "failedAt":  null,
+    "skippedAt":  null,
+    "latestScrapeRun":  {
+                            "id":  "cmp5kva62000z01lsplqfzfws",
+                            "status":  "COMPLETED",
+                            "jobCount":  193,
+                            "createdAt":  "2026-05-14T14:22:31.226Z",
+                            "completedAt":  "2026-05-14T14:23:08.837Z"
+                        }
+}

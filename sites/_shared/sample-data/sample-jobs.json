@@ -1,0 +1,98 @@
+[
+    {
+        "id":  "cmpo1l3x602491ko3tzx3p5n2",
+        "title":  "×××××/××ª ×××××× ××¢×¡×§××ª",
+        "description":  "×××××× ××¢×¡×§××ª ××¨××©/× ×××××/××ª ××¦×××ª ××¡××¨ ××§××¢×× ×××ª ××ª×¤×§×× ××××× ××ª× ××××ª ××× ××××¨××ª ×××××××ª ×××©×§ ××ª××× ××××¤× ×, ××××, ××¡××¨ ××¢××. ××¢×××× ×××©×¨× ×××× ×××× ××× ×§ ×××××¨ ××ª×¢×©×× ××¦×¤×× × ××××.",
+        "requirements":  null,
+        "location":  "×©×¤××",
+        "department":  "×××××",
+        "externalJobId":  "business-economist",
+        "publishDate":  null,
+        "applicationInfo":  null,
+        "rawData":  {
+                        "title":  "×××××/××ª ×××××× ××¢×¡×§××ª",
+                        "location":  "×©×¤××",
+                        "detailUrl":  "business-economist",
+                        "department":  "×××××",
+                        "description":  "×××××× ××¢×¡×§××ª ××¨××©/× ×××××/××ª ××¦×××ª ××¡××¨ ××§××¢×× ×××ª ××ª×¤×§×× ××××× ××ª× ××××ª ××× ××××¨××ª ×××××××ª ×××©×§ ××ª××× ××××¤× ×, ××××, ××¡××¨ ××¢××. ××¢×××× ×××©×¨× ×××× ×××× ××× ×§ ×××××¨ ××ª×¢×©×× ××¦×¤×× × ××××.",
+                        "externalJobId":  "business-economist",
+                        "detailUrl_href":  "business-economist",
+                        "employmentType":  "××©×¨× ××××",
+                        "jobTemplateCode":  "JB-5171",
+                        "_debugDescription":  "{\"selector\":\".jobDescription .mizRteditor\",\"matched\":true,\"rootTag\":\"div\",\"rawTextLength\":179,\"source\":\"item\",\"revealConfigured\":false,\"revealFound\":false,\"revealClicked\":false,\"wrapperHasOpen\":false}",
+                        "externalJobId_href":  "business-economist"
+                    },
+        "validationStatus":  "valid;warn:missing_url",
+        "siteId":  "cmpo15tl5002h01mvdda0zkf2",
+        "scrapeRunId":  "cmpo1kv68002l01mv4gkyawj8",
+        "createdAt":  "2026-05-27T12:30:21.210Z",
+        "site":  {
+                     "id":  "cmpo15tl5002h01mvdda0zkf2",
+                     "siteUrl":  "https://www.mizrahi-tefahot.co.il/about-mizrahi-tefahot-he/career/open-jobs/"
+                 }
+    },
+    {
+        "id":  "cmpo1l3x502481ko3qys7pccd",
+        "title":  "×¨××/×ª ×ª×¤×¢×× ×××¨×§×××¨××× ××× ×××ª ××× ×§",
+        "description":  "××××××¨××ª ××× ×§ ××¨××©/× ×¨××/×ª ×ª×¤×¢×× ×××¨×§×××¨××× ××¢×××× ××× ×××ª ××× ×§. ××¢×××× ×××©×¨× ×××× ×××× ××× ×§ ×××××¨ ××ª×¢×©×× ××¦×¤×× × ××××.",
+        "requirements":  null,
+        "location":  "×©×¤××",
+        "department":  "×ª×¤×¢××",
+        "externalJobId":  "operation-officer-management",
+        "publishDate":  null,
+        "applicationInfo":  null,
+        "rawData":  {
+                        "title":  "×¨××/×ª ×ª×¤×¢×× ×××¨×§×××¨××× ××× ×××ª ××× ×§",
+                        "location":  "×©×¤××",
+                        "detailUrl":  "operation-officer-management",
+                        "department":  "×ª×¤×¢××",
+                        "description":  "××××××¨××ª ××× ×§ ××¨××©/× ×¨××/×ª ×ª×¤×¢×× ×××¨×§×××¨××× ××¢×××× ××× ×××ª ××× ×§. ××¢×××× ×××©×¨× ×××× ×××× ××× ×§ ×××××¨ ××ª×¢×©×× ××¦×¤×× × ××××.",
+                        "externalJobId":  "operation-officer-management",
+                        "detailUrl_href":  "operation-officer-management",
+                        "employmentType":  "××©×¨× ××××",
+                        "jobTemplateCode":  "JB-5270",
+                        "_debugDescription":  "{\"selector\":\".jobDescription .mizRteditor\",\"matched\":true,\"rootTag\":\"div\",\"rawTextLength\":116,\"source\":\"item\",\"revealConfigured\":false,\"revealFound\":false,\"revealClicked\":false,\"wrapperHasOpen\":false}",
+                        "externalJobId_href":  "operation-officer-management"
+                    },
+        "validationStatus":  "valid;warn:missing_url",
+        "siteId":  "cmpo15tl5002h01mvdda0zkf2",
+        "scrapeRunId":  "cmpo1kv68002l01mv4gkyawj8",
+        "createdAt":  "2026-05-27T12:30:21.209Z",
+        "site":  {
+                     "id":  "cmpo15tl5002h01mvdda0zkf2",
+                     "siteUrl":  "https://www.mizrahi-tefahot.co.il/about-mizrahi-tefahot-he/career/open-jobs/"
+                 }
+    },
+    {
+        "id":  "cmpo1l3x302471ko3gn1rz726",
+        "title":  "×× ×× ××§××××ª ××¡× ××£ ×§×¨××ª ×¢×ª×××× ××ª\"×",
+        "description":  "××¢×× ×××/×ª ××§×¨×××¨× ×× ×§×××ª ××× ×§ ××××× ×××ª×§×× ×¢× ××¤×©×¨××××ª ×§××××? ××× ×§ ×××¨××-××¤×××ª ××¨××©/× ×× ××/×ª ××§××××ª (×× ×§×× ×××©×) ××¢×××× ××¡× ××£ ×§×¨××ª ×¢×ª×××× ××¨××ª ××××× ××ª\"×.",
+        "requirements":  null,
+        "location":  "××¨××",
+        "department":  "×× ×§×××ª",
+        "externalJobId":  "customer-tel-aviv",
+        "publishDate":  null,
+        "applicationInfo":  null,
+        "rawData":  {
+                        "title":  "×× ×× ××§××××ª ××¡× ××£ ×§×¨××ª ×¢×ª×××× ××ª\"×",
+                        "location":  "××¨××",
+                        "detailUrl":  "customer-tel-aviv",
+                        "department":  "×× ×§×××ª",
+                        "description":  "××¢×× ×××/×ª ××§×¨×××¨× ×× ×§×××ª ××× ×§ ××××× ×××ª×§×× ×¢× ××¤×©×¨××××ª ×§××××? ××× ×§ ×××¨××-××¤×××ª ××¨××©/× ×× ××/×ª ××§××××ª (×× ×§×× ×××©×) ××¢×××× ××¡× ××£ ×§×¨××ª ×¢×ª×××× ××¨××ª ××××× ××ª\"×.",
+                        "externalJobId":  "customer-tel-aviv",
+                        "detailUrl_href":  "customer-tel-aviv",
+                        "employmentType":  "××©×¨× ××××",
+                        "jobTemplateCode":  "JB-107",
+                        "_debugDescription":  "{\"selector\":\".jobDescription .mizRteditor\",\"matched\":true,\"rootTag\":\"div\",\"rawTextLength\":153,\"source\":\"item\",\"revealConfigured\":false,\"revealFound\":false,\"revealClicked\":false,\"wrapperHasOpen\":false}",
+                        "externalJobId_href":  "customer-tel-aviv"
+                    },
+        "validationStatus":  "valid;warn:missing_url",
+        "siteId":  "cmpo15tl5002h01mvdda0zkf2",
+        "scrapeRunId":  "cmpo1kv68002l01mv4gkyawj8",
+        "createdAt":  "2026-05-27T12:30:21.207Z",
+        "site":  {
+                     "id":  "cmpo15tl5002h01mvdda0zkf2",
+                     "siteUrl":  "https://www.mizrahi-tefahot.co.il/about-mizrahi-tefahot-he/career/open-jobs/"
+                 }
+    }
+]

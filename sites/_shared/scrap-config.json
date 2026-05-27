@@ -1,0 +1,45 @@
+{
+  "itemSelector": "[class*=\"Jobs_JobContainer__\"]",
+  "setupScript": "(function () {\n  try {\n    var items = document.querySelectorAll('[class*=\"Jobs_JobContainer__\"]');\n    items.forEach(function (it) {\n      var share = it.querySelector('a[class*=\"Jobs_ShareOnWhatsapp__\"]');\n      var href = share && share.getAttribute('href');\n      if (!href) return;\n      var m = href.match(/yekev\\.co\\.il\\/job\\/(\\d+)/);\n      if (!m) return;\n      var jobId = m[1];\n      var detailUrl = 'https://yekev.co.il/job/' + jobId;\n      if (!it.querySelector('[data-extracted-job-id]')) {\n        var s1 = document.createElement('span');\n        s1.setAttribute('data-extracted-job-id', '1');\n        s1.style.display = 'none';\n        s1.textContent = jobId;\n        it.appendChild(s1);\n      }\n      if (!it.querySelector('[data-extracted-detail-url]')) {\n        var s2 = document.createElement('span');\n        s2.setAttribute('data-extracted-detail-url', '1');\n        s2.style.display = 'none';\n        s2.textContent = detailUrl;\n        it.appendChild(s2);\n      }\n    });\n  } catch (e) {}\n})();",
+  "fieldMappings": {
+    "title": {
+      "selector": "[class*=\"Jobs_Title__\"] h1",
+      "confidence": 100,
+      "source": "MANUAL",
+      "capturedOnUrl": "https://yekev.co.il/%D7%93%D7%A8%D7%95%D7%A9%D7%99%D7%9D"
+    },
+    "description": {
+      "selector": "[class*=\"Jobs_Description__\"] [class*=\"Jobs_BodyText__\"]",
+      "confidence": 100,
+      "source": "MANUAL",
+      "capturedOnUrl": "https://yekev.co.il/%D7%93%D7%A8%D7%95%D7%A9%D7%99%D7%9D"
+    },
+    "requirements": {
+      "selector": "[class*=\"Jobs_Requirements__\"] [class*=\"Jobs_BodyText__\"]",
+      "confidence": 100,
+      "source": "MANUAL",
+      "capturedOnUrl": "https://yekev.co.il/%D7%93%D7%A8%D7%95%D7%A9%D7%99%D7%9D"
+    },
+    "externalJobId": {
+      "selector": "[data-extracted-job-id]",
+      "confidence": 100,
+      "source": "MANUAL",
+      "capturedOnUrl": "https://yekev.co.il/%D7%93%D7%A8%D7%95%D7%A9%D7%99%D7%9D"
+    },
+    "detailUrl": {
+      "selector": "[data-extracted-detail-url]",
+      "confidence": 100,
+      "source": "MANUAL",
+      "capturedOnUrl": "https://yekev.co.il/%D7%93%D7%A8%D7%95%D7%A9%D7%99%D7%9D"
+    },
+    "applicationInfo": {
+      "selector": "a[class*=\"Jobs_ShareOnWhatsapp__\"]",
+      "extractAttr": "href",
+      "confidence": 100,
+      "source": "MANUAL",
+      "capturedOnUrl": "https://yekev.co.il/%D7%93%D7%A8%D7%95%D7%A9%D7%99%D7%9D"
+    }
+  },
+  "pageFlow": [],
+  "formCapture": null
+}

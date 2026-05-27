@@ -1,0 +1,21 @@
+{
+    "itemSelector":  "div:has(\u003e div \u003e [data-mnr-bo^=\"position-name-\"]):has(\u003e [data-mnr-bo^=\"position-type-text-\"])",
+    "fieldMappings":  {
+                          "title":  {
+                                        "selector":  "[data-mnr-bo^=\"position-name-\"]",
+                                        "confidence":  100,
+                                        "source":  "MANUAL",
+                                        "capturedOnUrl":  "https://www.menoramivt.co.il/job-posting/open-position"
+                                    },
+                          "department":  {
+                                             "selector":  ".position-type-text",
+                                             "confidence":  100,
+                                             "source":  "MANUAL",
+                                             "capturedOnUrl":  "https://www.menoramivt.co.il/job-posting/open-position"
+                                         }
+                      },
+    "pageFlow":  [
+
+                 ],
+    "formCapture":  null
+}

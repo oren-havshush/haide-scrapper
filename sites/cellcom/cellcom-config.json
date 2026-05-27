@@ -1,0 +1,74 @@
+{
+  "itemSelector": ".haide-cellcom-job",
+  "setupScript": "(async function () {\n  try {\n    var resp = await fetch('https://contentepi.cellcom.co.il/jobs/Careersportal/?expand=*&currentPageUrl=%2Fjobs%2FCareersportal%2F', {\n      headers: { 'Accept': 'application/json' },\n      credentials: 'omit',\n      mode: 'cors'\n    });\n    if (!resp.ok) return 0;\n    var data = await resp.json();\n    var arr = (data.listAdsCareers && data.listAdsCareers.expandedValue) || [];\n    var scopeNames = {0:'משרה מלאה',1:'משרה חלקית',2:'משמרות',3:'משרה ללא ניסיון',4:'משרת סטודנט',5:'משרת הורים'};\n    var brandNames = {'_cellcom.png':'Cellcom','dynamica.png':'Dynamica','golan.png':'Golan Telecom'};\n    var host = document.getElementById('haide-cellcom-jobs');\n    if (host) host.remove();\n    host = document.createElement('div');\n    host.id = 'haide-cellcom-jobs';\n    host.style.display = 'none';\n    document.body.appendChild(host);\n    var v = function (j, k, def) { def = def === undefined ? '' : def; return (j[k] && j[k].value !== undefined && j[k].value !== null) ? j[k].value : def; };\n    function set(div, cls, text, isHtml) {\n      var el = document.createElement('div');\n      el.className = cls;\n      if (isHtml) {\n        var tmp = document.createElement('div');\n        tmp.innerHTML = text || '';\n        el.textContent = (tmp.textContent || '').replace(/\\s+/g, ' ').trim();\n      } else {\n        el.textContent = text != null ? String(text) : '';\n      }\n      div.appendChild(el);\n    }\n    for (var i = 0; i < arr.length; i++) {\n      var j = arr[i];\n      var codeJob = v(j,'codeJob');\n      var title = v(j,'title') || j.name || '';\n      var description = v(j,'description');\n      var requirements = v(j,'listRequirements');\n      var locations = (j.listOfCareerLocations && j.listOfCareerLocations.value) || [];\n      var scopes = (j.careersScope && j.careersScope.value) || [];\n      var isHot = !!v(j,'isHotAd', false);\n      var whatsapp = v(j,'whatsappNumber');\n      var startPublish = j.startPublish || j.created || '';\n      var route = j.routeSegment || '';\n      var url = j.url || '';\n      var detailUrl = url ? ('https://cellcom.co.il' + url) : '';\n      var logoSeg = j.logoIcon && j.logoIcon.expandedValue ? j.logoIcon.expandedValue.routeSegment : '';\n      var brand = brandNames[logoSeg] || (logoSeg ? logoSeg.replace(/\\.png$/, '') : '');\n      var scopeText = scopes.map(function (s) { return scopeNames[s.careerScope]; }).filter(Boolean).join(', ');\n      var locationText = locations.join(', ');\n      var div = document.createElement('div');\n      div.className = 'haide-cellcom-job';\n      set(div, 'haide-title', title);\n      set(div, 'haide-codejob', codeJob);\n      set(div, 'haide-description', description, true);\n      set(div, 'haide-requirements', requirements, true);\n      set(div, 'haide-location', locationText);\n      set(div, 'haide-scope', scopeText);\n      set(div, 'haide-brand', brand);\n      set(div, 'haide-publishdate', startPublish);\n      set(div, 'haide-whatsapp', whatsapp);\n      set(div, 'haide-detailurl', detailUrl);\n      set(div, 'haide-route', route);\n      set(div, 'haide-ishot', isHot ? '1' : '0');\n      host.appendChild(div);\n    }\n    return arr.length;\n  } catch (e) {\n    return -1;\n  }\n})();",
+  "fieldMappings": {
+    "title": {
+      "selector": ".haide-title",
+      "confidence": 100,
+      "source": "MANUAL",
+      "capturedOnUrl": "https://cellcom.co.il/jobs/Careersportal/"
+    },
+    "externalJobId": {
+      "selector": ".haide-codejob",
+      "confidence": 100,
+      "source": "MANUAL",
+      "capturedOnUrl": "https://cellcom.co.il/jobs/Careersportal/"
+    },
+    "description": {
+      "selector": ".haide-description",
+      "confidence": 100,
+      "source": "MANUAL",
+      "capturedOnUrl": "https://cellcom.co.il/jobs/Careersportal/"
+    },
+    "requirements": {
+      "selector": ".haide-requirements",
+      "confidence": 100,
+      "source": "MANUAL",
+      "capturedOnUrl": "https://cellcom.co.il/jobs/Careersportal/"
+    },
+    "location": {
+      "selector": ".haide-location",
+      "confidence": 100,
+      "source": "MANUAL",
+      "capturedOnUrl": "https://cellcom.co.il/jobs/Careersportal/"
+    },
+    "careerScope": {
+      "selector": ".haide-scope",
+      "confidence": 100,
+      "source": "MANUAL",
+      "capturedOnUrl": "https://cellcom.co.il/jobs/Careersportal/"
+    },
+    "brand": {
+      "selector": ".haide-brand",
+      "confidence": 100,
+      "source": "MANUAL",
+      "capturedOnUrl": "https://cellcom.co.il/jobs/Careersportal/"
+    },
+    "publishDate": {
+      "selector": ".haide-publishdate",
+      "confidence": 100,
+      "source": "MANUAL",
+      "capturedOnUrl": "https://cellcom.co.il/jobs/Careersportal/"
+    },
+    "applicationInfo": {
+      "selector": ".haide-whatsapp",
+      "confidence": 100,
+      "source": "MANUAL",
+      "capturedOnUrl": "https://cellcom.co.il/jobs/Careersportal/"
+    },
+    "detailUrl": {
+      "selector": ".haide-detailurl",
+      "confidence": 100,
+      "source": "MANUAL",
+      "capturedOnUrl": "https://cellcom.co.il/jobs/Careersportal/"
+    },
+    "isHot": {
+      "selector": ".haide-ishot",
+      "confidence": 100,
+      "source": "MANUAL",
+      "capturedOnUrl": "https://cellcom.co.il/jobs/Careersportal/"
+    }
+  },
+  "pageFlow": [],
+  "formCapture": null
+}

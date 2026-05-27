@@ -1,0 +1,676 @@
+<!DOCTYPE html><html class="js flexbox canvas canvastext webgl no-touch geolocation postmessage no-websqldatabase indexeddb hashchange history draganddrop websockets rgba hsla multiplebgs backgroundsize borderimage borderradius boxshadow textshadow opacity cssanimations csscolumns cssgradients cssreflections csstransforms csstransforms3d csstransitions fontface generatedcontent video audio localstorage sessionstorage webworkers no-applicationcache svg inlinesvg smil svgclippaths skrollr skrollr-desktop" dir="rtl" lang="he-IL"><!--<![endif]--><head><meta http-equiv="origin-trial" content="A7vZI3v+Gz7JfuRolKNM4Aff6zaGuT7X0mf3wtoZTnKv6497cVMnhy03KDqX7kBz/q/iidW7srW31oQbBt4VhgoAAACUeyJvcmlnaW4iOiJodHRwczovL3d3dy5nb29nbGUuY29tOjQ0MyIsImZlYXR1cmUiOiJEaXNhYmxlVGhpcmRQYXJ0eVN0b3JhZ2VQYXJ0aXRpb25pbmczIiwiZXhwaXJ5IjoxNzU3OTgwODAwLCJpc1N1YmRvbWFpbiI6dHJ1ZSwiaXNUaGlyZFBhcnR5Ijp0cnVlfQ==">
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title>מהנדס תכנה EMBEDDED | יוניטסק - פיתוח תוכנה, טכנולוגיה ופתרונות IT</title>
+	<meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1">
+
+	<!-- This site is optimized with the Yoast SEO plugin v24.1 - https://yoast.com/wordpress/plugins/seo/ -->
+	<link rel="canonical" href="https://www.unitask-inc.com/jb-1314/">
+	<meta property="og:locale" content="he_IL">
+	<meta property="og:type" content="article">
+	<meta property="og:title" content="מהנדס תכנה EMBEDDED | יוניטסק - פיתוח תוכנה, טכנולוגיה ופתרונות IT">
+	<meta property="og:description" content="חברה &nbsp;מובילה בייצור ושיווק רובוטים חכמים מחפשת מהנדס EMBEDDED&nbsp;למחלקת הפיתוח. כתיבת תוכנה למערכות משובצות מחשב מרובות פסיקות עם מספר רכיבי תכנות מסוג ARM CORTEX M0&nbsp; עם וללא מערכת הפעלה פיתוח ומימוש אלגוריתמים לבקרת תנועה ניתוח ועיבוד אותות ב MATLAB תמיכה איפיון וליווי מוצרים משלב הרעיון עד להעברתו לייצור. הכירות מעמיקה עם חמרה ומגוון פרוטוקולי תקשורת […]">
+	<meta property="og:url" content="https://www.unitask-inc.com/jb-1314/">
+	<meta property="og:site_name" content="יוניטסק - פיתוח תוכנה, טכנולוגיה ופתרונות IT">
+	<meta property="article:publisher" content="https://www.facebook.com/Unitask/?ref=br_rs">
+	<meta property="article:published_time" content="2017-09-28T08:36:16+00:00">
+	<meta property="article:modified_time" content="2019-09-05T07:10:43+00:00">
+	<meta name="author" content="לי גורדון">
+	<meta name="twitter:card" content="summary_large_image">
+	<meta name="twitter:label1" content="נכתב על יד">
+	<meta name="twitter:data1" content="לי גורדון">
+	<script type="text/javascript" async="" charset="utf-8" src="https://www.gstatic.com/recaptcha/releases/U5VsmTDhJM1iOJUyw4DEUTYv/recaptcha__iw.js" crossorigin="anonymous" integrity="sha384-9YGs2JCggoqaNQxDJu1FuuASt8RbJaJ/FF3UtaL72FnpQzM0iqyxkiEMUmQkvCo5"></script><script type="text/javascript" async="" src="https://www.google-analytics.com/analytics.js"></script><script type="text/javascript" async="" src="https://www.googletagmanager.com/gtag/js?id=G-6WX9RRBWYK&amp;cx=c&amp;gtm=4e6581"></script><script type="text/javascript" async="" src="https://ssl.google-analytics.com/ga.js"></script><script src="https://connect.facebook.net/signals/config/226400077999186?v=2.9.319&amp;r=stable&amp;domain=www.unitask-inc.com&amp;hme=7441a59ee5070e08bd0157a62d39bd95bf3afdcc83dafbad800e78b5416300a9&amp;ex_m=104%2C207%2C155%2C22%2C72%2C73%2C146%2C68%2C67%2C11%2C164%2C90%2C16%2C138%2C48%2C147%2C77%2C112%2C47%2C127%2C39%2C75%2C78%2C134%2C160%2C166%2C8%2C4%2C5%2C7%2C6%2C3%2C91%2C101%2C167%2C172%2C221%2C62%2C188%2C189%2C55%2C278%2C30%2C74%2C233%2C232%2C231%2C23%2C33%2C103%2C61%2C10%2C63%2C97%2C98%2C99%2C105%2C130%2C31%2C29%2C132%2C133%2C129%2C128%2C156%2C76%2C159%2C157%2C158%2C50%2C60%2C123%2C15%2C163%2C45%2C265%2C266%2C264%2C26%2C27%2C28%2C18%2C20%2C44%2C40%2C42%2C41%2C83%2C92%2C96%2C110%2C145%2C148%2C46%2C111%2C24%2C21%2C119%2C69%2C36%2C150%2C149%2C151%2C142%2C140%2C25%2C35%2C59%2C109%2C162%2C70%2C17%2C153%2C114%2C81%2C66%2C19%2C85%2C86%2C116%2C84%2C136%2C135%2C139%2C161%2C34%2C280%2C296%2C214%2C203%2C204%2C202%2C299%2C290%2C52%2C215%2C107%2C131%2C80%2C121%2C54%2C49%2C113%2C120%2C126%2C58%2C64%2C152%2C115%2C37%2C32%2C53%2C56%2C100%2C165%2C1%2C124%2C14%2C122%2C12%2C2%2C57%2C93%2C65%2C118%2C89%2C88%2C168%2C169%2C94%2C95%2C9%2C125%2C102%2C51%2C143%2C87%2C79%2C71%2C117%2C106%2C43%2C144%2C0%2C82%2C137%2C141%2C154%2C38%2C108%2C13%2C170" async=""></script><script async="" src="https://connect.facebook.net/en_US/fbevents.js"></script><script type="application/ld+json" class="yoast-schema-graph">{"@context":"https://schema.org","@graph":[{"@type":"Article","@id":"https://www.unitask-inc.com/jb-1314/#article","isPartOf":{"@id":"https://www.unitask-inc.com/jb-1314/"},"author":{"name":"לי גורדון","@id":"https://www.unitask-inc.com/#/schema/person/10e5a413ec27c4d313ac3b0066372848"},"headline":"מהנדס תכנה EMBEDDED","datePublished":"2017-09-28T08:36:16+00:00","dateModified":"2019-09-05T07:10:43+00:00","mainEntityOfPage":{"@id":"https://www.unitask-inc.com/jb-1314/"},"wordCount":24,"publisher":{"@id":"https://www.unitask-inc.com/#organization"},"articleSection":["חומרה ואלקטרוניקה","צפון","קריירה"],"inLanguage":"he-IL"},{"@type":"WebPage","@id":"https://www.unitask-inc.com/jb-1314/","url":"https://www.unitask-inc.com/jb-1314/","name":"מהנדס תכנה EMBEDDED | יוניטסק - פיתוח תוכנה, טכנולוגיה ופתרונות IT","isPartOf":{"@id":"https://www.unitask-inc.com/#website"},"datePublished":"2017-09-28T08:36:16+00:00","dateModified":"2019-09-05T07:10:43+00:00","breadcrumb":{"@id":"https://www.unitask-inc.com/jb-1314/#breadcrumb"},"inLanguage":"he-IL","potentialAction":[{"@type":"ReadAction","target":["https://www.unitask-inc.com/jb-1314/"]}]},{"@type":"BreadcrumbList","@id":"https://www.unitask-inc.com/jb-1314/#breadcrumb","itemListElement":[{"@type":"ListItem","position":1,"name":"Home","item":"https://www.unitask-inc.com/"},{"@type":"ListItem","position":2,"name":"מהנדס תכנה EMBEDDED"}]},{"@type":"WebSite","@id":"https://www.unitask-inc.com/#website","url":"https://www.unitask-inc.com/","name":"יוניטסק - פיתוח תוכנה, טכנולוגיה ופתרונות IT","description":"Unitask inc. - Software, Technology &amp; IT Solutions","publisher":{"@id":"https://www.unitask-inc.com/#organization"},"potentialAction":[{"@type":"SearchAction","target":{"@type":"EntryPoint","urlTemplate":"https://www.unitask-inc.com/?s={search_term_string}"},"query-input":{"@type":"PropertyValueSpecification","valueRequired":true,"valueName":"search_term_string"}}],"inLanguage":"he-IL"},{"@type":"Organization","@id":"https://www.unitask-inc.com/#organization","name":"Unitask","url":"https://www.unitask-inc.com/","logo":{"@type":"ImageObject","inLanguage":"he-IL","@id":"https://www.unitask-inc.com/#/schema/logo/image/","url":"https://www.unitask-inc.com/wp-content/uploads/2017/09/logo_unitask_open_150.png","contentUrl":"https://www.unitask-inc.com/wp-content/uploads/2017/09/logo_unitask_open_150.png","width":614,"height":150,"caption":"Unitask"},"image":{"@id":"https://www.unitask-inc.com/#/schema/logo/image/"},"sameAs":["https://www.facebook.com/Unitask/?ref=br_rs","https://www.linkedin.com/company/2526620/","https://www.youtube.com/user/UnitaskSoftware"]},{"@type":"Person","@id":"https://www.unitask-inc.com/#/schema/person/10e5a413ec27c4d313ac3b0066372848","name":"לי גורדון","image":{"@type":"ImageObject","inLanguage":"he-IL","@id":"https://www.unitask-inc.com/#/schema/person/image/","url":"https://www.unitask-inc.com/wp-content/uploads/2018/02/TOM_6326-150x150.png","contentUrl":"https://www.unitask-inc.com/wp-content/uploads/2018/02/TOM_6326-150x150.png","caption":"לי גורדון"},"url":"https://www.unitask-inc.com/author/leeg/"}]}</script>
+	<!-- / Yoast SEO plugin. -->
+
+
+<link rel="dns-prefetch" href="//www.unitask-inc.com">
+<link rel="dns-prefetch" href="//cdn.enable.co.il">
+<link rel="alternate" type="application/rss+xml" title="יוניטסק - פיתוח תוכנה, טכנולוגיה ופתרונות IT « פיד‏" href="https://www.unitask-inc.com/feed/">
+<link rel="alternate" title="oEmbed (JSON)" type="application/json+oembed" href="https://www.unitask-inc.com/wp-json/oembed/1.0/embed?url=https%3A%2F%2Fwww.unitask-inc.com%2Fjb-1314%2F">
+<link rel="alternate" title="oEmbed (XML)" type="text/xml+oembed" href="https://www.unitask-inc.com/wp-json/oembed/1.0/embed?url=https%3A%2F%2Fwww.unitask-inc.com%2Fjb-1314%2F&amp;format=xml">
+<style id="wp-img-auto-sizes-contain-inline-css" type="text/css">
+img:is([sizes=auto i],[sizes^="auto," i]){contain-intrinsic-size:3000px 1500px}
+/*# sourceURL=wp-img-auto-sizes-contain-inline-css */
+</style>
+<style id="wp-emoji-styles-inline-css" type="text/css">
+
+	img.wp-smiley, img.emoji {
+		display: inline !important;
+		border: none !important;
+		box-shadow: none !important;
+		height: 1em !important;
+		width: 1em !important;
+		margin: 0 0.07em !important;
+		vertical-align: -0.1em !important;
+		background: none !important;
+		padding: 0 !important;
+	}
+/*# sourceURL=wp-emoji-styles-inline-css */
+</style>
+<style id="classic-theme-styles-inline-css" type="text/css">
+/*! This file is auto-generated */
+.wp-block-button__link{color:#fff;background-color:#32373c;border-radius:9999px;box-shadow:none;text-decoration:none;padding:calc(.667em + 2px) calc(1.333em + 2px);font-size:1.125em}.wp-block-file__button{background:#32373c;color:#fff;text-decoration:none}
+/*# sourceURL=/wp-includes/css/classic-themes.min.css */
+</style>
+<style id="global-styles-inline-css" type="text/css">
+:root{--wp--preset--aspect-ratio--square: 1;--wp--preset--aspect-ratio--4-3: 4/3;--wp--preset--aspect-ratio--3-4: 3/4;--wp--preset--aspect-ratio--3-2: 3/2;--wp--preset--aspect-ratio--2-3: 2/3;--wp--preset--aspect-ratio--16-9: 16/9;--wp--preset--aspect-ratio--9-16: 9/16;--wp--preset--color--black: #000000;--wp--preset--color--cyan-bluish-gray: #abb8c3;--wp--preset--color--white: #ffffff;--wp--preset--color--pale-pink: #f78da7;--wp--preset--color--vivid-red: #cf2e2e;--wp--preset--color--luminous-vivid-orange: #ff6900;--wp--preset--color--luminous-vivid-amber: #fcb900;--wp--preset--color--light-green-cyan: #7bdcb5;--wp--preset--color--vivid-green-cyan: #00d084;--wp--preset--color--pale-cyan-blue: #8ed1fc;--wp--preset--color--vivid-cyan-blue: #0693e3;--wp--preset--color--vivid-purple: #9b51e0;--wp--preset--gradient--vivid-cyan-blue-to-vivid-purple: linear-gradient(135deg,rgb(6,147,227) 0%,rgb(155,81,224) 100%);--wp--preset--gradient--light-green-cyan-to-vivid-green-cyan: linear-gradient(135deg,rgb(122,220,180) 0%,rgb(0,208,130) 100%);--wp--preset--gradient--luminous-vivid-amber-to-luminous-vivid-orange: linear-gradient(135deg,rgb(252,185,0) 0%,rgb(255,105,0) 100%);--wp--preset--gradient--luminous-vivid-orange-to-vivid-red: linear-gradient(135deg,rgb(255,105,0) 0%,rgb(207,46,46) 100%);--wp--preset--gradient--very-light-gray-to-cyan-bluish-gray: linear-gradient(135deg,rgb(238,238,238) 0%,rgb(169,184,195) 100%);--wp--preset--gradient--cool-to-warm-spectrum: linear-gradient(135deg,rgb(74,234,220) 0%,rgb(151,120,209) 20%,rgb(207,42,186) 40%,rgb(238,44,130) 60%,rgb(251,105,98) 80%,rgb(254,248,76) 100%);--wp--preset--gradient--blush-light-purple: linear-gradient(135deg,rgb(255,206,236) 0%,rgb(152,150,240) 100%);--wp--preset--gradient--blush-bordeaux: linear-gradient(135deg,rgb(254,205,165) 0%,rgb(254,45,45) 50%,rgb(107,0,62) 100%);--wp--preset--gradient--luminous-dusk: linear-gradient(135deg,rgb(255,203,112) 0%,rgb(199,81,192) 50%,rgb(65,88,208) 100%);--wp--preset--gradient--pale-ocean: linear-gradient(135deg,rgb(255,245,203) 0%,rgb(182,227,212) 50%,rgb(51,167,181) 100%);--wp--preset--gradient--electric-grass: linear-gradient(135deg,rgb(202,248,128) 0%,rgb(113,206,126) 100%);--wp--preset--gradient--midnight: linear-gradient(135deg,rgb(2,3,129) 0%,rgb(40,116,252) 100%);--wp--preset--font-size--small: 13px;--wp--preset--font-size--medium: 20px;--wp--preset--font-size--large: 36px;--wp--preset--font-size--x-large: 42px;--wp--preset--spacing--20: 0.44rem;--wp--preset--spacing--30: 0.67rem;--wp--preset--spacing--40: 1rem;--wp--preset--spacing--50: 1.5rem;--wp--preset--spacing--60: 2.25rem;--wp--preset--spacing--70: 3.38rem;--wp--preset--spacing--80: 5.06rem;--wp--preset--shadow--natural: 6px 6px 9px rgba(0, 0, 0, 0.2);--wp--preset--shadow--deep: 12px 12px 50px rgba(0, 0, 0, 0.4);--wp--preset--shadow--sharp: 6px 6px 0px rgba(0, 0, 0, 0.2);--wp--preset--shadow--outlined: 6px 6px 0px -3px rgb(255, 255, 255), 6px 6px rgb(0, 0, 0);--wp--preset--shadow--crisp: 6px 6px 0px rgb(0, 0, 0);}:where(.is-layout-flex){gap: 0.5em;}:where(.is-layout-grid){gap: 0.5em;}body .is-layout-flex{display: flex;}.is-layout-flex{flex-wrap: wrap;align-items: center;}.is-layout-flex > :is(*, div){margin: 0;}body .is-layout-grid{display: grid;}.is-layout-grid > :is(*, div){margin: 0;}:where(.wp-block-columns.is-layout-flex){gap: 2em;}:where(.wp-block-columns.is-layout-grid){gap: 2em;}:where(.wp-block-post-template.is-layout-flex){gap: 1.25em;}:where(.wp-block-post-template.is-layout-grid){gap: 1.25em;}.has-black-color{color: var(--wp--preset--color--black) !important;}.has-cyan-bluish-gray-color{color: var(--wp--preset--color--cyan-bluish-gray) !important;}.has-white-color{color: var(--wp--preset--color--white) !important;}.has-pale-pink-color{color: var(--wp--preset--color--pale-pink) !important;}.has-vivid-red-color{color: var(--wp--preset--color--vivid-red) !important;}.has-luminous-vivid-orange-color{color: var(--wp--preset--color--luminous-vivid-orange) !important;}.has-luminous-vivid-amber-color{color: var(--wp--preset--color--luminous-vivid-amber) !important;}.has-light-green-cyan-color{color: var(--wp--preset--color--light-green-cyan) !important;}.has-vivid-green-cyan-color{color: var(--wp--preset--color--vivid-green-cyan) !important;}.has-pale-cyan-blue-color{color: var(--wp--preset--color--pale-cyan-blue) !important;}.has-vivid-cyan-blue-color{color: var(--wp--preset--color--vivid-cyan-blue) !important;}.has-vivid-purple-color{color: var(--wp--preset--color--vivid-purple) !important;}.has-black-background-color{background-color: var(--wp--preset--color--black) !important;}.has-cyan-bluish-gray-background-color{background-color: var(--wp--preset--color--cyan-bluish-gray) !important;}.has-white-background-color{background-color: var(--wp--preset--color--white) !important;}.has-pale-pink-background-color{background-color: var(--wp--preset--color--pale-pink) !important;}.has-vivid-red-background-color{background-color: var(--wp--preset--color--vivid-red) !important;}.has-luminous-vivid-orange-background-color{background-color: var(--wp--preset--color--luminous-vivid-orange) !important;}.has-luminous-vivid-amber-background-color{background-color: var(--wp--preset--color--luminous-vivid-amber) !important;}.has-light-green-cyan-background-color{background-color: var(--wp--preset--color--light-green-cyan) !important;}.has-vivid-green-cyan-background-color{background-color: var(--wp--preset--color--vivid-green-cyan) !important;}.has-pale-cyan-blue-background-color{background-color: var(--wp--preset--color--pale-cyan-blue) !important;}.has-vivid-cyan-blue-background-color{background-color: var(--wp--preset--color--vivid-cyan-blue) !important;}.has-vivid-purple-background-color{background-color: var(--wp--preset--color--vivid-purple) !important;}.has-black-border-color{border-color: var(--wp--preset--color--black) !important;}.has-cyan-bluish-gray-border-color{border-color: var(--wp--preset--color--cyan-bluish-gray) !important;}.has-white-border-color{border-color: var(--wp--preset--color--white) !important;}.has-pale-pink-border-color{border-color: var(--wp--preset--color--pale-pink) !important;}.has-vivid-red-border-color{border-color: var(--wp--preset--color--vivid-red) !important;}.has-luminous-vivid-orange-border-color{border-color: var(--wp--preset--color--luminous-vivid-orange) !important;}.has-luminous-vivid-amber-border-color{border-color: var(--wp--preset--color--luminous-vivid-amber) !important;}.has-light-green-cyan-border-color{border-color: var(--wp--preset--color--light-green-cyan) !important;}.has-vivid-green-cyan-border-color{border-color: var(--wp--preset--color--vivid-green-cyan) !important;}.has-pale-cyan-blue-border-color{border-color: var(--wp--preset--color--pale-cyan-blue) !important;}.has-vivid-cyan-blue-border-color{border-color: var(--wp--preset--color--vivid-cyan-blue) !important;}.has-vivid-purple-border-color{border-color: var(--wp--preset--color--vivid-purple) !important;}.has-vivid-cyan-blue-to-vivid-purple-gradient-background{background: var(--wp--preset--gradient--vivid-cyan-blue-to-vivid-purple) !important;}.has-light-green-cyan-to-vivid-green-cyan-gradient-background{background: var(--wp--preset--gradient--light-green-cyan-to-vivid-green-cyan) !important;}.has-luminous-vivid-amber-to-luminous-vivid-orange-gradient-background{background: var(--wp--preset--gradient--luminous-vivid-amber-to-luminous-vivid-orange) !important;}.has-luminous-vivid-orange-to-vivid-red-gradient-background{background: var(--wp--preset--gradient--luminous-vivid-orange-to-vivid-red) !important;}.has-very-light-gray-to-cyan-bluish-gray-gradient-background{background: var(--wp--preset--gradient--very-light-gray-to-cyan-bluish-gray) !important;}.has-cool-to-warm-spectrum-gradient-background{background: var(--wp--preset--gradient--cool-to-warm-spectrum) !important;}.has-blush-light-purple-gradient-background{background: var(--wp--preset--gradient--blush-light-purple) !important;}.has-blush-bordeaux-gradient-background{background: var(--wp--preset--gradient--blush-bordeaux) !important;}.has-luminous-dusk-gradient-background{background: var(--wp--preset--gradient--luminous-dusk) !important;}.has-pale-ocean-gradient-background{background: var(--wp--preset--gradient--pale-ocean) !important;}.has-electric-grass-gradient-background{background: var(--wp--preset--gradient--electric-grass) !important;}.has-midnight-gradient-background{background: var(--wp--preset--gradient--midnight) !important;}.has-small-font-size{font-size: var(--wp--preset--font-size--small) !important;}.has-medium-font-size{font-size: var(--wp--preset--font-size--medium) !important;}.has-large-font-size{font-size: var(--wp--preset--font-size--large) !important;}.has-x-large-font-size{font-size: var(--wp--preset--font-size--x-large) !important;}
+/*# sourceURL=global-styles-inline-css */
+</style>
+
+<link rel="stylesheet" id="ccw_main_css-css" href="https://www.unitask-inc.com/wp-content/plugins/click-to-chat-for-whatsapp/prev/assets/css/mainstyles.css?ver=4.14" type="text/css" media="all">
+<link rel="stylesheet" id="contact-form-7-css" href="https://www.unitask-inc.com/wp-content/plugins/contact-form-7/includes/css/styles.css?ver=6.0.2" type="text/css" media="all">
+<link rel="stylesheet" id="contact-form-7-rtl-css" href="https://www.unitask-inc.com/wp-content/plugins/contact-form-7/includes/css/styles-rtl.css?ver=6.0.2" type="text/css" media="all">
+<link rel="stylesheet" id="rs-plugin-settings-css" href="https://www.unitask-inc.com/wp-content/plugins/revslider/public/assets/css/settings.css?ver=5.4.6.3.1" type="text/css" media="all">
+<style id="rs-plugin-settings-inline-css" type="text/css">
+#rs-demo-id {}
+/*# sourceURL=rs-plugin-settings-inline-css */
+</style>
+<link rel="stylesheet" id="ppress-frontend-css" href="https://www.unitask-inc.com/wp-content/plugins/wp-user-avatar/assets/css/frontend.min.css?ver=4.15.20" type="text/css" media="all">
+<link rel="stylesheet" id="ppress-flatpickr-css" href="https://www.unitask-inc.com/wp-content/plugins/wp-user-avatar/assets/flatpickr/flatpickr.min.css?ver=4.15.20" type="text/css" media="all">
+<link rel="stylesheet" id="ppress-select2-css" href="https://www.unitask-inc.com/wp-content/plugins/wp-user-avatar/assets/select2/select2.min.css?ver=6.9.4" type="text/css" media="all">
+<link rel="stylesheet" id="qlwapp-css" href="https://www.unitask-inc.com/wp-content/plugins/wp-whatsapp-chat/build/frontend/css/style.css?ver=7.5.0" type="text/css" media="all">
+<link rel="stylesheet" id="elementor-icons-css" href="https://www.unitask-inc.com/wp-content/plugins/elementor/assets/lib/eicons/css/elementor-icons.min.css?ver=5.34.0" type="text/css" media="all">
+<link rel="stylesheet" id="elementor-frontend-css" href="https://www.unitask-inc.com/wp-content/plugins/elementor/assets/css/frontend-rtl.min.css?ver=3.26.2" type="text/css" media="all">
+<link rel="stylesheet" id="elementor-post-9082-css" href="https://www.unitask-inc.com/wp-content/uploads/elementor/css/post-9082.css?ver=1734870182" type="text/css" media="all">
+<link rel="stylesheet" id="font-awesome-5-all-css" href="https://www.unitask-inc.com/wp-content/plugins/elementor/assets/lib/font-awesome/css/all.min.css?ver=3.26.2" type="text/css" media="all">
+<link rel="stylesheet" id="font-awesome-4-shim-css" href="https://www.unitask-inc.com/wp-content/plugins/elementor/assets/lib/font-awesome/css/v4-shims.min.css?ver=3.26.2" type="text/css" media="all">
+<link rel="stylesheet" id="widget-text-editor-css" href="https://www.unitask-inc.com/wp-content/plugins/elementor/assets/css/widget-text-editor-rtl.min.css?ver=3.26.2" type="text/css" media="all">
+<link rel="stylesheet" id="widget-spacer-css" href="https://www.unitask-inc.com/wp-content/plugins/elementor/assets/css/widget-spacer-rtl.min.css?ver=3.26.2" type="text/css" media="all">
+<link rel="stylesheet" id="widget-heading-css" href="https://www.unitask-inc.com/wp-content/plugins/elementor/assets/css/widget-heading-rtl.min.css?ver=3.26.2" type="text/css" media="all">
+<link rel="stylesheet" id="widget-divider-css" href="https://www.unitask-inc.com/wp-content/plugins/elementor/assets/css/widget-divider-rtl.min.css?ver=3.26.2" type="text/css" media="all">
+<link rel="stylesheet" id="elementor-post-3274-css" href="https://www.unitask-inc.com/wp-content/uploads/elementor/css/post-3274.css?ver=1734872640" type="text/css" media="all">
+<link rel="stylesheet" id="pojo-css-framework-css" href="https://www.unitask-inc.com/wp-content/themes/everest/assets/bootstrap/css/bootstrap.min.css?ver=3.0.0" type="text/css" media="all">
+<link rel="stylesheet" id="font-awesome-css" href="https://www.unitask-inc.com/wp-content/plugins/elementor/assets/lib/font-awesome/css/font-awesome.min.css?ver=4.7.0" type="text/css" media="all">
+<link rel="stylesheet" id="photoswipe-css" href="https://www.unitask-inc.com/wp-content/plugins/pojo-lightbox/assets/photoswipe/photoswipe.min.css?ver=6.9.4" type="text/css" media="all">
+<link rel="stylesheet" id="photoswipe-skin-css" href="https://www.unitask-inc.com/wp-content/plugins/pojo-lightbox/assets/photoswipe/default-skin/default-skin.min.css?ver=6.9.4" type="text/css" media="all">
+<link rel="stylesheet" id="pojo-base-style-css" href="https://www.unitask-inc.com/wp-content/themes/everest/core/assets/css/style.min.css?ver=1.8.1" type="text/css" media="all">
+<link rel="stylesheet" id="pojo-style-css" href="https://www.unitask-inc.com/wp-content/themes/everest-child/assets/css/style.css?ver=1.8.1" type="text/css" media="all">
+<link rel="stylesheet" id="pojo-base-style-rtl-css" href="https://www.unitask-inc.com/wp-content/themes/everest/core/assets/css/rtl.min.css?ver=1.8.1" type="text/css" media="all">
+<link rel="stylesheet" id="pojo-style-rtl-css" href="https://www.unitask-inc.com/wp-content/themes/everest-child/assets/css/rtl.css?ver=1.8.1" type="text/css" media="all">
+<link rel="stylesheet" id="sharedaddy-css" href="https://www.unitask-inc.com/wp-content/plugins/pojo-sharing/sharedaddy/assets/css/sharing.css?ver=6.9.4" type="text/css" media="all">
+<link rel="stylesheet" id="google-fonts-1-css" href="https://fonts.googleapis.com/css?family=Roboto%3A100%2C100italic%2C200%2C200italic%2C300%2C300italic%2C400%2C400italic%2C500%2C500italic%2C600%2C600italic%2C700%2C700italic%2C800%2C800italic%2C900%2C900italic%7CRoboto+Slab%3A100%2C100italic%2C200%2C200italic%2C300%2C300italic%2C400%2C400italic%2C500%2C500italic%2C600%2C600italic%2C700%2C700italic%2C800%2C800italic%2C900%2C900italic&amp;display=auto&amp;subset=hebrew&amp;ver=6.9.4" type="text/css" media="all">
+<link rel="preconnect" href="https://fonts.gstatic.com/" crossorigin=""><script type="text/javascript" src="https://www.unitask-inc.com/wp-includes/js/jquery/jquery.min.js?ver=3.7.1" id="jquery-core-js"></script>
+<script type="text/javascript" src="https://www.unitask-inc.com/wp-includes/js/jquery/jquery-migrate.min.js?ver=3.4.1" id="jquery-migrate-js"></script>
+<script type="text/javascript" src="https://www.unitask-inc.com/wp-content/plugins/revslider/public/assets/js/jquery.themepunch.tools.min.js?ver=5.4.6.3.1" id="tp-tools-js"></script>
+<script type="text/javascript" src="https://www.unitask-inc.com/wp-content/plugins/revslider/public/assets/js/jquery.themepunch.revolution.min.js?ver=5.4.6.3.1" id="revmin-js"></script>
+<script type="text/javascript" src="https://www.unitask-inc.com/wp-content/plugins/wp-user-avatar/assets/flatpickr/flatpickr.min.js?ver=4.15.20" id="ppress-flatpickr-js"></script>
+<script type="text/javascript" src="https://www.unitask-inc.com/wp-content/plugins/wp-user-avatar/assets/select2/select2.min.js?ver=4.15.20" id="ppress-select2-js"></script>
+<script type="text/javascript" src="https://www.unitask-inc.com/wp-content/plugins/elementor/assets/lib/font-awesome/js/v4-shims.min.js?ver=3.26.2" id="font-awesome-4-shim-js"></script>
+<link rel="https://api.w.org/" href="https://www.unitask-inc.com/wp-json/"><link rel="alternate" title="JSON" type="application/json" href="https://www.unitask-inc.com/wp-json/wp/v2/posts/3274"><link rel="EditURI" type="application/rsd+xml" title="RSD" href="https://www.unitask-inc.com/xmlrpc.php?rsd">
+<meta name="generator" content="WordPress 6.9.4">
+<link rel="shortlink" href="https://www.unitask-inc.com/?p=3274">
+<!-- Global site tag (gtag.js) - Google Analytics -->
+<script async="" src="https://www.googletagmanager.com/gtag/js?id=UA-109895989-1"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'UA-109895989-1');
+</script>
+<!-- Facebook Pixel Code -->
+<script>
+  !function(f,b,e,v,n,t,s)
+  {if(f.fbq)return;n=f.fbq=function(){n.callMethod?
+  n.callMethod.apply(n,arguments):n.queue.push(arguments)};
+  if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';
+  n.queue=[];t=b.createElement(e);t.async=!0;
+  t.src=v;s=b.getElementsByTagName(e)[0];
+  s.parentNode.insertBefore(t,s)}(window, document,'script',
+  'https://connect.facebook.net/en_US/fbevents.js');
+  fbq('init', '226400077999186');
+  fbq('track', 'PageView');
+</script>
+<noscript><img height="1" width="1" style="display:none"
+  src="https://www.facebook.com/tr?id=226400077999186&ev=PageView&noscript=1"
+/></noscript>
+<!-- End Facebook Pixel Code -->
+<link rel="stylesheet" type="text/css" href="https://fonts.googleapis.com/css?family=Jura:100,100italic,200,200italic,300,300italic,400,400italic,500,500italic,600,600italic,700,700italic,800,800italic,900,900italic|Lato:100,100italic,200,200italic,300,300italic,400,400italic,500,500italic,600,600italic,700,700italic,800,800italic,900,900italic|Heebo:100,100italic,200,200italic,300,300italic,400,400italic,500,500italic,600,600italic,700,700italic,800,800italic,900,900italic|PT+Sans:100,100italic,200,200italic,300,300italic,400,400italic,500,500italic,600,600italic,700,700italic,800,800italic,900,900italic|Arimo:100,100italic,200,200italic,300,300italic,400,400italic,500,500italic,600,600italic,700,700italic,800,800italic,900,900italic&amp;subset=hebrew"><style type="text/css">div.logo-text a{color: #FF7477; font-family: 'Jura', Arial, sans-serif; font-weight: normal; font-size: 30px;line-height: 1em;}.logo-img a > img{width: 80%;}.logo{margin-top: 10px;}body{background-color: rgba(255, 255, 255, 1);background-position: top center;background-repeat: repeat;background-size: auto;background-attachment: scroll;color: #818181; font-family: 'Heebo', Arial, sans-serif; font-weight: 300; font-size: 15px;line-height: 1.6em;}#header, .sticky-header{background-color: rgba(252, 252, 252, 0.9);background-position: top center;background-repeat: repeat-x;background-size: auto;background-attachment: scroll;}.sf-menu a, .mobile-menu a{color: #000000; font-family: 'Lato', Arial, sans-serif; font-weight: 400; font-size: 16px;}.sf-menu a:hover,.sf-menu li.active a, .sf-menu li.current-menu-item > a,.sf-menu .sfHover > a,.sf-menu .sfHover > li.current-menu-item > a,.sf-menu li.current-menu-ancestor > a,.mobile-menu a:hover,.mobile-menu li.current-menu-item > a{color: #019ad8;}.sf-menu .sub-menu li{background-color: #fafafa;}.sf-menu .sub-menu li:hover{background-color: #fafafa;}.sf-menu .sub-menu li a{color: #000000; font-family: 'Lato', Arial, sans-serif; font-weight: normal; font-size: 14px;line-height: 3em;}.sf-menu .sub-menu li:hover > a,.sf-menu .sub-menu li.current-menu-item > a{color: #019ad8;}a{color: #000000;}a:hover{color: #000000;}::selection{color: #ffffff;background: #000000;}::-moz-selection{color: #ffffff;background: #000000;}h1{color: #797979; font-family: 'Lato', Arial, sans-serif; font-weight: 400; font-size: 38px;text-transform: uppercase;line-height: 60px;}h2{color: #000000; font-family: 'Lato', Arial, sans-serif; font-weight: normal; font-size: 35px;line-height: 1.5em;}h3{color: #000000; font-family: 'Lato', Arial, sans-serif; font-weight: bold; font-size: 26px;text-transform: uppercase;line-height: 1.5em;}h4{color: #000000; font-family: 'Lato', Arial, sans-serif; font-weight: bold; font-size: 19px;text-transform: uppercase;line-height: 1.5em;}h5{color: #ee4035; font-family: 'Lato', Arial, sans-serif; font-weight: 400; font-size: 18px;text-transform: uppercase;line-height: 2em;}h6{color: #000000; font-family: 'Lato', Arial, sans-serif; font-weight: normal; font-size: 15px;line-height: 1.5em;}#page-header.page-header-style-custom_bg{background-color: rgba(183, 183, 183, 1);background-position: center center;background-repeat: repeat;background-size: cover;background-attachment: scroll;}#page-header{line-height: 220px;color: #ffffff; font-family: 'Lato', Arial, sans-serif; font-weight: 400; font-size: 38px;text-transform: uppercase;}#sidebar{color: #818181; font-family: 'PT Sans', Arial, sans-serif; font-weight: 300; font-size: 15px;line-height: 1.6em;}#sidebar a{color: #FF7477;}#sidebar a:hover{color: #FF7477;}#sidebar .widget-title{color: #FF7477; font-family: 'Lato', Arial, sans-serif; font-weight: 400; font-size: 18px;text-transform: uppercase;line-height: 2em;}#footer{background-color: #e8e8e8;color: #009ad8; font-family: 'Arimo', Arial, sans-serif; font-weight: 500; font-size: 15px;letter-spacing: 0 px;line-height: 1.7em;}#footer a{color: #009ad8;}#footer a:hover{color: #ffffff;}#sidebar-footer .widget-title{color: #001749; font-family: 'Arimo', Arial, sans-serif; font-weight: normal; font-size: 18px;line-height: 2.5em;}#copyright{background-color: #3a3f41;color: #ffffff; font-family: 'Lato', Arial, sans-serif; font-weight: normal; font-size: 11px;line-height: 60px;}#copyright a{color: #ffffff;}#copyright a:hover{color: #ff7477;}#pojo-scroll-up{width: 50px;height: 50px;line-height: 50px;background-color: rgba(51, 51, 51, 0.6);background-position: top center;background-repeat: repeat;background-size: auto;background-attachment: scroll;}#pojo-scroll-up a{color: #eeeeee;}#header{height: 70px;}.sf-menu a, .menu-no-found{line-height: 70px;}.sf-menu li:hover ul, .sf-menu li.sfHover ul, body.pojo-title-bar .sticky-header-running{top: 70px;}#page-header .page-header-title.container{padding-top: 70px;}.navbar-toggle{border-color: #000000;}.icon-bar{background-color: #000000;}.sf-menu li.active, .sf-menu li:hover, .sf-menu li.current-menu-item, .sf-menu li.current-menu-parent, .sf-menu li.current-menu-ancestor, .sf-menu li.current_page_item, .sf-menu li.current_page_paren, .sf-menu li.current_page_ancestor{border-color: #019ad8;}#sidebar .menu li a:hover, #sidebar .sub-menu li a:hover, #sidebar .sub-page-menu li a:hover,
+			 #sidebar .menu li.current_page_item > a, #sidebar .sub-menu li.current_page_item > a, #sidebar .sub-page-menu li.current_page_item > a, #sidebar .menu li.current-menu-item > a,
+			 #sidebar .sub-menu li.current-menu-item > a, #sidebar .sub-page-menu li.current-menu-item > a{border-color: #000000;}.category-filters a{color: #000000;}.category-filters a:hover,.category-filters a.active{color: #000000;border-top-color: #000000;}</style>
+		<meta name="generator" content="Elementor 3.26.2; features: additional_custom_breakpoints; settings: css_print_method-external, google_font-enabled, font_display-auto">
+			<style>
+				.e-con.e-parent:nth-of-type(n+4):not(.e-lazyloaded):not(.e-no-lazyload),
+				.e-con.e-parent:nth-of-type(n+4):not(.e-lazyloaded):not(.e-no-lazyload) * {
+					background-image: none !important;
+				}
+				@media screen and (max-height: 1024px) {
+					.e-con.e-parent:nth-of-type(n+3):not(.e-lazyloaded):not(.e-no-lazyload),
+					.e-con.e-parent:nth-of-type(n+3):not(.e-lazyloaded):not(.e-no-lazyload) * {
+						background-image: none !important;
+					}
+				}
+				@media screen and (max-height: 640px) {
+					.e-con.e-parent:nth-of-type(n+2):not(.e-lazyloaded):not(.e-no-lazyload),
+					.e-con.e-parent:nth-of-type(n+2):not(.e-lazyloaded):not(.e-no-lazyload) * {
+						background-image: none !important;
+					}
+				}
+			</style>
+			<meta name="generator" content="Powered by Slider Revolution 5.4.6.3.1 - responsive, Mobile-Friendly Slider Plugin for WordPress with comfortable drag and drop interface.">
+<link rel="icon" href="https://www.unitask-inc.com/wp-content/uploads/2017/09/cropped-favicon4-32x32.png" sizes="32x32">
+<link rel="icon" href="https://www.unitask-inc.com/wp-content/uploads/2017/09/cropped-favicon4-192x192.png" sizes="192x192">
+<link rel="apple-touch-icon" href="https://www.unitask-inc.com/wp-content/uploads/2017/09/cropped-favicon4-180x180.png">
+<meta name="msapplication-TileImage" content="https://www.unitask-inc.com/wp-content/uploads/2017/09/cropped-favicon4-270x270.png">
+<script type="text/javascript">function setREVStartSize(e){
+				try{ var i=jQuery(window).width(),t=9999,r=0,n=0,l=0,f=0,s=0,h=0;					
+					if(e.responsiveLevels&&(jQuery.each(e.responsiveLevels,function(e,f){f>i&&(t=r=f,l=e),i>f&&f>r&&(r=f,n=e)}),t>r&&(l=n)),f=e.gridheight[l]||e.gridheight[0]||e.gridheight,s=e.gridwidth[l]||e.gridwidth[0]||e.gridwidth,h=i/s,h=h>1?1:h,f=Math.round(h*f),"fullscreen"==e.sliderLayout){var u=(e.c.width(),jQuery(window).height());if(void 0!=e.fullScreenOffsetContainer){var c=e.fullScreenOffsetContainer.split(",");if (c) jQuery.each(c,function(e,i){u=jQuery(i).length>0?u-jQuery(i).outerHeight(!0):u}),e.fullScreenOffset.split("%").length>1&&void 0!=e.fullScreenOffset&&e.fullScreenOffset.length>0?u-=jQuery(window).height()*parseInt(e.fullScreenOffset,0)/100:void 0!=e.fullScreenOffset&&e.fullScreenOffset.length>0&&(u-=parseInt(e.fullScreenOffset,0))}f=u}else void 0!=e.minHeight&&f<e.minHeight&&(f=e.minHeight);e.c.closest(".rev_slider_wrapper").css({height:f})					
+				}catch(d){console.log("Failure at Presize of Slider:"+d)}
+			};</script>
+			<style>
+				:root {
+				--qlwapp-scheme-font-family:inherit;--qlwapp-scheme-font-size:18px;--qlwapp-scheme-icon-size:60px;--qlwapp-scheme-icon-font-size:24px;--qlwapp-scheme-brand:#20B038;--qlwapp-scheme-text:#ffffff;--qlwapp-scheme-box-message-word-break:break-all;				}
+			</style>
+			<style type="text/css" id="pojo-size-sections"></style></head>
+<body class="rtl wp-singular post-template-default single single-post postid-3274 single-format-standard wp-theme-everest wp-child-theme-everest-child layout-section pojo-title-bar elementor-default elementor-kit-9082 elementor-page elementor-page-3274 e--ua-blink e--ua-webkit" data-elementor-device-mode="desktop">
+<!--[if lt IE 7]><p class="chromeframe">Your browser is <em>ancient!</em>
+	<a href="http://browsehappy.com/">Upgrade to a different browser</a> or
+	<a href="http://www.google.com/chromeframe/?redirect=true">install Google Chrome Frame</a> to experience this site.
+</p><![endif]-->
+
+<div id="container">
+	
+			<header id="header" class="logo-left" role="banner">
+			<div class="container">
+				<div class="logo">
+										<div class="logo-img">
+						<a href="https://www.unitask-inc.com/" rel="home"><img src="https://www.unitask-inc.com/wp-content/uploads/2017/09/uni_logo_250.png" alt="יוניטסק – פיתוח תוכנה, טכנולוגיה ופתרונות IT" class="logo-img-primary pojo-hidden-phone"><img src="https://www.unitask-inc.com/wp-content/uploads/2018/03/uni_logo_40.png" alt="יוניטסק – פיתוח תוכנה, טכנולוגיה ופתרונות IT" class="logo-img-secondary pojo-visible-phone"></a>
+					</div>
+					
+										<button type="button" class="navbar-toggle visible-xs" data-toggle="collapse" data-target=".navbar-collapse">
+						<span class="sr-only">תפריט</span>
+						<span class="icon-bar"></span>
+						<span class="icon-bar"></span>
+						<span class="icon-bar"></span>
+					</button>
+									</div>
+				<nav class="nav-main" role="navigation">
+					<div class="navbar-collapse collapse">
+													<ul id="menu-main" class="sf-menu hidden-xs sf-js-enabled"><li class="menu-item menu-item-type-custom menu-item-object-custom menu-en first-item menu-item-4823"><a href="https://en.unitask-inc.com"><span>EN</span></a></li>
+<li class="menu-item menu-item-type-post_type menu-item-object-page menu-item-home menu-item-has-children menu-%d7%93%d7%a3-%d7%94%d7%91%d7%99%d7%aa menu-item-8051"><a href="https://www.unitask-inc.com/" class="sf-with-ul"><span>דף הבית</span><span class="sf-sub-indicator"> »</span></a>
+<ul class="sub-menu" style="display: none;">
+	<li class="menu-item menu-item-type-post_type menu-item-object-page menu-%d7%97%d7%93%d7%a9%d7%95%d7%aa-%d7%95%d7%90%d7%99%d7%a8%d7%95%d7%a2%d7%99%d7%9d menu-item-2935"><a href="https://www.unitask-inc.com/homepage/events/"><span>חדשות ואירועים</span></a></li>
+</ul>
+</li>
+<li class="menu-item menu-item-type-post_type menu-item-object-page menu-%d7%9c%d7%a2%d7%91%d7%95%d7%93-%d7%91%d7%99%d7%95%d7%a0%d7%99%d7%98%d7%a1%d7%a7 menu-item-2936"><a href="https://www.unitask-inc.com/career/"><span>לעבוד ביוניטסק</span></a></li>
+<li class="menu-item menu-item-type-post_type menu-item-object-page menu-item-has-children menu-%d7%94%d7%a4%d7%aa%d7%a8%d7%95%d7%a0%d7%95%d7%aa-%d7%a9%d7%9c%d7%a0%d7%95 menu-item-8419"><a href="https://www.unitask-inc.com/solutions/" class="sf-with-ul"><span>הפתרונות שלנו</span><span class="sf-sub-indicator"> »</span></a>
+<ul class="sub-menu" style="display: none;">
+	<li class="menu-item menu-item-type-post_type menu-item-object-page menu-item-has-children menu-%d7%94%d7%a4%d7%aa%d7%a8%d7%95%d7%a0%d7%95%d7%aa-%d7%a9%d7%9c%d7%a0%d7%95 menu-item-8418"><a href="https://www.unitask-inc.com/solutions/" class="sf-with-ul"><span>הפתרונות שלנו</span><span class="sf-sub-indicator"> »</span></a>
+	<ul class="sub-menu" style="display: none;">
+		<li class="menu-item menu-item-type-custom menu-item-object-custom menu-erp menu-item-4349"><a href="https://www.unitask-inc.com/erp-cloud-solutions/"><span>ERP</span></a></li>
+		<li class="menu-item menu-item-type-custom menu-item-object-custom menu-hcm menu-item-4360"><a href="https://www.unitask-inc.com/hcm-services/"><span>HCM</span></a></li>
+		<li class="menu-item menu-item-type-custom menu-item-object-custom menu-bi menu-item-4361"><a href="https://www.unitask-inc.com/bi-services/"><span>BI</span></a></li>
+		<li class="menu-item menu-item-type-custom menu-item-object-custom menu-devops menu-item-4362"><a href="https://www.unitask-inc.com/devops-2/"><span>DevOps</span></a></li>
+		<li class="menu-item menu-item-type-custom menu-item-object-custom menu-qa menu-item-4816"><a href="https://www.unitask-inc.com/qa-2/"><span>QA</span></a></li>
+		<li class="menu-item menu-item-type-custom menu-item-object-custom menu-managed-services menu-item-4363"><a href="https://www.unitask-inc.com/managed-services/"><span>Managed Services</span></a></li>
+		<li class="menu-item menu-item-type-custom menu-item-object-custom menu-%d7%9e%d7%a8%d7%9b%d7%96%d7%99-%d7%a4%d7%99%d7%aa%d7%95%d7%97-near-shore-off-shore menu-item-8638"><a href="https://www.unitask-inc.com/near-shore-off-shore-development/"><span>מרכזי פיתוח – Near-Shore Off-Shore</span></a></li>
+		<li class="menu-item menu-item-type-custom menu-item-object-custom menu-%d7%9e%d7%99%d7%a7%d7%95%d7%a8-%d7%97%d7%95%d7%a5 menu-item-4635"><a href="https://www.unitask-inc.com/outsourcing-2/"><span>מיקור חוץ</span></a></li>
+		<li class="menu-item menu-item-type-custom menu-item-object-custom menu-%d7%99%d7%99%d7%a2%d7%95%d7%a5-%d7%95%d7%99%d7%99%d7%a9%d7%95%d7%9d menu-item-4365"><a href="https://www.unitask-inc.com/consulting-assimilation/"><span>ייעוץ ויישום</span></a></li>
+		<li class="menu-item menu-item-type-post_type menu-item-object-page menu-item-has-children menu-outlook-integration menu-item-9201"><a href="https://www.unitask-inc.com/outlook-integration/" class="sf-with-ul"><span>Outlook Integration</span><span class="sf-sub-indicator"> »</span></a>
+		<ul class="sub-menu" style="display: none;">
+			<li class="menu-item menu-item-type-post_type menu-item-object-page menu-payment menu-item-9182"><a href="https://www.unitask-inc.com/outlook-integration/outlook-integration-payment/"><span>Payment</span></a></li>
+			<li class="menu-item menu-item-type-post_type menu-item-object-page menu-eula menu-item-9202"><a href="https://www.unitask-inc.com/outlook-integration/outlook-integration-eula/"><span>EULA</span></a></li>
+			<li class="menu-item menu-item-type-post_type menu-item-object-page menu-privacy-policy menu-item-9203"><a href="https://www.unitask-inc.com/outlook-integration/outlook-integration-privacy-policy/"><span>Privacy Policy</span></a></li>
+		</ul>
+</li>
+	</ul>
+</li>
+</ul>
+</li>
+<li class="menu-item menu-item-type-post_type menu-item-object-page menu-item-has-children menu-%d7%90%d7%95%d7%93%d7%95%d7%aa menu-item-2785"><a href="https://www.unitask-inc.com/about/" class="sf-with-ul"><span>אודות</span><span class="sf-sub-indicator"> »</span></a>
+<ul class="sub-menu" style="display: none;">
+	<li class="menu-item menu-item-type-post_type menu-item-object-page menu-%d7%91%d7%a2%d7%9c%d7%99-%d7%aa%d7%a4%d7%a7%d7%99%d7%93%d7%99%d7%9d menu-item-2932"><a href="https://www.unitask-inc.com/about/officials/"><span>בעלי תפקידים</span></a></li>
+</ul>
+</li>
+<li class="menu-item menu-item-type-post_type menu-item-object-page menu-item-has-children menu-peax-software menu-item-2931"><a href="https://www.unitask-inc.com/unitask-group/" class="sf-with-ul"><span>peax software</span><span class="sf-sub-indicator"> »</span></a>
+<ul class="sub-menu" style="display: none;">
+	<li class="menu-item menu-item-type-custom menu-item-object-custom menu-unitask menu-item-4752"><a href="http://www.unitask-inc.com/about/"><span>Unitask</span></a></li>
+	<li class="menu-item menu-item-type-custom menu-item-object-custom menu-iconduct menu-item-4751"><a href="http://www.iconductcloud.com/"><span>IConduct</span></a></li>
+	<li class="menu-item menu-item-type-custom menu-item-object-custom menu-unicloud menu-item-4744"><a href="https://www.unicloud.co.il/"><span>Unicloud</span></a></li>
+	<li class="menu-item menu-item-type-custom menu-item-object-custom menu-copera menu-item-4755"><a href="http://copera-inc.com/"><span>Copera</span></a></li>
+	<li class="menu-item menu-item-type-custom menu-item-object-custom menu-innova menu-item-4754"><a href="https://innova-it.co.il/"><span>INNOVA</span></a></li>
+	<li class="menu-item menu-item-type-custom menu-item-object-custom menu-wedo menu-item-4753"><a href="http://wedoit.co.il/"><span>WEDO</span></a></li>
+</ul>
+</li>
+<li class="menu-item menu-item-type-post_type menu-item-object-page menu-%d7%a6%d7%95%d7%a8-%d7%a7%d7%a9%d7%a8 menu-item-2901"><a href="https://www.unitask-inc.com/contact/"><span>צור קשר</span></a></li>
+</ul><ul id="menu-mobil" class="mobile-menu visible-xs"><li class="menu-item menu-item-type-post_type menu-item-object-page menu-item-home menu-home first-item menu-item-8149"><a href="https://www.unitask-inc.com/"><span>Home</span></a></li>
+<li class="menu-item menu-item-type-post_type menu-item-object-page menu-%d7%94%d7%a4%d7%aa%d7%a8%d7%95%d7%a0%d7%95%d7%aa-%d7%a9%d7%9c%d7%a0%d7%95 menu-item-8538"><a href="https://www.unitask-inc.com/solutions/"><span>הפתרונות שלנו</span></a></li>
+<li class="menu-item menu-item-type-post_type menu-item-object-page menu-%d7%9c%d7%a2%d7%91%d7%95%d7%93-%d7%91%d7%99%d7%95%d7%a0%d7%99%d7%98%d7%a1%d7%a7 menu-item-4495"><a href="https://www.unitask-inc.com/career/"><span>לעבוד ביוניטסק</span></a></li>
+<li class="menu-item menu-item-type-post_type menu-item-object-page menu-%d7%9e%d7%a9%d7%a8%d7%95%d7%aa menu-item-4496"><a href="https://www.unitask-inc.com/career/jobs/"><span>משרות</span></a></li>
+<li class="menu-item menu-item-type-post_type menu-item-object-page menu-%d7%97%d7%93%d7%a9%d7%95%d7%aa-%d7%95%d7%90%d7%99%d7%a8%d7%95%d7%a2%d7%99%d7%9d menu-item-4489"><a href="https://www.unitask-inc.com/homepage/events/"><span>חדשות ואירועים</span></a></li>
+<li class="menu-item menu-item-type-post_type menu-item-object-page menu-%d7%90%d7%95%d7%93%d7%95%d7%aa menu-item-4492"><a href="https://www.unitask-inc.com/about/"><span>אודות</span></a></li>
+<li class="menu-item menu-item-type-post_type menu-item-object-page menu-%d7%91%d7%a2%d7%9c%d7%99-%d7%aa%d7%a4%d7%a7%d7%99%d7%93%d7%99%d7%9d menu-item-4493"><a href="https://www.unitask-inc.com/about/officials/"><span>בעלי תפקידים</span></a></li>
+<li class="menu-item menu-item-type-post_type menu-item-object-page menu-%d7%a7%d7%91%d7%95%d7%a6%d7%aa-%d7%99%d7%95%d7%a0%d7%99%d7%98%d7%a1%d7%a7 menu-item-4498"><a href="https://www.unitask-inc.com/unitask-group/"><span>קבוצת יוניטסק</span></a></li>
+<li class="menu-item menu-item-type-post_type menu-item-object-page menu-%d7%a6%d7%95%d7%a8-%d7%a7%d7%a9%d7%a8 menu-item-4497"><a href="https://www.unitask-inc.com/contact/"><span>צור קשר</span></a></li>
+</ul>											</div>
+				</nav><!-- /#nav-menu -->
+			</div><!-- /.container -->
+		</header>
+
+					<div class="sticky-header logo-left">
+				<div class="container">
+					<div class="logo">
+													<div class="logo-img">
+								<a href="https://www.unitask-inc.com/" rel="home"><img src="https://www.unitask-inc.com/wp-content/uploads/2018/03/uni_logo_40.png" alt="יוניטסק – פיתוח תוכנה, טכנולוגיה ופתרונות IT" class="logo-img-secondary"></a>
+							</div>
+						
+												<button type="button" class="navbar-toggle visible-xs" data-toggle="collapse" data-target=".navbar-collapse">
+							<span class="sr-only">תפריט</span>
+							<span class="icon-bar"></span>
+							<span class="icon-bar"></span>
+							<span class="icon-bar"></span>
+						</button>
+											</div>
+					<nav class="nav-main" role="navigation">
+						<div class="navbar-collapse collapse">
+															<ul id="menu-main-1" class="sf-menu hidden-xs sf-js-enabled"><li class="menu-item menu-item-type-custom menu-item-object-custom first-item menu-item-4823"><a href="https://en.unitask-inc.com"><span>EN</span></a></li>
+<li class="menu-item menu-item-type-post_type menu-item-object-page menu-item-home menu-item-has-children menu-item-8051"><a href="https://www.unitask-inc.com/" class="sf-with-ul"><span>דף הבית</span><span class="sf-sub-indicator"> »</span></a>
+<ul class="sub-menu" style="display: none;">
+	<li class="menu-item menu-item-type-post_type menu-item-object-page menu-item-2935"><a href="https://www.unitask-inc.com/homepage/events/"><span>חדשות ואירועים</span></a></li>
+</ul>
+</li>
+<li class="menu-item menu-item-type-post_type menu-item-object-page menu-item-2936"><a href="https://www.unitask-inc.com/career/"><span>לעבוד ביוניטסק</span></a></li>
+<li class="menu-item menu-item-type-post_type menu-item-object-page menu-item-has-children menu-item-8419"><a href="https://www.unitask-inc.com/solutions/" class="sf-with-ul"><span>הפתרונות שלנו</span><span class="sf-sub-indicator"> »</span></a>
+<ul class="sub-menu" style="display: none;">
+	<li class="menu-item menu-item-type-post_type menu-item-object-page menu-item-has-children menu-item-8418"><a href="https://www.unitask-inc.com/solutions/" class="sf-with-ul"><span>הפתרונות שלנו</span><span class="sf-sub-indicator"> »</span></a>
+	<ul class="sub-menu" style="display: none;">
+		<li class="menu-item menu-item-type-custom menu-item-object-custom menu-item-4349"><a href="https://www.unitask-inc.com/erp-cloud-solutions/"><span>ERP</span></a></li>
+		<li class="menu-item menu-item-type-custom menu-item-object-custom menu-item-4360"><a href="https://www.unitask-inc.com/hcm-services/"><span>HCM</span></a></li>
+		<li class="menu-item menu-item-type-custom menu-item-object-custom menu-item-4361"><a href="https://www.unitask-inc.com/bi-services/"><span>BI</span></a></li>
+		<li class="menu-item menu-item-type-custom menu-item-object-custom menu-item-4362"><a href="https://www.unitask-inc.com/devops-2/"><span>DevOps</span></a></li>
+		<li class="menu-item menu-item-type-custom menu-item-object-custom menu-item-4816"><a href="https://www.unitask-inc.com/qa-2/"><span>QA</span></a></li>
+		<li class="menu-item menu-item-type-custom menu-item-object-custom menu-item-4363"><a href="https://www.unitask-inc.com/managed-services/"><span>Managed Services</span></a></li>
+		<li class="menu-item menu-item-type-custom menu-item-object-custom menu-item-8638"><a href="https://www.unitask-inc.com/near-shore-off-shore-development/"><span>מרכזי פיתוח – Near-Shore Off-Shore</span></a></li>
+		<li class="menu-item menu-item-type-custom menu-item-object-custom menu-item-4635"><a href="https://www.unitask-inc.com/outsourcing-2/"><span>מיקור חוץ</span></a></li>
+		<li class="menu-item menu-item-type-custom menu-item-object-custom menu-item-4365"><a href="https://www.unitask-inc.com/consulting-assimilation/"><span>ייעוץ ויישום</span></a></li>
+		<li class="menu-item menu-item-type-post_type menu-item-object-page menu-item-has-children menu-item-9201"><a href="https://www.unitask-inc.com/outlook-integration/" class="sf-with-ul"><span>Outlook Integration</span><span class="sf-sub-indicator"> »</span></a>
+		<ul class="sub-menu" style="display: none;">
+			<li class="menu-item menu-item-type-post_type menu-item-object-page menu-item-9182"><a href="https://www.unitask-inc.com/outlook-integration/outlook-integration-payment/"><span>Payment</span></a></li>
+			<li class="menu-item menu-item-type-post_type menu-item-object-page menu-item-9202"><a href="https://www.unitask-inc.com/outlook-integration/outlook-integration-eula/"><span>EULA</span></a></li>
+			<li class="menu-item menu-item-type-post_type menu-item-object-page menu-item-9203"><a href="https://www.unitask-inc.com/outlook-integration/outlook-integration-privacy-policy/"><span>Privacy Policy</span></a></li>
+		</ul>
+</li>
+	</ul>
+</li>
+</ul>
+</li>
+<li class="menu-item menu-item-type-post_type menu-item-object-page menu-item-has-children menu-item-2785"><a href="https://www.unitask-inc.com/about/" class="sf-with-ul"><span>אודות</span><span class="sf-sub-indicator"> »</span></a>
+<ul class="sub-menu" style="display: none;">
+	<li class="menu-item menu-item-type-post_type menu-item-object-page menu-item-2932"><a href="https://www.unitask-inc.com/about/officials/"><span>בעלי תפקידים</span></a></li>
+</ul>
+</li>
+<li class="menu-item menu-item-type-post_type menu-item-object-page menu-item-has-children menu-item-2931"><a href="https://www.unitask-inc.com/unitask-group/" class="sf-with-ul"><span>peax software</span><span class="sf-sub-indicator"> »</span></a>
+<ul class="sub-menu" style="display: none;">
+	<li class="menu-item menu-item-type-custom menu-item-object-custom menu-item-4752"><a href="http://www.unitask-inc.com/about/"><span>Unitask</span></a></li>
+	<li class="menu-item menu-item-type-custom menu-item-object-custom menu-item-4751"><a href="http://www.iconductcloud.com/"><span>IConduct</span></a></li>
+	<li class="menu-item menu-item-type-custom menu-item-object-custom menu-item-4744"><a href="https://www.unicloud.co.il/"><span>Unicloud</span></a></li>
+	<li class="menu-item menu-item-type-custom menu-item-object-custom menu-item-4755"><a href="http://copera-inc.com/"><span>Copera</span></a></li>
+	<li class="menu-item menu-item-type-custom menu-item-object-custom menu-item-4754"><a href="https://innova-it.co.il/"><span>INNOVA</span></a></li>
+	<li class="menu-item menu-item-type-custom menu-item-object-custom menu-item-4753"><a href="http://wedoit.co.il/"><span>WEDO</span></a></li>
+</ul>
+</li>
+<li class="menu-item menu-item-type-post_type menu-item-object-page menu-item-2901"><a href="https://www.unitask-inc.com/contact/"><span>צור קשר</span></a></li>
+</ul><ul id="menu-mobil-1" class="mobile-menu visible-xs"><li class="menu-item menu-item-type-post_type menu-item-object-page menu-item-home first-item menu-item-8149"><a href="https://www.unitask-inc.com/"><span>Home</span></a></li>
+<li class="menu-item menu-item-type-post_type menu-item-object-page menu-item-8538"><a href="https://www.unitask-inc.com/solutions/"><span>הפתרונות שלנו</span></a></li>
+<li class="menu-item menu-item-type-post_type menu-item-object-page menu-item-4495"><a href="https://www.unitask-inc.com/career/"><span>לעבוד ביוניטסק</span></a></li>
+<li class="menu-item menu-item-type-post_type menu-item-object-page menu-item-4496"><a href="https://www.unitask-inc.com/career/jobs/"><span>משרות</span></a></li>
+<li class="menu-item menu-item-type-post_type menu-item-object-page menu-item-4489"><a href="https://www.unitask-inc.com/homepage/events/"><span>חדשות ואירועים</span></a></li>
+<li class="menu-item menu-item-type-post_type menu-item-object-page menu-item-4492"><a href="https://www.unitask-inc.com/about/"><span>אודות</span></a></li>
+<li class="menu-item menu-item-type-post_type menu-item-object-page menu-item-4493"><a href="https://www.unitask-inc.com/about/officials/"><span>בעלי תפקידים</span></a></li>
+<li class="menu-item menu-item-type-post_type menu-item-object-page menu-item-4498"><a href="https://www.unitask-inc.com/unitask-group/"><span>קבוצת יוניטסק</span></a></li>
+<li class="menu-item menu-item-type-post_type menu-item-object-page menu-item-4497"><a href="https://www.unitask-inc.com/contact/"><span>צור קשר</span></a></li>
+</ul>													</div>
+					</nav><!-- /#nav-menu -->
+				</div><!-- /.container -->
+			</div>
+		
+	
+	<div class="sticky-header-running"></div>
+
+		<div id="page-header" class="page-header-style-custom_bg">
+	<div class="page-header-title container">
+					<div class="title-primary">
+				<span>מהנדס תכנה EMBEDDED</span>
+			</div>
+					</div><!-- /.page-header-title -->
+</div><!-- /#page-header -->
+		<div class="clearfix"></div>
+
+	<div id="primary">
+			<div class="container">
+				<div id="content" class="row">
+		<section id="main" role="main">
+			<article id="post-3274" class="post-3274 post type-post status-publish format-standard hentry category-60 category-63 category-50">
+			<header>
+											</header>
+			<div class="entry-meta">
+																			</div>
+			<div class="entry-content">
+											<div data-elementor-type="wp-post" data-elementor-id="3274" class="elementor elementor-3274" data-elementor-post-type="post">
+						<section class="elementor-section elementor-top-section elementor-element elementor-element-p7x6nmf elementor-section-boxed elementor-section-height-default elementor-section-height-default" data-id="p7x6nmf" data-element_type="section">
+						<div class="elementor-container elementor-column-gap-default">
+					<div class="elementor-column elementor-col-100 elementor-top-column elementor-element elementor-element-e3h4fo6" data-id="e3h4fo6" data-element_type="column">
+			<div class="elementor-widget-wrap elementor-element-populated">
+						<div class="elementor-element elementor-element-aqo7c25 elementor-widget elementor-widget-text-editor" data-id="aqo7c25" data-element_type="widget" data-widget_type="text-editor.default">
+				<div class="elementor-widget-container">
+									<p>חברה &nbsp;מובילה בייצור ושיווק רובוטים חכמים מחפשת מהנדס EMBEDDED&nbsp;למחלקת הפיתוח.</p><p>כתיבת תוכנה למערכות משובצות מחשב מרובות פסיקות עם מספר רכיבי תכנות מסוג ARM CORTEX M0&nbsp; עם וללא מערכת הפעלה</p><p>פיתוח ומימוש אלגוריתמים לבקרת תנועה</p><p>ניתוח ועיבוד אותות ב MATLAB</p><p>תמיכה איפיון וליווי מוצרים משלב הרעיון עד להעברתו לייצור.</p><p>הכירות מעמיקה עם חמרה ומגוון פרוטוקולי תקשורת Usb, Spi, Rs232/485,i2c</p><p>תכנון ועריכת ניסויים ובדיקות, תיעודם בצורה מתודולוגית</p><p>&nbsp;</p>								</div>
+				</div>
+				<div class="elementor-element elementor-element-vx2iwpu elementor-widget elementor-widget-text-editor" data-id="vx2iwpu" data-element_type="widget" data-widget_type="text-editor.default">
+				<div class="elementor-widget-container">
+									<p><strong>דרישות:</strong></p><p>השכלה רלוונטית: מהנדס תכנה/ אלקטרוניקה שעבר הסבה לתוכנה</p><p>ידע ונסיון בשפות .Net /C/C++/C#, כתיבת קוד למיקרו קונטרולרים.</p><p>מחשבים: OFFICE, VSS, מערכות PDM</p>								</div>
+				</div>
+				<div class="elementor-element elementor-element-8kju250 elementor-widget elementor-widget-text-editor" data-id="8kju250" data-element_type="widget" data-widget_type="text-editor.default">
+				<div class="elementor-widget-container">
+									<p><strong>מיקום גאוגרפי:</strong> צפון</p>								</div>
+				</div>
+				<div class="elementor-element elementor-element-wo23kfj elementor-widget elementor-widget-spacer" data-id="wo23kfj" data-element_type="widget" data-widget_type="spacer.default">
+				<div class="elementor-widget-container">
+							<div class="elementor-spacer">
+			<div class="elementor-spacer-inner"></div>
+		</div>
+						</div>
+				</div>
+				<div class="elementor-element elementor-element-l35cxtu elementor-widget elementor-widget-heading" data-id="l35cxtu" data-element_type="widget" data-widget_type="heading.default">
+				<div class="elementor-widget-container">
+					<h2 class="elementor-heading-title elementor-size-default">מספר משרה: JB-1314</h2>				</div>
+				</div>
+				<div class="elementor-element elementor-element-znpsm84 elementor-widget-divider--view-line elementor-widget elementor-widget-divider" data-id="znpsm84" data-element_type="widget" data-widget_type="divider.default">
+				<div class="elementor-widget-container">
+							<div class="elementor-divider">
+			<span class="elementor-divider-separator">
+						</span>
+		</div>
+						</div>
+				</div>
+				<div class="elementor-element elementor-element-a1aec52 elementor-widget elementor-widget-shortcode" data-id="a1aec52" data-element_type="widget" data-widget_type="shortcode.default">
+				<div class="elementor-widget-container">
+							<div class="elementor-shortcode">
+<div class="wpcf7 js" id="wpcf7-f4462-p3274-o1" lang="he-IL" dir="rtl" data-wpcf7-id="4462">
+<div class="screen-reader-response"><p role="status" aria-live="polite" aria-atomic="true"></p> <ul></ul></div>
+<form action="/jb-1314/#wpcf7-f4462-p3274-o1" method="post" class="wpcf7-form init" aria-label="Contact form" enctype="multipart/form-data" novalidate="novalidate" data-status="init">
+<div style="display: none;">
+<input type="hidden" name="_wpcf7" value="4462">
+<input type="hidden" name="_wpcf7_version" value="6.0.2">
+<input type="hidden" name="_wpcf7_locale" value="he_IL">
+<input type="hidden" name="_wpcf7_unit_tag" value="wpcf7-f4462-p3274-o1">
+<input type="hidden" name="_wpcf7_container_post" value="3274">
+<input type="hidden" name="_wpcf7_posted_data_hash" value="">
+<input type="hidden" name="_wpcf7dtx_version" value="5.0.2">
+<input type="hidden" name="_wpcf7_recaptcha_response" value="0cAFcWeA6EaeX9t3zXAVF0CjWNBRYClEFT6pdJn0LZWEBhjGA7a0qgWJjD1yCODuTY2tJvy-hJKMQ-03Hr1Fq7rjyZ6wtJj8fvl6G54vsX-2tJ7jFZ3MDVA706_wpf5o7OgUPiE6IVz_B15iB2Ncorg-Hb5uCmS7LM7ulBpMdQyVIvwrwmSqfzM49UFUXDm7i5FfEoJpMBEoTW8MFhRemaYKYJt11shPSW_IxYwqABl7GQlvgjETNAsWSWb0qcpXJNU2Oa2lxJBeqwu8t6HVo5NAm-fgdKKEwL9g4BpKcVa-E4pXbHWtCd3P_ndsPmU9WhmGBp3YDWIViRP4fNEquDCIM3ovhSGBI_C21bcjBMAGlNFApkTc-7ug-e8dqhLN7zgrQPPeyZqkKs4SgN_41cBepO-N-oAFggEgat5FlQMp-jEtX2_3BdVA1gXH4KEUqgk-DXc40rGFcuBLFWlfBfM3FmoDldkr5PEjgBgPiNbr_oXkpRcfsNW-3kC4rm60TRFlCO0P-gSri6jN0kNHt7c6T8us6zJPz2xTYcHsVUBDi7W3haukRy-_Lj66esDh9stdioHzo8kCWegvwq0VlFMX3inSmeIUk3YdgKXxGzoOyPXDLUadP2TYwsgXxCnRBdCkA-YmXm5tOl8TizjtDqjuvofbfRvO2ovdlrVZ-iGvcpNDqrlJWjUZ21gpko5OQsobYJ8TKRvweXjIxigQ0zikz83KQtt8QBWWqGOs7ugj0YqhNAHWWrxNs3YCqXUP1f7jmUUC0cGvqZFTo9QL1S0s9_OM6fowmDxbwl402Y4LLrVFSE2FfcPmZtVJKFn-Zfyk8aRj7r57rt-0OesdfLaCe6VIKM6QcUYSdBFHkTdDwIiqIAaKawAkRc3yTVvHwR2kJKXwxZujtQ38finuFrN2Km2olaynEH2xDSgp9pIvr1XzSE767iVsiH8bbOLzcfurBIrt3olfskGv47UVdvMjt6AKAr56QQ0JLL3WxyGOdd6g61TuSZiBDgjbd4oC0Qnhe7q2of7AR0KduB-aSFowJfA3NW6CvzLDQn0hc0bTocLVet2tzSiN591x-DWc39IJbid7lC-VXh0fCzPlHGhmPEEExoDSkGSGZ6SiKXtKHoUrReI1Cpt4cXCcEe4sl5qxrICp8negjIuivOASWiNXqO7_wO6VlQPHLuZlhQJx5Pqr5wD7dR7op7btzf11F4T0UnJGQHAd6m9Z0og0Jxdczh3CapH-Tx8o2gSlNk2wIiT2QQ3-64VKzCaQ7TESOSw42gVHOWZpiaK4_PJ0jngOBhE4AKdv9G1UhAEZ5NRTeDRPkvd4ewIM_7GPmo4vQ4iWbHF6KI-bLw04CxSmEpmUbHQhX3PQg-4_iegyIqynrwU-X5whLu5eOW1sorl6sue3oTpg3079nZN2IspKnlyGca-TqbDZdClvKv0olkQGCNVJfxb6kPCTH1dFyqNDmB7JH2QRNgd2bZe2GIfOYMo-r5-EGp8PI6SY5sjIKnplQ3w23bZ1GmFUwzydifpB_hNTXUpY6xIYU7T0BitYI66Aw19hA1qHJsLgTC9f_E2beCGobpucXiy0CejxG1zm15V_x7N5wLDfbgah43HUgRJ8jRX5WwjipOjwNrZ0T0IrHXu6k1Gmv-8yn38ChRmjQNYLJ_3qYowktZ4K7GEkryWugZwO7Zir_o0EG_w31a39u90UHrVSW0g0AgYlLF55dC1i1udg5vDT4hAKOMCn7qJ77QXTMIdES2nd1Q4W2FzMz41GZzEEZMAfahcPxNqCJ3pt1RR2pseSmENBq7XdGlK-gUmG01QF35KZJR2zRZSYVk4hxFUGD0DA_lV9mC3zOT35kbnr5pnVIPiKu-Hsxc5jVb70WSI_gafVQCA-atgjfpgtuN4r7lWwBQ9mYD10PTn38J3sD0dEfSTCgsEZ97d0FazZmzwTkZe8P267Y1Sbfd4mQceF-c9VQ_px4EQzhOg-jWh1TwFRUBCvOPAih4SnRzk8Xfkx1sOnrKCDeVT3knZEjxeNYE2L4m9nVFXxyUMahwHSlfNUT7BgS60O4j-2E9-kunZeKRLEz4600GdyeQip41AQBZrG9wEcv2278WaTylLR0oZO0tJF0akWT3vn-pMH5-dN7tUg">
+</div>
+<p><label> גודל הקובץ עד: 1MB, פורמט: doc, docx, pdf<br>
+<span class="wpcf7-form-control-wrap" data-name="file-476"><input size="40" class="wpcf7-form-control wpcf7-file wpcf7-validates-as-required" accept=".doc,.docx,.pdf" aria-required="true" aria-invalid="false" type="file" name="file-476"></span> </label>
+</p>
+<p><label> דוא"ל:<br>
+<span class="wpcf7-form-control-wrap" data-name="email-324"><input size="40" maxlength="400" class="wpcf7-form-control wpcf7-email wpcf7-validates-as-required wpcf7-text wpcf7-validates-as-email" aria-required="true" aria-invalid="false" value="" type="email" name="email-324"></span></label>
+</p>
+<p><label> מספר משרה:<br>
+<span class="wpcf7-form-control-wrap dynamicname" data-name="dynamicname"><input type="text" name="dynamicname" class="wpcf7-form-control wpcf7-text wpcf7dtx wpcf7dtx-text" aria-invalid="false" value="JB-1314"></span> </label>
+</p>
+<p><input class="wpcf7-form-control wpcf7-submit has-spinner" type="submit" value="הגשת מועמדות למשרה"><span class="wpcf7-spinner"></span>
+</p><div class="wpcf7-response-output" aria-hidden="true"></div>
+</form>
+</div>
+</div>
+						</div>
+				</div>
+				<div class="elementor-element elementor-element-cxzphy3 elementor-widget elementor-widget-spacer" data-id="cxzphy3" data-element_type="widget" data-widget_type="spacer.default">
+				<div class="elementor-widget-container">
+							<div class="elementor-spacer">
+			<div class="elementor-spacer-inner"></div>
+		</div>
+						</div>
+				</div>
+				<div class="elementor-element elementor-element-o3llwb7 elementor-align-center elementor-widget elementor-widget-button" data-id="o3llwb7" data-element_type="widget" data-widget_type="button.default">
+				<div class="elementor-widget-container">
+									<div class="elementor-button-wrapper">
+					<a class="elementor-button elementor-button-link elementor-size-sm" href="http://www.unitask-inc.com/career/jobs/">
+						<span class="elementor-button-content-wrapper">
+									<span class="elementor-button-text">חזרה לכל המשרות</span>
+					</span>
+					</a>
+				</div>
+								</div>
+				</div>
+					</div>
+		</div>
+					</div>
+		</section>
+				</div>
+														</div>
+			
+			
+						
+			<footer>
+							</footer>
+		</article>
+			</section><!-- section#main -->
+				</div><!-- #content -->
+		</div><!-- .container -->
+	</div><!-- #primary -->
+
+				<footer id="footer">
+			<div id="sidebar-footer">
+	<div class="container">
+		<div class="row">
+			<section id="nav_menu-6" class="widget widget_nav_menu col-sm-3"><div class="widget-inner"><h5 class="widget-title"><span>ניווט</span></h5><div class="menu-%d7%aa%d7%a4%d7%a8%d7%99%d7%98-%d7%a4%d7%95%d7%98%d7%a8-container"><ul id="menu-%d7%aa%d7%a4%d7%a8%d7%99%d7%98-%d7%a4%d7%95%d7%98%d7%a8" class="menu"><li id="menu-item-8053" class="menu-item menu-item-type-post_type menu-item-object-page menu-item-home menu-item-8053"><a href="https://www.unitask-inc.com/">דף הבית</a></li>
+<li id="menu-item-4372" class="menu-item menu-item-type-post_type menu-item-object-page menu-item-4372"><a href="https://www.unitask-inc.com/about/">אודות</a></li>
+<li id="menu-item-9034" class="menu-item menu-item-type-post_type menu-item-object-page menu-item-9034"><a href="https://www.unitask-inc.com/solutions/">הפתרונות שלנו</a></li>
+<li id="menu-item-4374" class="menu-item menu-item-type-post_type menu-item-object-page menu-item-4374"><a href="https://www.unitask-inc.com/career/">לעבוד ביוניטסק</a></li>
+<li id="menu-item-4376" class="menu-item menu-item-type-post_type menu-item-object-page menu-item-4376"><a href="https://www.unitask-inc.com/unitask-group/">קבוצת יוניטסק</a></li>
+<li id="menu-item-4375" class="menu-item menu-item-type-post_type menu-item-object-page menu-item-4375"><a href="https://www.unitask-inc.com/contact/">צור קשר</a></li>
+</ul></div></div></section><section id="text-3" class="widget widget_text col-sm-3"><div class="widget-inner"><h5 class="widget-title"><span>יצירת קשר</span></h5>			<div class="textwidget"><p><i class="fa fa-envelope-open" aria-hidden="true"></i>  <a href="mailto:info@unitask-inc.com">info@unitask-inc.com</a><br>
+<i class="fa fa-phone" aria-hidden="true"></i> 04-8508400<br>
+<i class="fa fa-fax" aria-hidden="true"></i> 04-8535074</p>
+</div>
+		</div></section><section id="pojo_social_links-9" class="widget widget_pojo_social_links col-sm-3"><div class="widget-inner"><h5 class="widget-title"><span>יוניטסק במדיה החברתית</span></h5><ul class="social-links"><li class="social-facebook"><a href="https://www.facebook.com/Unitask/" class="pojo-tooltip" data-placement="top" title="" target="_blank" data-original-title="Facebook"><span class="social-icon"></span><span class="sr-only">Facebook</span></a></li><li class="social-linkedin"><a href="https://www.linkedin.com/company/2526620/" class="pojo-tooltip" data-placement="top" title="" target="_blank" data-original-title="LinkedIn"><span class="social-icon"></span><span class="sr-only">LinkedIn</span></a></li></ul></div></section><section id="search-8" class="widget widget_search col-sm-3"><div class="widget-inner"><h5 class="widget-title"><span>חפש…</span></h5><form role="search" method="get" class="form form-search" action="https://www.unitask-inc.com/">
+	<input type="search" title="חיפוש" name="s" value="" placeholder="חיפוש" class="field search-field">
+	<button value="חיפוש" class="search-submit" type="submit"><i class="fa fa-search"></i></button>
+</form>
+</div></section>		</div>
+	</div>
+</div>		</footer>
+
+		<div id="copyright" role="contentinfo">
+			<div class="container">
+				<div class="footer-text-left pull-left">
+					<i class="fa fa-heart"></i> By <a href="http://spiralee.com">SpiraLee</a> web design				</div>
+				<div class="footer-text-right pull-right">
+					© כל הזכויות שמורות ליוניטסק				</div>
+			</div><!-- .container -->
+		</div>
+		
+</div><!-- #container -->
+<script type="speculationrules">
+{"prefetch":[{"source":"document","where":{"and":[{"href_matches":"/*"},{"not":{"href_matches":["/wp-*.php","/wp-admin/*","/wp-content/uploads/*","/wp-content/*","/wp-content/plugins/*","/wp-content/themes/everest-child/*","/wp-content/themes/everest/*","/*\\?(.+)"]}},{"not":{"selector_matches":"a[rel~=\"nofollow\"]"}},{"not":{"selector_matches":".no-prefetch, .no-prefetch a"}}]},"eagerness":"conservative"}]}
+</script>
+		<script type="text/javascript">//<![CDATA[
+			var _gaq = _gaq || [];
+			_gaq.push(['_setAccount', 'UA-109895989-1']);
+			_gaq.push(['_trackPageview']);
+			(function (){
+				var ga = document.createElement('script');
+				ga.type = 'text/javascript';
+				ga.async = true;
+				ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+				var s = document.getElementsByTagName('script')[0];
+				s.parentNode.insertBefore(ga, s);
+			})();
+			//]]></script>
+			<div id="pojo-scroll-up" class="pojo-scroll-up-right" data-offset="50" data-duration="750" style="font-size: 36px;border-radius: 6px">
+			<div class="pojo-scroll-up-inner">
+				<a class="pojo-scroll-up-button" href="javascript:void(0);" title="גלילה לראש העמוד">
+					<span class="fa fa-chevron-up"></span><span class="sr-only">גלילה לראש העמוד</span>
+				</a>
+			</div>
+		</div>
+					<script type="text/javascript">
+				const lazyloadRunObserver = () => {
+					const lazyloadBackgrounds = document.querySelectorAll( `.e-con.e-parent:not(.e-lazyloaded)` );
+					const lazyloadBackgroundObserver = new IntersectionObserver( ( entries ) => {
+						entries.forEach( ( entry ) => {
+							if ( entry.isIntersecting ) {
+								let lazyloadBackground = entry.target;
+								if( lazyloadBackground ) {
+									lazyloadBackground.classList.add( 'e-lazyloaded' );
+								}
+								lazyloadBackgroundObserver.unobserve( entry.target );
+							}
+						});
+					}, { rootMargin: '200px 0px 200px 0px' } );
+					lazyloadBackgrounds.forEach( ( lazyloadBackground ) => {
+						lazyloadBackgroundObserver.observe( lazyloadBackground );
+					} );
+				};
+				const events = [
+					'DOMContentLoaded',
+					'elementor/lazyload/observe',
+				];
+				events.forEach( ( event ) => {
+					document.addEventListener( event, lazyloadRunObserver );
+				} );
+			</script>
+					<div class="pswp" tabindex="-1" role="dialog" aria-hidden="true">
+			<div class="pswp__bg"></div>
+			<div class="pswp__scroll-wrap">
+				<div class="pswp__container">
+					<div class="pswp__item"></div>
+					<div class="pswp__item"></div>
+					<div class="pswp__item"></div>
+				</div>
+				<div class="pswp__ui pswp__ui--hidden">
+					<div class="pswp__top-bar">
+						<div class="pswp__counter"></div>
+						<button class="pswp__button pswp__button--close" title="Close (Esc)"></button>
+						<button class="pswp__button pswp__button--share" title="Share"></button>
+						<button class="pswp__button pswp__button--fs" title="Toggle fullscreen"></button>
+						<button class="pswp__button pswp__button--zoom" title="Zoom in/out"></button>
+						<div class="pswp__preloader">
+							<div class="pswp__preloader__icn">
+								<div class="pswp__preloader__cut">
+									<div class="pswp__preloader__donut"></div>
+								</div>
+							</div>
+						</div>
+					</div>
+
+					<div class="pswp__share-modal pswp__share-modal--hidden pswp__single-tap">
+						<div class="pswp__share-tooltip"></div>
+					</div>
+
+					<button class="pswp__button pswp__button--arrow--left" title="Previous (arrow left)">
+					</button>
+					<button class="pswp__button pswp__button--arrow--right" title="Next (arrow right)">
+					</button>
+					<div class="pswp__caption">
+						<div class="pswp__caption__center"></div>
+					</div>
+				</div>
+			</div>
+		</div>
+		<div id="qlwapp" class="qlwapp qlwapp-free qlwapp-button qlwapp-bottom-right qlwapp-hide qlwapp-square qlwapp-js-ready desktop">
+	<div class="qlwapp-container">
+		
+		<a class="qlwapp-toggle" data-action="open" data-phone="72547234324" data-message="היי אני אלעד, מומחה QLIK בחברת יוניטסק. מה שלומך?" role="button" tabindex="0" target="_blank">
+							<i class="qlwapp-icon qlwapp-whatsapp-icon"></i>
+						<i class="qlwapp-close" data-action="close">×</i>
+							<span class="qlwapp-text">היי אני אלעד, דברו איתי!</span>
+					</a>
+	</div>
+</div>
+<script type="text/javascript" id="ccw_app-js-extra">
+/* <![CDATA[ */
+var ht_ccw_var = {"page_title":"\u05de\u05d4\u05e0\u05d3\u05e1 \u05ea\u05db\u05e0\u05d4 EMBEDDED","google_analytics":"","ga_category":"","ga_action":"","ga_label":""};
+//# sourceURL=ccw_app-js-extra
+/* ]]> */
+</script>
+<script type="text/javascript" src="https://www.unitask-inc.com/wp-content/plugins/click-to-chat-for-whatsapp/prev/assets/js/app.js?ver=4.14" id="ccw_app-js"></script>
+<script type="text/javascript" src="https://www.unitask-inc.com/wp-includes/js/dist/hooks.min.js?ver=dd5603f07f9220ed27f1" id="wp-hooks-js"></script>
+<script type="text/javascript" src="https://www.unitask-inc.com/wp-includes/js/dist/i18n.min.js?ver=c26c3dc7bed366793375" id="wp-i18n-js"></script>
+<script type="text/javascript" id="wp-i18n-js-after">
+/* <![CDATA[ */
+wp.i18n.setLocaleData( { 'text direction\u0004ltr': [ 'rtl' ] } );
+//# sourceURL=wp-i18n-js-after
+/* ]]> */
+</script>
+<script type="text/javascript" src="https://www.unitask-inc.com/wp-content/plugins/contact-form-7/includes/swv/js/index.js?ver=6.0.2" id="swv-js"></script>
+<script type="text/javascript" id="contact-form-7-js-before">
+/* <![CDATA[ */
+var wpcf7 = {
+    "api": {
+        "root": "https:\/\/www.unitask-inc.com\/wp-json\/",
+        "namespace": "contact-form-7\/v1"
+    },
+    "cached": 1
+};
+//# sourceURL=contact-form-7-js-before
+/* ]]> */
+</script>
+<script type="text/javascript" src="https://www.unitask-inc.com/wp-content/plugins/contact-form-7/includes/js/index.js?ver=6.0.2" id="contact-form-7-js"></script>
+<script type="text/javascript" src="https://cdn.enable.co.il/licenses/enable-L315ba7zdsjvor-0717-/init.js?ver=1.4.1" id="enable-accessibility-js"></script>
+<script type="text/javascript" id="ppress-frontend-script-js-extra">
+/* <![CDATA[ */
+var pp_ajax_form = {"ajaxurl":"https://www.unitask-inc.com/wp-admin/admin-ajax.php","confirm_delete":"Are you sure?","deleting_text":"Deleting...","deleting_error":"An error occurred. Please try again.","nonce":"bf090805c4","disable_ajax_form":"false","is_checkout":"0","is_checkout_tax_enabled":"0","is_checkout_autoscroll_enabled":"true"};
+//# sourceURL=ppress-frontend-script-js-extra
+/* ]]> */
+</script>
+<script type="text/javascript" src="https://www.unitask-inc.com/wp-content/plugins/wp-user-avatar/assets/js/frontend.min.js?ver=4.15.20" id="ppress-frontend-script-js"></script>
+<script type="text/javascript" src="https://www.unitask-inc.com/wp-content/plugins/pojo-forms/assets/js/app.min.js?ver=6.9.4" id="pojo-forms-js"></script>
+<script type="text/javascript" src="https://www.unitask-inc.com/wp-content/plugins/wp-whatsapp-chat/build/frontend/js/index.js?ver=050b65b6ccb82df6ae3c" id="qlwapp-js"></script>
+<script type="text/javascript" src="https://www.google.com/recaptcha/api.js?render=6LdvCKMqAAAAAKTOSobENjkl9uE5sAtjpw_xKYM3&amp;ver=3.0" id="google-recaptcha-js"></script>
+<script type="text/javascript" src="https://www.unitask-inc.com/wp-includes/js/dist/vendor/wp-polyfill.min.js?ver=3.15.0" id="wp-polyfill-js"></script>
+<script type="text/javascript" id="wpcf7-recaptcha-js-before">
+/* <![CDATA[ */
+var wpcf7_recaptcha = {
+    "sitekey": "6LdvCKMqAAAAAKTOSobENjkl9uE5sAtjpw_xKYM3",
+    "actions": {
+        "homepage": "homepage",
+        "contactform": "contactform"
+    }
+};
+//# sourceURL=wpcf7-recaptcha-js-before
+/* ]]> */
+</script>
+<script type="text/javascript" src="https://www.unitask-inc.com/wp-content/plugins/contact-form-7/modules/recaptcha/index.js?ver=6.0.2" id="wpcf7-recaptcha-js"></script>
+<script type="text/javascript" src="https://www.unitask-inc.com/wp-content/themes/everest/assets/bootstrap/js/bootstrap.min.js?ver=3.0.0" id="pojo-plugins-js"></script>
+<script type="text/javascript" id="pojo-scripts-js-extra">
+/* <![CDATA[ */
+var Pojo = {"ajaxurl":"https://www.unitask-inc.com/wp-admin/admin-ajax.php","css_framework_type":"bootstrap","superfish_args":{"delay":150,"animation":{"opacity":"show","height":"show"},"speed":"fast"}};
+//# sourceURL=pojo-scripts-js-extra
+/* ]]> */
+</script>
+<script type="text/javascript" src="https://www.unitask-inc.com/wp-content/themes/everest/assets/js/frontend.min.js?ver=1.8.1" id="pojo-scripts-js"></script>
+<script type="text/javascript" src="https://www.unitask-inc.com/wp-content/themes/everest/core/assets/masterslider/masterslider.min.js?ver=2.9.5" id="masterslider-js"></script>
+<script type="text/javascript" src="https://www.unitask-inc.com/wp-content/plugins/pojo-lightbox/assets/photoswipe/photoswipe.min.js?ver=4.1.2" id="photoswipe-js"></script>
+<script type="text/javascript" src="https://www.unitask-inc.com/wp-content/plugins/pojo-lightbox/assets/photoswipe/photoswipe-ui-default.min.js?ver=4.1.2" id="photoswipe-ui-js"></script>
+<script type="text/javascript" id="pojo-lightbox-app-js-extra">
+/* <![CDATA[ */
+var PojoLightboxOptions = {"script_type":"photoswipe","smartphone":"","woocommerce":"","lightbox_args":{"loop":true,"closeOnScroll":true,"closeOnVerticalDrag":true,"escKey":true,"arrowKeys":true,"history":true,"captionEl":true,"closeEl":true,"fullscreenEl":true,"zoomEl":true,"counterEl":true,"arrowEl":true,"shareEl":true}};
+//# sourceURL=pojo-lightbox-app-js-extra
+/* ]]> */
+</script>
+<script type="text/javascript" src="https://www.unitask-inc.com/wp-content/plugins/pojo-lightbox/assets/js/app.min.js?ver=6.9.4" id="pojo-lightbox-app-js"></script>
+<script type="text/javascript" src="https://www.unitask-inc.com/wp-content/plugins/pojo-news-ticker/assets/js/app.min.js?ver=6.9.4" id="pojo-news-ticker-js"></script>
+<script type="text/javascript" src="https://www.unitask-inc.com/wp-content/plugins/elementor-pro/assets/js/webpack-pro.runtime.min.js?ver=3.26.1" id="elementor-pro-webpack-runtime-js"></script>
+<script type="text/javascript" src="https://www.unitask-inc.com/wp-content/plugins/elementor/assets/js/webpack.runtime.min.js?ver=3.26.2" id="elementor-webpack-runtime-js"></script>
+<script type="text/javascript" src="https://www.unitask-inc.com/wp-content/plugins/elementor/assets/js/frontend-modules.min.js?ver=3.26.2" id="elementor-frontend-modules-js"></script>
+<script type="text/javascript" id="elementor-pro-frontend-js-before">
+/* <![CDATA[ */
+var ElementorProFrontendConfig = {"ajaxurl":"https:\/\/www.unitask-inc.com\/wp-admin\/admin-ajax.php","nonce":"57f5f606d9","urls":{"assets":"https:\/\/www.unitask-inc.com\/wp-content\/plugins\/elementor-pro\/assets\/","rest":"https:\/\/www.unitask-inc.com\/wp-json\/"},"settings":{"lazy_load_background_images":true},"popup":{"hasPopUps":false},"shareButtonsNetworks":{"facebook":{"title":"Facebook","has_counter":true},"twitter":{"title":"Twitter"},"linkedin":{"title":"LinkedIn","has_counter":true},"pinterest":{"title":"Pinterest","has_counter":true},"reddit":{"title":"Reddit","has_counter":true},"vk":{"title":"VK","has_counter":true},"odnoklassniki":{"title":"OK","has_counter":true},"tumblr":{"title":"Tumblr"},"digg":{"title":"Digg"},"skype":{"title":"Skype"},"stumbleupon":{"title":"StumbleUpon","has_counter":true},"mix":{"title":"Mix"},"telegram":{"title":"Telegram"},"pocket":{"title":"Pocket","has_counter":true},"xing":{"title":"XING","has_counter":true},"whatsapp":{"title":"WhatsApp"},"email":{"title":"Email"},"print":{"title":"Print"},"x-twitter":{"title":"X"},"threads":{"title":"Threads"}},"facebook_sdk":{"lang":"he_IL","app_id":""},"lottie":{"defaultAnimationUrl":"https:\/\/www.unitask-inc.com\/wp-content\/plugins\/elementor-pro\/modules\/lottie\/assets\/animations\/default.json"}};
+//# sourceURL=elementor-pro-frontend-js-before
+/* ]]> */
+</script>
+<script type="text/javascript" src="https://www.unitask-inc.com/wp-content/plugins/elementor-pro/assets/js/frontend.min.js?ver=3.26.1" id="elementor-pro-frontend-js"></script>
+<script type="text/javascript" src="https://www.unitask-inc.com/wp-includes/js/jquery/ui/core.min.js?ver=1.13.3" id="jquery-ui-core-js"></script>
+<script type="text/javascript" id="elementor-frontend-js-before">
+/* <![CDATA[ */
+var elementorFrontendConfig = {"environmentMode":{"edit":false,"wpPreview":false,"isScriptDebug":false},"i18n":{"shareOnFacebook":"\u05e9\u05ea\u05e3 \u05d1\u05e4\u05d9\u05d9\u05e1\u05d1\u05d5\u05e7","shareOnTwitter":"\u05e9\u05ea\u05e3 \u05d1\u05d8\u05d5\u05d5\u05d9\u05d8\u05e8","pinIt":"\u05dc\u05e0\u05e2\u05d5\u05e5 \u05d1\u05e4\u05d9\u05e0\u05d8\u05e8\u05e1\u05d8","download":"\u05d4\u05d5\u05e8\u05d3\u05d4","downloadImage":"\u05d4\u05d5\u05e8\u05d3\u05ea \u05ea\u05de\u05d5\u05e0\u05d4","fullscreen":"\u05de\u05e1\u05da \u05de\u05dc\u05d0","zoom":"\u05de\u05d9\u05e7\u05d5\u05d3","share":"\u05e9\u05ea\u05e3","playVideo":"\u05e0\u05d2\u05df \u05d5\u05d9\u05d3\u05d0\u05d5","previous":"\u05e7\u05d5\u05d3\u05dd","next":"\u05d4\u05d1\u05d0","close":"\u05e1\u05d2\u05d5\u05e8","a11yCarouselPrevSlideMessage":"\u05e9\u05e7\u05d5\u05e4\u05d9\u05ea \u05e7\u05d5\u05d3\u05de\u05ea","a11yCarouselNextSlideMessage":"\u05e9\u05e7\u05d5\u05e4\u05d9\u05ea \u05d4\u05d1\u05d0\u05d4","a11yCarouselFirstSlideMessage":"\u05d6\u05d5\u05d4\u05d9 \u05d4\u05e9\u05e7\u05d5\u05e4\u05d9\u05ea \u05d4\u05e8\u05d0\u05e9\u05d5\u05e0\u05d4","a11yCarouselLastSlideMessage":"\u05d6\u05d5\u05d4\u05d9 \u05d4\u05e9\u05e7\u05d5\u05e4\u05d9\u05ea \u05d4\u05d0\u05d7\u05e8\u05d5\u05e0\u05d4","a11yCarouselPaginationBulletMessage":"\u05dc\u05e2\u05d1\u05d5\u05e8 \u05dc\u05e9\u05e7\u05d5\u05e4\u05d9\u05ea"},"is_rtl":true,"breakpoints":{"xs":0,"sm":480,"md":768,"lg":1025,"xl":1440,"xxl":1600},"responsive":{"breakpoints":{"mobile":{"label":"\u05de\u05d5\u05d1\u05d9\u05d9\u05dc \u05d0\u05e0\u05db\u05d9","value":767,"default_value":767,"direction":"max","is_enabled":true},"mobile_extra":{"label":"\u05de\u05d5\u05d1\u05d9\u05d9\u05dc \u05d0\u05d5\u05e4\u05e7\u05d9","value":880,"default_value":880,"direction":"max","is_enabled":false},"tablet":{"label":"\u05d8\u05d0\u05d1\u05dc\u05d8 \u05d0\u05e0\u05db\u05d9","value":1024,"default_value":1024,"direction":"max","is_enabled":true},"tablet_extra":{"label":"\u05d8\u05d0\u05d1\u05dc\u05d8 \u05d0\u05d5\u05e4\u05e7\u05d9","value":1200,"default_value":1200,"direction":"max","is_enabled":false},"laptop":{"label":"\u05dc\u05e4\u05d8\u05d5\u05e4","value":1366,"default_value":1366,"direction":"max","is_enabled":false},"widescreen":{"label":"\u05de\u05e1\u05da \u05e8\u05d7\u05d1","value":2400,"default_value":2400,"direction":"min","is_enabled":false}},"hasCustomBreakpoints":false},"version":"3.26.2","is_static":false,"experimentalFeatures":{"additional_custom_breakpoints":true,"e_swiper_latest":true,"e_nested_atomic_repeaters":true,"e_onboarding":true,"e_css_smooth_scroll":true,"theme_builder_v2":true,"home_screen":true,"landing-pages":true,"nested-elements":true,"editor_v2":true,"link-in-bio":true,"floating-buttons":true},"urls":{"assets":"https:\/\/www.unitask-inc.com\/wp-content\/plugins\/elementor\/assets\/","ajaxurl":"https:\/\/www.unitask-inc.com\/wp-admin\/admin-ajax.php","uploadUrl":"https:\/\/www.unitask-inc.com\/wp-content\/uploads"},"nonces":{"floatingButtonsClickTracking":"3f8db16a4f"},"swiperClass":"swiper","settings":{"page":[],"editorPreferences":[]},"kit":{"active_breakpoints":["viewport_mobile","viewport_tablet"],"global_image_lightbox":"yes","lightbox_enable_counter":"yes","lightbox_enable_fullscreen":"yes","lightbox_enable_zoom":"yes","lightbox_enable_share":"yes","lightbox_title_src":"title","lightbox_description_src":"description"},"post":{"id":3274,"title":"%D7%9E%D7%94%D7%A0%D7%93%D7%A1%20%D7%AA%D7%9B%D7%A0%D7%94%20EMBEDDED%20%7C%20%D7%99%D7%95%D7%A0%D7%99%D7%98%D7%A1%D7%A7%20-%20%D7%A4%D7%99%D7%AA%D7%95%D7%97%20%D7%AA%D7%95%D7%9B%D7%A0%D7%94%2C%20%D7%98%D7%9B%D7%A0%D7%95%D7%9C%D7%95%D7%92%D7%99%D7%94%20%D7%95%D7%A4%D7%AA%D7%A8%D7%95%D7%A0%D7%95%D7%AA%20IT","excerpt":"","featuredImage":false}};
+//# sourceURL=elementor-frontend-js-before
+/* ]]> */
+</script>
+<script type="text/javascript" src="https://www.unitask-inc.com/wp-content/plugins/elementor/assets/js/frontend.min.js?ver=3.26.2" id="elementor-frontend-js"></script><span id="elementor-device-mode" class="elementor-screen-only"></span>
+<script type="text/javascript" src="https://www.unitask-inc.com/wp-content/plugins/elementor-pro/assets/js/elements-handlers.min.js?ver=3.26.1" id="pro-elements-handlers-js"></script><svg style="display: none;" class="e-font-icon-svg-symbols"></svg>
+
+
+
+<div><div class="grecaptcha-badge" data-style="bottomright" style="width: 256px; height: 60px; display: block; transition: right 0.3s; position: fixed; bottom: 14px; right: -186px; box-shadow: gray 0px 0px 5px; border-radius: 2px; overflow: hidden;"><div class="grecaptcha-logo"><iframe title="reCAPTCHA" width="256" height="60" role="presentation" name="a-p63t0wptfj5w" frameborder="0" scrolling="no" sandbox="allow-forms allow-popups allow-same-origin allow-scripts allow-top-navigation allow-modals allow-popups-to-escape-sandbox allow-storage-access-by-user-activation" src="https://www.google.com/recaptcha/api2/anchor?ar=1&amp;k=6LdvCKMqAAAAAKTOSobENjkl9uE5sAtjpw_xKYM3&amp;co=aHR0cHM6Ly93d3cudW5pdGFzay1pbmMuY29tOjQ0Mw..&amp;hl=iw&amp;v=U5VsmTDhJM1iOJUyw4DEUTYv&amp;size=invisible&amp;anchor-ms=20000&amp;execute-ms=30000&amp;cb=886hgu6zyiem"></iframe></div><div class="grecaptcha-error"></div><textarea id="g-recaptcha-response-100000" name="g-recaptcha-response" class="g-recaptcha-response" style="width: 250px; height: 40px; border: 1px solid rgb(193, 193, 193); margin: 10px 25px; padding: 0px; resize: none; display: none;"></textarea></div><iframe style="display: none;"></iframe></div></body></html>

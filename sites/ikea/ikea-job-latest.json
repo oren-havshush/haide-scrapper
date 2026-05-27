@@ -1,0 +1,30 @@
+﻿{
+    "id":  "cmploqy6z00bw1ko301bf5mr7",
+    "title":  "×× ×××§××",
+    "description":  "×××¦×¨×××××¨×××¢××©×× ××××§×××¢××¦×× ××¨×¢××× ××ª×©××¨××ª×× × ×§× ××ª ×©×××ª ××××¤××©×××¤××© ×××¦×¨× ×××§×× ××¤× ×ª××× × ×××¤××© ×××¤××© ×××! ××ª×××¨× ×× ×××¨×©×× ×××¦×¨×× ×××¢××¤××",
+    "requirements":  null,
+    "location":  "Unknown",
+    "department":  null,
+    "externalJobId":  null,
+    "publishDate":  null,
+    "applicationInfo":  null,
+    "rawData":  {
+                    "title":  "×× ×××§××",
+                    "company":  "××",
+                    "applyUrl":  "×× ×××§××",
+                    "_detailUrl":  "https://www.ikea.com/il/he/webapp-local/work-with-us/job/job-details?id=1598",
+                    "title_href":  "https://www.ikea.com/il/he/this-is-ikea/",
+                    "description":  "×××¦×¨×××××¨×××¢××©×× ××××§×××¢××¦×× ××¨×¢××× ××ª×©××¨××ª×× × ×§× ××ª ×©×××ª ××××¤××©×××¤××© ×××¦×¨× ×××§×× ××¤× ×ª××× × ×××¤××© ×××¤××© ×××! ××ª×××¨× ×× ×××¨×©×× ×××¦×¨×× ×××¢××¤××",
+                    "applyUrl_href":  "https://www.ikea.com/il/he/this-is-ikea/",
+                    "_detailNavStatus":  "http_error",
+                    "_debugDescription":  "{\"selector\":\"div.hnf-navbar__container.hnf-content-container.hnf-page-container__main\",\"matched\":true,\"rootTag\":\"div\",\"rawTextLength\":139,\"source\":\"detailPage\"}"
+                },
+    "validationStatus":  "valid",
+    "siteId":  "cmpllbrjr000q01mvi54vu9v4",
+    "scrapeRunId":  "cmplol7nl001301mvdxy9ykbo",
+    "createdAt":  "2026-05-25T20:55:26.363Z",
+    "site":  {
+                 "id":  "cmpllbrjr000q01mvi54vu9v4",
+                 "siteUrl":  "https://www.ikea.com/il/he/this-is-ikea/work-with-us/jobs-pub70183d80/"
+             }
+}

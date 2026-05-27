@@ -1,0 +1,35 @@
+{
+    "itemSelector":  "section.single_faq",
+    "setupScript":  "(function () {\n  try {\n    var sections = document.querySelectorAll(\u0027section.single_faq\u0027);\n    sections.forEach(function (s) {\n      var firstP = s.querySelector(\u0027.fqqcm p\u0027);\n      if (!firstP) return;\n      var txt = firstP.textContent || \u0027\u0027;\n      var m = txt.match(/מיקום המשרה:\\s*([^\\n\\r]+?)(?:\\s*תיאור|\\s*מאפייני|\\s*שעות|\\s*$)/);\n      if (m \u0026\u0026 m[1] \u0026\u0026 !s.querySelector(\u0027[data-extracted-location]\u0027)) {\n        var span = document.createElement(\u0027span\u0027);\n        span.setAttribute(\u0027data-extracted-location\u0027, \u00271\u0027);\n        span.style.display = \u0027none\u0027;\n        span.textContent = m[1].trim();\n        s.appendChild(span);\n      }\n    });\n  } catch (e) {}\n})();",
+    "fieldMappings":  {
+                          "title":  {
+                                        "selector":  "button.ff",
+                                        "confidence":  100,
+                                        "source":  "MANUAL",
+                                        "capturedOnUrl":  "https://www.goldpro.co.il/%D7%93%D7%A8%D7%95%D7%A9%D7%99%D7%9D/"
+                                    },
+                          "description":  {
+                                              "selector":  ".fqqcm",
+                                              "confidence":  100,
+                                              "source":  "MANUAL",
+                                              "capturedOnUrl":  "https://www.goldpro.co.il/%D7%93%D7%A8%D7%95%D7%A9%D7%99%D7%9D/"
+                                          },
+                          "location":  {
+                                           "selector":  "[data-extracted-location]",
+                                           "confidence":  100,
+                                           "source":  "MANUAL",
+                                           "capturedOnUrl":  "https://www.goldpro.co.il/%D7%93%D7%A8%D7%95%D7%A9%D7%99%D7%9D/"
+                                       },
+                          "applicationInfo":  {
+                                                  "selector":  ".fqqcm a[href^=\"mailto:\"]",
+                                                  "extractAttr":  "href",
+                                                  "confidence":  100,
+                                                  "source":  "MANUAL",
+                                                  "capturedOnUrl":  "https://www.goldpro.co.il/%D7%93%D7%A8%D7%95%D7%A9%D7%99%D7%9D/"
+                                              }
+                      },
+    "pageFlow":  [
+
+                 ],
+    "formCapture":  null
+}

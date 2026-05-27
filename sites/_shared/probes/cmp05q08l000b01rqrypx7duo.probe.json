@@ -1,0 +1,91 @@
+﻿{
+  "url": "https://tafkid-plus.co.il/",
+  "itemCount": 113,
+  "withForm": 113,
+  "withMultiForm": 0,
+  "actions": {
+    "(empty)": 113
+  },
+  "sampleSchema": {
+    "actionUrl": "",
+    "method": "GET",
+    "fields": [
+      {
+        "name": "form_func",
+        "fieldType": "hidden",
+        "label": "",
+        "required": false,
+        "tagName": "input",
+        "value": "send_cv"
+      },
+      {
+        "name": "jobId",
+        "fieldType": "hidden",
+        "label": "",
+        "required": false,
+        "tagName": "input",
+        "value": "68027"
+      },
+      {
+        "name": "job_name",
+        "fieldType": "hidden",
+        "label": "",
+        "required": false,
+        "tagName": "input",
+        "value": "╫ô╫¿╫ò╫⌐/╫ö ╫É╫ù╫¿╫É╫Ö/╫¬ ╫¢╫£╫¢╫£╫ö, ╫¢╫í╫ñ╫Ö╫¥ ╫ò╫ö╫¬╫º╫⌐╫¿╫ò╫Ö╫ò╫¬ ╫æ╫₧╫ò╫ô╫Ö╫ó╫Ö╫ƒ"
+      },
+      {
+        "name": "first_name",
+        "fieldType": "text",
+        "label": "╫⌐╫¥ ╫ñ╫¿╫ÿ╫Ö",
+        "required": true,
+        "tagName": "input"
+      },
+      {
+        "name": "last_name",
+        "fieldType": "text",
+        "label": "╫⌐╫¥ ╫₧╫⌐╫ñ╫ù╫ö",
+        "required": true,
+        "tagName": "input"
+      },
+      {
+        "name": "tel",
+        "fieldType": "tel",
+        "label": "╫₧╫í╫ñ╫¿ ╫ÿ╫£╫ñ╫ò╫ƒ",
+        "required": true,
+        "tagName": "input"
+      },
+      {
+        "name": "email",
+        "fieldType": "email",
+        "label": "╫¢╫¬╫ò╫æ╫¬ ╫ô╫ò╫É\"╫£",
+        "required": true,
+        "tagName": "input"
+      },
+      {
+        "name": "cv_file",
+        "fieldType": "file",
+        "label": "╫ö╫ó╫£╫ö ╫º╫ò╫æ╫Ñ ╫º╫ò╫¿╫ò╫¬ ╫ù╫Ö╫Ö╫¥ ( Word / Pdf )",
+        "required": true,
+        "tagName": "input",
+        "accept": ".pdf,.doc,.docx"
+      },
+      {
+        "name": "in_profile",
+        "fieldType": "text",
+        "label": "╫ñ╫¿╫ò╫ñ╫Ö╫£ ╫£╫Ö╫á╫º╫ô╫É╫Ö╫ƒ",
+        "required": false,
+        "tagName": "input"
+      },
+      {
+        "name": "share_more_jobs",
+        "fieldType": "checkbox",
+        "label": "",
+        "required": true,
+        "tagName": "input"
+      }
+    ]
+  },
+  "schemasIdentical": true
+}
+

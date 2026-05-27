@@ -1,0 +1,48 @@
+{
+  "itemSelector": "article.positions_page__application",
+  "setupScript": "(function () {\n  return (async function () {\n    try {\n      var ajaxUrl = (window.AMAN_CATEGORIES && window.AMAN_CATEGORIES.ajax_url) || '/wp-admin/admin-ajax.php';\n      var body = new URLSearchParams();\n      body.append('action', 'data_fetch');\n      body.append('s', '');\n      var r = await fetch(ajaxUrl, {\n        method: 'POST',\n        headers: {\n          'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',\n          'X-Requested-With': 'XMLHttpRequest'\n        },\n        credentials: 'same-origin',\n        body: body.toString()\n      });\n      if (!r.ok) return -2;\n      var data = await r.json();\n      if (!data || !data.applications) return -3;\n      var inner = document.querySelector('.positions_page__content-applications-inner');\n      if (inner) {\n        inner.outerHTML = data.applications;\n      } else {\n        var section = document.querySelector('.positions_page__content-applications');\n        if (section) section.innerHTML = data.applications;\n        else return -4;\n      }\n      return document.querySelectorAll('article.positions_page__application').length;\n    } catch (e) { return -1; }\n  })();\n})();",
+  "fieldMappings": {
+    "title": {
+      "selector": ".positions_page__application-header-title",
+      "confidence": 100,
+      "source": "MANUAL",
+      "capturedOnUrl": "https://www.aman.co.il/careers/all/"
+    },
+    "location": {
+      "selector": ".aman_careers__location",
+      "confidence": 100,
+      "source": "MANUAL",
+      "capturedOnUrl": "https://www.aman.co.il/careers/all/"
+    },
+    "department": {
+      "selector": ".positions_page__application-header-category",
+      "confidence": 100,
+      "source": "MANUAL",
+      "capturedOnUrl": "https://www.aman.co.il/careers/all/"
+    },
+    "externalJobId": {
+      "selector": ".positions_page__application-header-position_id",
+      "confidence": 100,
+      "source": "MANUAL",
+      "capturedOnUrl": "https://www.aman.co.il/careers/all/"
+    },
+    "detailUrl": {
+      "selector": "a.positions_page__application-header-title-link",
+      "extractAttr": "href",
+      "confidence": 100,
+      "source": "MANUAL",
+      "capturedOnUrl": "https://www.aman.co.il/careers/all/"
+    },
+    "description": {
+      "selector": ".application_page__content > .container",
+      "confidence": 100,
+      "source": "MANUAL",
+      "capturedOnUrl": "https://www.aman.co.il/careers/%d7%a4%d7%99%d7%aa%d7%95%d7%97-%d7%aa%d7%95%d7%9b%d7%a0%d7%94/%d7%9e%d7%a4%d7%aa%d7%97-%d7%aa-%d7%aa%d7%95%d7%9b%d7%a0%d7%94-6/"
+    }
+  },
+  "pageFlow": [
+    { "url": "https://www.aman.co.il/careers/all/", "action": "navigate" },
+    { "url": "https://www.aman.co.il/careers/*/*/", "action": "navigate" }
+  ],
+  "formCapture": null
+}

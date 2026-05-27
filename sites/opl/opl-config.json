@@ -1,0 +1,36 @@
+{
+    "listingSelector":  "nav.subs.list.accordion",
+    "itemSelector":  "nav.accordion ul \u003e li",
+    "fieldMappings":  {
+                          "title":  {
+                                        "selector":  ".s_title h4",
+                                        "confidence":  100,
+                                        "source":  "MANUAL",
+                                        "capturedOnUrl":  "https://www.opl.co.il/%D7%93%D7%A8%D7%95%D7%A9%D7%99%D7%9D"
+                                    },
+                          "description":  {
+                                              "selector":  ".s_content .fluid_70",
+                                              "confidence":  100,
+                                              "source":  "MANUAL",
+                                              "capturedOnUrl":  "https://www.opl.co.il/%D7%93%D7%A8%D7%95%D7%A9%D7%99%D7%9D"
+                                          },
+                          "applicationInfo":  {
+                                                  "selector":  "iframe.sendfile",
+                                                  "extractAttr":  "src",
+                                                  "confidence":  100,
+                                                  "source":  "MANUAL",
+                                                  "capturedOnUrl":  "https://www.opl.co.il/%D7%93%D7%A8%D7%95%D7%A9%D7%99%D7%9D"
+                                              },
+                          "externalJobId":  {
+                                                "selector":  "iframe.sendfile",
+                                                "extractAttr":  "src",
+                                                "confidence":  100,
+                                                "source":  "MANUAL",
+                                                "capturedOnUrl":  "https://www.opl.co.il/%D7%93%D7%A8%D7%95%D7%A9%D7%99%D7%9D"
+                                            }
+                      },
+    "pageFlow":  [
+
+                 ],
+    "formCapture":  null
+}

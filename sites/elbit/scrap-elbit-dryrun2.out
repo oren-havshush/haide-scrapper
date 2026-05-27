@@ -1,0 +1,18 @@
+﻿--- Evaluating setupScript ---
+setupScript completed in 22652ms
+itemCount: 711
+field coverage: {
+  "title": 711,
+  "externalJobId": 711,
+  "description": 711,
+  "requirements": 0,
+  "location": 689,
+  "department": 711,
+  "publishDate": 711
+}
+--- first 5 samples ---
+{"title":"Algorithm Developer","externalJobId":"6069","location":"╫ù╫Ö╫ñ╫ö","department":"╫¢╫£╫Ö ╫ÿ╫Ö╫í","publishDate":"2026-01-20T01:16:00","descriptionLen":775,"requirementsLen":0,"descriptionStart":"We are looking forFor our company site in Haifa, we are looking for a Computer Vision Algorithm Engi"}
+{"title":"Project Manager","externalJobId":"6340","location":"North","department":"╫Ö╫æ╫⌐╫ö ╫ò╫¬╫ó╫⌐","publishDate":"2026-03-16T07:16:00","descriptionLen":760,"requirementsLen":0,"descriptionStart":"╫£╫É╫¬╫¿ ╫ö╫ù╫æ╫¿╫ö ╫æ╫Ö╫ò╫º╫á╫ó╫¥ ╫ô╫¿╫ò╫⌐.╫ö ╫₧╫á╫ö╫£.╫¬ ╫ñ╫¿╫ò╫Ö╫º╫ÿ ╫æ╫¬╫ñ╫ó╫ò╫£ ╫æ╫₧╫í╫Æ╫¿╫¬ ╫ö╫¬╫ñ╫º╫Ö╫ô:╫á╫Ö╫ö╫ò╫£ ╫ñ╫¿╫ò╫Ö╫º╫ÿ ╫₧╫ò╫£╫ÿ╫Ö╫ô╫Ö╫í╫ñ╫£╫Ö╫á╫¿╫Ö ╫¿╫ù╫æ, ╫₧╫É╫¬╫Æ╫¿ "}
+{"title":"DIRCM System Engineer","externalJobId":"4992","location":"╫¿╫ù╫ò╫æ╫ò╫¬","department":"╫₧╫ò╫ô╫Ö╫ó╫Ö╫ƒ ╫ò╫£\"╫É","publishDate":"2025-07-02T06:46:00","descriptionLen":1734,"requirementsLen":0,"descriptionStart":"We are looking for a System Engineer for Airborne Electro-Optical Systems (DIRCM) at our site in Reh"}
+{"title":"Systems Engineering Student","externalJobId":"6715","location":"North","department":"╫Ö╫æ╫⌐╫ö ╫ò╫¬╫ó╫⌐","publishDate":"2026-05-27T06:16:00","descriptionLen":382,"requirementsLen":0,"descriptionStart":"╫£╫É╫¬╫¿ ╫ö╫ù╫æ╫¿╫ö ╫æ╫Ö╫º╫á╫ó╫¥ ╫ô╫¿╫ò╫⌐.╫ö ╫í╫ÿ╫ò╫ô╫á╫ÿ.╫Ö╫¬ ╫£╫ù╫⌐╫₧╫£ ╫£╫¬╫ñ╫º╫Ö╫ô ╫ö╫á╫ô╫í╫¬ ╫₧╫ó╫¿╫¢╫¬╫æ╫₧╫í╫Æ╫¿╫¬ ╫ö╫¬╫ñ╫º╫Ö╫ô: ╫ñ╫Ö╫¬╫ò╫ù ╫ò╫É╫Ö╫á╫ÿ╫Æ╫¿╫ª╫Ö╫ö ╫⌐╫£ ╫₧╫ó╫¿╫¢╫ò╫¬"}
+{"title":"Production Electronics Engineer","externalJobId":"5842","location":"╫¿╫ù╫ò╫æ╫ò╫¬","department":"╫₧╫ò╫ô╫Ö╫ó╫Ö╫ƒ ╫ò╫£\"╫É","publishDate":"2025-12-17T08:16:00","descriptionLen":1014,"requirementsLen":0,"descriptionStart":"For our company site in Rehovot, we are looking for an Electronics Manufacturing EngineerResponsibil"}

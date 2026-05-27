@@ -1,41 +1,56 @@
-# Scrapnew
+# Haide scrapper
 
-to deploy to prod:
-./deploy.sh root@194.88.110.149
+A Next.js web app, a Playwright-driven background worker, and a browser
+extension that together scrape job listings from Israeli company career
+pages into Postgres. Onboarding new sites is automated via the
+[`/addsite` Cursor skill](addsite.md) (Windows / PowerShell edition).
 
-A Next.js web app with a background worker (Playwright-based) and an optional browser extension. Postgres is used as the database via Prisma.
+The medium-term goal is 5,000 onboarded sites; the per-site reference
+library lives under [`sites/`](sites/) and is documented in
+[docs/sites-layout.md](docs/sites-layout.md).
 
 ## Architecture
 
-- **web** — Next.js app (`src/`), served on http://localhost:3000
-- **worker** — Background job processor (`worker/`), uses Playwright
-- **db** — Postgres 16 (runs in Docker)
-- **extension** — Optional browser extension (`extension/`, built with wxt)
+- **web** — Next.js app (`src/`), served on http://localhost:3000.
+- **worker** — Background job processor (`worker/`), uses Playwright;
+  see [`worker/jobs/scrape.ts`](worker/jobs/scrape.ts) and
+  [`worker/jobs/analyze.ts`](worker/jobs/analyze.ts).
+- **db** — Postgres 16 (runs in Docker via `docker compose up -d db`).
+- **extension** — Browser extension (`extension/`, built with wxt).
+- **/addsite skill** — [addsite.md](addsite.md): the onboarding agent
+  that takes a single URL all the way from "never seen" to
+  "first successful scrape" against the prod API. The agent writes
+  per-onboarding artifacts to `.scratch/` (gitignored).
+- **sites/** — committed per-site reference library; one bucket per
+  onboarded host. See [docs/sites-layout.md](docs/sites-layout.md).
+
+## Deploy
+
+```bash
+./deploy.sh root@194.88.110.149
+```
 
 ## Prerequisites
 
 - Node.js 20+
-- npm (or pnpm)
+- pnpm (`npm install -g pnpm`)
 - Docker Desktop (for the Postgres DB)
+- Chromium via Playwright (installed below)
+- On Windows: PowerShell 5.1 or PowerShell 7+, `curl.exe` on `PATH`
+  (PowerShell's `curl` alias is `Invoke-WebRequest` and is the wrong
+  binary for the `/addsite` skill).
 
 ## First-time setup
 
 From the repo root:
 
 ```bash
-# 1. Install dependencies (also runs `prisma generate` via postinstall)
-npm install
-
-# 2. Install Chromium for the worker (Playwright)
-npm run playwright:install
-
-# 3. Create a local .env (see template below)
-cp .env.example .env   # if you have an example file; otherwise create .env manually
+pnpm install                  # installs deps + runs `prisma generate` via postinstall
+pnpm playwright:install       # installs Chromium for the worker
+cp .env.example .env          # or create .env manually with the values below
 ```
 
 ### `.env`
-
-Create a `.env` file in the repo root with:
 
 ```env
 DATABASE_URL="postgresql://postgres:postgres@localhost:5432/scrapnew?schema=public"
@@ -44,107 +59,133 @@ NEXT_PUBLIC_API_TOKEN="dev-token-change-me"
 POSTGRES_PASSWORD=postgres
 ```
 
+### `.claude/scrap-token` (for the `/addsite` skill only)
+
+Paste the prod scrapper API bearer token into `.claude/scrap-token`
+(single line, no `Bearer ` prefix, no surrounding quotes). The file is
+gitignored. See [.claude/README.md](.claude/README.md) for context.
+
 ### Database
 
-Start Postgres and apply migrations:
-
 ```bash
-# Start Postgres in the background
 docker compose up -d db
-
-# Apply Prisma migrations (first time + whenever new migrations are added)
 npx prisma migrate deploy
-
-# (Optional) Seed the DB with a few sample sites
-npm run db:seed
+pnpm db:seed                  # optional sample data
 ```
 
 ## Running locally
 
-You'll need **two terminals**:
+You need **two terminals**.
 
 **Terminal 1 — Web app**
 
 ```bash
-npm run dev
+pnpm dev                      # opens on http://localhost:3000
 ```
-
-Opens on http://localhost:3000
 
 **Terminal 2 — Worker**
 
 ```bash
-npm run worker:dev
+pnpm worker:dev               # watches worker/ and re-runs on changes
 ```
 
-That's it. The web app talks to Postgres via Prisma, and the worker polls the DB for jobs.
+## Running the /addsite skill
 
-## Optional: Browser extension
+In Cursor or Claude Code, with this folder open as the workspace, after
+`.claude/scrap-token` is populated and `pnpm doctor` is green:
 
-If you're working on the extension:
-
-```bash
-cd extension
-npm install
-npm run dev
+```
+/addsite https://www.tikshoov.co.il/come-work-with-us/careers-list/?areaID=&jobType=
 ```
 
-Then load the built extension from `extension/.output/` in your browser's extension developer mode.
+The agent will (full spec in [addsite.md](addsite.md)):
+
+1. Hit `GET /api/sites?siteUrl=...` to dedupe.
+2. `POST /api/sites` if new.
+3. Run the worker-parity reachability gate against the live page.
+4. Render the page with Playwright into `.scratch/scrap-page.html`.
+5. Propose selectors based on the rendered HTML.
+6. Dry-run them with `.scratch/scrap-dryrun.ts`.
+7. `PUT /api/sites/<id>/config` twice (races the auto-analyzer).
+8. `PATCH /api/sites/<id>` to `ACTIVE`.
+9. `POST /api/sites/<id>/scrape` and poll until `COMPLETED`.
+10. Sample 3 jobs and print a dashboard URL.
+
+Per-site artifacts that are worth keeping after onboarding should be
+promoted from `.scratch/` into `sites/<name>/` per the
+[sites layout convention](docs/sites-layout.md).
 
 ## Running everything in Docker (alternative)
 
-Instead of running web/worker locally, you can run the whole stack in Docker:
-
 ```bash
-docker compose up --build
+docker compose up --build     # db + web + worker + caddy
 ```
 
-This starts `db`, `web`, `worker`, and `caddy` (reverse proxy on :80/:443).
+## Optional: Browser extension
+
+```bash
+cd extension
+pnpm install
+pnpm dev                      # then load extension/.output/ in your browser
+```
 
 ## Useful commands
 
-| Command                                | What it does                        |
-| -------------------------------------- | ----------------------------------- |
-| `npm run dev`                          | Start Next.js dev server            |
-| `npm run build`                        | Build the Next.js app               |
-| `npm run start`                        | Run the production Next.js build    |
-| `npm run worker:dev`                   | Start the worker with file watching |
-| `npm run worker:start`                 | Run the worker once (no watch)      |
-| `npm run playwright:install`           | Install Chromium for Playwright     |
-| `npm run lint`                         | Run ESLint                          |
-| `npm run db:seed`                      | Insert sample sites into the DB     |
-| `npx prisma migrate deploy`            | Apply pending migrations            |
-| `npx prisma migrate dev --name <name>` | Create a new migration              |
-| `npx prisma studio`                    | Open Prisma Studio (DB GUI)         |
-| `docker compose up -d db`              | Start only the Postgres container   |
-| `docker compose down`                  | Stop all containers                 |
+| Command                                | What it does                              |
+| -------------------------------------- | ----------------------------------------- |
+| `pnpm dev`                             | Start Next.js dev server                  |
+| `pnpm build`                           | Build the Next.js app                     |
+| `pnpm start`                           | Run the production Next.js build          |
+| `pnpm worker:dev`                      | Start the worker with file watching       |
+| `pnpm worker:start`                    | Run the worker once (no watch)            |
+| `pnpm playwright:install`              | Install Chromium for Playwright           |
+| `pnpm lint`                            | Run ESLint                                |
+| `pnpm db:seed`                         | Insert sample sites into the DB           |
+| `pnpm doctor`                          | Pre-flight check for the `/addsite` skill |
+| `pnpm enrich`                          | Enrich an Israeli-careers CSV via Playwright detectors |
+| `npx prisma migrate deploy`            | Apply pending migrations                  |
+| `npx prisma migrate dev --name <name>` | Create a new migration                    |
+| `npx prisma studio`                    | Open Prisma Studio (DB GUI)               |
+| `docker compose up -d db`              | Start only the Postgres container         |
+| `docker compose down`                  | Stop all containers                       |
+
+## Docs
+
+- [addsite.md](addsite.md) — the `/addsite` skill spec (753 lines)
+- [docs/sites-layout.md](docs/sites-layout.md) — `sites/<name>/` convention
+- [docs/engineer-notes-pagination.md](docs/engineer-notes-pagination.md)
+- [docs/engineer-notes-auto-apply.md](docs/engineer-notes-auto-apply.md)
+- [docs/engineer-notes-spa-and-async-setupscript.md](docs/engineer-notes-spa-and-async-setupscript.md)
 
 ## Troubleshooting
 
-**`ECONNREFUSED` on `localhost:5432`**
-The DB container isn't running or isn't publishing port 5432. Run:
+**`ECONNREFUSED` on `localhost:5432`** — start the DB:
 
 ```bash
 docker compose up -d db
-docker compose ps    # confirm it's healthy and 5432 is exposed
+docker compose ps
 ```
 
-**Prisma errors about missing tables**
-Migrations haven't been applied yet:
+**Prisma errors about missing tables** — apply migrations:
 
 ```bash
 npx prisma migrate deploy
 ```
 
-**Worker crashes on startup about Playwright / browser not found**
+**Worker crashes on startup about Playwright / browser not found**:
 
 ```bash
-npm run playwright:install
+pnpm playwright:install
 ```
 
-**Port 3000 already in use**
-Stop whatever is using it, or run Next.js on another port:
+**Port 3000 already in use** — pick another:
 
 ```bash
-npm run dev -- -p 3001
+pnpm dev -- -p 3001
 ```
+
+**`/addsite` says token is missing/placeholder** — populate
+`.claude/scrap-token`. Run `pnpm doctor` to verify.
+
+**`curl` in PowerShell returns `Invoke-WebRequest`-flavoured output** —
+use `curl.exe` (with the extension) or `Invoke-RestMethod`.

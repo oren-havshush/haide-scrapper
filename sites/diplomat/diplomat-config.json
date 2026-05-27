@@ -1,0 +1,46 @@
+{
+    "itemSelector":  "a.job-item[href]",
+    "fieldMappings":  {
+                          "title":  {
+                                        "selector":  ".job-title",
+                                        "confidence":  100,
+                                        "source":  "MANUAL",
+                                        "capturedOnUrl":  "https://careers.topmatch.co.il/diplomat-il/index.html"
+                                    },
+                          "location":  {
+                                           "selector":  "[data-field=\"location\"]",
+                                           "confidence":  100,
+                                           "source":  "MANUAL",
+                                           "capturedOnUrl":  "https://careers.topmatch.co.il/diplomat-il/index.html"
+                                       },
+                          "externalJobId":  {
+                                                "selector":  "[data-field=\"compPositionID\"]",
+                                                "confidence":  100,
+                                                "source":  "MANUAL",
+                                                "capturedOnUrl":  "https://careers.topmatch.co.il/diplomat-il/index.html"
+                                            },
+                          "publishDate":  {
+                                              "selector":  "[data-field=\"activationDate\"]",
+                                              "confidence":  100,
+                                              "source":  "MANUAL",
+                                              "capturedOnUrl":  "https://careers.topmatch.co.il/diplomat-il/index.html"
+                                          },
+                          "description":  {
+                                              "selector":  "[data-field=\"description\"]",
+                                              "confidence":  100,
+                                              "source":  "MANUAL",
+                                              "capturedOnUrl":  "https://careers.topmatch.co.il/diplomat-il/redmatch-apply/redmatch.apply.html?compPositionID=197968"
+                                          }
+                      },
+    "pageFlow":  [
+                     {
+                         "url":  "https://careers.topmatch.co.il/diplomat-il/index.html",
+                         "action":  "navigate"
+                     },
+                     {
+                         "url":  "https://careers.topmatch.co.il/diplomat-il/redmatch-apply/redmatch.apply.html*",
+                         "action":  "navigate"
+                     }
+                 ],
+    "formCapture":  null
+}

@@ -1,0 +1,74 @@
+﻿{
+    "id":  "cmpnt68rb002301mv6h7d28yg",
+    "siteUrl":  "https://careers.iec.co.il/?referid=\u0026freeText=\u0026page=1",
+    "status":  "REVIEW",
+    "confidenceScore":  0.77,
+    "fieldMappings":  {
+                          "_meta":  {
+                                        "savedAt":  "2026-05-27T08:44:29.660Z",
+                                        "pagination":  null,
+                                        "formCapture":  null,
+                                        "setupScript":  "(function(){\r\n  try {\r\n    document.querySelectorAll(\u0027.job_link_and_share_wrap.job_item\u0027).forEach(function(item){\r\n      function cleanAfterHidden(el) {\r\n        if (!el) return \u0027\u0027;\r\n        var hidden = el.querySelector(\u0027.hidden_span1\u0027);\r\n        var raw = el.textContent || \u0027\u0027;\r\n        if (hidden \u0026\u0026 hidden.textContent) raw = raw.replace(hidden.textContent, \u0027\u0027);\r\n        return raw.replace(/\\s+/g, \u0027 \u0027).trim();\r\n      }\r\n      if (!item.querySelector(\u0027[data-x-location]\u0027)) {\r\n        var loc = item.querySelector(\u0027.career_location\u0027);\r\n        if (loc) {\r\n          var s = document.createElement(\u0027span\u0027);\r\n          s.setAttribute(\u0027data-x-location\u0027,\u00271\u0027);\r\n          s.style.display = \u0027none\u0027;\r\n          s.textContent = cleanAfterHidden(loc);\r\n          item.appendChild(s);\r\n        }\r\n      }\r\n      if (!item.querySelector(\u0027[data-x-department]\u0027)) {\r\n        var occ = item.querySelector(\u0027.career_occupation\u0027);\r\n        if (occ) {\r\n          var s = document.createElement(\u0027span\u0027);\r\n          s.setAttribute(\u0027data-x-department\u0027,\u00271\u0027);\r\n          s.style.display = \u0027none\u0027;\r\n          s.textContent = cleanAfterHidden(occ);\r\n          item.appendChild(s);\r\n        }\r\n      }\r\n      if (!item.querySelector(\u0027[data-x-deadline]\u0027)) {\r\n        var dl = item.querySelector(\u0027.career_dead_line\u0027);\r\n        if (dl) {\r\n          var raw = cleanAfterHidden(dl);\r\n          var m = raw.match(/(\\d{1,2}\\/\\d{1,2}\\/\\d{4})/);\r\n          var s = document.createElement(\u0027span\u0027);\r\n          s.setAttribute(\u0027data-x-deadline\u0027,\u00271\u0027);\r\n          s.style.display = \u0027none\u0027;\r\n          s.textContent = m ? m[1] : raw;\r\n          item.appendChild(s);\r\n        }\r\n      }\r\n      var oid = item.getAttribute(\u0027data-order_id\u0027);\r\n      if (oid \u0026\u0026 !item.querySelector(\u0027[data-x-jobid]\u0027)) {\r\n        var s = document.createElement(\u0027span\u0027);\r\n        s.setAttribute(\u0027data-x-jobid\u0027,\u00271\u0027);\r\n        s.style.display = \u0027none\u0027;\r\n        s.textContent = oid;\r\n        item.appendChild(s);\r\n      }\r\n    });\r\n  } catch (e) {}\r\n})();",
+                                        "itemSelector":  ".job_link_and_share_wrap.job_item",
+                                        "revealSelector":  null,
+                                        "listingSelector":  ".wrap_careers",
+                                        "loadMoreSelector":  null,
+                                        "originalMappings":  null
+                                    },
+                          "title":  {
+                                        "source":  "MANUAL",
+                                        "selector":  "button.archive-job_item-title",
+                                        "confidence":  100,
+                                        "capturedOnUrl":  "https://careers.iec.co.il/?referid=\u0026freeText=\u0026page=1"
+                                    },
+                          "deadline":  {
+                                           "source":  "MANUAL",
+                                           "selector":  "[data-x-deadline]",
+                                           "confidence":  100,
+                                           "capturedOnUrl":  "https://careers.iec.co.il/?referid=\u0026freeText=\u0026page=1"
+                                       },
+                          "location":  {
+                                           "source":  "MANUAL",
+                                           "selector":  "[data-x-location]",
+                                           "confidence":  100,
+                                           "capturedOnUrl":  "https://careers.iec.co.il/?referid=\u0026freeText=\u0026page=1"
+                                       },
+                          "detailUrl":  {
+                                            "source":  "MANUAL",
+                                            "selector":  "button.icon-share_link",
+                                            "confidence":  100,
+                                            "extractAttr":  "data-copy",
+                                            "capturedOnUrl":  "https://careers.iec.co.il/?referid=\u0026freeText=\u0026page=1"
+                                        },
+                          "department":  {
+                                             "source":  "MANUAL",
+                                             "selector":  "[data-x-department]",
+                                             "confidence":  100,
+                                             "capturedOnUrl":  "https://careers.iec.co.il/?referid=\u0026freeText=\u0026page=1"
+                                         },
+                          "description":  {
+                                              "source":  "MANUAL",
+                                              "selector":  ".career_short_description",
+                                              "confidence":  100,
+                                              "capturedOnUrl":  "https://careers.iec.co.il/?referid=\u0026freeText=\u0026page=1"
+                                          },
+                          "externalJobId":  {
+                                                "source":  "MANUAL",
+                                                "selector":  "[data-x-jobid]",
+                                                "confidence":  100,
+                                                "capturedOnUrl":  "https://careers.iec.co.il/?referid=\u0026freeText=\u0026page=1"
+                                            }
+                      },
+    "pageFlow":  [
+
+                 ],
+    "adminNote":  null,
+    "createdAt":  "2026-05-27T08:34:50.711Z",
+    "updatedAt":  "2026-05-27T08:44:29.661Z",
+    "analyzingAt":  "2026-05-27T08:34:50.710Z",
+    "reviewAt":  "2026-05-27T08:35:58.460Z",
+    "activeAt":  null,
+    "failedAt":  null,
+    "skippedAt":  null,
+    "latestScrapeRun":  null
+}

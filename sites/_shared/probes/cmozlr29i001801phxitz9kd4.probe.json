@@ -1,0 +1,20 @@
+﻿node.exe : existing setupScript threw: page.evaluate: SyntaxError: Illegal return statement
+At line:1 char:1
++ & "C:\Program Files\nodejs/node.exe" "C:\Program Files\nodejs/node_mo ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (existing setupS...eturn statement:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+    at eval (<anonymous>)
+    at UtilityScript.evaluate (<anonymous>:302:30)
+    at UtilityScript.<anonymous> (<anonymous>:1:44)
+{
+  "url": "https://www.clalbit.co.il/careers/#",
+  "itemCount": 10,
+  "withForm": 0,
+  "withMultiForm": 0,
+  "actions": {},
+  "sampleSchema": null,
+  "schemasIdentical": true
+}
+

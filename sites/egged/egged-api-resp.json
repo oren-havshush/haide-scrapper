@@ -1,0 +1,215 @@
+{
+  "custom": null,
+  "errorCode": 0,
+  "errorMessage": null,
+  "body": {
+    "pageIndex": 0,
+    "pageSize": 10,
+    "totalPageCount": 4,
+    "hasPreviousPage": false,
+    "hasNextPage": true,
+    "totalCount": 40,
+    "items": [
+      {
+        "jobId": 464,
+        "jobTitle": "מורה נהיגה לאוטובוס",
+        "categoryName": "מכללות"
+      },
+      {
+        "jobId": 594,
+        "jobTitle": "מכונאי.ת רכב כבד מוסך גבעת שאול",
+        "categoryName": "תחזוקה"
+      },
+      {
+        "jobId": 629,
+        "jobTitle": "יועץ.ת שירות מוסך חולון",
+        "categoryName": "תחזוקה"
+      },
+      {
+        "jobId": 630,
+        "jobTitle": "מכונאי.ת מפעל ייצור",
+        "categoryName": "תחזוקה"
+      },
+      {
+        "jobId": 631,
+        "jobTitle": "מסגר רכב כבד מוסך באר שבע",
+        "categoryName": "תחזוקה"
+      },
+      {
+        "jobId": 540,
+        "jobTitle": "מנהל.ת חטיבת השירות והתפעול",
+        "categoryName": "תחזוקה"
+      },
+      {
+        "jobId": 635,
+        "jobTitle": "חשמלאי.ת רכב כבד אחיסמך",
+        "categoryName": "תחזוקה"
+      },
+      {
+        "jobId": 637,
+        "jobTitle": "מסגר רכב כבד אחיסמך",
+        "categoryName": "תחזוקה"
+      },
+      {
+        "jobId": 640,
+        "jobTitle": "מכונאי.ת רכב כבד חיפה משל\"צ",
+        "categoryName": "תחזוקה"
+      },
+      {
+        "jobId": 563,
+        "jobTitle": "רכז.ת גיוס ומשאבי אנוש לאגף התחזוקה",
+        "categoryName": " משאבי אנוש"
+      },
+      {
+        "jobId": 627,
+        "jobTitle": "מיישב.ת תביעות צ\"ג – מוסכי הסדר",
+        "categoryName": "ביטוח"
+      },
+      {
+        "jobId": 645,
+        "jobTitle": "מכונאי.ת רכב כבד נתניה",
+        "categoryName": "תחזוקה"
+      },
+      {
+        "jobId": 625,
+        "jobTitle": "רכז.ת מכללה ירושלים",
+        "categoryName": "מכללות"
+      },
+      {
+        "jobId": 650,
+        "jobTitle": "נהג.ת גרר חיפה והקריות",
+        "categoryName": "תחזוקה"
+      },
+      {
+        "jobId": 371,
+        "jobTitle": "משרה כללית לעובדי המוסך",
+        "categoryName": "תחזוקה"
+      },
+      {
+        "jobId": 651,
+        "jobTitle": "איש.ת דיאגנוסטיקה",
+        "categoryName": "תחזוקה"
+      },
+      {
+        "jobId": 659,
+        "jobTitle": "חשמלאי.ת רכב כבד מוסך נווה שאנן",
+        "categoryName": "תחזוקה"
+      },
+      {
+        "jobId": 656,
+        "jobTitle": "חשמלאי.ת רכב כבד מוסך נתניה",
+        "categoryName": "תחזוקה"
+      },
+      {
+        "jobId": 657,
+        "jobTitle": "מכונאי.ת רכב כבד קריית שמונה",
+        "categoryName": "תחזוקה"
+      },
+      {
+        "jobId": 642,
+        "jobTitle": "קניין.ית רכש חלפים",
+        "categoryName": "תחזוקה"
+      },
+      {
+        "jobId": 586,
+        "jobTitle": "איש.ת מכירות חלפים",
+        "categoryName": "תחזוקה"
+      },
+      {
+        "jobId": 653,
+        "jobTitle": "מנהל.ת תיקי לקוחות תחום מכרזים ולקוחות מוסדיים",
+        "categoryName": "תחזוקה"
+      },
+      {
+        "jobId": 662,
+        "jobTitle": "רכז.ת מש\"א סניף תלפיות ירושלים",
+        "categoryName": " משאבי אנוש"
+      },
+      {
+        "jobId": 664,
+        "jobTitle": "מקטלג.ת",
+        "categoryName": "תחזוקה"
+      },
+      {
+        "jobId": 37,
+        "jobTitle": "מבקר.ת  בדרכים ",
+        "categoryName": "מינהל"
+      },
+      {
+        "jobId": 667,
+        "jobTitle": "עובד.ת סוציאלי",
+        "categoryName": " משאבי אנוש"
+      },
+      {
+        "jobId": 622,
+        "jobTitle": "מנהל.ת מחלקת אלקטרוניקה מפעל ייצור",
+        "categoryName": "תחזוקה"
+      },
+      {
+        "jobId": 669,
+        "jobTitle": "רכז.ת משאבי אנוש לאזור הצפון",
+        "categoryName": " משאבי אנוש"
+      },
+      {
+        "jobId": 668,
+        "jobTitle": "כלכלן.ית",
+        "categoryName": "תחזוקה"
+      },
+      {
+        "jobId": 671,
+        "jobTitle": "מנהל.ת מחלקת מוצרים לאגף השיווק",
+        "categoryName": "שיווק ותקשורת"
+      },
+      {
+        "jobId": 670,
+        "jobTitle": "טכנאי.ת HELP DESK",
+        "categoryName": "מערכות מידע"
+      },
+      {
+        "jobId": 672,
+        "jobTitle": "מנהל.ת מחלקת בקרה",
+        "categoryName": "תחבורה ציבורית"
+      },
+      {
+        "jobId": 673,
+        "jobTitle": "מנהל.ת סניף צפון השרון",
+        "categoryName": "תחבורה ציבורית"
+      },
+      {
+        "jobId": 481,
+        "jobTitle": "קצינ.ת בטיחות בתעבורה",
+        "categoryName": "תחבורה ציבורית"
+      },
+      {
+        "jobId": 675,
+        "jobTitle": "איש.ת מכירות במפעל",
+        "categoryName": "תחזוקה"
+      },
+      {
+        "jobId": 676,
+        "jobTitle": "חשב.ת שכר",
+        "categoryName": "משאבי אנוש"
+      },
+      {
+        "jobId": 674,
+        "jobTitle": "מכונאי.ת בעל.ת הסמכה לניהול מוסך אשדוד",
+        "categoryName": "תחזוקה"
+      },
+      {
+        "jobId": 677,
+        "jobTitle": "מכונאי.ת רכב כבד מוסך אשקלון",
+        "categoryName": "תחזוקה"
+      },
+      {
+        "jobId": 290,
+        "jobTitle": "מכונאי.ת רכב כבד מוסך אשדוד",
+        "categoryName": "תחזוקה"
+      },
+      {
+        "jobId": 626,
+        "jobTitle": "חשמלאי.ת רכב כבד מוסך חיפה משל\"צ",
+        "categoryName": "תחזוקה"
+      }
+    ]
+  }
+}

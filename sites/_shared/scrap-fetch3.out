@@ -1,0 +1,116 @@
+﻿{
+  "htmlBytes": 113196,
+  "requestCount": 41,
+  "interestingCount": 20,
+  "interesting": [
+    {
+      "rt": "document",
+      "method": "GET",
+      "url": "https://elbitsystemscareer.com/jobs/"
+    },
+    {
+      "rt": "script",
+      "method": "GET",
+      "url": "https://elbitsystemscareer.com/_next/static/chunks/webpack-b18589d9c63fef49.js"
+    },
+    {
+      "rt": "script",
+      "method": "GET",
+      "url": "https://elbitsystemscareer.com/_next/static/chunks/4bd1b696-cf72ae8a39fa05aa.js"
+    },
+    {
+      "rt": "script",
+      "method": "GET",
+      "url": "https://elbitsystemscareer.com/_next/static/chunks/964-9b249bc0ac5a9a8b.js"
+    },
+    {
+      "rt": "script",
+      "method": "GET",
+      "url": "https://elbitsystemscareer.com/_next/static/chunks/main-app-1ec75f8068799bb0.js"
+    },
+    {
+      "rt": "script",
+      "method": "GET",
+      "url": "https://elbitsystemscareer.com/_next/static/chunks/13-27bef9593db4b615.js"
+    },
+    {
+      "rt": "script",
+      "method": "GET",
+      "url": "https://elbitsystemscareer.com/_next/static/chunks/464-6a020d149256888a.js"
+    },
+    {
+      "rt": "script",
+      "method": "GET",
+      "url": "https://elbitsystemscareer.com/_next/static/chunks/311-87218029971de839.js"
+    },
+    {
+      "rt": "script",
+      "method": "GET",
+      "url": "https://elbitsystemscareer.com/_next/static/chunks/app/layout-1a7a32978a915e32.js"
+    },
+    {
+      "rt": "script",
+      "method": "GET",
+      "url": "https://elbitsystemscareer.com/_next/static/chunks/app/jobs/page-d0a01d7298139591.js"
+    },
+    {
+      "rt": "xhr",
+      "method": "POST",
+      "url": "https://niloo-server.herokuapp.com/actions-elbit"
+    },
+    {
+      "rt": "script",
+      "method": "GET",
+      "url": "https://code.jquery.com/jquery-1.8.0.min.js"
+    },
+    {
+      "rt": "script",
+      "method": "GET",
+      "url": "https://elbitsystemscareer.com/_next/static/chunks/481-f499b3f2ca49d263.js"
+    },
+    {
+      "rt": "script",
+      "method": "GET",
+      "url": "https://elbitsystemscareer.com/_next/static/chunks/577-6f2dad26a13e203d.js"
+    },
+    {
+      "rt": "script",
+      "method": "GET",
+      "url": "https://elbitsystemscareer.com/_next/static/chunks/101-81902a66503fe275.js"
+    },
+    {
+      "rt": "script",
+      "method": "GET",
+      "url": "https://elbitsystemscareer.com/_next/static/chunks/120-0d22b86ae3758d29.js"
+    },
+    {
+      "rt": "script",
+      "method": "GET",
+      "url": "https://elbitsystemscareer.com/_next/static/chunks/768.d47e0c87df3a62b7.js"
+    },
+    {
+      "rt": "script",
+      "method": "GET",
+      "url": "https://elbitsystemscareer.com/_next/static/chunks/561-c14ed924d4e5f70f.js"
+    },
+    {
+      "rt": "script",
+      "method": "GET",
+      "url": "https://elbitsystemscareer.com/_next/static/chunks/583-399b999cf9f030a6.js"
+    },
+    {
+      "rt": "script",
+      "method": "GET",
+      "url": "https://elbitsystemscareer.com/_next/static/chunks/116.0cec4a055d72af3f.js"
+    }
+  ],
+  "consoleMsgs": [
+    "[log] https://niloo-server.herokuapp.com",
+    "[log] %c╫á╫Æ╫Ö╫⌐ ╫£╫Ö%c ╫É╫ò╫₧╫¿: ╫á╫¿╫É╫ö ╫⌐-jQuery ╫£╫É ╫á╫₧╫ª╫É╫ö ╫æ╫ô╫ú ╫û╫ö. ╫ö╫¬╫ò╫í╫ú ╫£╫É ╫Ö╫¢╫ò╫£ ╫£╫ñ╫ó╫ò╫£ ╫æ╫£╫ó╫ô╫Ö╫ö, ╫ò╫ö╫ÿ╫₧╫Ö╫ó ╫æ╫ô╫ú ╫É╫¬ ╫ö╫Æ╫Ö╫¿╫í╫ö ╫ö╫₧╫Ö╫á╫Ö╫₧╫£╫Ö╫¬ ╫ö╫ô╫¿╫ò╫⌐╫ö ╫ó╫æ╫ò╫¿╫ò ╫æ╫É╫ò╫ñ╫ƒ ╫É╫ò╫ÿ╫ò╫₧╫ÿ╫Ö. color: RoyalBlue; font-weight: bold; ",
+    "[log] JobsContext: Fetched jobs: 710",
+    "[log] Filtering jobs. Total jobs: 710",
+    "[log] URL search params: ",
+    "[log] No category/expertise filter applied - showing all jobs",
+    "[log] Final filtered jobs: 710"
+  ]
+}

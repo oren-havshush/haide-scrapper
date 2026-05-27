@@ -1,0 +1,36 @@
+﻿{
+    "id":  "cmplm1bdd00br1ko3l4nwz5co",
+    "title":  "×ª×¤×§×× × ××××× ×¨××©×× - ×× ××/×ª ××©××¨×ª ×××¡×¢××ª ×××§×× ×× ×ª× ××",
+    "description":  null,
+    "requirements":  null,
+    "location":  "Unknown",
+    "department":  "××¡×¢×××ª",
+    "externalJobId":  "/il/he/webapp-local/work-with-us/job/job-details?id=1832",
+    "publishDate":  null,
+    "applicationInfo":  null,
+    "rawData":  {
+                    "title":  "×ª×¤×§×× × ××××× ×¨××©×× - ×× ××/×ª ××©××¨×ª ×××¡×¢××ª ×××§×× ×× ×ª× ××",
+                    "jobScope":  "",
+                    "location":  "",
+                    "detailUrl":  "/il/he/webapp-local/work-with-us/job/job-details?id=1832",
+                    "_detailUrl":  "https://www.ikea.com/il/he/webapp-local/work-with-us/job/job-details?id=1832",
+                    "department":  "××¡×¢×××ª",
+                    "title_href":  "/il/he/webapp-local/work-with-us/job/job-details?id=1832",
+                    "description":  "",
+                    "externalJobId":  "/il/he/webapp-local/work-with-us/job/job-details?id=1832",
+                    "detailUrl_href":  "/il/he/webapp-local/work-with-us/job/job-details?id=1832",
+                    "applicationInfo":  "",
+                    "department_href":  "/il/he/webapp-local/work-with-us/job/job-details?id=1832",
+                    "_detailNavStatus":  "http_error",
+                    "_debugDescription":  "{\"selector\":\"article.job-details .card-body\",\"matched\":false,\"rootTag\":null,\"rawTextLength\":0,\"source\":\"detailPage\"}",
+                    "externalJobId_href":  "/il/he/webapp-local/work-with-us/job/job-details?id=1832"
+                },
+    "validationStatus":  "valid",
+    "siteId":  "cmpllbrjr000q01mvi54vu9v4",
+    "scrapeRunId":  "cmpllw3s5000s01mv9l72run7",
+    "createdAt":  "2026-05-25T19:39:31.153Z",
+    "site":  {
+                 "id":  "cmpllbrjr000q01mvi54vu9v4",
+                 "siteUrl":  "https://www.ikea.com/il/he/this-is-ikea/work-with-us/jobs-pub70183d80/"
+             }
+}

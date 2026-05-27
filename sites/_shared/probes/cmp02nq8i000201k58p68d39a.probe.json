@@ -1,0 +1,8 @@
+﻿node.exe : no itemSelector in config
+At line:1 char:1
++ & "C:\Program Files\nodejs/node.exe" "C:\Program Files\nodejs/node_mo ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (no itemSelector in config:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+

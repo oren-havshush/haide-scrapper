@@ -52,3 +52,20 @@ extension/.wxt/
 
 # Local Claude Code scrap onboarding token (do NOT commit)
 .claude/scrap-token
+
+# /addsite skill scratch directory — per-onboarding artifacts written by the skill
+.scratch/
+
+# Per-site scratch sub-buckets under sites/<name>/.scratch/ — see docs/sites-layout.md
+sites/**/.scratch/
+
+# Oversize artifacts that live under sites/<name>/ but are not worth committing
+sites/**/*.png
+sites/**/*.bin
+sites/**/raw-*.json
+sites/**/*-raw*.json
+sites/**/*.pma
+
+# Windows
+Thumbs.db
+*.log

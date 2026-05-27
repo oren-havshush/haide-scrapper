@@ -1,0 +1,56 @@
+{
+  "itemSelector": ".job-container",
+  "revealSelector": ".job-container",
+  "setupScript": "(function () {\r\n  try {\r\n    // Listing-only: each .job-container has onclick=\"jobline.openJob('A5.467')\"\r\n    // but no <a href>. We inject (a) a span carrying the clean uid for the\r\n    // externalJobId field, and (b) an <a> with an absolute href to the\r\n    // detail page so pageFlow `action: navigate` (which follows the first\r\n    // <a> inside the item) can drive the detail-page navigation.\r\n    var BASE = 'https://jobs.keshet-mediagroup.com';\r\n    var items = document.querySelectorAll('.job-container');\r\n    for (var i = 0; i < items.length; i++) {\r\n      var it = items[i];\r\n      if (it.querySelector('[data-extracted-jobid]')) continue;\r\n      var onclick = it.getAttribute('onclick') || '';\r\n      var m = onclick.match(/openJob\\(\\s*['\"]([^'\"]+)['\"]\\s*\\)/);\r\n      if (!m || !m[1]) continue;\r\n      var uid = m[1];\r\n\r\n      var idSpan = document.createElement('span');\r\n      idSpan.setAttribute('data-extracted-jobid', uid);\r\n      idSpan.style.display = 'none';\r\n      idSpan.textContent = uid;\r\n      it.appendChild(idSpan);\r\n\r\n      var link = document.createElement('a');\r\n      link.setAttribute('data-extracted-detailurl', '1');\r\n      link.setAttribute('href', BASE + '/jobs/' + uid);\r\n      link.style.display = 'none';\r\n      link.textContent = 'detail';\r\n      it.appendChild(link);\r\n    }\r\n  } catch (e) {\r\n    try {\r\n      var b = document.body;\r\n      var es = document.createElement('span');\r\n      es.setAttribute('data-setup-err', String(e).slice(0, 200));\r\n      es.style.display = 'none';\r\n      b.appendChild(es);\r\n    } catch (_) {}\r\n  }\r\n})();\r\n",
+  "fieldMappings": {
+    "title": {
+      "selector": ".job-title",
+      "confidence": 100,
+      "source": "MANUAL",
+      "capturedOnUrl": "https://jobs.keshet-mediagroup.com/"
+    },
+    "externalJobId": {
+      "selector": "[data-extracted-jobid]",
+      "extractAttr": "data-extracted-jobid",
+      "confidence": 100,
+      "source": "MANUAL",
+      "capturedOnUrl": "https://jobs.keshet-mediagroup.com/"
+    },
+    "detailUrl": {
+      "selector": "[data-extracted-detailurl]",
+      "extractAttr": "href",
+      "confidence": 100,
+      "source": "MANUAL",
+      "capturedOnUrl": "https://jobs.keshet-mediagroup.com/"
+    },
+    "publishDate": {
+      "selector": ".job-subtitle span:last-child",
+      "confidence": 100,
+      "source": "MANUAL",
+      "capturedOnUrl": "https://jobs.keshet-mediagroup.com/"
+    },
+    "description": {
+      "selector": "#pos-description",
+      "confidence": 100,
+      "source": "MANUAL",
+      "capturedOnUrl": "https://jobs.keshet-mediagroup.com/jobs/A5.467"
+    },
+    "requirements": {
+      "selector": "#pos-requirements",
+      "confidence": 100,
+      "source": "MANUAL",
+      "capturedOnUrl": "https://jobs.keshet-mediagroup.com/jobs/A5.467"
+    }
+  },
+  "pageFlow": [
+    {
+      "url": "https://jobs.keshet-mediagroup.com/",
+      "action": "navigate"
+    },
+    {
+      "url": "https://jobs.keshet-mediagroup.com/jobs/*",
+      "action": "navigate"
+    }
+  ],
+  "formCapture": null
+}

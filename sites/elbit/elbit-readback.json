@@ -1,0 +1,54 @@
+﻿{
+    "fieldMappings":  {
+                          "_meta":  {
+                                        "savedAt":  "2026-05-27T09:16:04.711Z",
+                                        "pagination":  null,
+                                        "formCapture":  null,
+                                        "setupScript":  "(function () {\r\n  try {\r\n    if (document.querySelector(\u0027#haide-jobs-container\u0027)) return;\r\n    var xhr = new XMLHttpRequest();\r\n    xhr.open(\u0027POST\u0027, \u0027https://niloo-server.herokuapp.com/actions-elbit\u0027, false);\r\n    xhr.setRequestHeader(\u0027Content-Type\u0027, \u0027application/json\u0027);\r\n    xhr.send(JSON.stringify({ cmd: \u0027get-jobs\u0027 }));\r\n    if (xhr.status \u003c 200 || xhr.status \u003e= 300) return;\r\n    var jobs = JSON.parse(xhr.responseText);\r\n    if (!Array.isArray(jobs)) return;\r\n\r\n    var decoder = document.createElement(\u0027textarea\u0027);\r\n    function decode(s) {\r\n      if (!s) return \u0027\u0027;\r\n      decoder.innerHTML = String(s);\r\n      var txt = decoder.value;\r\n      var div = document.createElement(\u0027div\u0027);\r\n      div.innerHTML = txt;\r\n      return (div.textContent || \u0027\u0027).replace(/\\s+/g, \u0027 \u0027).trim();\r\n    }\r\n    function makeField(name, value) {\r\n      var s = document.createElement(\u0027span\u0027);\r\n      s.setAttribute(\u0027data-haide-\u0027 + name, \u00271\u0027);\r\n      s.textContent = String(value == null ? \u0027\u0027 : value);\r\n      return s;\r\n    }\r\n\r\n    var container = document.createElement(\u0027div\u0027);\r\n    container.id = \u0027haide-jobs-container\u0027;\r\n    container.style.display = \u0027none\u0027;\r\n\r\n    for (var i = 0; i \u003c jobs.length; i++) {\r\n      var j = jobs[i] || {};\r\n      if (j.status === 0) continue;\r\n      var card = document.createElement(\u0027div\u0027);\r\n      card.className = \u0027haide-job-card\u0027;\r\n      card.appendChild(makeField(\u0027title\u0027, j.jobTitle || \u0027\u0027));\r\n      card.appendChild(makeField(\u0027jobcode\u0027, j.jobCode || j.jobId || \u0027\u0027));\r\n      card.appendChild(makeField(\u0027description\u0027, decode(j.description)));\r\n      card.appendChild(makeField(\u0027requirements\u0027, decode(j.requirements)));\r\n      card.appendChild(makeField(\u0027location\u0027, j.locationAddress || j.area || \u0027\u0027));\r\n      card.appendChild(makeField(\u0027department\u0027, j.employerName || \u0027\u0027));\r\n      card.appendChild(makeField(\u0027publishdate\u0027, j.openDate || \u0027\u0027));\r\n      container.appendChild(card);\r\n    }\r\n    document.body.appendChild(container);\r\n  } catch (e) {}\r\n})();\r\n",
+                                        "itemSelector":  ".haide-job-card",
+                                        "revealSelector":  null,
+                                        "listingSelector":  "#haide-jobs-container",
+                                        "loadMoreSelector":  null,
+                                        "originalMappings":  null
+                                    },
+                          "title":  {
+                                        "source":  "MANUAL",
+                                        "selector":  "[data-haide-title]",
+                                        "confidence":  100,
+                                        "capturedOnUrl":  "https://elbitsystemscareer.com/jobs/"
+                                    },
+                          "location":  {
+                                           "source":  "MANUAL",
+                                           "selector":  "[data-haide-location]",
+                                           "confidence":  100,
+                                           "capturedOnUrl":  "https://elbitsystemscareer.com/jobs/"
+                                       },
+                          "department":  {
+                                             "source":  "MANUAL",
+                                             "selector":  "[data-haide-department]",
+                                             "confidence":  100,
+                                             "capturedOnUrl":  "https://elbitsystemscareer.com/jobs/"
+                                         },
+                          "description":  {
+                                              "source":  "MANUAL",
+                                              "selector":  "[data-haide-description]",
+                                              "confidence":  100,
+                                              "capturedOnUrl":  "https://elbitsystemscareer.com/jobs/"
+                                          },
+                          "publishDate":  {
+                                              "source":  "MANUAL",
+                                              "selector":  "[data-haide-publishdate]",
+                                              "confidence":  100,
+                                              "capturedOnUrl":  "https://elbitsystemscareer.com/jobs/"
+                                          },
+                          "externalJobId":  {
+                                                "source":  "MANUAL",
+                                                "selector":  "[data-haide-jobcode]",
+                                                "confidence":  100,
+                                                "capturedOnUrl":  "https://elbitsystemscareer.com/jobs/"
+                                            }
+                      },
+    "pageFlow":  [
+
+                 ]
+}

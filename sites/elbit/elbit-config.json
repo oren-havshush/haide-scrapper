@@ -1,0 +1,45 @@
+{
+  "listingSelector": "#haide-jobs-container",
+  "itemSelector": ".haide-job-card",
+  "setupScript": "(function () {\r\n  try {\r\n    if (document.querySelector('#haide-jobs-container')) return;\r\n    var xhr = new XMLHttpRequest();\r\n    xhr.open('POST', 'https://niloo-server.herokuapp.com/actions-elbit', false);\r\n    xhr.setRequestHeader('Content-Type', 'application/json');\r\n    xhr.send(JSON.stringify({ cmd: 'get-jobs' }));\r\n    if (xhr.status < 200 || xhr.status >= 300) return;\r\n    var jobs = JSON.parse(xhr.responseText);\r\n    if (!Array.isArray(jobs)) return;\r\n\r\n    var CITY_MAP = {\"0\":\"בחר\",\"7\":\"רילוקיישן\",\"8\":\"מודיעין\",\"72\":\"ערד\",\"85\":\"אשדוד\",\"104\":\"קריית שמונה\",\"106\":\"פארק הייטק בר לב\",\"109\":\"איירפורט סיטי\",\"129\":\"תל חי\",\"131\":\"משרה היברידית\",\"134\":\"באר שבע\",\"149\":\"בני ברק\",\"416\":\"חיפה\",\"443\":\"חצרים\",\"467\":\"חולון\",\"524\":\"כרמיאל\",\"628\":\"לוד\",\"812\":\"נס ציונה\",\"816\":\"נתניה\",\"878\":\"אופקים\",\"935\":\"קיסריה\",\"960\":\"רעננה\",\"964\":\"רמת גן\",\"966\":\"רמת השרון\",\"975\":\"רמלה\",\"992\":\"רחובות\",\"1008\":\"ראש העין\",\"1050\":\"שדרות\",\"1137\":\"תל אביב\",\"1203\":\"יבנה\",\"2191\":\"נצרת עלית\",\"2966\":\"יוקנעם\",\"Countrywide\":\"פריסה ארצית\",\"Jerusalem Area\":\"ירושלים והסביבה\",\"North\":\"צפון\",\"South\":\"דרום\",\"Center\":\"מרכז\",\"Sharon\":\"השרון\",\"Shfela\":\"השפלה\",\"Jerusalem\":\"ירושלים\"};\r\n\r\n    var decoder = document.createElement('textarea');\r\n    function decode(s) {\r\n      if (!s) return '';\r\n      decoder.innerHTML = String(s);\r\n      var txt = decoder.value;\r\n      var div = document.createElement('div');\r\n      div.innerHTML = txt;\r\n      return (div.textContent || '').replace(/\\s+/g, ' ').trim();\r\n    }\r\n    function makeField(name, value) {\r\n      var s = document.createElement('span');\r\n      s.setAttribute('data-haide-' + name, '1');\r\n      s.textContent = String(value == null ? '' : value);\r\n      return s;\r\n    }\r\n    function resolveLocation(job) {\r\n      var trim = function (v) { return String(v == null ? '' : v).replace(/[\\s\\u200E\\u200F]+/g, ' ').trim(); };\r\n      var locAddr = trim(job.locationAddress);\r\n      if (locAddr) return locAddr;\r\n      var cities = '', area = '';\r\n      var ep = job.extendedProperties;\r\n      if (Array.isArray(ep)) {\r\n        for (var k = 0; k < ep.length; k++) {\r\n          if (ep[k] && ep[k].PropertyName === 'Cities') cities = trim(ep[k].Value);\r\n          else if (ep[k] && ep[k].PropertyName === 'Area') area = trim(ep[k].Value);\r\n        }\r\n      }\r\n      if (cities && CITY_MAP[cities]) return CITY_MAP[cities];\r\n      var a = area || trim(job.area);\r\n      if (a && CITY_MAP[a]) return CITY_MAP[a];\r\n      return a;\r\n    }\r\n\r\n    var container = document.createElement('div');\r\n    container.id = 'haide-jobs-container';\r\n    container.style.display = 'none';\r\n\r\n    for (var i = 0; i < jobs.length; i++) {\r\n      var j = jobs[i] || {};\r\n      if (j.status === 0) continue;\r\n      var card = document.createElement('div');\r\n      card.className = 'haide-job-card';\r\n      card.appendChild(makeField('title', j.jobTitle || ''));\r\n      card.appendChild(makeField('jobcode', j.jobCode || j.jobId || ''));\r\n      card.appendChild(makeField('description', decode(j.description)));\r\n      card.appendChild(makeField('location', resolveLocation(j)));\r\n      card.appendChild(makeField('department', j.employerName || ''));\r\n      card.appendChild(makeField('publishdate', j.openDate || ''));\r\n      container.appendChild(card);\r\n    }\r\n    document.body.appendChild(container);\r\n  } catch (e) {}\r\n})();\r\n",
+  "fieldMappings": {
+    "title": {
+      "selector": "[data-haide-title]",
+      "confidence": 100,
+      "source": "MANUAL",
+      "capturedOnUrl": "https://elbitsystemscareer.com/jobs/"
+    },
+    "externalJobId": {
+      "selector": "[data-haide-jobcode]",
+      "confidence": 100,
+      "source": "MANUAL",
+      "capturedOnUrl": "https://elbitsystemscareer.com/jobs/"
+    },
+    "description": {
+      "selector": "[data-haide-description]",
+      "confidence": 100,
+      "source": "MANUAL",
+      "capturedOnUrl": "https://elbitsystemscareer.com/jobs/"
+    },
+    "location": {
+      "selector": "[data-haide-location]",
+      "confidence": 100,
+      "source": "MANUAL",
+      "capturedOnUrl": "https://elbitsystemscareer.com/jobs/"
+    },
+    "department": {
+      "selector": "[data-haide-department]",
+      "confidence": 100,
+      "source": "MANUAL",
+      "capturedOnUrl": "https://elbitsystemscareer.com/jobs/"
+    },
+    "publishDate": {
+      "selector": "[data-haide-publishdate]",
+      "confidence": 100,
+      "source": "MANUAL",
+      "capturedOnUrl": "https://elbitsystemscareer.com/jobs/"
+    }
+  },
+  "pageFlow": [],
+  "formCapture": null
+}

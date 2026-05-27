@@ -1,0 +1,39 @@
+{
+    "itemSelector":  "section.single_faq",
+    "fieldMappings":  {
+                          "title":  {
+                                        "selector":  "button.ff",
+                                        "confidence":  100,
+                                        "source":  "MANUAL",
+                                        "capturedOnUrl":  "https://www.goldpro.co.il/%D7%93%D7%A8%D7%95%D7%A9%D7%99%D7%9D/"
+                                    },
+                          "description":  {
+                                              "selector":  ".fqqcm",
+                                              "confidence":  100,
+                                              "source":  "MANUAL",
+                                              "capturedOnUrl":  "https://www.goldpro.co.il/%D7%93%D7%A8%D7%95%D7%A9%D7%99%D7%9D/"
+                                          },
+                          "applicationInfo":  {
+                                                  "selector":  ".fqqcm a[href^=\"mailto:\"]",
+                                                  "extractAttr":  "href",
+                                                  "confidence":  100,
+                                                  "source":  "MANUAL",
+                                                  "capturedOnUrl":  "https://www.goldpro.co.il/%D7%93%D7%A8%D7%95%D7%A9%D7%99%D7%9D/"
+                                              },
+                          "location":  {
+                                           "selector":  ".fqqcm p:first-child",
+                                           "regex":  "מיקום המשרה:\\s*([^\\r\\n]+?)\\s*(?:\u003cbr|תיאור|$)",
+                                           "transform":  "מיקום המשרה:\\s*([^\\r\\n]+)",
+                                           "extract":  "first",
+                                           "extractRegex":  "מיקום המשרה:\\s*([^\\r\\n]+)",
+                                           "postProcess":  "first-line-after-colon",
+                                           "confidence":  100,
+                                           "source":  "MANUAL",
+                                           "capturedOnUrl":  "https://www.goldpro.co.il/%D7%93%D7%A8%D7%95%D7%A9%D7%99%D7%9D/"
+                                       }
+                      },
+    "pageFlow":  [
+
+                 ],
+    "formCapture":  null
+}

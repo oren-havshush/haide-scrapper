@@ -1,0 +1,177 @@
+﻿{
+  "summary": [
+    {
+      "sig": "DIV > SPAN|nagishli-sr-only",
+      "count": 25,
+      "sampleClass": "nagishli-sr-only",
+      "parentTag": "DIV"
+    },
+    {
+      "sig": "DIV > SPAN|help",
+      "count": 23,
+      "sampleClass": "help",
+      "parentTag": "DIV"
+    },
+    {
+      "sig": "DIV > SPAN|nagishli-option-title",
+      "count": 19,
+      "sampleClass": "nagishli-option-title",
+      "parentTag": "DIV"
+    },
+    {
+      "sig": "DIV > SPAN|notice",
+      "count": 8,
+      "sampleClass": "notice",
+      "parentTag": "DIV"
+    },
+    {
+      "sig": "UL > LI|MuiListItem-gutters.MuiListItem-root.css-1ohqk82",
+      "count": 6,
+      "sampleClass": "MuiListItem-root MuiListItem-gutters css-1ohqk82",
+      "parentTag": "UL"
+    },
+    {
+      "sig": "UL > LI|nl-dropdown",
+      "count": 6,
+      "sampleClass": "nl-dropdown",
+      "parentTag": "UL"
+    },
+    {
+      "sig": "LI > DIV|nl-dropdown-toggle",
+      "count": 6,
+      "sampleClass": "nl-dropdown-toggle",
+      "parentTag": "LI"
+    },
+    {
+      "sig": "DIV > SPAN|nl-dropdown-title",
+      "count": 6,
+      "sampleClass": "nl-dropdown-title",
+      "parentTag": "DIV"
+    },
+    {
+      "sig": "DIV > SPAN|nl-dropdown-arrow",
+      "count": 6,
+      "sampleClass": "nl-dropdown-arrow",
+      "parentTag": "DIV"
+    },
+    {
+      "sig": "LI > UL|nl-dropdown-menu",
+      "count": 6,
+      "sampleClass": "nl-dropdown-menu",
+      "parentTag": "LI"
+    },
+    {
+      "sig": "UL > LI|not-clickable",
+      "count": 6,
+      "sampleClass": "not-clickable",
+      "parentTag": "UL"
+    },
+    {
+      "sig": "DIV > A|MuiLink-root.MuiLink-underlineAlways.MuiTypography-inherit.MuiTypography-root.css-16bbj2",
+      "count": 5,
+      "sampleClass": "MuiTypography-root MuiTypography-inherit MuiLink-root MuiLink-underlineAlways css-16bbj2",
+      "parentTag": "DIV"
+    },
+    {
+      "sig": "DIV > A|MuiLink-root.MuiLink-underlineNone.MuiTypography-inherit.MuiTypography-root.css-9r975f",
+      "count": 5,
+      "sampleClass": "MuiTypography-root MuiTypography-inherit MuiLink-root MuiLink-underlineNone css-9r975f",
+      "parentTag": "DIV"
+    },
+    {
+      "sig": "LI > DIV|MuiButtonBase-root.MuiListItemButton-gutters.MuiListItemButton-root.css-1qm8dkc",
+      "count": 5,
+      "sampleClass": "MuiButtonBase-root MuiListItemButton-root MuiListItemButton-gutters css-1qm8dkc",
+      "parentTag": "LI"
+    },
+    {
+      "sig": "DIV > P|MuiTypography-body1.MuiTypography-root.css-vtx4wk",
+      "count": 4,
+      "sampleClass": "MuiTypography-root MuiTypography-body1 css-vtx4wk",
+      "parentTag": "DIV"
+    },
+    {
+      "sig": "DIV > DIV|MuiBox-root.css-h2mawl",
+      "count": 4,
+      "sampleClass": "MuiBox-root css-h2mawl",
+      "parentTag": "DIV"
+    },
+    {
+      "sig": "DIV > BUTTON|react-share__ShareButton",
+      "count": 4,
+      "sampleClass": "react-share__ShareButton",
+      "parentTag": "DIV"
+    },
+    {
+      "sig": "DIV > P|MuiTypography-body2.MuiTypography-root.css-p4kby0",
+      "count": 4,
+      "sampleClass": "MuiTypography-root MuiTypography-body2 css-p4kby0",
+      "parentTag": "DIV"
+    },
+    {
+      "sig": "DIV > P|MuiTypography-body1.MuiTypography-root.css-1qdmz5h",
+      "count": 4,
+      "sampleClass": "MuiTypography-root MuiTypography-body1 css-1qdmz5h",
+      "parentTag": "DIV"
+    },
+    {
+      "sig": "P > svg|MuiSvgIcon-fontSizeMedium.MuiSvgIcon-root.css-1s0hah4",
+      "count": 3,
+      "sampleClass": "MuiSvgIcon-root MuiSvgIcon-fontSizeMedium css-1s0hah4",
+      "parentTag": "P"
+    },
+    {
+      "sig": "DIV > P|MuiTypography-body2.MuiTypography-root.css-hytwxr",
+      "count": 3,
+      "sampleClass": "MuiTypography-root MuiTypography-body2 css-hytwxr",
+      "parentTag": "DIV"
+    },
+    {
+      "sig": "DIV > FIELDSET|MuiOutlinedInput-notchedOutline.css-5v2ak0",
+      "count": 3,
+      "sampleClass": "MuiOutlinedInput-notchedOutline css-5v2ak0",
+      "parentTag": "DIV"
+    },
+    {
+      "sig": "FIELDSET > LEGEND|css-w4cd9x",
+      "count": 3,
+      "sampleClass": "css-w4cd9x",
+      "parentTag": "FIELDSET"
+    },
+    {
+      "sig": "LEGEND > SPAN|notranslate",
+      "count": 3,
+      "sampleClass": "notranslate",
+      "parentTag": "LEGEND"
+    },
+    {
+      "sig": "DIV > svg|MuiSvgIcon-fontSizeMedium.MuiSvgIcon-root.css-eghf4g",
+      "count": 3,
+      "sampleClass": "MuiSvgIcon-root MuiSvgIcon-fontSizeMedium css-eghf4g",
+      "parentTag": "DIV"
+    },
+    {
+      "sig": "DIV > SPAN|sign",
+      "count": 3,
+      "sampleClass": "sign",
+      "parentTag": "DIV"
+    },
+    {
+      "sig": "SPAN > SPAN|nagishli-sr-only",
+      "count": 3,
+      "sampleClass": "nagishli-sr-only",
+      "parentTag": "SPAN"
+    }
+  ],
+  "htmlBytes": 96388,
+  "htmlPath": "C:\\Users\\shayo\\upsale Dropbox\\shay ofri\\haide\\new website AI\\scraper extansion\\newscraper\\.scratch\\scrap-page2.html",
+  "xhrs": [
+    {
+      "url": "https://elbitsystemscareer.com/jobs/",
+      "method": "GET",
+      "status": 200,
+      "ct": "text/html",
+      "bytes": 10204
+    }
+  ]
+}

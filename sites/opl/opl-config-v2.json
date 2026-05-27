@@ -1,0 +1,36 @@
+{
+    "listingSelector":  "nav.subs.list.accordion",
+    "itemSelector":  "nav.accordion ul \u003e li",
+    "setupScript":  ";(function () {\n  function fnv1a(str) {\n    var h = 0x811c9dc5 \u003e\u003e\u003e 0;\n    for (var i = 0; i \u003c str.length; i++) {\n      h ^= str.charCodeAt(i);\n      h = (h + ((h \u003c\u003c 1) + (h \u003c\u003c 4) + (h \u003c\u003c 7) + (h \u003c\u003c 8) + (h \u003c\u003c 24))) \u003e\u003e\u003e 0;\n    }\n    return h.toString(36);\n  }\n  try {\n    document.querySelectorAll(\u0027nav.accordion ul \u003e li\u0027).forEach(function (li) {\n      if (li.querySelector(\u0027[data-extracted-jobid]\u0027)) return;\n      var ifr = li.querySelector(\u0027iframe.sendfile\u0027);\n      if (!ifr) return;\n      var src = ifr.getAttribute(\u0027src\u0027) || \u0027\u0027;\n      var m = src.match(/[?\u0026]message=([^\u0026]*)/);\n      var msg = m ? m[1] : src;\n      var span = document.createElement(\u0027span\u0027);\n      span.setAttribute(\u0027data-extracted-jobid\u0027, \u00271\u0027);\n      span.style.display = \u0027none\u0027;\n      span.textContent = \u0027opl-\u0027 + fnv1a(msg);\n      li.appendChild(span);\n    });\n  } catch (e) {}\n})();",
+    "fieldMappings":  {
+                          "title":  {
+                                        "selector":  ".s_title h4",
+                                        "confidence":  100,
+                                        "source":  "MANUAL",
+                                        "capturedOnUrl":  "https://www.opl.co.il/%D7%93%D7%A8%D7%95%D7%A9%D7%99%D7%9D"
+                                    },
+                          "description":  {
+                                              "selector":  ".s_content .fluid_70",
+                                              "confidence":  100,
+                                              "source":  "MANUAL",
+                                              "capturedOnUrl":  "https://www.opl.co.il/%D7%93%D7%A8%D7%95%D7%A9%D7%99%D7%9D"
+                                          },
+                          "applicationInfo":  {
+                                                  "selector":  "iframe.sendfile",
+                                                  "extractAttr":  "src",
+                                                  "confidence":  100,
+                                                  "source":  "MANUAL",
+                                                  "capturedOnUrl":  "https://www.opl.co.il/%D7%93%D7%A8%D7%95%D7%A9%D7%99%D7%9D"
+                                              },
+                          "externalJobId":  {
+                                                "selector":  "[data-extracted-jobid]",
+                                                "confidence":  100,
+                                                "source":  "MANUAL",
+                                                "capturedOnUrl":  "https://www.opl.co.il/%D7%93%D7%A8%D7%95%D7%A9%D7%99%D7%9D"
+                                            }
+                      },
+    "pageFlow":  [
+
+                 ],
+    "formCapture":  null
+}

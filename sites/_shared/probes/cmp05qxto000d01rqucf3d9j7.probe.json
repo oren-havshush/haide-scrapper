@@ -1,0 +1,93 @@
+﻿{
+  "url": "https://avivim-hr.co.il/%d7%9e%d7%a9%d7%a8%d7%95%d7%aa/",
+  "itemCount": 15,
+  "withForm": 15,
+  "withMultiForm": 0,
+  "actions": {
+    "(empty)": 15
+  },
+  "sampleSchema": {
+    "actionUrl": "",
+    "method": "POST",
+    "fields": [
+      {
+        "name": "post_id",
+        "fieldType": "hidden",
+        "label": "",
+        "required": false,
+        "tagName": "input",
+        "value": "962"
+      },
+      {
+        "name": "form_id",
+        "fieldType": "hidden",
+        "label": "",
+        "required": false,
+        "tagName": "input",
+        "value": "b428095"
+      },
+      {
+        "name": "referer_title",
+        "fieldType": "hidden",
+        "label": "",
+        "required": false,
+        "tagName": "input",
+        "value": "╫₧╫⌐╫¿╫ò╫¬ - ╫É╫æ╫Ö╫æ╫Ö╫¥"
+      },
+      {
+        "name": "queried_id",
+        "fieldType": "hidden",
+        "label": "",
+        "required": false,
+        "tagName": "input",
+        "value": "1652"
+      },
+      {
+        "name": "form_fields[name]",
+        "fieldType": "text",
+        "label": "╫⌐╫¥ ╫₧╫£╫É",
+        "required": true,
+        "tagName": "input"
+      },
+      {
+        "name": "form_fields[phone]",
+        "fieldType": "text",
+        "label": "╫á╫Ö╫Ö╫ô",
+        "required": true,
+        "tagName": "input"
+      },
+      {
+        "name": "form_fields[email]",
+        "fieldType": "email",
+        "label": "╫É╫Ö╫₧╫Ö╫Ö╫£",
+        "required": false,
+        "tagName": "input"
+      },
+      {
+        "name": "form_fields[field_8fa8c8e]",
+        "fieldType": "file",
+        "label": "╫º╫ò╫æ╫Ñ ╫º╫ò╫¿╫ò╫¬ ╫ù╫Ö╫Ö╫¥",
+        "required": false,
+        "tagName": "input"
+      },
+      {
+        "name": "form_fields[job_number]",
+        "fieldType": "hidden",
+        "label": "",
+        "required": false,
+        "tagName": "input",
+        "value": ""
+      },
+      {
+        "name": "maspik_spam_key",
+        "fieldType": "hidden",
+        "label": "",
+        "required": false,
+        "tagName": "input",
+        "value": "vmtvEYUR9wmBbuy4gh1zH2upqEglvrOkOmDIZo73CHRjeqNAqr78OKeqAcA3ZfCf"
+      }
+    ]
+  },
+  "schemasIdentical": true
+}
+
