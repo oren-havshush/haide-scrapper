@@ -1,0 +1,10 @@
+* text=auto eol=lf
+
+# Shell scripts and other files that MUST keep LF line endings, even on Windows.
+# (Without this, scripts mounted into Linux containers fail with errors like
+# `set: illegal option -` because the shell sees a trailing CR.)
+*.sh         text eol=lf
+*.bash       text eol=lf
+Dockerfile*  text eol=lf
+*.yml        text eol=lf
+*.yaml       text eol=lf
