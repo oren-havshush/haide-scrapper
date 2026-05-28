@@ -28,7 +28,14 @@ function DebouncedFilterInput({
   const [local, setLocal] = useState(value);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const onChangeRef = useRef(onChange);
-  onChangeRef.current = onChange;
+
+  // Keep the ref pointed at the latest onChange so the debounce timer always
+  // fires with the current callback (the timer's closure can't see prop
+  // updates on its own). Writing the ref in an effect satisfies the
+  // react-hooks/refs rule, which forbids mutating refs during render.
+  useEffect(() => {
+    onChangeRef.current = onChange;
+  }, [onChange]);
 
   // Re-sync if the parent resets the filter (e.g. a "Clear" button later).
   useEffect(() => {
