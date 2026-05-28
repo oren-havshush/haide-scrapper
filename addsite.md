@@ -620,6 +620,438 @@ npx tsx $dryRunPath $URL
 If any gate fails, iterate: re-read the HTML, pick different selectors,
 re-run. You get up to 3 iterations before aborting.
 
+## Step 5b — Capture the apply form (when applicable)
+
+If the site has an HTML application form (CV upload, "Apply" / "שליחת
+קורות חיים" button that opens a form, etc.), capture it now so the
+dashboard surfaces an "Application Form" panel on every job row. This is
+the headless equivalent of the Chrome extension's "Form Record" mode and
+writes the same `formCapture` JSON shape the API expects.
+
+**Why this exists**: without it, `Site._meta.formCapture` stays `null`,
+the worker's form-capture pipeline never fires, and the dashboard's
+"Application Form" panel never renders for any job on this site. The
+historical assumption was that form capture only happened via the Chrome
+extension's "Form Record" mode (one-click on any field inside the live
+form). This step closes that gap so the agent-driven `/addsite` flow can
+populate it too. Output goes into `Site.fieldMappings._meta.formCapture`
+and is **site-level** — copied identically into every job's
+`rawData._formData` during scrape via the worker's static-fallback path
+(see `worker/jobs/scrape.ts:getFormCaptureConfig` — the worker prefers
+live re-extraction but falls back to the saved static fields when the
+live form can't be found, which is exactly what happens with
+image-captured forms whose `formSelector` is a non-replayable
+placeholder).
+
+### 5b-1 — Try automatic headless capture
+
+Write the capture script (uses the same Playwright-in-headless pattern
+as Step 3b / Step 5; ships a `__name` shim because tsx/esbuild's
+keepNames helper otherwise breaks any named binding inside
+`page.evaluate`):
+
+```powershell
+$captureFormScript = @'
+import { chromium, Page } from "playwright";
+
+interface Args {
+  listingUrl: string;
+  detailUrl?: string;
+  detailSelector?: string;
+  applySelector?: string;
+  formSelector?: string;
+  minFields: number;
+  debug: boolean;
+}
+
+function parseArgs(argv: string[]): Args {
+  const listingUrl = argv[2];
+  if (!listingUrl) {
+    console.error(
+      "Usage: capture-form.ts <listingUrl> [--detail-selector=...] [--apply-selector=...] [--detail-url=...] [--form-selector=...] [--min-fields=N] [--debug]",
+    );
+    process.exit(64);
+  }
+  const out: Args = { listingUrl, minFields: 3, debug: false };
+  for (const arg of argv.slice(3)) {
+    const m = arg.match(/^--([\w-]+)(?:=(.*))?$/);
+    if (!m) continue;
+    const [, key, val] = m;
+    if (key === "detail-url") out.detailUrl = val;
+    else if (key === "detail-selector") out.detailSelector = val;
+    else if (key === "apply-selector") out.applySelector = val;
+    else if (key === "form-selector") out.formSelector = val;
+    else if (key === "min-fields") out.minFields = parseInt(val || "3", 10);
+    else if (key === "debug") out.debug = true;
+  }
+  return out;
+}
+
+interface FormCapture {
+  formSelector: string;
+  actionUrl: string;
+  method: string;
+  fields: Array<{
+    name: string;
+    label: string;
+    fieldType: string;
+    required: boolean;
+    tagName: string;
+  }>;
+}
+
+const captureLargestForm = async (
+  page: Page,
+  preferredSelector: string | undefined,
+): Promise<FormCapture | null> => {
+  // tsx/esbuild wraps named bindings with __name(...) which doesn't exist
+  // in the page context. Shim it as identity so the serialized callback runs.
+  await page.addInitScript(() => {
+    (globalThis as { __name?: (fn: unknown) => unknown }).__name =
+      (fn: unknown) => fn;
+  });
+  await page.evaluate(() => {
+    (globalThis as { __name?: (fn: unknown) => unknown }).__name =
+      (fn: unknown) => fn;
+  });
+  return await page.evaluate((preferred) => {
+    const generateSelector = (el: Element): string => {
+      if (el.id) return `#${CSS.escape(el.id)}`;
+      const parts: string[] = [];
+      let cur: Element | null = el;
+      let depth = 0;
+      while (cur && cur.tagName !== "HTML" && depth < 6) {
+        let part = cur.tagName.toLowerCase();
+        if ((cur as HTMLElement).id) {
+          part = `#${CSS.escape((cur as HTMLElement).id)}`;
+          parts.unshift(part);
+          break;
+        }
+        const cls = Array.from(cur.classList).slice(0, 2);
+        if (cls.length) part += "." + cls.map((c) => CSS.escape(c)).join(".");
+        if (cur.parentElement) {
+          const sibs = Array.from(cur.parentElement.children).filter(
+            (s) => s.tagName === cur!.tagName,
+          );
+          if (sibs.length > 1) part += `:nth-of-type(${sibs.indexOf(cur) + 1})`;
+        }
+        parts.unshift(part);
+        cur = cur.parentElement;
+        depth++;
+      }
+      return parts.join(" > ");
+    };
+
+    const inferLabel = (el: Element): string => {
+      const h = el as HTMLElement;
+      if (h.id) {
+        const lab = document.querySelector(`label[for="${CSS.escape(h.id)}"]`);
+        if (lab?.textContent) return lab.textContent.trim().slice(0, 100);
+      }
+      const parentLab = h.closest("label");
+      if (parentLab) {
+        const clone = parentLab.cloneNode(true) as HTMLElement;
+        clone
+          .querySelectorAll("input, select, textarea, button")
+          .forEach((n) => n.remove());
+        const t = clone.textContent?.trim();
+        if (t) return t.slice(0, 100);
+      }
+      const ph = h.getAttribute("placeholder");
+      if (ph) return ph.trim().slice(0, 100);
+      const aria = h.getAttribute("aria-label");
+      if (aria) return aria.trim().slice(0, 100);
+      const nm = h.getAttribute("name");
+      if (nm)
+        return nm
+          .replace(/([a-z])([A-Z])/g, "$1 $2")
+          .replace(/[_-]/g, " ")
+          .trim()
+          .slice(0, 100);
+      const prev = h.previousElementSibling;
+      if (prev?.tagName === "LABEL" && prev.textContent)
+        return prev.textContent.trim().slice(0, 100);
+      const tag = h.tagName.toLowerCase();
+      const type = h.getAttribute("type") || "";
+      return type ? `${type} ${tag}` : tag;
+    };
+
+    const extractFields = (form: HTMLFormElement) => {
+      const fields: FormCapture["fields"] = [];
+      const els = form.querySelectorAll("input, select, textarea");
+      for (const el of els) {
+        const tag = el.tagName.toLowerCase();
+        const name = el.getAttribute("name") || "";
+        const type =
+          el.getAttribute("type") ||
+          (tag === "select" ? "select" : tag === "textarea" ? "textarea" : "text");
+        if (
+          type === "submit" ||
+          type === "button" ||
+          type === "image" ||
+          type === "reset"
+        )
+          continue;
+        fields.push({
+          name,
+          label: inferLabel(el),
+          fieldType: type,
+          required: el.hasAttribute("required"),
+          tagName: tag,
+        });
+      }
+      return fields;
+    };
+
+    const score = (form: HTMLFormElement): number => {
+      const fields = extractFields(form);
+      let s = fields.length * 10;
+      const fieldText = (fields.map((f) => f.label + " " + f.name).join(" ") || "")
+        .toLowerCase();
+      if (/\bsearch\b|\bquery\b|\bחיפוש\b|^q$/.test(fieldText)) s -= 50;
+      const ar = (form.getAttribute("action") || "").toLowerCase();
+      if (/search|query|filter/.test(ar)) s -= 30;
+      if (
+        /apply|application|cv|resume|מועמד|הגשת|רישום|register|signup/i.test(
+          form.outerHTML.slice(0, 2000),
+        )
+      )
+        s += 20;
+      return s;
+    };
+
+    let chosen: HTMLFormElement | null = null;
+    if (preferred) {
+      const el = document.querySelector(preferred);
+      if (el && el.tagName === "FORM") chosen = el as HTMLFormElement;
+    }
+    if (!chosen) {
+      const forms = Array.from(document.querySelectorAll("form")) as HTMLFormElement[];
+      if (forms.length === 0) return null;
+      forms.sort((a, b) => score(b) - score(a));
+      chosen = forms[0];
+    }
+    if (!chosen) return null;
+
+    const fields = extractFields(chosen);
+    const actionRaw = chosen.getAttribute("action") || "";
+    let actionUrl: string;
+    try {
+      actionUrl = actionRaw
+        ? new URL(actionRaw, window.location.href).toString()
+        : window.location.href;
+    } catch {
+      actionUrl = window.location.href;
+    }
+    const method = (chosen.getAttribute("method") || "GET").toUpperCase();
+    return { formSelector: generateSelector(chosen), actionUrl, method, fields };
+  }, preferredSelector);
+};
+
+(async () => {
+  const args = parseArgs(process.argv);
+  const debug: Record<string, unknown> = {};
+  const browser = await chromium.launch({ headless: true });
+  const ctx = await browser.newContext({
+    locale: "he-IL",
+    timezoneId: "Asia/Jerusalem",
+    extraHTTPHeaders: { "accept-language": "he-IL,he;q=0.9,en-US;q=0.8,en;q=0.7" },
+  });
+  const page = await ctx.newPage();
+  try {
+    debug.step1_navigate = args.listingUrl;
+    await page.goto(args.listingUrl, { waitUntil: "domcontentloaded", timeout: 30000 });
+    await page.waitForLoadState("networkidle", { timeout: 8000 }).catch(() => {});
+
+    if (args.detailUrl) {
+      debug.step2_detailUrl = args.detailUrl;
+      await page.goto(args.detailUrl, { waitUntil: "domcontentloaded", timeout: 30000 });
+      await page.waitForLoadState("networkidle", { timeout: 8000 }).catch(() => {});
+    } else if (args.detailSelector) {
+      debug.step2_detailSelector = args.detailSelector;
+      const link = await page.$(args.detailSelector);
+      if (!link) throw new Error(`detail selector matched no element: ${args.detailSelector}`);
+      const href = await link.getAttribute("href");
+      if (href) {
+        const abs = new URL(href, page.url()).toString();
+        debug.step2_detailHref = abs;
+        await page.goto(abs, { waitUntil: "domcontentloaded", timeout: 30000 });
+      } else {
+        await link.click();
+      }
+      await page.waitForLoadState("networkidle", { timeout: 8000 }).catch(() => {});
+    }
+
+    if (args.applySelector) {
+      debug.step3_applySelector = args.applySelector;
+      const apply = await page.$(args.applySelector);
+      if (!apply) throw new Error(`apply selector matched no element: ${args.applySelector}`);
+      const href = await apply.getAttribute("href");
+      if (href && href !== "#" && !href.startsWith("javascript:")) {
+        const abs = new URL(href, page.url()).toString();
+        debug.step3_applyHref = abs;
+        await page.goto(abs, { waitUntil: "domcontentloaded", timeout: 30000 });
+      } else {
+        await apply.click();
+        await page.waitForTimeout(1500);
+      }
+      await page.waitForLoadState("networkidle", { timeout: 8000 }).catch(() => {});
+    }
+
+    debug.finalUrl = page.url();
+    debug.formCount = await page.evaluate(() => document.querySelectorAll("form").length);
+
+    const capture = await captureLargestForm(page, args.formSelector);
+    const ok = !!capture && capture.fields.length >= args.minFields;
+    const out: Record<string, unknown> = { formCapture: capture };
+    if (args.debug) out.debug = debug;
+    console.log(JSON.stringify(out, null, 2));
+    if (!ok) {
+      console.error(
+        `[capture-form] no usable form found (need >= ${args.minFields} fields). Final URL: ${page.url()} formCount=${debug.formCount}`,
+      );
+      process.exit(2);
+    }
+  } finally {
+    await browser.close();
+  }
+})().catch((e) => {
+  console.error("[capture-form] ERROR:", e?.message || e);
+  process.exit(1);
+});
+'@
+
+$capturePath = '.\.scratch\capture-form.ts'
+Set-Content -Path $capturePath -Value $captureFormScript -Encoding UTF8
+
+# Pick a sample detail URL. For a multi-page site use the actual detail URL
+# you discovered during Step 5 (read it out of the dry-run sample's
+# detailUrl or title_href). For a single-page site pass the listing URL.
+$SAMPLE_DETAIL = '<paste one concrete detail URL here, or $URL if single-page>'
+# If the form is reached only after an extra click (e.g. an "Apply" button
+# on the detail page), pass its CSS selector via --apply-selector=...
+npx tsx $capturePath $URL --detail-url=$SAMPLE_DETAIL --debug | Tee-Object -Variable captureOut
+$CAPTURE_EXIT = $LASTEXITCODE
+```
+
+**Gates**:
+
+- `$CAPTURE_EXIT -eq 0` AND the JSON has `formCapture.fields.length >= 3`:
+  success. Write the `formCapture` object verbatim to
+  `.\.scratch\scrap-form-capture.json` and proceed to Step 6 (it will
+  pick it up automatically). The simplest way:
+  ```powershell
+  ($captureOut -join "`n" | ConvertFrom-Json).formCapture |
+    ConvertTo-Json -Depth 20 |
+    Set-Content -Path '.\.scratch\scrap-form-capture.json' -Encoding UTF8
+  ```
+- `$CAPTURE_EXIT -eq 2` (no usable form): **STOP** and run 5b-2 below.
+  Do NOT silently fall through to `formCapture=null` — that's the
+  pre-existing failure mode this step is designed to fix.
+- `$CAPTURE_EXIT -ne 0 -and $CAPTURE_EXIT -ne 2` (script crashed):
+  iterate once with different selectors / URLs. If still failing,
+  proceed to 5b-2.
+
+### 5b-2 — When automatic capture fails: STOP and ask the user
+
+Do not pick this branch silently. Print the headless-capture failure
+output (URLs tried, form count per page) so the user has context, then
+ask the following three questions **in this exact order** (one
+`AskQuestion` invocation, three options). Do not invent a fourth option;
+the three branches below are the only supported outcomes.
+
+```
+Q1: "I tried to capture the apply form headlessly but couldn't find a
+     usable <form>. The script visited [<final URL>] and found
+     <formCount> form elements there. Do you know a specific URL where
+     the form is rendered? E.g. https://site/apply/123, or a dedicated
+     apply page. If yes, paste the URL and I'll re-run capture against
+     it."
+
+Q2: "If the form opens in a JS modal that has to be clicked open (and
+     you can't give me a direct URL), paste a screenshot of the form
+     here. I'll read the field labels and types from the image and
+     write them as static metadata."
+
+Q3: "If there really is no apply form on this site (only a WhatsApp
+     link, an email address, etc.), say 'skip' and I'll leave
+     formCapture=null. The dashboard's 'Application Form' panel will
+     just not render for this site."
+```
+
+Respond per branch:
+
+- **Q1 — user pastes a URL**: re-run the capture script with that URL.
+  ```powershell
+  npx tsx $capturePath $URL --detail-url='<the URL the user pasted>' --debug
+  ```
+  If it now succeeds, save to `.\.scratch\scrap-form-capture.json` and
+  proceed. If it fails again, fall back to Q2.
+
+- **Q2 — user pastes a screenshot of the form** (this is the
+  image-only fallback): read each visible field in the image and
+  produce a `FormCapture` object. For each field:
+  - `label`: the visible Hebrew/English text next to the input (the
+    on-screen label or placeholder). Hold to ≤ 100 chars.
+  - `fieldType`: pick from `text | email | tel | textarea | select |
+    checkbox | radio | file | date | number` based on visual cues —
+    multi-line box → `textarea`; dropdown caret → `select`; square
+    box → `checkbox`; round dot → `radio`; "Choose file" button →
+    `file`; otherwise `text`.
+  - `required`: `true` if you see a red asterisk, `*`, or "(חובה)" /
+    "(required)" next to the label; else `false`.
+  - `name`: leave as empty string `""`. You can't read this from a
+    screenshot and the static fallback path doesn't use it.
+  - `tagName`: `"input"` for everything except textareas and selects
+    (which get `"textarea"` / `"select"`).
+
+  Construct the JSON file directly (do NOT run the headless capture
+  script for this path — there's nothing live to capture):
+  ```powershell
+  $fc = [ordered]@{
+    formSelector = '(image-captured, not auto-replayable)'
+    actionUrl    = '(unknown - captured from screenshot)'
+    method       = 'POST'   # apply forms are almost always POST; safe default
+    fields       = @(
+      [ordered]@{ name=''; label='שם פרטי';   fieldType='text';     required=$true;  tagName='input' }
+      [ordered]@{ name=''; label='שם משפחה';  fieldType='text';     required=$true;  tagName='input' }
+      [ordered]@{ name=''; label='טלפון';     fieldType='tel';      required=$true;  tagName='input' }
+      [ordered]@{ name=''; label='אימייל';    fieldType='email';    required=$true;  tagName='input' }
+      [ordered]@{ name=''; label='קורות חיים'; fieldType='file';     required=$true;  tagName='input' }
+      # ... one entry per visible field in the screenshot ...
+    )
+  }
+  $fc | ConvertTo-Json -Depth 20 |
+    Set-Content -Path '.\.scratch\scrap-form-capture.json' -Encoding UTF8
+  ```
+  Flag this clearly in your final report: "Apply form for this site is
+  STATIC metadata (captured from screenshot); the worker won't be able
+  to re-validate it on each scrape. If the site's form changes you'll
+  need to re-onboard."
+
+- **Q3 — user says "skip"**: write the literal string `null` to the
+  file (so Step 6 knows to send `formCapture: null` explicitly):
+  ```powershell
+  Set-Content -Path '.\.scratch\scrap-form-capture.json' -Value 'null' -Encoding UTF8
+  ```
+
+### 5b-3 — Verify before Step 6
+
+Print a one-line summary of what was captured (or skipped):
+```powershell
+$fcOnDisk = Get-Content '.\.scratch\scrap-form-capture.json' -Raw -ErrorAction SilentlyContinue
+if (-not $fcOnDisk -or $fcOnDisk.Trim() -eq 'null') {
+  Write-Host '5b: formCapture=null (no apply form on this site)'
+} else {
+  $parsed = $fcOnDisk | ConvertFrom-Json
+  Write-Host ("5b: formCapture method={0} fields={1} selector={2}" -f `
+    $parsed.method, $parsed.fields.Count, $parsed.formSelector)
+}
+```
+
+If the summary looks wrong (e.g. 1 field for an apply form that
+clearly has more), loop back to 5b-2 Q2 and re-do the image read.
+
 ## Step 6 — PUT config (twice)
 
 Build the SaveConfigPayload JSON (shape below) and PUT it. Then sleep 5s
@@ -628,7 +1060,8 @@ analyzer (from step 2) will finish around now and overwrite your config
 with its bad selectors. The second PUT wins.
 
 JSON shape (omit any key that's null — `revealSelector` is optional, not
-nullable per the zod schema; `formCapture` IS nullable; `setupScript`
+nullable per the zod schema; `formCapture` IS nullable but you should
+include the object produced by Step 5b when one exists; `setupScript`
 is optional, only include if you actually need a DOM-mutating script
 per the "setupScript fallback" guidance in step 4):
 
@@ -647,7 +1080,7 @@ per the "setupScript fallback" guidance in step 4):
     }
   },
   "pageFlow": [],
-  "formCapture": null
+  "formCapture": null   // or { formSelector, actionUrl, method, fields[] } from Step 5b
 }
 ```
 
@@ -661,6 +1094,16 @@ In PowerShell, build the payload as a hashtable, convert to JSON, save
 to a temp file, then PUT it twice:
 
 ```powershell
+# Load the formCapture from Step 5b (if you ran it). Defaults to $null when
+# the file is missing or contains the literal "null".
+$formCaptureRaw = $null
+if (Test-Path '.\.scratch\scrap-form-capture.json') {
+  $raw = Get-Content '.\.scratch\scrap-form-capture.json' -Raw
+  if ($raw -and $raw.Trim() -ne 'null') {
+    $formCaptureRaw = $raw | ConvertFrom-Json
+  }
+}
+
 $config = [ordered]@{
   listingSelector = '<optional>'
   itemSelector    = '<your itemSelector>'
@@ -689,7 +1132,7 @@ $config = [ordered]@{
     # ... add more fields ...
   }
   pageFlow    = @()
-  formCapture = $null
+  formCapture = $formCaptureRaw   # populated by Step 5b; $null if you skipped it
 }
 
 $configPath = '.\.scratch\scrap-config.json'

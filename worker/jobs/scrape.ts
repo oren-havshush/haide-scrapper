@@ -1697,12 +1697,11 @@ async function extractRawFieldsWithPageFlow(
             // Stay on current page if apply navigation fails
           }
         }
-        try {
-          const formData = await extractFormData(page, formCaptureConfig);
-          if (formData) rawFields["_formData"] = formData;
-        } catch {
-          // Form extraction is best-effort
-        }
+        const formData = await extractFormDataOrFallback(
+          page,
+          formCaptureConfig,
+        );
+        if (formData) rawFields["_formData"] = formData;
       }
 
       rawFieldsList.push(rawFields);
@@ -1951,6 +1950,12 @@ interface FormCaptureConfig {
   formSelector: string;
   actionUrl: string;
   method: string;
+  // Pre-built JSON blob to write into rawFields._formData when live
+  // re-extraction fails OR when formSelector is an image-capture placeholder
+  // that doesn't match any real DOM element. Sourced from the saved
+  // fields[] array in _meta.formCapture. null when no static fields were
+  // recorded (extension-captured forms typically rely on live re-extract).
+  staticBlob: string | null;
 }
 
 function getFormCaptureConfig(
@@ -1962,13 +1967,47 @@ function getFormCaptureConfig(
   if (!meta) return null;
 
   const formCapture = meta["formCapture"] as Record<string, unknown> | undefined;
-  if (!formCapture || typeof formCapture["formSelector"] !== "string") return null;
+  if (!formCapture) return null;
 
-  return {
-    formSelector: formCapture["formSelector"] as string,
-    actionUrl: (formCapture["actionUrl"] as string) || "",
-    method: (formCapture["method"] as string) || "GET",
-  };
+  const formSelector =
+    typeof formCapture["formSelector"] === "string"
+      ? (formCapture["formSelector"] as string)
+      : "";
+  const actionUrl = (formCapture["actionUrl"] as string) || "";
+  const method = (formCapture["method"] as string) || "GET";
+  const fields = Array.isArray(formCapture["fields"])
+    ? (formCapture["fields"] as unknown[])
+    : null;
+  const staticBlob =
+    fields && fields.length > 0
+      ? JSON.stringify({ actionUrl, method, fields })
+      : null;
+
+  // Nothing usable in this saved formCapture entry — skip.
+  if (!formSelector && !staticBlob) return null;
+
+  return { formSelector, actionUrl, method, staticBlob };
+}
+
+/**
+ * Live-extract the apply form from the current page; on failure (no form
+ * found, selector mismatch, page.evaluate threw), fall back to the static
+ * fields blob recorded during onboarding. The fallback is how
+ * image-captured forms (where formSelector is a non-replayable
+ * placeholder) surface on the dashboard, and it also keeps the
+ * Application Form panel alive when a live form temporarily breaks.
+ */
+async function extractFormDataOrFallback(
+  page: Page,
+  cfg: FormCaptureConfig,
+): Promise<string | null> {
+  try {
+    const live = await extractFormData(page, cfg);
+    if (live) return live;
+  } catch {
+    // fall through to static
+  }
+  return cfg.staticBlob;
 }
 
 // ---------------------------------------------------------------------------
@@ -2264,15 +2303,14 @@ async function executeScrape(
       rawFieldsList.length > 0 &&
       !rawFieldsList.some((r) => r["_formData"])
     ) {
-      try {
-        const formData = await extractFormData(page, formCaptureConfig);
-        if (formData) {
-          for (const raw of rawFieldsList) {
-            raw["_formData"] = formData;
-          }
+      const formData = await extractFormDataOrFallback(
+        page,
+        formCaptureConfig,
+      );
+      if (formData) {
+        for (const raw of rawFieldsList) {
+          raw["_formData"] = formData;
         }
-      } catch {
-        // Form extraction is best-effort
       }
     }
   } else {
@@ -2448,15 +2486,14 @@ async function executeScrape(
 
     // Extract form data once from the single page and attach to all records
     if (formCaptureConfig && rawFieldsList.length > 0) {
-      try {
-        const formData = await extractFormData(page, formCaptureConfig);
-        if (formData) {
-          for (const raw of rawFieldsList) {
-            raw["_formData"] = formData;
-          }
+      const formData = await extractFormDataOrFallback(
+        page,
+        formCaptureConfig,
+      );
+      if (formData) {
+        for (const raw of rawFieldsList) {
+          raw["_formData"] = formData;
         }
-      } catch {
-        // Form extraction is best-effort
       }
     }
   }
