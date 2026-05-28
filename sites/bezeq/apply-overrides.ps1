@@ -57,7 +57,15 @@ $config = [ordered]@{
   formCapture     = $meta.formCapture
 }
 if ($meta.revealSelector)   { $config.revealSelector   = $meta.revealSelector }
-if ($meta.setupScript)      { $config.setupScript      = $meta.setupScript }
+# Always use the canonical production setupScript from bezeq-config.json.
+# The DB copy may still be the diagnostic script from sites/bezeq/diag.ps1.
+$prodConfigPath = Join-Path (Resolve-Path '.\sites\bezeq').Path 'bezeq-config.json'
+if (Test-Path $prodConfigPath) {
+  $prod = Get-Content $prodConfigPath -Raw | ConvertFrom-Json
+  $config.setupScript = $prod.setupScript
+} elseif ($meta.setupScript) {
+  $config.setupScript = $meta.setupScript
+}
 if ($meta.loadMoreSelector) { $config.loadMoreSelector = $meta.loadMoreSelector }
 if ($meta.pagination)       { $config.pagination       = $meta.pagination }
 

@@ -1973,9 +1973,13 @@ function getBrowserOverrides(fieldMappingsRaw: unknown): BrowserOverrides | null
     if (Object.keys(headers).length > 0) overrides.extraHeaders = headers;
   }
 
-  if (!overrides.userAgent && !overrides.extraHeaders) return null;
+  if (src["bypassCSP"] === true) {
+    overrides.bypassCSP = true;
+  }
+
+  if (!overrides.userAgent && !overrides.extraHeaders && !overrides.bypassCSP) return null;
   console.info(
-    `[scrape] browserOverrides present: userAgent=${overrides.userAgent ? "yes" : "no"} extraHeaders=${Object.keys(overrides.extraHeaders ?? {}).length}`,
+    `[scrape] browserOverrides present: userAgent=${overrides.userAgent ? "yes" : "no"} extraHeaders=${Object.keys(overrides.extraHeaders ?? {}).length} bypassCSP=${overrides.bypassCSP ? "yes" : "no"}`,
   );
   return overrides;
 }
