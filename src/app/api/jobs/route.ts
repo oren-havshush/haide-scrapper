@@ -18,6 +18,8 @@ export async function GET(request: NextRequest) {
       siteId: searchParams.get("siteId") ?? undefined,
       scrapeRunId: searchParams.get("scrapeRunId") ?? undefined,
       validationStatus: searchParams.get("validationStatus") ?? undefined,
+      siteUrlSearch: searchParams.get("siteUrlSearch") ?? undefined,
+      companyNameSearch: searchParams.get("companyNameSearch") ?? undefined,
     });
 
     // Build Prisma where clause
@@ -45,6 +47,22 @@ export async function GET(request: NextRequest) {
       where.validationStatus = "valid";
     } else if (filters.validationStatus === "invalid") {
       where.validationStatus = { startsWith: "invalid:" };
+    }
+
+    // Free-text filters on the related Site. AND-compose with siteId when both
+    // are supplied (Prisma combines `where.siteId` and `where.site = {...}`
+    // naturally). For text-only queries we deliberately skip the "latest run"
+    // narrowing above because jobs from different sites can't share a run id;
+    // each job already carries its own scrapeRunId.
+    if (filters.siteUrlSearch || filters.companyNameSearch) {
+      where.site = {
+        ...(filters.siteUrlSearch && {
+          siteUrl: { contains: filters.siteUrlSearch, mode: "insensitive" },
+        }),
+        ...(filters.companyNameSearch && {
+          companyName: { contains: filters.companyNameSearch, mode: "insensitive" },
+        }),
+      };
     }
 
     const skip = (pagination.page - 1) * pagination.pageSize;

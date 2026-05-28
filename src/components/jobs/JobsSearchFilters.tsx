@@ -2,19 +2,19 @@
 
 import { DebouncedSearchInput } from "@/components/ui/debounced-search-input";
 
-interface SiteSearchFiltersProps {
+interface JobsSearchFiltersProps {
   companyNameSearch: string;
-  urlSearch: string;
+  siteUrlSearch: string;
   onCompanyNameSearchChange: (value: string) => void;
-  onUrlSearchChange: (value: string) => void;
+  onSiteUrlSearchChange: (value: string) => void;
 }
 
-export function SiteSearchFilters({
+export function JobsSearchFilters({
   companyNameSearch,
-  urlSearch,
+  siteUrlSearch,
   onCompanyNameSearchChange,
-  onUrlSearchChange,
-}: SiteSearchFiltersProps) {
+  onSiteUrlSearchChange,
+}: JobsSearchFiltersProps) {
   return (
     <div className="mb-4 grid grid-cols-1 gap-2 sm:grid-cols-2">
       <DebouncedSearchInput
@@ -23,8 +23,8 @@ export function SiteSearchFilters({
         placeholder="Filter by company name"
       />
       <DebouncedSearchInput
-        value={urlSearch}
-        onChange={onUrlSearchChange}
+        value={siteUrlSearch}
+        onChange={onSiteUrlSearchChange}
         placeholder="Filter by URL"
       />
     </div>
