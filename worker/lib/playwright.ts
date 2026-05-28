@@ -133,18 +133,52 @@ export async function launchBrowser(): Promise<Browser> {
   return browser;
 }
 
-export async function createPage(browser: Browser): Promise<{ context: BrowserContext; page: Page }> {
+/**
+ * Per-site browser-context overrides plumbed in from
+ * `Site.fieldMappings._meta.browserOverrides`. Lets onboarders unblock
+ * WAF-protected sites (e.g. bezeq.co.il, which TCP-resets bare headless
+ * Chromium) without changing the conservative global defaults that other
+ * sites (notably Imperva-protected tikshoov) depend on.
+ */
+export interface BrowserOverrides {
+  userAgent?: string;
+  extraHeaders?: Record<string, string>;
+}
+
+export async function createPage(
+  browser: Browser,
+  overrides?: BrowserOverrides,
+): Promise<{ context: BrowserContext; page: Page }> {
   const locale = process.env.SCRAPE_LOCALE || DEFAULT_LOCALE;
   const timezoneId = process.env.SCRAPE_TIMEZONE || DEFAULT_TIMEZONE;
   const acceptLanguage = process.env.SCRAPE_ACCEPT_LANGUAGE || DEFAULT_ACCEPT_LANGUAGE;
-  const userAgent = process.env.SCRAPE_USER_AGENT?.trim();
+  // Per-site userAgent wins over SCRAPE_USER_AGENT env, which wins over
+  // Playwright's bundled-Chromium default (leave context.userAgent unset).
+  const overrideUA = overrides?.userAgent?.trim();
+  const envUA = process.env.SCRAPE_USER_AGENT?.trim();
+  const userAgent = overrideUA || envUA;
+
+  // Per-site headers merge on top of the default Accept-Language so an
+  // override can replace a specific header (e.g. send a different
+  // Accept-Language for a non-IL site) without losing the others.
+  const extraHTTPHeaders: Record<string, string> = {
+    "Accept-Language": acceptLanguage,
+    ...(overrides?.extraHeaders ?? {}),
+  };
+
+  if (overrideUA || (overrides?.extraHeaders && Object.keys(overrides.extraHeaders).length > 0)) {
+    console.info("[worker] Applying per-site browser overrides:", {
+      hasUserAgent: !!overrideUA,
+      extraHeaderKeys: Object.keys(overrides?.extraHeaders ?? {}),
+    });
+  }
 
   const context = await browser.newContext({
     viewport: { width: 1280, height: 800 },
     ...(userAgent ? { userAgent } : {}),
     locale,
     timezoneId,
-    extraHTTPHeaders: { "Accept-Language": acceptLanguage },
+    extraHTTPHeaders,
   });
 
   // Mask obvious headless-browser fingerprints. Many Israeli sites (Cloudflare

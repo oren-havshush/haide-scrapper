@@ -1,7 +1,7 @@
 import { prisma } from "../../src/lib/prisma";
 import type { WorkerJob, Site } from "../../src/generated/prisma/client";
 import { Prisma } from "../../src/generated/prisma/client";
-import { launchBrowser, createPage, closeBrowser } from "../lib/playwright";
+import { launchBrowser, createPage, closeBrowser, type BrowserOverrides } from "../lib/playwright";
 import { normalizeJobRecord } from "../lib/normalizer";
 import type { NormalizedJobRecord } from "../lib/normalizer";
 import { validateJobRecord } from "../lib/validator";
@@ -1943,6 +1943,44 @@ function getLoadMoreSelector(fieldMappingsRaw: unknown): string | null {
 }
 
 // ---------------------------------------------------------------------------
+// Helper: get per-site browser-context overrides from fieldMappings JSON.
+// Lets onboarders unblock WAF-protected sites that reject the worker's
+// default Playwright UA / headers without touching global env defaults.
+// ---------------------------------------------------------------------------
+
+function getBrowserOverrides(fieldMappingsRaw: unknown): BrowserOverrides | null {
+  if (!fieldMappingsRaw || typeof fieldMappingsRaw !== "object") return null;
+  const raw = fieldMappingsRaw as Record<string, unknown>;
+  const meta = raw["_meta"] as Record<string, unknown> | undefined;
+  if (!meta) return null;
+  const bo = meta["browserOverrides"];
+  if (!bo || typeof bo !== "object") return null;
+
+  const src = bo as Record<string, unknown>;
+  const overrides: BrowserOverrides = {};
+
+  if (typeof src["userAgent"] === "string" && src["userAgent"].trim()) {
+    overrides.userAgent = src["userAgent"].trim();
+  }
+
+  if (src["extraHeaders"] && typeof src["extraHeaders"] === "object") {
+    const headers: Record<string, string> = {};
+    for (const [k, v] of Object.entries(src["extraHeaders"] as Record<string, unknown>)) {
+      if (typeof k === "string" && k.trim() && typeof v === "string") {
+        headers[k] = v;
+      }
+    }
+    if (Object.keys(headers).length > 0) overrides.extraHeaders = headers;
+  }
+
+  if (!overrides.userAgent && !overrides.extraHeaders) return null;
+  console.info(
+    `[scrape] browserOverrides present: userAgent=${overrides.userAgent ? "yes" : "no"} extraHeaders=${Object.keys(overrides.extraHeaders ?? {}).length}`,
+  );
+  return overrides;
+}
+
+// ---------------------------------------------------------------------------
 // Helper: get form capture config from fieldMappings JSON
 // ---------------------------------------------------------------------------
 
@@ -2127,6 +2165,7 @@ export async function handleScrapeJob(
   const pagination = getPaginationConfig(site.fieldMappings);
   const setupScript = getSetupScript(site.fieldMappings);
   const loadMoreSelector = getLoadMoreSelector(site.fieldMappings);
+  const browserOverrides = getBrowserOverrides(site.fieldMappings);
 
   if (Object.keys(fieldMappings).length === 0) {
     const result = await failScrapeRun(scrapeRunId, site.id, {
@@ -2157,6 +2196,7 @@ export async function handleScrapeJob(
         pagination,
         setupScript,
         loadMoreSelector,
+        browserOverrides,
       ),
       timeout.promise,
     ]);
@@ -2261,11 +2301,12 @@ async function executeScrape(
   pagination: PaginationConfig | null = null,
   setupScript: string | null = null,
   loadMoreSelector: string | null = null,
+  browserOverrides: BrowserOverrides | null = null,
 ): Promise<ScrapeResult> {
   // Launch browser
   const browser = await launchBrowser();
   setBrowser(browser);
-  const { page } = await createPage(browser);
+  const { page } = await createPage(browser, browserOverrides ?? undefined);
 
   // Inject __name shim so tsx-transpiled function decorators don't crash
   // inside page.evaluate calls that run in the browser context.

@@ -50,6 +50,10 @@ export const jobsFilterSchema = z.object({
   siteId: z.string().optional(),
   scrapeRunId: z.string().optional(),
   validationStatus: z.enum(["valid", "invalid"]).optional(),
+  // Partial-match search on Site.siteUrl / Site.companyName for the Jobs page
+  // dashboard filters. Caps mirror siteSearchFilterSchema.
+  siteUrlSearch: z.string().trim().max(500).optional(),
+  companyNameSearch: z.string().trim().max(120).optional(),
 });
 
 export const updateSiteConfigSchema = z.object({
@@ -95,4 +99,16 @@ export const updateSiteConfigSchema = z.object({
   // clicks it repeatedly after page load until item count stabilizes or caps
   // hit. Different from `pagination` (which expects content replacement).
   loadMoreSelector: z.string().max(500).optional(),
+  // Optional per-site browser-context overrides. Lets onboarders unblock
+  // WAF-protected sites that reject the worker's default Playwright UA /
+  // headers (e.g. bezeq.co.il, which TCP-resets bare headless Chromium).
+  // Applied per scrape only — does NOT affect any other site. Worker reads
+  // this in createPage(); per-site userAgent wins over SCRAPE_USER_AGENT env,
+  // extraHeaders merge on top of the default Accept-Language header.
+  browserOverrides: z
+    .object({
+      userAgent: z.string().max(500).optional(),
+      extraHeaders: z.record(z.string(), z.string().max(1000)).optional(),
+    })
+    .optional(),
 });

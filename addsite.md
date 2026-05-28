@@ -172,14 +172,14 @@ async function tryNav(label: string, opts: any) {
 (async () => {
   const bare = await tryNav('bare-worker-parity', {});
   if (bare.ok) { console.log('GATE: PASS (worker can navigate this site).'); return; }
-  const real = await tryNav('real-chrome-UA', {
-    userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36',
-    extraHTTPHeaders: { 'accept-language': 'he-IL,he;q=0.9,en-US;q=0.8,en;q=0.7' },
-  });
+  const realUA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36';
+  const realHeaders = { 'accept-language': 'he-IL,he;q=0.9,en-US;q=0.8,en;q=0.7' };
+  const real = await tryNav('real-chrome-UA', { userAgent: realUA, extraHTTPHeaders: realHeaders });
   if (real.ok) {
-    console.log('GATE: FAIL (UA-keyed WAF). Site rejects worker default UA but accepts a real Chrome UA.');
-    console.log('       Do NOT onboard. The worker needs a UA fix (or per-site UA override) first.');
-    process.exit(2);
+    console.log('GATE: UA-keyed WAF detected. Onboard with browserOverrides.');
+    console.log('       Carry this into the Step 6 PUT as fieldMappings._meta.browserOverrides:');
+    console.log(JSON.stringify({ userAgent: realUA, extraHeaders: realHeaders }, null, 2));
+    process.exit(0);
   }
   console.log('GATE: FAIL (network/region/captcha). Neither the worker default nor a real Chrome UA could reach the site.');
   console.log('       Likely IL-IP requirement, captcha, or true outage. Stop and report.');
@@ -195,15 +195,20 @@ npx tsx $reachPath $URL
 Gate decisions:
 
 - **PASS** (bare nav returned 200, no challenge markers): proceed to step
-  3b below — the regular fetch + structural summary.
-- **FAIL (UA-keyed WAF)** (bare nav failed AND real-Chrome-UA nav
-  succeeded): **STOP**. Do not create more state in prod. If a site row
-  already exists from step 2, PATCH it to `SKIPPED` with an admin note
-  pointing at this finding; otherwise just bail. Report to the user that
-  the site needs a worker-side fix before it can be onboarded (real
-  Chrome UA on the worker context, or a per-site UA-override config
-  field). Reference: bezeq.co.il (siteId
-  `cmpmv882i001x01mvhf9qfaqy`) is the canonical example.
+  3b below — the regular fetch + structural summary. No `browserOverrides`
+  needed.
+- **UA-keyed WAF** (bare nav failed AND real-Chrome-UA nav succeeded):
+  **Continue onboarding normally** — but the site needs a per-site
+  `browserOverrides` block on its config. Copy the `{ userAgent,
+  extraHeaders }` payload the gate script printed and carry it into the
+  Step 6 PUT (see "browserOverrides for WAF-protected sites" subsection
+  there). The worker reads `fieldMappings._meta.browserOverrides` per
+  scrape — no env changes, no risk to other sites. Reference: bezeq.co.il
+  (siteId `cmpmv882i001x01mvhf9qfaqy`) is the canonical example. Note that
+  step 3b's structural fetch and step 5's dry-run must also use the same
+  UA + headers locally, otherwise they'll hit the same TCP reset; reuse
+  the inline `userAgent` / `extraHTTPHeaders` from the gate snippet in
+  each Playwright invocation for this site.
 - **FAIL (both legs failed)**: the site is either IL-IP-only, behind a
   captcha/challenge that survives UA changes, or temporarily down. Stop
   and report — don't keep trying. The worker has IL IPs at runtime so it
@@ -211,7 +216,7 @@ Gate decisions:
   flag the uncertainty in your report and let the user decide whether to
   push through.
 
-Once the gate passes, continue with step 3b.
+Once the gate passes (or you've captured the WAF override), continue with step 3b.
 
 ## Step 3b — Fetch and inspect the page
 
@@ -643,6 +648,44 @@ live form can't be found, which is exactly what happens with
 image-captured forms whose `formSelector` is a non-replayable
 placeholder).
 
+### Two ways to enter Step 5b
+
+Step 5b can be invoked two ways. The 5b-1, 5b-2, 5b-3 substeps below are
+identical in both cases; only what happens after 5b-3 changes.
+
+- **As part of the linear /addsite flow** (steps 1 through 5 already ran
+  in this session): 5b-1 / 5b-2 / 5b-3 produce
+  `.\.scratch\scrap-form-capture.json` and control returns to Step 6,
+  which builds the full PUT payload including the captured form.
+- **Standalone for an already-onboarded site** (the user typed
+  `run step 5b <URL>` without the prior /addsite steps): same capture
+  flow, but after 5b-3 jump to the new 5b-4 instead of Step 6. 5b-4
+  merges the form into the existing site config in-place, PATCHes back
+  to ACTIVE, and fires a "Test 1"-equivalent scrape so per-job
+  `rawData._formData` populates immediately.
+
+Standalone mode requires the site to already exist. Check first, before
+running the capture script:
+
+```powershell
+$existing = Invoke-RestMethod -Method Get `
+  -Uri "https://scrapper.haide-jobs.co.il/api/sites?siteUrl=$([uri]::EscapeDataString($URL))" `
+  -Headers $HEADERS
+if (-not $existing.data -or $existing.data.Count -eq 0) {
+  throw "Site not onboarded for $URL. Run /addsite <URL> first for full onboarding."
+}
+$SITE_ID = $existing.data[0].id
+Write-Host "Standalone mode: targeting siteId=$SITE_ID (status=$($existing.data[0].status))"
+```
+
+If the site does NOT exist, the standalone shortcut isn't valid: stop
+and tell the user to run `/addsite <URL>` first, because Step 5b alone
+can't produce the per-field selectors needed to onboard.
+
+In the rest of Step 5b, "standalone mode" means "the agent entered via
+`run step 5b <URL>`"; "/addsite flow mode" means "the agent is doing
+the linear steps 1 through 9 of /addsite".
+
 ### 5b-1 — Try automatic headless capture
 
 Write the capture script (uses the same Playwright-in-headless pattern
@@ -653,6 +696,7 @@ keepNames helper otherwise breaks any named binding inside
 ```powershell
 $captureFormScript = @'
 import { chromium, Page } from "playwright";
+import * as fs from "fs";
 
 interface Args {
   listingUrl: string;
@@ -660,15 +704,25 @@ interface Args {
   detailSelector?: string;
   applySelector?: string;
   formSelector?: string;
+  expandSelector?: string;
+  dismissPopupSelector?: string;
+  outPath?: string;
   minFields: number;
   debug: boolean;
 }
+
+// Defaults cover the common IL "we use cookies" banners. Override with
+// --dismiss-popup="<sel,sel,...>" for any other overlay that intercepts
+// clicks. Hidden via style.display = "none" -- not removed, so any state
+// listeners on the page still see the elements.
+const DEFAULT_DISMISS_POPUP =
+  ".cookies-popup-wrapper,.wrapper-popup,#cookie-consent,.cc-banner";
 
 function parseArgs(argv: string[]): Args {
   const listingUrl = argv[2];
   if (!listingUrl) {
     console.error(
-      "Usage: capture-form.ts <listingUrl> [--detail-selector=...] [--apply-selector=...] [--detail-url=...] [--form-selector=...] [--min-fields=N] [--debug]",
+      "Usage: capture-form.ts <listingUrl> [--detail-selector=...] [--apply-selector=...] [--detail-url=...] [--form-selector=...] [--expand-selector=...] [--dismiss-popup=...] [--out=...] [--min-fields=N] [--debug]",
     );
     process.exit(64);
   }
@@ -681,6 +735,9 @@ function parseArgs(argv: string[]): Args {
     else if (key === "detail-selector") out.detailSelector = val;
     else if (key === "apply-selector") out.applySelector = val;
     else if (key === "form-selector") out.formSelector = val;
+    else if (key === "expand-selector") out.expandSelector = val;
+    else if (key === "dismiss-popup") out.dismissPopupSelector = val;
+    else if (key === "out") out.outPath = val;
     else if (key === "min-fields") out.minFields = parseInt(val || "3", 10);
     else if (key === "debug") out.debug = true;
   }
@@ -882,6 +939,45 @@ const captureLargestForm = async (
       await page.waitForLoadState("networkidle", { timeout: 8000 }).catch(() => {});
     }
 
+    // Dismiss overlays (cookies banners etc.) that intercept pointer events
+    // before any clicks. Hide via style.display = "none" -- not removed --
+    // so any listeners that fire on page load remain bound.
+    const dismissSel = args.dismissPopupSelector ?? DEFAULT_DISMISS_POPUP;
+    if (dismissSel) {
+      const dismissed = await page.evaluate((sel) => {
+        let n = 0;
+        try {
+          document.querySelectorAll(sel).forEach((el) => {
+            (el as HTMLElement).style.display = "none";
+            n++;
+          });
+        } catch {
+          /* ignore */
+        }
+        return n;
+      }, dismissSel);
+      debug.step2b_dismissedPopups = { selector: dismissSel, count: dismissed };
+    }
+
+    // Optional: expand an accordion / reveal a hidden form before reading
+    // forms. Some sites (single-page job portals) only render the apply
+    // form once a row is expanded. The click goes through page.evaluate so
+    // leftover overlays don't block it.
+    if (args.expandSelector) {
+      const expanded = await page.evaluate((sel) => {
+        const el = document.querySelector(sel) as HTMLElement | null;
+        if (!el) return false;
+        el.click();
+        return true;
+      }, args.expandSelector);
+      debug.step2c_expandSelector = args.expandSelector;
+      debug.step2c_expanded = expanded;
+      if (!expanded) {
+        throw new Error(`expand selector matched no element: ${args.expandSelector}`);
+      }
+      await page.waitForTimeout(2500);
+    }
+
     if (args.applySelector) {
       debug.step3_applySelector = args.applySelector;
       const apply = await page.$(args.applySelector);
@@ -892,7 +988,14 @@ const captureLargestForm = async (
         debug.step3_applyHref = abs;
         await page.goto(abs, { waitUntil: "domcontentloaded", timeout: 30000 });
       } else {
-        await apply.click();
+        // DOM-level click via evaluate() bypasses Playwright's "stable +
+        // not intercepted" guard. The dismissPopup step above usually
+        // covers the common case, but defensive: don't fail if a sneaky
+        // overlay slips back in.
+        await page.evaluate((sel) => {
+          const el = document.querySelector(sel) as HTMLElement | null;
+          el?.click();
+        }, args.applySelector);
         await page.waitForTimeout(1500);
       }
       await page.waitForLoadState("networkidle", { timeout: 8000 }).catch(() => {});
@@ -906,6 +1009,12 @@ const captureLargestForm = async (
     const out: Record<string, unknown> = { formCapture: capture };
     if (args.debug) out.debug = debug;
     console.log(JSON.stringify(out, null, 2));
+    if (args.outPath && capture) {
+      // Write directly via Node so the JSON never round-trips through a
+      // shell pipe (PowerShell will mangle Hebrew labels otherwise).
+      fs.writeFileSync(args.outPath, JSON.stringify(capture, null, 2), "utf8");
+      console.error(`[capture-form] wrote formCapture to ${args.outPath}`);
+    }
     if (!ok) {
       console.error(
         `[capture-form] no usable form found (need >= ${args.minFields} fields). Final URL: ${page.url()} formCount=${debug.formCount}`,
@@ -928,23 +1037,27 @@ Set-Content -Path $capturePath -Value $captureFormScript -Encoding UTF8
 # you discovered during Step 5 (read it out of the dry-run sample's
 # detailUrl or title_href). For a single-page site pass the listing URL.
 $SAMPLE_DETAIL = '<paste one concrete detail URL here, or $URL if single-page>'
-# If the form is reached only after an extra click (e.g. an "Apply" button
-# on the detail page), pass its CSS selector via --apply-selector=...
-npx tsx $capturePath $URL --detail-url=$SAMPLE_DETAIL --debug | Tee-Object -Variable captureOut
+# Optional knobs (omit when not needed):
+#   --apply-selector=...   click an "Apply" button to reveal the form
+#   --expand-selector=...  click an accordion / row to reveal a hidden form
+#                          (single-page job portals like cellcom.co.il)
+#   --form-selector=...    target a specific <form> by id/class
+#   --dismiss-popup=...    comma-separated CSS for popups to hide before
+#                          interacting (defaults already cover the common
+#                          IL cookies banners)
+# The --out flag has Node write the JSON directly (bypasses PowerShell so
+# Hebrew labels don't get re-encoded into mojibake on stdout).
+npx tsx $capturePath $URL --detail-url=$SAMPLE_DETAIL `
+  --out=.\.scratch\scrap-form-capture.json --debug
 $CAPTURE_EXIT = $LASTEXITCODE
 ```
 
 **Gates**:
 
-- `$CAPTURE_EXIT -eq 0` AND the JSON has `formCapture.fields.length >= 3`:
-  success. Write the `formCapture` object verbatim to
-  `.\.scratch\scrap-form-capture.json` and proceed to Step 6 (it will
-  pick it up automatically). The simplest way:
-  ```powershell
-  ($captureOut -join "`n" | ConvertFrom-Json).formCapture |
-    ConvertTo-Json -Depth 20 |
-    Set-Content -Path '.\.scratch\scrap-form-capture.json' -Encoding UTF8
-  ```
+- `$CAPTURE_EXIT -eq 0` AND `.\.scratch\scrap-form-capture.json` exists with
+  `fields.Count >= 3`: success. The file is the canonical output that
+  Step 6 (or 5b-4 in standalone mode) reads. No further PowerShell
+  copy step needed.
 - `$CAPTURE_EXIT -eq 2` (no usable form): **STOP** and run 5b-2 below.
   Do NOT silently fall through to `formCapture=null` — that's the
   pre-existing failure mode this step is designed to fix.
@@ -983,10 +1096,11 @@ Respond per branch:
 
 - **Q1 — user pastes a URL**: re-run the capture script with that URL.
   ```powershell
-  npx tsx $capturePath $URL --detail-url='<the URL the user pasted>' --debug
+  npx tsx $capturePath $URL --detail-url='<the URL the user pasted>' `
+    --out=.\.scratch\scrap-form-capture.json --debug
   ```
-  If it now succeeds, save to `.\.scratch\scrap-form-capture.json` and
-  proceed. If it fails again, fall back to Q2.
+  If it now succeeds (`$LASTEXITCODE -eq 0` and the JSON file has
+  `fields.Count >= 3`), proceed. If it fails again, fall back to Q2.
 
 - **Q2 — user pastes a screenshot of the form** (this is the
   image-only fallback): read each visible field in the image and
@@ -1006,31 +1120,49 @@ Respond per branch:
     (which get `"textarea"` / `"select"`).
 
   Construct the JSON file directly (do NOT run the headless capture
-  script for this path — there's nothing live to capture):
-  ```powershell
-  $fc = [ordered]@{
-    formSelector = '(image-captured, not auto-replayable)'
-    actionUrl    = '(unknown - captured from screenshot)'
-    method       = 'POST'   # apply forms are almost always POST; safe default
-    fields       = @(
-      [ordered]@{ name=''; label='שם פרטי';   fieldType='text';     required=$true;  tagName='input' }
-      [ordered]@{ name=''; label='שם משפחה';  fieldType='text';     required=$true;  tagName='input' }
-      [ordered]@{ name=''; label='טלפון';     fieldType='tel';      required=$true;  tagName='input' }
-      [ordered]@{ name=''; label='אימייל';    fieldType='email';    required=$true;  tagName='input' }
-      [ordered]@{ name=''; label='קורות חיים'; fieldType='file';     required=$true;  tagName='input' }
-      # ... one entry per visible field in the screenshot ...
-    )
+  script for this path — there's nothing live to capture).
+
+  **Important — bypass PowerShell for this write.** Hebrew labels travel
+  agent → shell tool bytes → PowerShell parser → file, and PS 5.1's
+  active code page on this machine can mangle non-ASCII at the parser
+  step (same encoding axis as the `capture-form.ts` stdout bug that
+  bit us live). Use the agent's file-write tool directly to create
+  `.\.scratch\scrap-form-capture.json` with the JSON body. The file
+  goes to disk as UTF-8 without ever touching PowerShell.
+
+  Template — replace the `fields` array with one entry per visible
+  field in the screenshot, keep the top-level keys as-is:
+
+  ```json
+  {
+    "formSelector": "(image-captured, not auto-replayable)",
+    "actionUrl": "(unknown - captured from screenshot)",
+    "method": "POST",
+    "fields": [
+      { "name": "", "label": "שם פרטי",    "fieldType": "text",     "required": true, "tagName": "input" },
+      { "name": "", "label": "שם משפחה",   "fieldType": "text",     "required": true, "tagName": "input" },
+      { "name": "", "label": "טלפון",      "fieldType": "tel",      "required": true, "tagName": "input" },
+      { "name": "", "label": "אימייל",     "fieldType": "email",    "required": true, "tagName": "input" },
+      { "name": "", "label": "קורות חיים", "fieldType": "file",     "required": true, "tagName": "input" }
+    ]
   }
-  $fc | ConvertTo-Json -Depth 20 |
-    Set-Content -Path '.\.scratch\scrap-form-capture.json' -Encoding UTF8
   ```
+
+  After the file is written, verify the encoding survived by reading
+  it back — `formCapture.fields[0].label` must still match the
+  Hebrew/English text from the screenshot byte-for-byte. If it
+  doesn't, re-write the file via the file tool (do NOT try to
+  re-encode via PowerShell — at that point the bytes on disk are
+  already wrong).
+
   Flag this clearly in your final report: "Apply form for this site is
   STATIC metadata (captured from screenshot); the worker won't be able
   to re-validate it on each scrape. If the site's form changes you'll
   need to re-onboard."
 
 - **Q3 — user says "skip"**: write the literal string `null` to the
-  file (so Step 6 knows to send `formCapture: null` explicitly):
+  file (so Step 6 / 5b-4 knows to send `formCapture: null` explicitly).
+  ASCII only — PowerShell is safe here:
   ```powershell
   Set-Content -Path '.\.scratch\scrap-form-capture.json' -Value 'null' -Encoding UTF8
   ```
@@ -1050,9 +1182,262 @@ if (-not $fcOnDisk -or $fcOnDisk.Trim() -eq 'null') {
 ```
 
 If the summary looks wrong (e.g. 1 field for an apply form that
-clearly has more), loop back to 5b-2 Q2 and re-do the image read.
+clearly has more), loop back to 5b-2 Q2 and re-do the image read. In
+standalone mode, "looks wrong" should not block 5b-4 by default — only
+re-loop if the field count is obviously off (zero, or far below what
+the user expected). Minor label nits can be fixed by re-running step 5b
+later.
+
+After 5b-3, the path forks:
+
+- **/addsite flow mode**: continue to Step 6 below. The PUT payload
+  there picks up `.\.scratch\scrap-form-capture.json` automatically.
+- **Standalone mode**: skip Steps 6 through 9 and run **5b-4** below.
+  When 5b-4 finishes the site is ACTIVE with the new form attached and
+  a fresh single-job Test scrape has run.
+
+### 5b-4 — Standalone push to existing site
+
+Standalone-mode only. Skip this section entirely when running as part
+of the linear /addsite flow.
+
+This step is the standalone equivalent of Steps 6 through 9 collapsed
+into one Node script:
+
+1. GET the current site (preserves itemSelector, fieldMappings,
+   setupScript, pageFlow as-is).
+2. Build a SaveConfigPayload with the new `formCapture` swapped in.
+3. PUT `/api/sites/<id>/config` twice (5s sleep between, mirrors the
+   analyzer-race pattern from Step 6).
+4. PATCH `{status: 'ACTIVE'}` — the PUT auto-demotes ACTIVE to REVIEW.
+5. POST `/api/sites/<id>/scrape` with body `{ maxJobs: 1 }` — same call
+   the dashboard "Test 1" button makes. The worker's
+   `prisma.job.deleteMany({ where: { siteId } })` runs before insert on
+   every scrape, so this also wipes any pre-existing jobs (no separate
+   "Clear Jobs" call needed).
+6. Poll for COMPLETED, fetch the single resulting job, confirm
+   `rawData._formData` is populated.
+
+Everything is done in Node (not PowerShell) so Hebrew strings flow
+through `JSON.parse`/`fetch`/`JSON.stringify` without round-tripping
+through Windows code pages.
+
+```powershell
+$mergeScript = @'
+import * as fs from "fs";
+import * as path from "path";
+
+const BASE = "https://scrapper.haide-jobs.co.il";
+
+async function main() {
+  const siteId = process.argv[2];
+  const formCapturePath = process.argv[3] || ".scratch/scrap-form-capture.json";
+  if (!siteId) {
+    console.error("Usage: merge-form-capture.ts <siteId> [formCaptureJsonPath]");
+    process.exit(64);
+  }
+
+  const TOKEN = fs
+    .readFileSync(path.resolve(".claude", "scrap-token"), "utf8")
+    .replace(/\s/g, "");
+  if (!TOKEN || TOKEN.startsWith("REPLACE_ME")) {
+    throw new Error(".claude/scrap-token empty or placeholder");
+  }
+  const headers: Record<string, string> = {
+    Authorization: `Bearer ${TOKEN}`,
+    "Content-Type": "application/json",
+  };
+
+  // Read the captured form. "null" or missing -> formCapture: null in
+  // the payload (lets the user explicitly clear an existing capture).
+  let formCapture: unknown = null;
+  if (fs.existsSync(formCapturePath)) {
+    const raw = fs.readFileSync(formCapturePath, "utf8");
+    if (raw.trim() && raw.trim() !== "null") {
+      formCapture = JSON.parse(raw);
+    }
+  }
+  const fcSummary =
+    formCapture && typeof formCapture === "object"
+      ? `selector=${(formCapture as any).formSelector} method=${(formCapture as any).method} fields=${(formCapture as any).fields?.length ?? 0}`
+      : "null";
+  console.log(`[5b-4] Loaded formCapture: ${fcSummary}`);
+
+  // GET the site via the list endpoint -- the single-resource path
+  // /api/sites/<id> returns 405 (the API exposes id-filtered lists only).
+  console.log(`[5b-4] Fetching site ${siteId}...`);
+  const listUrl = `${BASE}/api/sites?id=${encodeURIComponent(siteId)}`;
+  const siteResp = await fetch(listUrl, { headers });
+  if (!siteResp.ok) throw new Error(`GET site failed: ${siteResp.status}`);
+  const siteJson: any = await siteResp.json();
+  let site: any = null;
+  if (Array.isArray(siteJson.data)) {
+    site = siteJson.data.find((s: any) => s.id === siteId) || siteJson.data[0];
+  } else {
+    site = siteJson.data || siteJson;
+  }
+  if (!site) throw new Error("site not found in list response");
+  const cur = site.fieldMappings || {};
+  const meta = cur._meta || {};
+
+  // Build the PUT payload. The server stores top-level keys
+  // (itemSelector, setupScript, etc.) inside _meta but the PUT shape
+  // expects them flat. Field mappings (everything except _meta) copy
+  // through verbatim so we don't disturb existing selectors.
+  const fieldMappings: Record<string, unknown> = {};
+  for (const [k, v] of Object.entries(cur)) {
+    if (k === "_meta") continue;
+    fieldMappings[k] = v;
+  }
+  const payload: Record<string, unknown> = {
+    itemSelector: meta.itemSelector || ".item",
+    fieldMappings,
+    pageFlow: Array.isArray(site.pageFlow) ? site.pageFlow : [],
+    formCapture,
+  };
+  if (meta.listingSelector) payload.listingSelector = meta.listingSelector;
+  if (meta.setupScript) payload.setupScript = meta.setupScript;
+  if (meta.loadMoreSelector) payload.loadMoreSelector = meta.loadMoreSelector;
+  if (meta.revealSelector) payload.revealSelector = meta.revealSelector;
+  if (meta.pagination) payload.pagination = meta.pagination;
+
+  fs.writeFileSync(
+    path.resolve(".scratch", "merge-config-payload.json"),
+    JSON.stringify(payload, null, 2),
+    "utf8",
+  );
+  console.log(
+    `[5b-4] payload itemSelector=${payload.itemSelector} fieldKeys=[${Object.keys(fieldMappings).join(",")}] setupScriptBytes=${(payload.setupScript as string | undefined)?.length ?? 0}`,
+  );
+
+  const body = JSON.stringify(payload);
+  const putUrl = `${BASE}/api/sites/${siteId}/config`;
+
+  console.log("[5b-4] PUT #1...");
+  const r1 = await fetch(putUrl, { method: "PUT", headers, body });
+  if (!r1.ok)
+    throw new Error(`PUT #1 failed: ${r1.status} ${(await r1.text()).slice(0, 500)}`);
+  console.log("[5b-4] sleeping 5s before PUT #2 (race vs auto-analyzer)...");
+  await new Promise((r) => setTimeout(r, 5000));
+  console.log("[5b-4] PUT #2...");
+  const r2 = await fetch(putUrl, { method: "PUT", headers, body });
+  if (!r2.ok)
+    throw new Error(`PUT #2 failed: ${r2.status} ${(await r2.text()).slice(0, 500)}`);
+
+  // PUT auto-demotes ACTIVE to REVIEW; PATCH it back so the dashboard
+  // and the worker scheduler treat the site as live.
+  console.log("[5b-4] PATCH back to ACTIVE...");
+  const patchResp = await fetch(`${BASE}/api/sites/${siteId}`, {
+    method: "PATCH",
+    headers,
+    body: JSON.stringify({ status: "ACTIVE" }),
+  });
+  if (!patchResp.ok)
+    throw new Error(
+      `PATCH failed: ${patchResp.status} ${(await patchResp.text()).slice(0, 500)}`,
+    );
+
+  // Verify formCapture survived the PATCH.
+  const verifyResp = await fetch(listUrl, { headers });
+  const verifyJson: any = await verifyResp.json();
+  const verifySite =
+    (Array.isArray(verifyJson.data)
+      ? verifyJson.data.find((s: any) => s.id === siteId)
+      : verifyJson.data) || verifyJson;
+  const verifyFC = verifySite?.fieldMappings?._meta?.formCapture;
+  if (formCapture && !verifyFC) {
+    throw new Error("VERIFY: _meta.formCapture missing after PATCH");
+  }
+  console.log(
+    `[5b-4] verified status=${verifySite?.status} formCapture.fields=${verifyFC?.fields?.length ?? "n/a"}`,
+  );
+
+  // Trigger a "Test 1" scrape -- maxJobs: 1, same call the dashboard
+  // button makes. The worker's deleteMany clears existing jobs first.
+  console.log("[5b-4] POST /scrape { maxJobs: 1 } (Test 1 equivalent)...");
+  const scrapeResp = await fetch(`${BASE}/api/sites/${siteId}/scrape`, {
+    method: "POST",
+    headers,
+    body: JSON.stringify({ maxJobs: 1 }),
+  });
+  if (!scrapeResp.ok)
+    throw new Error(
+      `POST scrape failed: ${scrapeResp.status} ${(await scrapeResp.text()).slice(0, 500)}`,
+    );
+  const scrapeJson: any = await scrapeResp.json();
+  const runId = scrapeJson.data?.id || scrapeJson.id;
+  console.log(`[5b-4] scrape runId=${runId}`);
+
+  // Poll up to 90s.
+  let runStatus = "PENDING";
+  for (let i = 0; i < 18; i++) {
+    await new Promise((r) => setTimeout(r, 5000));
+    const sResp = await fetch(`${BASE}/api/sites/${siteId}/scrape`, { headers });
+    const sJson: any = await sResp.json();
+    const run = sJson.data || sJson;
+    runStatus = run?.status || "UNKNOWN";
+    const jc = run?.jobCount;
+    console.log(`[5b-4] tick ${i + 1} status=${runStatus} jobs=${jc}`);
+    if (runStatus === "COMPLETED" || runStatus === "FAILED") break;
+  }
+
+  // Read the single job and report whether _formData populated.
+  const jobsResp = await fetch(
+    `${BASE}/api/jobs?siteId=${siteId}&pageSize=1`,
+    { headers },
+  );
+  const jobsJson: any = await jobsResp.json();
+  const job = jobsJson.data?.[0];
+  const hasFormData =
+    !!(job?.rawData && (job.rawData as any)._formData);
+  const jobId = job?.id || "(none)";
+
+  console.log(
+    `\n5b-4: siteId=${siteId} status=${verifySite?.status} formCapture.fields=${verifyFC?.fields?.length ?? "n/a"} testScrape=${runId} ${runStatus} job=${jobId} hasFormData=${hasFormData}`,
+  );
+}
+
+main().catch((e) => {
+  console.error("[5b-4] ERROR:", e?.message || e);
+  process.exit(1);
+});
+'@
+
+$mergePath = '.\.scratch\merge-form-capture.ts'
+Set-Content -Path $mergePath -Value $mergeScript -Encoding UTF8
+npx tsx $mergePath $SITE_ID .scratch/scrap-form-capture.json
+$MERGE_EXIT = $LASTEXITCODE
+```
+
+**Gates** (all must pass — else report and stop):
+
+- `$MERGE_EXIT -eq 0`.
+- The final summary line shows `status=ACTIVE` and a non-empty
+  `formCapture.fields` count matching the local JSON.
+- `hasFormData=true` on the single test-scraped job (when the worker
+  successfully copies the static form into `rawData._formData`).
+
+If `hasFormData=false` but everything else passed: the site is
+configured correctly, but the static-fallback copy didn't happen on
+this scrape. Possible causes:
+
+- The worker's live form re-extraction tried and found the form (so it
+  preferred the live data) — `_formData` is still present but the key
+  shape may differ. Re-check the job's `rawData._formData` directly.
+- The form is hidden behind an expand/click that the worker doesn't
+  perform — re-onboard with a `setupScript` that pre-expands jobs, or
+  accept that the dashboard panel will only show the site-level
+  formCapture (from `_meta.formCapture`) rather than per-job.
+
+Report and continue — don't loop.
 
 ## Step 6 — PUT config (twice)
+
+> **Standalone-mode exit**: if the agent was invoked via
+> `run step 5b <URL>`, **skip Steps 6 through 9 entirely** — Step 5b-4
+> is the standalone equivalent (it does the PUTs, the PATCH back to
+> ACTIVE, the Test 1 scrape, and the verification). Steps 6-9 below
+> apply only to the linear /addsite flow.
 
 Build the SaveConfigPayload JSON (shape below) and PUT it. Then sleep 5s
 and PUT it AGAIN. The second PUT is critical because the server's auto
@@ -1164,6 +1549,52 @@ curl.exe -sS -X PUT "https://scrapper.haide-jobs.co.il/api/sites/$SITE_ID/config
   --data-binary "@$configPath"
 ```
 
+### browserOverrides for WAF-protected sites
+
+If Step 3's gate reported "UA-keyed WAF detected", add the `browserOverrides`
+field that the gate script printed to the config payload. Shape:
+
+```jsonc
+{
+  "itemSelector": "...",
+  "fieldMappings": { ... },
+  "pageFlow": [],
+  "formCapture": null,
+  "browserOverrides": {
+    "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+    "extraHeaders": {
+      "accept-language": "he-IL,he;q=0.9,en-US;q=0.8,en;q=0.7"
+    }
+  }
+}
+```
+
+In PowerShell, building on the `$config` hashtable from above:
+
+```powershell
+$config.browserOverrides = [ordered]@{
+  userAgent    = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36'
+  extraHeaders = [ordered]@{
+    'accept-language' = 'he-IL,he;q=0.9,en-US;q=0.8,en;q=0.7'
+  }
+}
+```
+
+Validation (per
+[src/lib/validators.ts](src/lib/validators.ts) `updateSiteConfigSchema`):
+both `userAgent` and `extraHeaders` are optional; either may be omitted.
+`userAgent` caps at 500 chars, each header value at 1000 chars. The API
+persists the block under `fieldMappings._meta.browserOverrides` next to
+`setupScript` and `loadMoreSelector`. The worker reads it in
+[worker/lib/playwright.ts](worker/lib/playwright.ts) `createPage()` —
+per-site `userAgent` wins over `SCRAPE_USER_AGENT`, per-site headers
+merge on top of the default `Accept-Language`. Nothing else needs to
+change about the rest of the config.
+
+Reference: bezeq.co.il (siteId `cmpmv882i001x01mvhf9qfaqy`) is the
+canonical case — TCP-resets bare Playwright but loads cleanly with the
+Chrome 131 UA above.
+
 ## Step 7 — PATCH to ACTIVE
 
 ```powershell
@@ -1250,12 +1681,13 @@ End with a 3-line wrap-up:
   IP / cookies and stop — the worker will handle it during the real scrape.
 - **UA-keyed WAF (TCP-level reset):** distinct from a challenge page —
   the host rejects default-Playwright UA strings *before* any HTTP
-  response (`ERR_CONNECTION_RESET` in 2–5 seconds). Sites that do this
-  cannot be onboarded today because the worker uses Playwright's
-  default UA. The Step 3 reachability gate catches this fail-fast. If
-  you hit it, stop and file a worker fix (real Chrome UA on the
-  context, or a per-site UA-override config field). Reference site:
-  bezeq.co.il (`cmpmv882i001x01mvhf9qfaqy`).
+  response (`ERR_CONNECTION_RESET` in 2–5 seconds). The Step 3
+  reachability gate catches this; when it reports "UA-keyed WAF", carry
+  the `{ userAgent, extraHeaders }` payload it prints into the Step 6
+  PUT as `browserOverrides` (see Step 6's "browserOverrides for
+  WAF-protected sites" subsection). The worker applies the override per
+  scrape, no env changes required. Reference site: bezeq.co.il
+  (`cmpmv882i001x01mvhf9qfaqy`).
 - **Paginated sites:** if the page shows only N rows but there are more,
   the rest will be missed. For MVP, set itemSelector to what's visible;
   pagination support is a separate feature (`pageFlow`).

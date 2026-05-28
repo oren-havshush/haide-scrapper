@@ -259,6 +259,7 @@ export async function saveSiteConfig(
     pagination?: { type: "click"; nextSelector: string; maxPages?: number; settleMs?: number };
     setupScript?: string;
     loadMoreSelector?: string;
+    browserOverrides?: { userAgent?: string; extraHeaders?: Record<string, string> };
   }
 ) {
   const site = await prisma.site.findUnique({ where: { id: siteId } });
@@ -277,6 +278,7 @@ export async function saveSiteConfig(
       pagination: config.pagination || null,
       setupScript: config.setupScript || null,
       loadMoreSelector: config.loadMoreSelector || null,
+      browserOverrides: config.browserOverrides || null,
       savedAt: new Date().toISOString(),
     },
   };

@@ -1,0 +1,50 @@
+---
+description: How to deploy this project (do NOT use Render)
+alwaysApply: true
+---
+
+# Deployment
+
+This project is **no longer deployed via Render**. Ignore `render.yaml` for deploy purposes — it is kept around for reference only.
+
+When the user asks to "deploy" (or any synonym), do **both** steps, in order:
+
+1. **Push the current changes to git** (`main` branch on `origin`):
+   - Stage relevant files, commit with a clear message, and `git push origin main`.
+   - If there are no local changes, skip the commit and just proceed to step 2.
+
+2. **Run the deploy script** against the production host:
+
+```bash
+./deploy.sh root@194.88.110.149
+```
+
+The script (`deploy.sh` at the repo root) rsyncs the project to `/opt/haide-scrapper` on the host and rebuilds the Docker services there. It must be run from the repo root.
+
+## Running from PowerShell on this Windows machine
+
+PowerShell can't execute `./deploy.sh` directly. There is no WSL on this box, and Git Bash's bundled toolchain doesn't ship `rsync`. A working MSYS2 toolchain has been pre-installed at `C:\Users\shayo\msys2\usr\bin\` (rsync, ssh, and matching `msys-*.dll` runtime, plus a synthetic POSIX home at `C:\Users\shayo\msys2\home\shayo\.ssh\` holding `config`, `known_hosts`, and identity keys).
+
+To deploy from a Cursor / PowerShell session, invoke:
+
+```powershell
+cmd.exe /c '"C:\Program Files\Git\bin\bash.exe" -lc "export PATH=/c/Users/shayo/msys2/usr/bin:$PATH; ./deploy.sh root@194.88.110.149" <NUL'
+```
+
+The `<NUL` redirection is required — without it, MSYS2 rsync fails with `dup() in/out/err failed` when launched from a non-MSYS parent.
+
+Run it backgrounded (`block_until_ms: 0`) and stream the output file; the full build typically takes ~5–10 minutes.
+
+## After running, ALWAYS verify the build actually succeeded
+
+`deploy.sh` will print `==> Deployment complete: <tag>` and exit 0 even when the new Docker image build fails — in that case the old containers are simply left running and the healthcheck passes against them. Scan the output for:
+
+- `failed to solve:` or `did not complete successfully: exit code:` → build failed, changes are NOT live.
+- `Container haide-scrapper-web-1 Recreate` or `Started` (vs `Running`) → new image is actually live.
+
+If the build failed, report it to the user explicitly instead of declaring success.
+
+## Notes
+
+- Default host is `root@194.88.110.149` unless the user specifies a different `user@host`.
+- Do **not** suggest Render dashboard steps, `autoDeploy`, or anything Render-related when the user asks to deploy. `render.yaml` is kept for reference only.
