@@ -14,10 +14,12 @@ import { toast } from "sonner";
 import { SiteActions } from "@/components/sites/SiteActions";
 import { DeleteSiteDialog } from "@/components/sites/DeleteSiteDialog";
 import { SiteNoteDialog } from "@/components/sites/SiteNoteDialog";
+import { SiteCompanyDialog } from "@/components/sites/SiteCompanyDialog";
 import {
   useUpdateSiteStatus,
   useDeleteSite,
   useUpdateSiteNote,
+  useUpdateSiteCompanyName,
 } from "@/hooks/useSites";
 import { useTriggerScrape, useClearJobs } from "@/hooks/useScrapeRuns";
 
@@ -32,6 +34,7 @@ interface LatestScrapeRun {
 interface Site {
   id: string;
   siteUrl: string;
+  companyName: string | null;
   status: "ANALYZING" | "REVIEW" | "ACTIVE" | "FAILED" | "SKIPPED";
   confidenceScore: number | null;
   fieldMappings: Record<string, unknown> | null;
@@ -64,6 +67,14 @@ const FILTERED_EMPTY_MESSAGES: Record<string, string> = {
 };
 
 const PAGE_SIZE = 50;
+
+const NOTE_PREVIEW_MAX = 60;
+
+function previewNote(note: string): string {
+  return note.length > NOTE_PREVIEW_MAX
+    ? note.slice(0, NOTE_PREVIEW_MAX).trimEnd() + "\u2026"
+    : note;
+}
 
 function SortIndicator({ column, sortBy, sortOrder }: {
   column: SortableColumn;
@@ -125,15 +136,21 @@ export function SitesTable({
 }: SitesTableProps) {
   const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null);
   const [noteTargetId, setNoteTargetId] = useState<string | null>(null);
+  const [companyTargetId, setCompanyTargetId] = useState<string | null>(null);
   const [scrapingSiteId, setScrapingSiteId] = useState<string | null>(null);
   const updateStatus = useUpdateSiteStatus();
   const updateNote = useUpdateSiteNote();
+  const updateCompany = useUpdateSiteCompanyName();
   const deleteSiteMutation = useDeleteSite();
   const triggerScrape = useTriggerScrape();
   const clearJobs = useClearJobs();
 
   const noteTargetSite = noteTargetId
     ? sites.find((s) => s.id === noteTargetId) ?? null
+    : null;
+
+  const companyTargetSite = companyTargetId
+    ? sites.find((s) => s.id === companyTargetId) ?? null
     : null;
 
   const handleSkip = (siteId: string) => {
@@ -211,6 +228,20 @@ export function SitesTable({
     );
   };
 
+  const handleSaveCompany = (name: string | null) => {
+    if (!companyTargetId) return;
+    updateCompany.mutate(
+      { siteId: companyTargetId, companyName: name },
+      {
+        onSuccess: () => {
+          toast.success(name ? "Company name saved" : "Company name cleared");
+          setCompanyTargetId(null);
+        },
+        onError: (err: Error) => toast.error(err.message),
+      },
+    );
+  };
+
   const handleDeleteConfirm = () => {
     if (!deleteTargetId) return;
     deleteSiteMutation.mutate(deleteTargetId, {
@@ -254,6 +285,7 @@ export function SitesTable({
       <Table>
         <TableHeader>
           <TableRow>
+            <TableHead className="w-[180px]">Company</TableHead>
             <TableHead className="w-auto">URL</TableHead>
             <TableHead className="w-[120px]">Status</TableHead>
             <TableHead
@@ -283,6 +315,17 @@ export function SitesTable({
 
             return (
               <TableRow key={site.id} className="h-10 hover:bg-[#18181b]">
+                <TableCell>
+                  <button
+                    type="button"
+                    onClick={() => setCompanyTargetId(site.id)}
+                    className="text-sm text-left w-full truncate hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50 rounded px-1 py-0.5"
+                    style={{ color: site.companyName ? "#e4e4e7" : "#71717a" }}
+                    title={site.companyName ?? "Click to add a company name"}
+                  >
+                    {site.companyName ?? "+ Add"}
+                  </button>
+                </TableCell>
                 <TableCell className="font-mono text-[13px]">
                   {site.siteUrl}
                 </TableCell>
@@ -310,7 +353,7 @@ export function SitesTable({
                     style={{ color: site.adminNote ? "#e4e4e7" : "#71717a" }}
                     title={site.adminNote ?? "Click to add a note"}
                   >
-                    {site.adminNote ?? "+ Add note"}
+                    {site.adminNote ? previewNote(site.adminNote) : "+ Add note"}
                   </button>
                 </TableCell>
                 <TableCell>
@@ -381,6 +424,17 @@ export function SitesTable({
         initialNote={noteTargetSite?.adminNote ?? null}
         onSave={handleSaveNote}
         isSaving={updateNote.isPending}
+      />
+
+      <SiteCompanyDialog
+        open={companyTargetId !== null}
+        onOpenChange={(open) => {
+          if (!open) setCompanyTargetId(null);
+        }}
+        siteUrl={companyTargetSite?.siteUrl ?? ""}
+        initialName={companyTargetSite?.companyName ?? null}
+        onSave={handleSaveCompany}
+        isSaving={updateCompany.isPending}
       />
     </div>
   );

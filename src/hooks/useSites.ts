@@ -11,21 +11,33 @@ interface UseSitesParams {
   page?: number;
   pageSize?: number;
   status?: string;
+  companyNameSearch?: string;
+  urlSearch?: string;
   sortBy?: string;
   sortOrder?: string;
 }
 
 export function useSites(params: UseSitesParams = {}) {
-  const { page = 1, pageSize = 50, status, sortBy = "createdAt", sortOrder = "desc" } = params;
+  const {
+    page = 1,
+    pageSize = 50,
+    status,
+    companyNameSearch,
+    urlSearch,
+    sortBy = "createdAt",
+    sortOrder = "desc",
+  } = params;
   const searchParams = new URLSearchParams();
   searchParams.set("page", String(page));
   searchParams.set("pageSize", String(pageSize));
   if (status) searchParams.set("status", status);
+  if (companyNameSearch) searchParams.set("companyNameSearch", companyNameSearch);
+  if (urlSearch) searchParams.set("urlSearch", urlSearch);
   if (sortBy) searchParams.set("sortBy", sortBy);
   if (sortOrder) searchParams.set("sortOrder", sortOrder);
 
   return useQuery({
-    queryKey: ["sites", { page, pageSize, status, sortBy, sortOrder }],
+    queryKey: ["sites", { page, pageSize, status, companyNameSearch, urlSearch, sortBy, sortOrder }],
     queryFn: () => apiFetch(`/api/sites?${searchParams.toString()}`),
   });
 }
@@ -75,6 +87,21 @@ export function useUpdateSiteNote() {
       apiFetch(`/api/sites/${siteId}`, {
         method: "PATCH",
         body: JSON.stringify({ adminNote }),
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["sites"] });
+    },
+  });
+}
+
+export function useUpdateSiteCompanyName() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ siteId, companyName }: { siteId: string; companyName: string | null }) =>
+      apiFetch(`/api/sites/${siteId}`, {
+        method: "PATCH",
+        body: JSON.stringify({ companyName }),
       }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["sites"] });

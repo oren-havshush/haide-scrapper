@@ -1,7 +1,13 @@
 import { NextRequest } from "next/server";
 import { successResponse, listResponse } from "@/lib/api-utils";
 import { formatErrorResponse, ValidationError } from "@/lib/errors";
-import { createSiteSchema, paginationSchema, sortSchema, siteUrlFilterSchema } from "@/lib/validators";
+import {
+  createSiteSchema,
+  paginationSchema,
+  sortSchema,
+  siteUrlFilterSchema,
+  siteSearchFilterSchema,
+} from "@/lib/validators";
 import { createSite, listSites } from "@/services/siteService";
 
 export async function GET(request: NextRequest) {
@@ -19,8 +25,19 @@ export async function GET(request: NextRequest) {
     const { siteUrl } = siteUrlFilterSchema.parse({
       siteUrl: searchParams.get("siteUrl") ?? undefined,
     });
+    const { companyNameSearch, urlSearch } = siteSearchFilterSchema.parse({
+      companyNameSearch: searchParams.get("companyNameSearch") ?? undefined,
+      urlSearch: searchParams.get("urlSearch") ?? undefined,
+    });
 
-    const { sites, total } = await listSites({ ...params, ...sortParams, status, siteUrl });
+    const { sites, total } = await listSites({
+      ...params,
+      ...sortParams,
+      status,
+      siteUrl,
+      companyNameSearch: companyNameSearch || undefined,
+      urlSearch: urlSearch || undefined,
+    });
     return listResponse(sites, {
       total,
       page: params.page,

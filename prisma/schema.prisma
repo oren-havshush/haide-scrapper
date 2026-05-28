@@ -51,6 +51,7 @@ enum WorkerJobType {
 model Site {
   id              String      @id @default(cuid())
   siteUrl         String      @unique
+  companyName     String?
   status          SiteStatus  @default(ANALYZING)
   confidenceScore Float?
   fieldMappings   Json?

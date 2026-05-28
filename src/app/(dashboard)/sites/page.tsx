@@ -2,12 +2,15 @@
 
 import { useState } from "react";
 import { AddSiteInput } from "@/components/sites/AddSiteInput";
+import { SiteSearchFilters } from "@/components/sites/SiteSearchFilters";
 import { SiteStatusTabs } from "@/components/sites/SiteStatusTabs";
 import { SitesTable } from "@/components/sites/SitesTable";
 import { useSites } from "@/hooks/useSites";
 
 export default function SitesPage() {
   const [statusFilter, setStatusFilter] = useState<string | undefined>(undefined);
+  const [companyNameSearch, setCompanyNameSearch] = useState("");
+  const [urlSearch, setUrlSearch] = useState("");
   const [page, setPage] = useState(1);
   const [sortBy, setSortBy] = useState<"createdAt" | "confidenceScore">("createdAt");
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
@@ -15,6 +18,8 @@ export default function SitesPage() {
   const { data, isLoading } = useSites({
     page,
     status: statusFilter,
+    companyNameSearch: companyNameSearch || undefined,
+    urlSearch: urlSearch || undefined,
     sortBy,
     sortOrder,
   });
@@ -26,6 +31,16 @@ export default function SitesPage() {
   const handleTabChange = (status: string | undefined) => {
     setStatusFilter(status);
     setPage(1); // Reset to first page on filter change
+  };
+
+  const handleCompanyNameSearchChange = (value: string) => {
+    setCompanyNameSearch(value);
+    setPage(1);
+  };
+
+  const handleUrlSearchChange = (value: string) => {
+    setUrlSearch(value);
+    setPage(1);
   };
 
   const handleSort = (column: "createdAt" | "confidenceScore") => {
@@ -44,6 +59,12 @@ export default function SitesPage() {
         Sites
       </h2>
       <AddSiteInput />
+      <SiteSearchFilters
+        companyNameSearch={companyNameSearch}
+        urlSearch={urlSearch}
+        onCompanyNameSearchChange={handleCompanyNameSearchChange}
+        onUrlSearchChange={handleUrlSearchChange}
+      />
       <SiteStatusTabs
         activeTab={statusFilter ?? "ALL"}
         onTabChange={handleTabChange}

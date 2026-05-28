@@ -58,17 +58,36 @@ export async function listSites(
   params: PaginationParams & {
     status?: string;
     siteUrl?: string;
+    companyNameSearch?: string;
+    urlSearch?: string;
     sortBy?: "createdAt" | "confidenceScore" | "reviewAt";
     sortOrder?: "asc" | "desc";
   }
 ) {
-  const { page, pageSize, status, siteUrl, sortBy = "createdAt", sortOrder = "desc" } = params;
+  const {
+    page,
+    pageSize,
+    status,
+    siteUrl,
+    companyNameSearch,
+    urlSearch,
+    sortBy = "createdAt",
+    sortOrder = "desc",
+  } = params;
   const where: Record<string, unknown> = {};
   if (status) {
     where.status = status as SiteStatus;
   }
-  if (siteUrl) {
+  // urlSearch (partial, case-insensitive) wins over the exact-match siteUrl
+  // filter when both are supplied. The exact-match path is only used by the
+  // /addsite skill for dedupe, so they never come from the same caller.
+  if (urlSearch) {
+    where.siteUrl = { contains: urlSearch, mode: "insensitive" };
+  } else if (siteUrl) {
     where.siteUrl = siteUrl;
+  }
+  if (companyNameSearch) {
+    where.companyName = { contains: companyNameSearch, mode: "insensitive" };
   }
 
   // Build orderBy - handle nulls for confidenceScore and reviewAt
@@ -138,6 +157,18 @@ export async function updateSiteAdminNote(siteId: string, note: string | null) {
   return prisma.site.update({
     where: { id: siteId },
     data: { adminNote: trimmed && trimmed.length > 0 ? trimmed : null },
+  });
+}
+
+export async function updateSiteCompanyName(siteId: string, name: string | null) {
+  const site = await prisma.site.findUnique({ where: { id: siteId } });
+  if (!site) {
+    throw new NotFoundError("Site", siteId);
+  }
+  const trimmed = name?.trim() ?? null;
+  return prisma.site.update({
+    where: { id: siteId },
+    data: { companyName: trimmed && trimmed.length > 0 ? trimmed : null },
   });
 }
 

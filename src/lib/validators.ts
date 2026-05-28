@@ -19,6 +19,14 @@ export const siteUrlFilterSchema = z.object({
   siteUrl: z.string().optional(),
 });
 
+// Partial-match search filters used by the dashboard's Filter inputs. Separate
+// from `siteUrlFilterSchema` so the /addsite skill's exact-match dedupe path
+// keeps working unchanged.
+export const siteSearchFilterSchema = z.object({
+  companyNameSearch: z.string().trim().max(120).optional(),
+  urlSearch: z.string().trim().max(500).optional(),
+});
+
 export const sortSchema = z.object({
   sortBy: z.enum(["createdAt", "confidenceScore", "reviewAt"]).default("createdAt"),
   sortOrder: z.enum(["asc", "desc"]).default("desc"),
@@ -31,6 +39,11 @@ export const updateSiteStatusSchema = z.object({
 export const updateSiteAdminNoteSchema = z.object({
   // null clears the note, empty string is normalized to null in the service.
   adminNote: z.string().max(2_000).nullable(),
+});
+
+export const updateSiteCompanyNameSchema = z.object({
+  // null clears the name, empty/whitespace is normalized to null in the service.
+  companyName: z.string().max(120).nullable(),
 });
 
 export const jobsFilterSchema = z.object({

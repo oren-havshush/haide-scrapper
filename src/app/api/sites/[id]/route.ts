@@ -4,10 +4,12 @@ import { formatErrorResponse, ValidationError } from "@/lib/errors";
 import {
   updateSiteStatusSchema,
   updateSiteAdminNoteSchema,
+  updateSiteCompanyNameSchema,
 } from "@/lib/validators";
 import {
   updateSiteStatus,
   updateSiteAdminNote,
+  updateSiteCompanyName,
   deleteSite,
 } from "@/services/siteService";
 
@@ -19,8 +21,19 @@ export async function PATCH(
     const { id } = await params;
     const body = await request.json();
 
-    // Accept either { status } or { adminNote }. Inferred from which key is
-    // present so the existing status PATCH callers don't need to change.
+    // Accept { status }, { adminNote }, or { companyName }. Inferred from which
+    // key is present so existing PATCH callers don't need to change.
+    if (Object.prototype.hasOwnProperty.call(body, "companyName")) {
+      const parsed = updateSiteCompanyNameSchema.safeParse(body);
+      if (!parsed.success) {
+        throw new ValidationError(
+          parsed.error.issues.map((i: { message: string }) => i.message).join(", ")
+        );
+      }
+      const site = await updateSiteCompanyName(id, parsed.data.companyName);
+      return successResponse(site);
+    }
+
     if (Object.prototype.hasOwnProperty.call(body, "adminNote")) {
       const parsed = updateSiteAdminNoteSchema.safeParse(body);
       if (!parsed.success) {
