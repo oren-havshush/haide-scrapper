@@ -304,8 +304,8 @@ async function fetchPage(ctx: BrowserContext, url: string): Promise<FetchResult>
     await page.waitForLoadState('networkidle', { timeout: 8000 }).catch(() => {});
     result.finalHtml = await page.content();
     result.visibleText = await page.evaluate(() => (document.body?.innerText || '').slice(0, 20000)).catch(() => '');
-  } catch (e: any) {
-    const raw = (e?.message || String(e));
+  } catch (e: unknown) {
+    const raw = e instanceof Error ? e.message : String(e);
     // Playwright shoves a multi-line "Call log:" block into errors; chop it off
     // and collapse whitespace so we get a single-line note in the CSV.
     result.error = raw
@@ -526,7 +526,7 @@ async function main() {
 
   let done = 0;
   const t0 = Date.now();
-  const enriched = await runPool(slice, args.concurrency, async (row, idx) => {
+  const enriched = await runPool(slice, args.concurrency, async (row) => {
     const out = await enrichRow(ctx, row, args.urlColumn);
     done++;
     const elapsed = ((Date.now() - t0) / 1000).toFixed(1);

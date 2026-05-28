@@ -14,6 +14,10 @@ const eslintConfig = defineConfig([
     "next-env.d.ts",
     // Extension is a separate project with its own build
     "extension/**",
+    // Per-site onboarding scratch workspaces. Not deployed, not type-checked
+    // (see tsconfig.json `exclude` and .dockerignore). The files here are
+    // exploratory probes/dryruns full of intentional `any`s and `require()`s.
+    "sites/**",
   ]),
 ]);
 

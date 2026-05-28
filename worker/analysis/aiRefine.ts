@@ -125,7 +125,7 @@ async function extractSamples(
 // Prompt construction
 // ---------------------------------------------------------------------------
 
-function buildPrompt(samples: string[], input: AiRefineInput): string {
+function buildPrompt(samples: string[], _input: AiRefineInput): string {
   const fieldDescriptions: Record<(typeof TARGET_FIELDS)[number], string> = {
     title: "The job title / position name",
     company: "The hiring company or employer name",

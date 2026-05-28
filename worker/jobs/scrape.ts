@@ -343,8 +343,6 @@ function parseFieldMappings(
 // flow (preserves prior behavior).
 // ---------------------------------------------------------------------------
 
-type FieldPageScope = "listing" | "detail";
-
 /** Test if `url` matches `pattern` (with `*` wildcard). */
 function urlMatchesPagePattern(url: string, pattern: string): boolean {
   if (!url || !pattern) return false;
@@ -1919,7 +1917,6 @@ function getSetupScript(fieldMappingsRaw: unknown): string | null {
 async function runSetupScript(page: Page, script: string): Promise<void> {
   try {
     await page.evaluate((src: string) => {
-      // eslint-disable-next-line @typescript-eslint/no-implied-eval
       new Function(src)();
     }, script);
     await page.waitForTimeout(1_500);

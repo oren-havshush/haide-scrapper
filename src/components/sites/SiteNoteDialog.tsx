@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import {
   Dialog,
   DialogContent,
@@ -31,12 +31,18 @@ export function SiteNoteDialog({
   onSave,
   isSaving,
 }: SiteNoteDialogProps) {
+  // Reset the textarea when the dialog reopens for a different site by tracking
+  // the prop combination we last initialized from. This is the React-recommended
+  // "adjust state during render" pattern (https://react.dev/reference/react/useState#storing-information-from-previous-renders);
+  // it replaces a `useEffect(() => setValue(...))` that the lint rule
+  // `react-hooks/set-state-in-effect` (rightly) flags as an anti-pattern.
   const [value, setValue] = useState(initialNote ?? "");
-
-  // Reset textarea when the dialog opens for a different site.
-  useEffect(() => {
+  const [lastKey, setLastKey] = useState<string | null>(null);
+  const currentKey = open ? `${siteUrl}\u0000${initialNote ?? ""}` : null;
+  if (currentKey !== lastKey) {
+    setLastKey(currentKey);
     if (open) setValue(initialNote ?? "");
-  }, [open, initialNote]);
+  }
 
   const trimmed = value.trim();
   const normalized = trimmed.length > 0 ? trimmed : null;
