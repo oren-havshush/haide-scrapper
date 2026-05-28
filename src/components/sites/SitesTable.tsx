@@ -76,6 +76,14 @@ function previewNote(note: string): string {
     : note;
 }
 
+const URL_PREVIEW_MAX = 60;
+
+function previewUrl(url: string): string {
+  return url.length > URL_PREVIEW_MAX
+    ? url.slice(0, URL_PREVIEW_MAX).trimEnd() + "\u2026"
+    : url;
+}
+
 function SortIndicator({ column, sortBy, sortOrder }: {
   column: SortableColumn;
   sortBy: SortableColumn;
@@ -327,7 +335,15 @@ export function SitesTable({
                   </button>
                 </TableCell>
                 <TableCell className="font-mono text-[13px]">
-                  {site.siteUrl}
+                  <a
+                    href={site.siteUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    title={site.siteUrl}
+                    className="block w-full truncate hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50 rounded"
+                  >
+                    {previewUrl(site.siteUrl)}
+                  </a>
                 </TableCell>
                 <TableCell>
                   <div className="flex items-center">
