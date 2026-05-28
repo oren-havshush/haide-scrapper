@@ -88,7 +88,7 @@ sleep 3
 
 docker run --rm --network "$NETWORK" \
   -e DATABASE_URL="postgresql://postgres:${POSTGRES_PASSWORD}@db:5432/scrapnew" \
-  "${COMPOSE_PROJECT}-worker" pnpm exec prisma migrate deploy
+  "${COMPOSE_PROJECT}-worker" node_modules/.bin/prisma migrate deploy
 
 echo "==> Starting services..."
 docker compose up -d
