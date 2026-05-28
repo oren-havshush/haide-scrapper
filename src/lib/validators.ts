@@ -109,6 +109,11 @@ export const updateSiteConfigSchema = z.object({
     .object({
       userAgent: z.string().max(500).optional(),
       extraHeaders: z.record(z.string(), z.string().max(1000)).optional(),
+      // Disables CSP enforcement on the browsing context. Needed for sites
+      // whose page-level CSP `connect-src` blocks the setupScript's XHR to a
+      // data subdomain (bezeq.co.il pattern). Maps to Playwright's
+      // `newContext({ bypassCSP: true })`.
+      bypassCSP: z.boolean().optional(),
     })
     .optional(),
 });

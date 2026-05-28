@@ -143,6 +143,12 @@ export async function launchBrowser(): Promise<Browser> {
 export interface BrowserOverrides {
   userAgent?: string;
   extraHeaders?: Record<string, string>;
+  // When true, Playwright disables Content-Security-Policy enforcement for
+  // this browsing context. Needed for sites whose page-level CSP `connect-src`
+  // blocks XHR/fetch to a separate data subdomain that the setupScript needs
+  // to hydrate the listing (e.g. bezeq.co.il: page is www., job data is on
+  // d-api.). Maps directly to Playwright's `bypassCSP` newContext option.
+  bypassCSP?: boolean;
 }
 
 export async function createPage(
@@ -166,10 +172,17 @@ export async function createPage(
     ...(overrides?.extraHeaders ?? {}),
   };
 
-  if (overrideUA || (overrides?.extraHeaders && Object.keys(overrides.extraHeaders).length > 0)) {
+  const bypassCSP = !!overrides?.bypassCSP;
+
+  if (
+    overrideUA ||
+    (overrides?.extraHeaders && Object.keys(overrides.extraHeaders).length > 0) ||
+    bypassCSP
+  ) {
     console.info("[worker] Applying per-site browser overrides:", {
       hasUserAgent: !!overrideUA,
       extraHeaderKeys: Object.keys(overrides?.extraHeaders ?? {}),
+      bypassCSP,
     });
   }
 
@@ -179,6 +192,7 @@ export async function createPage(
     locale,
     timezoneId,
     extraHTTPHeaders,
+    bypassCSP,
   });
 
   // Mask obvious headless-browser fingerprints. Many Israeli sites (Cloudflare

@@ -61,16 +61,29 @@ if ($meta.setupScript)      { $config.setupScript      = $meta.setupScript }
 if ($meta.loadMoreSelector) { $config.loadMoreSelector = $meta.loadMoreSelector }
 if ($meta.pagination)       { $config.pagination       = $meta.pagination }
 
-# The new per-site browser override that unblocks bezeq's WAF.
+# Per-site browser overrides that unblock bezeq:
+#   - userAgent + Hebrew accept-language: needed for the page itself
+#     (bare Playwright UA gets a TCP reset from the WAF on www.bezeq.co.il).
+#   - bypassCSP: the page's Content-Security-Policy `connect-src` does NOT
+#     allowlist `d-api.bezeq.co.il`, which is where the setupScript's XHR
+#     for the active-jobs list goes. Without this flag Chromium aborts the
+#     XHR before it leaves the network stack and the scrape COMPLETEs with
+#     jobs=0. See addsite.md Step 6 "bypassCSP" subsection.
 $config.browserOverrides = [ordered]@{
   userAgent    = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36'
   extraHeaders = [ordered]@{
     'accept-language' = 'he-IL,he;q=0.9,en-US;q=0.8,en;q=0.7'
   }
+  bypassCSP    = $true
 }
 
 $configPath = '.\sites\bezeq\config.json'
 $configJson = $config | ConvertTo-Json -Depth 30
+# PowerShell 5.1's ConvertTo-Json serializes empty arrays wrapped inside an
+# [ordered] hashtable as "{}", which trips the API validator (it expects an
+# array). Fix pageFlow specifically — it's the only field here that can be
+# legitimately empty and must remain a JSON array.
+$configJson = $configJson -replace '"pageFlow"\s*:\s*\{\s*\}', '"pageFlow":  []'
 $abs = (Resolve-Path '.\sites\bezeq').Path + '\config.json'
 [System.IO.File]::WriteAllText($abs, $configJson, [System.Text.UTF8Encoding]::new($false))
 Write-Host "    config written to $configPath ($((Get-Item $configPath).Length) bytes)"

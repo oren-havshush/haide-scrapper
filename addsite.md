@@ -1582,18 +1582,45 @@ $config.browserOverrides = [ordered]@{
 
 Validation (per
 [src/lib/validators.ts](src/lib/validators.ts) `updateSiteConfigSchema`):
-both `userAgent` and `extraHeaders` are optional; either may be omitted.
-`userAgent` caps at 500 chars, each header value at 1000 chars. The API
-persists the block under `fieldMappings._meta.browserOverrides` next to
-`setupScript` and `loadMoreSelector`. The worker reads it in
+`userAgent`, `extraHeaders`, and `bypassCSP` are all optional; any may be
+omitted. `userAgent` caps at 500 chars, each header value at 1000 chars.
+The API persists the block under `fieldMappings._meta.browserOverrides`
+next to `setupScript` and `loadMoreSelector`. The worker reads it in
 [worker/lib/playwright.ts](worker/lib/playwright.ts) `createPage()` —
 per-site `userAgent` wins over `SCRAPE_USER_AGENT`, per-site headers
 merge on top of the default `Accept-Language`. Nothing else needs to
 change about the rest of the config.
 
+#### `bypassCSP` — when the data API is on a separate subdomain
+
+Some sites render their listing via a setupScript that XHRs a different
+host (e.g. `www.bezeq.co.il` → `https://d-api.bezeq.co.il/...`). The page
+ships a Content-Security-Policy whose `connect-src` does NOT allowlist
+that data host, so Chromium aborts the XHR before it leaves the network
+stack and the setupScript silently produces zero items. CORS is unrelated
+— the network response is fine; CSP is what's killing it.
+
+Symptom: scrape runs to `COMPLETED` (not `FAILED`) but `jobs=0`. A
+diagnostic setupScript that captures `xhr.send()` exceptions reports
+`xhrSendThrew: Failed to execute 'send' on 'XMLHttpRequest': Failed to
+load 'https://...'` — the "Failed to load" wording is the CSP signature.
+
+Fix: add `bypassCSP: true` to the `browserOverrides` block. The worker
+passes it straight to `browser.newContext({ bypassCSP: true })`, which
+disables CSP enforcement for that browsing context only. Per-site,
+opt-in — no global change, no impact on any other site.
+
+```jsonc
+"browserOverrides": {
+  "userAgent": "...",
+  "extraHeaders": { "accept-language": "..." },
+  "bypassCSP": true
+}
+```
+
 Reference: bezeq.co.il (siteId `cmpmv882i001x01mvhf9qfaqy`) is the
-canonical case — TCP-resets bare Playwright but loads cleanly with the
-Chrome 131 UA above.
+canonical case — TCP-resets bare Playwright (UA fix) and its setupScript
+hits `d-api.bezeq.co.il`, which the page CSP blocks (bypassCSP fix).
 
 ## Step 7 — PATCH to ACTIVE
 
