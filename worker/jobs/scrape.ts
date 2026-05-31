@@ -1157,6 +1157,13 @@ async function extractRawFieldsFromListingPage(
   // the SPA leaves it in the DOM. Uses the same key tuple as
   // dedupeAndCapRawFields (title + location + externalJobId + url).
   if (pagination) {
+    // For URL pagination, capture a stable base (param stripped) so each page
+    // is built deterministically from the sequence index rather than mutating
+    // whatever the SPA left in the address bar.
+    const baseUrl =
+      pagination.type === "url"
+        ? stripPaginationParam(page.url(), pagination.param)
+        : null;
     const all: Record<string, string>[] = [];
     for (let pageIdx = 1; pageIdx <= pagination.maxPages; pageIdx++) {
       const sig = await firstItemSignature(page, itemSelector);
@@ -1172,7 +1179,16 @@ async function extractRawFieldsFromListingPage(
       );
       all.push(...pageResults);
       if (pageIdx === pagination.maxPages) break;
-      const advanced = await advanceToNextPage(page, itemSelector, pagination, sig);
+      // nextSeqIndex = pageIdx: page 1 is sequence 0 (already loaded), so the
+      // page we advance to after pageIdx is sequence pageIdx.
+      const advanced = await advanceToNextPage(
+        page,
+        itemSelector,
+        pagination,
+        sig,
+        baseUrl,
+        pageIdx,
+      );
       if (!advanced) break;
       // Some sites trigger their own scroll-to-load after the page change.
       await autoScrollUntilStable(page, itemSelector);
@@ -1336,6 +1352,7 @@ async function extractRawFieldsWithPageFlow(
   await autoScrollUntilStable(page, itemSelector);
 
   // If there's only one step in pageFlow, extract directly from listing page
+  // (still honoring pagination so listing-only sites can page through results).
   if (pageFlow.length < 2) {
     return extractRawFieldsFromListingPage(
       page,
@@ -1343,6 +1360,7 @@ async function extractRawFieldsWithPageFlow(
       listingSelector,
       itemSelector,
       revealSelector,
+      pagination,
     );
   }
 
@@ -1406,6 +1424,12 @@ async function extractRawFieldsWithPageFlow(
   // we run it for each clicked page, accumulating into the same detailUrls /
   // listingFieldsByUrl. With no pagination, this loop runs once.
   const maxListingPages = pagination ? pagination.maxPages : 1;
+  // Stable base for URL pagination (param stripped). The listing was already
+  // navigated to pageFlow[0].url above, which is sequence 0.
+  const paginationBaseUrl =
+    pagination?.type === "url"
+      ? stripPaginationParam(page.url(), pagination.param)
+      : null;
   for (let listingPageIdx = 1; listingPageIdx <= maxListingPages; listingPageIdx++) {
     const sigBefore = pagination
       ? await firstItemSignature(page, itemSelector)
@@ -1551,7 +1575,16 @@ async function extractRawFieldsWithPageFlow(
       `[scrape] listing page ${listingPageIdx}: collected ${gainedUrls} detail URLs (running total ${detailUrls.length})`,
     );
     if (listingPageIdx === maxListingPages) break;
-    const advanced = await advanceToNextPage(page, itemSelector, pagination, sigBefore);
+    // nextSeqIndex = listingPageIdx: listing page 1 is sequence 0 (already
+    // loaded), so the page we advance to is sequence listingPageIdx.
+    const advanced = await advanceToNextPage(
+      page,
+      itemSelector,
+      pagination,
+      sigBefore,
+      paginationBaseUrl,
+      listingPageIdx,
+    );
     if (!advanced) break;
     // Some sites lazy-load rows after the pagination click (in-page scroll).
     await autoScrollUntilStable(page, itemSelector);
@@ -1780,12 +1813,27 @@ function getStructuralSelectors(
 // changing, or maxPages is hit. SPA-friendly because we don't trust URL.
 // ---------------------------------------------------------------------------
 
-interface PaginationConfig {
+interface ClickPaginationConfig {
   type: "click";
   nextSelector: string;
   maxPages: number;
   settleMs: number;
 }
+
+// URL-driven pagination: navigate the listing URL with an incrementing query
+// param (e.g. ?page=0..N for Drupal, ?paged=1..N for WordPress). Unlike click
+// pagination, this works on server-rendered sites and composes with pageFlow
+// (each paginated listing page still has its detail pages visited).
+interface UrlPaginationConfig {
+  type: "url";
+  param: string;
+  start: number;
+  step: number;
+  maxPages: number;
+  settleMs: number;
+}
+
+type PaginationConfig = ClickPaginationConfig | UrlPaginationConfig;
 
 function getPaginationConfig(
   fieldMappingsRaw: unknown,
@@ -1797,8 +1845,6 @@ function getPaginationConfig(
 
   const p = meta["pagination"] as Record<string, unknown> | null | undefined;
   if (!p || typeof p !== "object") return null;
-  if (p["type"] !== "click") return null;
-  if (typeof p["nextSelector"] !== "string" || !p["nextSelector"]) return null;
 
   const maxPages = typeof p["maxPages"] === "number" && p["maxPages"]! > 0
     ? Math.min(p["maxPages"] as number, 100)
@@ -1806,6 +1852,30 @@ function getPaginationConfig(
   const settleMs = typeof p["settleMs"] === "number" && p["settleMs"]! > 0
     ? Math.min(p["settleMs"] as number, 10_000)
     : 1200;
+
+  if (p["type"] === "url") {
+    if (typeof p["param"] !== "string" || !p["param"]) return null;
+    const start = typeof p["start"] === "number" && p["start"]! >= 0
+      ? (p["start"] as number)
+      : 0;
+    const step = typeof p["step"] === "number" && p["step"]! > 0
+      ? (p["step"] as number)
+      : 1;
+    console.info(
+      `[scrape] pagination: type=url param="${p["param"]}" start=${start} step=${step} maxPages=${maxPages} settleMs=${settleMs}`,
+    );
+    return {
+      type: "url",
+      param: p["param"] as string,
+      start,
+      step,
+      maxPages,
+      settleMs,
+    };
+  }
+
+  if (p["type"] !== "click") return null;
+  if (typeof p["nextSelector"] !== "string" || !p["nextSelector"]) return null;
 
   console.info(
     `[scrape] pagination: type=click nextSelector="${p["nextSelector"]}" maxPages=${maxPages} settleMs=${settleMs}`,
@@ -1816,6 +1886,37 @@ function getPaginationConfig(
     maxPages,
     settleMs,
   };
+}
+
+// Build a listing URL for a given URL-pagination sequence index (0-based).
+// The base URL has the pagination param stripped so we control its value.
+function buildPaginatedUrl(
+  baseUrl: string,
+  cfg: UrlPaginationConfig,
+  seqIndex: number,
+): string {
+  const value = cfg.start + seqIndex * cfg.step;
+  try {
+    const u = new URL(baseUrl);
+    u.searchParams.set(cfg.param, String(value));
+    return u.toString();
+  } catch {
+    // Relative or malformed URL — fall back to naive query concatenation.
+    const sep = baseUrl.includes("?") ? "&" : "?";
+    return `${baseUrl}${sep}${encodeURIComponent(cfg.param)}=${value}`;
+  }
+}
+
+// Strip the pagination param from a URL so it can be used as a stable base for
+// buildPaginatedUrl (the first page may arrive with or without the param set).
+function stripPaginationParam(url: string, param: string): string {
+  try {
+    const u = new URL(url);
+    u.searchParams.delete(param);
+    return u.toString();
+  } catch {
+    return url;
+  }
 }
 
 /**
@@ -1832,7 +1933,45 @@ async function advanceToNextPage(
   itemSelector: string | null,
   cfg: PaginationConfig,
   signatureBefore: string,
+  baseUrl: string | null = null,
+  nextSeqIndex = 0,
 ): Promise<boolean> {
+  // URL pagination: navigate to base URL with the incremented query param.
+  // Stop when there are no items on the next page, or when its content is
+  // identical to the page we just left (out-of-range pages on Drupal/WP
+  // often repeat the last page instead of 404ing).
+  if (cfg.type === "url") {
+    if (!baseUrl) {
+      console.info("[scrape] pagination(url): no base URL — stopping");
+      return false;
+    }
+    const target = buildPaginatedUrl(baseUrl, cfg, nextSeqIndex);
+    console.info(`[scrape] pagination(url): navigating to ${target}`);
+    try {
+      await gotoForgiving(page, target, NAVIGATION_TIMEOUT_MS);
+    } catch (e) {
+      console.warn(`[scrape] pagination(url): navigation failed — ${(e as Error).message}`);
+      return false;
+    }
+    if (itemSelector) {
+      try {
+        await page.waitForSelector(itemSelector, { timeout: cfg.settleMs * 4 });
+      } catch {
+        console.info("[scrape] pagination(url): no items on next page — stopping");
+        return false;
+      }
+      const sigAfter = await firstItemSignature(page, itemSelector);
+      if (sigAfter && sigAfter === signatureBefore) {
+        console.info("[scrape] pagination(url): content identical to previous page — stopping");
+        return false;
+      }
+    } else {
+      await page.waitForTimeout(cfg.settleMs);
+    }
+    await page.waitForTimeout(300);
+    return true;
+  }
+
   const btn = await page.$(cfg.nextSelector).catch(() => null);
   if (!btn) {
     console.info("[scrape] pagination: next button not found — stopping");

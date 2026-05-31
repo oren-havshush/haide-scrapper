@@ -256,10 +256,12 @@ export async function saveSiteConfig(
     pageFlow: Array<{ url: string; action: string; waitFor?: string }>;
     formCapture: { formSelector: string; actionUrl: string; method: string; fields: Array<{ name: string; label: string; fieldType: string; required: boolean; tagName: string }> } | null;
     originalMappings?: Record<string, unknown>;
-    pagination?: { type: "click"; nextSelector: string; maxPages?: number; settleMs?: number };
+    pagination?:
+      | { type: "click"; nextSelector: string; maxPages?: number; settleMs?: number }
+      | { type: "url"; param: string; start?: number; step?: number; maxPages?: number; settleMs?: number };
     setupScript?: string;
     loadMoreSelector?: string;
-    browserOverrides?: { userAgent?: string; extraHeaders?: Record<string, string> };
+    browserOverrides?: { userAgent?: string; extraHeaders?: Record<string, string>; bypassCSP?: boolean };
   }
 ) {
   const site = await prisma.site.findUnique({ where: { id: siteId } });

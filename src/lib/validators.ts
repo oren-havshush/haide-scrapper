@@ -79,16 +79,35 @@ export const updateSiteConfigSchema = z.object({
     })),
   }).nullable(),
   originalMappings: z.record(z.string(), z.unknown()).optional(),
-  // Listing-page pagination — currently only "click" type (works for MUI
-  // Pagination, "Next" buttons, etc. where direct URL navigation doesn't
-  // re-render the SPA). Stored under fieldMappings._meta in the DB.
+  // Listing-page pagination. Stored under fieldMappings._meta in the DB.
+  //  - "click": worker clicks a "Next" button until it disappears/disables or
+  //    the first item stops changing. Best for SPAs (MUI Pagination, etc.)
+  //    where direct URL navigation doesn't re-render.
+  //  - "url": worker navigates the listing URL with an incrementing query
+  //    param (e.g. ?page=N). Best for server-rendered sites that paginate via
+  //    the URL (Drupal `?page=0..N`, WordPress `?paged=N`, etc.). Works
+  //    alongside pageFlow so each paginated listing page still gets its detail
+  //    pages visited for descriptions.
   pagination: z
-    .object({
-      type: z.literal("click"),
-      nextSelector: z.string(),
-      maxPages: z.number().int().min(1).max(100).optional(),
-      settleMs: z.number().int().min(100).max(10_000).optional(),
-    })
+    .union([
+      z.object({
+        type: z.literal("click"),
+        nextSelector: z.string(),
+        maxPages: z.number().int().min(1).max(100).optional(),
+        settleMs: z.number().int().min(100).max(10_000).optional(),
+      }),
+      z.object({
+        type: z.literal("url"),
+        // Query-string param to increment, e.g. "page" or "paged".
+        param: z.string().min(1).max(100),
+        // Param value for the first listing page (Drupal=0, WordPress=1).
+        start: z.number().int().min(0).max(10_000).optional(),
+        // Increment between consecutive pages.
+        step: z.number().int().min(1).max(1_000).optional(),
+        maxPages: z.number().int().min(1).max(100).optional(),
+        settleMs: z.number().int().min(100).max(10_000).optional(),
+      }),
+    ])
     .optional(),
   // Optional JS snippet evaluated in the page context once after page load
   // and before extraction. Lets SPAs that hide most content behind app state
