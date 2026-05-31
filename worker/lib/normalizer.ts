@@ -281,8 +281,17 @@ export function normalizeJobRecord(
   let applicationInfo =
     explicitAppInfo || (rawFields["_formData"] ?? "");
 
-  // Extract URL: prefer title_href, fall back to _detailUrl, then ""
-  const url = rawFields["title_href"] ?? rawFields["_detailUrl"] ?? "";
+  // Extract URL for the job's detail page. Prefer an explicit detailUrl field
+  // mapping (value or its _href), then the title link, then the multi-page
+  // _detailUrl the worker records when visiting detail pages. This lets sites
+  // that inject a hidden detailUrl anchor (Workday, keshet) surface it as a
+  // real column instead of burying it in rawData.
+  const url =
+    rawFields["detailUrl_href"] ||
+    rawFields["title_href"] ||
+    rawFields["_detailUrl"] ||
+    rawFields["detailUrl"] ||
+    "";
 
   // Collect non-standard fields (keys not in standard set and not prefixed with _)
   const additionalFields: Record<string, string> = {};

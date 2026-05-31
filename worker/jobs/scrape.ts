@@ -129,15 +129,25 @@ async function readHrefFromFieldElement(
 ): Promise<string | null> {
   return fieldEl.evaluate((el) => {
     const e = el as Element;
+    // Resolve relative hrefs against the page origin so SPA/relative links
+    // (e.g. Workday "/en-US/.../job/...") become absolute URLs.
+    const abs = (raw: string | null): string | null => {
+      if (!raw) return null;
+      try {
+        return new URL(raw, location.href).toString();
+      } catch {
+        return raw;
+      }
+    };
     if (e.tagName.toLowerCase() === "a") {
-      return e.getAttribute("href");
+      return abs(e.getAttribute("href"));
     }
     const a = e.closest("a");
-    if (a) return a.getAttribute("href");
-    return (
+    if (a) return abs(a.getAttribute("href"));
+    return abs(
       e.getAttribute("data-href") ||
-      e.getAttribute("data-url") ||
-      e.getAttribute("data-link")
+        e.getAttribute("data-url") ||
+        e.getAttribute("data-link"),
     );
   });
 }
@@ -701,8 +711,10 @@ async function extractWithAutoItemDetection(
                 : el.closest("a") ?? el.querySelector("a");
             if (anchor) {
               const href = anchor.getAttribute("href");
-              if (href && !href.startsWith("#") && !href.startsWith("javascript:"))
-                rec[`${name}_href`] = href;
+              if (href && !href.startsWith("#") && !href.startsWith("javascript:")) {
+                try { rec[`${name}_href`] = new URL(href, location.href).toString(); }
+                catch { rec[`${name}_href`] = href; }
+              }
             }
           } else {
             rec[name] = "";
@@ -725,8 +737,10 @@ async function extractWithAutoItemDetection(
                   : el.closest("a") ?? el.querySelector("a");
               if (anchor) {
                 const href = anchor.getAttribute("href");
-                if (href && !href.startsWith("#") && !href.startsWith("javascript:"))
-                  rec[`${name}_href`] = href;
+                if (href && !href.startsWith("#") && !href.startsWith("javascript:")) {
+                  try { rec[`${name}_href`] = new URL(href, location.href).toString(); }
+                  catch { rec[`${name}_href`] = href; }
+                }
               }
             } else {
               rec[name] = "";
@@ -1049,7 +1063,8 @@ async function extractWithExplicitItemSelector(
                 !href.startsWith("#") &&
                 !href.startsWith("javascript:")
               ) {
-                rec[`${fieldName}_href`] = href;
+                try { rec[`${fieldName}_href`] = new URL(href, location.href).toString(); }
+                catch { rec[`${fieldName}_href`] = href; }
               }
             }
           } else {
@@ -2054,8 +2069,17 @@ function getSetupScript(fieldMappingsRaw: unknown): string | null {
 
 async function runSetupScript(page: Page, script: string): Promise<void> {
   try {
-    await page.evaluate((src: string) => {
-      new Function(src)();
+    // Run the script body inside an async function and AWAIT it, so scripts
+    // that perform `await fetch(...)` enrichments (e.g. Workday per-item job
+    // description JSON) fully resolve before extraction. Plain synchronous
+    // scripts (sync XHR injection, DOM pokes) keep working — the async wrapper
+    // just resolves immediately.
+    await page.evaluate(async (src: string) => {
+      const AsyncFunction = Object.getPrototypeOf(
+        async function () {},
+      ).constructor as new (body: string) => () => Promise<unknown>;
+      const fn = new AsyncFunction(src);
+      await fn();
     }, script);
     await page.waitForTimeout(1_500);
     console.info(`[scrape] setupScript executed (${script.length} chars)`);
@@ -2550,6 +2574,24 @@ async function executeScrape(
     // Optional setupScript: SPA hook for sites that hide most content behind
     // app state (Angular scope, React store). Runs once after page load and
     // before any extraction step.
+    //
+    // For SPAs that hydrate asynchronously (Workday serves a bare
+    // `<div id="root">` shell), wait for the configured revealSelector to
+    // appear first so the script doesn't run against an empty DOM. Best-effort:
+    // if it never shows we run anyway. Only gates when revealSelector is set —
+    // inject-style scripts (which CREATE the items, e.g. bezeq) leave it null.
+    if (setupScript && revealSelector) {
+      try {
+        await page.waitForSelector(revealSelector, {
+          timeout: 20_000,
+          state: "attached",
+        });
+      } catch {
+        console.warn(
+          `[scrape] setupScript gate: revealSelector "${revealSelector}" not found in 20s — running setupScript anyway`,
+        );
+      }
+    }
     if (setupScript) {
       await runSetupScript(page, setupScript);
     }
@@ -2812,6 +2854,7 @@ async function executeScrape(
             externalJobId: normalized.externalJobId || null,
             publishDate: normalized.publishDate || null,
             applicationInfo: normalized.applicationInfo || null,
+            detailUrl: normalized.url || null,
             rawData: normalized.rawFields as Prisma.InputJsonValue,
             validationStatus:
               validation.warnings.length > 0

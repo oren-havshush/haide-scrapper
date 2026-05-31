@@ -1,0 +1,101 @@
+{
+    "listingSelector":  "#haide-jobs",
+    "itemSelector":  ".haide-job",
+    "fieldMappings":  {
+                          "title":  {
+                                        "selector":  "[data-field=\"title\"]",
+                                        "confidence":  100,
+                                        "source":  "MANUAL",
+                                        "capturedOnUrl":  "https://www.bezeq.co.il/career_new/"
+                                    },
+                          "location":  {
+                                           "selector":  "[data-field=\"location\"]",
+                                           "confidence":  100,
+                                           "source":  "MANUAL",
+                                           "capturedOnUrl":  "https://www.bezeq.co.il/career_new/"
+                                       },
+                          "workArea":  {
+                                           "selector":  "[data-field=\"workArea\"]",
+                                           "confidence":  100,
+                                           "source":  "MANUAL",
+                                           "capturedOnUrl":  "https://www.bezeq.co.il/career_new/"
+                                       },
+                          "detailUrl":  {
+                                            "selector":  "a[data-field=\"detailUrl\"]",
+                                            "confidence":  100,
+                                            "source":  "MANUAL",
+                                            "capturedOnUrl":  "https://www.bezeq.co.il/career_new/",
+                                            "extractAttr":  "href"
+                                        },
+                          "recruiter":  {
+                                            "selector":  "[data-field=\"recruiter\"]",
+                                            "confidence":  100,
+                                            "source":  "MANUAL",
+                                            "capturedOnUrl":  "https://www.bezeq.co.il/career_new/"
+                                        },
+                          "clientName":  {
+                                             "selector":  "[data-field=\"clientName\"]",
+                                             "confidence":  100,
+                                             "source":  "MANUAL",
+                                             "capturedOnUrl":  "https://www.bezeq.co.il/career_new/"
+                                         },
+                          "department":  {
+                                             "selector":  "[data-field=\"department\"]",
+                                             "confidence":  100,
+                                             "source":  "MANUAL",
+                                             "capturedOnUrl":  "https://www.bezeq.co.il/career_new/"
+                                         },
+                          "description":  {
+                                              "selector":  "[data-field=\"description\"]",
+                                              "confidence":  100,
+                                              "source":  "MANUAL",
+                                              "capturedOnUrl":  "https://www.bezeq.co.il/career_new/"
+                                          },
+                          "manningType":  {
+                                              "selector":  "[data-field=\"manningType\"]",
+                                              "confidence":  100,
+                                              "source":  "MANUAL",
+                                              "capturedOnUrl":  "https://www.bezeq.co.il/career_new/"
+                                          },
+                          "publishDate":  {
+                                              "selector":  "[data-field=\"publishDate\"]",
+                                              "confidence":  100,
+                                              "source":  "MANUAL",
+                                              "capturedOnUrl":  "https://www.bezeq.co.il/career_new/"
+                                          },
+                          "deadlineDate":  {
+                                               "selector":  "[data-field=\"deadlineDate\"]",
+                                               "confidence":  100,
+                                               "source":  "MANUAL",
+                                               "capturedOnUrl":  "https://www.bezeq.co.il/career_new/"
+                                           },
+                          "externalJobId":  {
+                                                "selector":  "[data-field=\"externalJobId\"]",
+                                                "confidence":  100,
+                                                "source":  "MANUAL",
+                                                "capturedOnUrl":  "https://www.bezeq.co.il/career_new/"
+                                            },
+                          "subProfession":  {
+                                                "selector":  "[data-field=\"subProfession\"]",
+                                                "confidence":  100,
+                                                "source":  "MANUAL",
+                                                "capturedOnUrl":  "https://www.bezeq.co.il/career_new/"
+                                            },
+                          "applicationInfo":  {
+                                                  "selector":  "[data-field=\"applicationInfo\"]",
+                                                  "confidence":  100,
+                                                  "source":  "MANUAL",
+                                                  "capturedOnUrl":  "https://www.bezeq.co.il/career_new/"
+                                              }
+                      },
+    "pageFlow":  [],
+    "formCapture":  null,
+    "setupScript":  "(function () {\n  try {\n    if (document.getElementById(\u0027haide-jobs\u0027)) return;\n    var xhr = new XMLHttpRequest();\n    xhr.open(\u0027GET\u0027, \u0027https://d-api.bezeq.co.il/api/Adam/GetActiveJobs\u0027, false);\n    xhr.setRequestHeader(\u0027Accept\u0027, \u0027application/json\u0027);\n    xhr.send();\n    if (xhr.status !== 200) return;\n    var json = JSON.parse(xhr.responseText);\n    var jobs = (json \u0026\u0026 json.data) ? json.data : [];\n    if (!jobs.length) return;\n    var container = document.createElement(\u0027div\u0027);\n    container.id = \u0027haide-jobs\u0027;\n    container.style.display = \u0027none\u0027;\n    function add(parent, tag, name, value, attrs) {\n      var el = document.createElement(tag);\n      el.setAttribute(\u0027data-field\u0027, name);\n      if (attrs) { for (var k in attrs) el.setAttribute(k, attrs[k]); }\n      el.textContent = value == null ? \u0027\u0027 : String(value);\n      parent.appendChild(el);\n    }\n    jobs.forEach(function (j) {\n      var item = document.createElement(\u0027div\u0027);\n      item.className = \u0027haide-job\u0027;\n      add(item, \u0027span\u0027, \u0027externalJobId\u0027, j.order_id);\n      add(item, \u0027span\u0027, \u0027title\u0027, j.description || j.tat_profession_name || j.perot_tafked || \u0027\u0027);\n      add(item, \u0027span\u0027, \u0027description\u0027, j.notes_text || \u0027\u0027);\n      add(item, \u0027span\u0027, \u0027location\u0027, j.Order_place || j.work_area || j.living_area1 || \u0027\u0027);\n      add(item, \u0027span\u0027, \u0027department\u0027, j.profession_name || \u0027\u0027);\n      add(item, \u0027span\u0027, \u0027publishDate\u0027, j.updateDate_ddmmyyyy || \u0027\u0027);\n      add(item, \u0027span\u0027, \u0027applicationInfo\u0027, j.order_email || j.email_rakaz || \u0027\u0027);\n      add(item, \u0027span\u0027, \u0027subProfession\u0027, j.tat_profession_name || \u0027\u0027);\n      add(item, \u0027span\u0027, \u0027workArea\u0027, j.work_area || \u0027\u0027);\n      add(item, \u0027span\u0027, \u0027clientName\u0027, j.client_name || \u0027\u0027);\n      add(item, \u0027span\u0027, \u0027deadlineDate\u0027, j.deadline_date || \u0027\u0027);\n      add(item, \u0027span\u0027, \u0027manningType\u0027, j.manning_type_text || \u0027\u0027);\n      add(item, \u0027span\u0027, \u0027recruiter\u0027, j.rakaz || \u0027\u0027);\n      var detailUrl = \u0027https://www.bezeq.co.il/career/jobs/form/?jobs=\u0027 + encodeURIComponent(j.order_id);\n      add(item, \u0027a\u0027, \u0027detailUrl\u0027, detailUrl, { href: detailUrl });\n      container.appendChild(item);\n    });\n    document.body.appendChild(container);\n  } catch (e) {}\n})();",
+    "browserOverrides":  {
+                             "userAgent":  "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+                             "extraHeaders":  {
+                                                  "accept-language":  "he-IL,he;q=0.9,en-US;q=0.8,en;q=0.7"
+                                              },
+                             "bypassCSP":  true
+                         }
+}

@@ -1,0 +1,67 @@
+{
+  "itemSelector": "li.column-job",
+  "fieldMappings": {
+    "title": {
+      "source": "MANUAL",
+      "selector": ".views-field-field-job-offer-title a",
+      "confidence": 100,
+      "capturedOnUrl": "https://www.osem-nestle.co.il/career/open-positions"
+    },
+    "location": {
+      "source": "MANUAL",
+      "selector": ".views-field-field-job-offer-location a",
+      "confidence": 100,
+      "capturedOnUrl": "https://www.osem-nestle.co.il/career/open-positions"
+    },
+    "externalJobId": {
+      "source": "MANUAL",
+      "selector": ".views-field-field-job-offer-id a",
+      "confidence": 100,
+      "capturedOnUrl": "https://www.osem-nestle.co.il/career/open-positions"
+    },
+    "detailUrl": {
+      "source": "MANUAL",
+      "selector": ".views-field-field-job-offer-title a",
+      "confidence": 100,
+      "extractAttr": "href",
+      "capturedOnUrl": "https://www.osem-nestle.co.il/career/open-positions"
+    },
+    "description": {
+      "source": "MANUAL",
+      "selector": ".description_single",
+      "confidence": 100,
+      "capturedOnUrl": "https://www.osem-nestle.co.il/career/open-positions/404037"
+    }
+  },
+  "pageFlow": [
+    {
+      "url": "https://www.osem-nestle.co.il/career/open-positions",
+      "action": "navigate",
+      "waitFor": "li.column-job"
+    },
+    {
+      "url": "https://www.osem-nestle.co.il/career/open-positions/*",
+      "action": ".views-field-field-job-offer-title a",
+      "waitFor": ".description_single"
+    }
+  ],
+  "formCapture": null,
+  "pagination": {
+    "type": "url",
+    "param": "page",
+    "start": 0,
+    "step": 1,
+    "maxPages": 5
+  },
+  "browserOverrides": {
+    "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+    "extraHeaders": {
+      "accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7",
+      "accept-language": "he-IL,he;q=0.9,en-US;q=0.8,en;q=0.7",
+      "sec-ch-ua": "\"Google Chrome\";v=\"131\", \"Chromium\";v=\"131\", \"Not_A Brand\";v=\"24\"",
+      "sec-ch-ua-mobile": "?0",
+      "sec-ch-ua-platform": "\"Windows\"",
+      "upgrade-insecure-requests": "1"
+    }
+  }
+}

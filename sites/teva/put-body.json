@@ -1,0 +1,46 @@
+﻿{
+    "fieldMappings":  {
+                          "title":  {
+                                        "sample":  "Search results for \"××©×¨××\".",
+                                        "selector":  "h1.keyword-title",
+                                        "sourceMethod":  "CRAWL_CLASSIFY",
+                                        "methodsDetected":  2
+                                    },
+                          "description":  {
+                                              "sample":  "Location\n                                            \n\n                                        \n    ",
+                                              "selector":  "div.search-form-input.location-group.col-md-6",
+                                              "sourceMethod":  "CRAWL_CLASSIFY",
+                                              "methodsDetected":  2
+                                          },
+                          "company":  {
+                                          "sample":  "66679",
+                                          "selector":  "span.jobShifttype",
+                                          "sourceMethod":  "PATTERN_MATCH",
+                                          "methodsDetected":  1
+                                      },
+                          "location":  {
+                                           "sample":  "Kfar Saba, Israel, 0000000",
+                                           "selector":  "span.jobLocation",
+                                           "sourceMethod":  "CRAWL_CLASSIFY",
+                                           "methodsDetected":  2
+                                       }
+                      },
+    "pageFlow":  [
+                     {
+                         "url":  "https://careers.teva/search/?searchby=location\u0026createNewAlert=false\u0026q=\u0026locationsearch=%D7%99%D7%A9%D7%A8%D7%90%D7%9C\u0026geolocation=\u0026optionsFacetsDD_facility=\u0026optionsFacetsDD_department=",
+                         "action":  "navigate"
+                     },
+                     {
+                         "url":  "https://careers.teva/job/*",
+                         "action":  "navigate"
+                     }
+                 ],
+    "pagination":  {
+                       "start":  0,
+                       "step":  25,
+                       "maxPages":  3,
+                       "type":  "url",
+                       "param":  "startrow"
+                   },
+    "formCapture":  null
+}

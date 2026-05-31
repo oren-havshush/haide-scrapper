@@ -81,6 +81,7 @@ model Job {
   externalJobId    String?
   publishDate      String?
   applicationInfo  String?
+  detailUrl        String?
   rawData          Json
   validationStatus String?
   siteId           String

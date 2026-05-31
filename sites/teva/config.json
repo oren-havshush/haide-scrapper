@@ -1,0 +1,74 @@
+{
+  "itemSelector": "tr.data-row",
+  "fieldMappings": {
+    "title": {
+      "source": "MANUAL",
+      "selector": "a.jobTitle-link",
+      "confidence": 100,
+      "capturedOnUrl": "https://careers.teva/search/?searchby=location&createNewAlert=false&q=&locationsearch=%D7%99%D7%A9%D7%A8%D7%90%D7%9C&geolocation=&optionsFacetsDD_facility=&optionsFacetsDD_department="
+    },
+    "location": {
+      "source": "MANUAL",
+      "selector": "td.colLocation span.jobLocation",
+      "confidence": 100,
+      "capturedOnUrl": "https://careers.teva/search/?searchby=location&createNewAlert=false&q=&locationsearch=%D7%99%D7%A9%D7%A8%D7%90%D7%9C&geolocation=&optionsFacetsDD_facility=&optionsFacetsDD_department="
+    },
+    "department": {
+      "source": "MANUAL",
+      "selector": "td.colFacility span.jobFacility",
+      "confidence": 100,
+      "capturedOnUrl": "https://careers.teva/search/?searchby=location&createNewAlert=false&q=&locationsearch=%D7%99%D7%A9%D7%A8%D7%90%D7%9C&geolocation=&optionsFacetsDD_facility=&optionsFacetsDD_department="
+    },
+    "externalJobId": {
+      "source": "MANUAL",
+      "selector": "td.colShifttype span.jobShifttype",
+      "confidence": 100,
+      "capturedOnUrl": "https://careers.teva/search/?searchby=location&createNewAlert=false&q=&locationsearch=%D7%99%D7%A9%D7%A8%D7%90%D7%9C&geolocation=&optionsFacetsDD_facility=&optionsFacetsDD_department="
+    },
+    "detailUrl": {
+      "source": "MANUAL",
+      "selector": "a.jobTitle-link",
+      "confidence": 100,
+      "extractAttr": "href",
+      "capturedOnUrl": "https://careers.teva/search/?searchby=location&createNewAlert=false&q=&locationsearch=%D7%99%D7%A9%D7%A8%D7%90%D7%9C&geolocation=&optionsFacetsDD_facility=&optionsFacetsDD_department="
+    },
+    "description": {
+      "source": "MANUAL",
+      "selector": "[itemprop=\"description\"]",
+      "confidence": 100,
+      "capturedOnUrl": "https://careers.teva/job/sample-Isra-0000000/1370350000/"
+    },
+    "publishDate": {
+      "source": "MANUAL",
+      "selector": "meta[itemprop=\"datePosted\"]",
+      "confidence": 100,
+      "extractAttr": "content",
+      "capturedOnUrl": "https://careers.teva/job/sample-Isra-0000000/1370350000/"
+    },
+    "applicationInfo": {
+      "source": "MANUAL",
+      "selector": "a.dialogApplyBtn",
+      "confidence": 100,
+      "extractAttr": "href",
+      "capturedOnUrl": "https://careers.teva/job/sample-Isra-0000000/1370350000/"
+    }
+  },
+  "pageFlow": [
+    {
+      "url": "https://careers.teva/search/?searchby=location&createNewAlert=false&q=&locationsearch=%D7%99%D7%A9%D7%A8%D7%90%D7%9C&geolocation=&optionsFacetsDD_facility=&optionsFacetsDD_department=",
+      "action": "navigate"
+    },
+    {
+      "url": "https://careers.teva/job/*",
+      "action": "navigate"
+    }
+  ],
+  "formCapture": null,
+  "pagination": {
+    "type": "url",
+    "param": "startrow",
+    "start": 0,
+    "step": 25,
+    "maxPages": 3
+  }
+}
