@@ -523,7 +523,71 @@ To validate detail-page selectors, **visit one detail URL** in Playwright
 during step 5 and run those selectors there (separately from the listing
 dry-run).
 
-### Listing completeness — count check + dynamic-loading detection
+### Listing completeness — MANDATORY coverage gate
+
+**This is a hard gate, not advice.** You MUST establish the site's true
+total job count and compare it to what your config will extract. Skipping
+this is how sites silently ship with only page 1 (e.g. NVIDIA Workday
+onboarded 2026-05-31 first shipped 20 of 480 jobs because this check was
+skipped). Do not mark a site done until one of these holds:
+
+1. `extracted >= total` (full coverage), OR
+2. you implemented full coverage (see framework recipes below), OR
+3. you got **explicit user sign-off** to ship partial coverage.
+
+**How to find the true total** (in priority order):
+- The results header / count element on the page ("480 Results",
+  "Showing 1-20 of 480", "47 jobs found"). Read it in your dry-run.
+- For known SPA frameworks, the list API returns it directly (see below).
+- As a fallback, paginate/scroll to exhaustion and count.
+
+**Every onboarding MUST end with a `coverage: <extracted>/<total>` line**
+in the Step 9 report. If you cannot determine the total, say so
+explicitly (`coverage: <extracted>/unknown`) rather than omitting it.
+
+#### Known SPA frameworks — detect by host, enumerate via their API
+
+If the listing host matches one of these, the page is an offset-paginated
+SPA. The page URL does NOT change between pages, so the worker's `url`
+pagination CANNOT drive it. The right approach is a single-page config
+(`pageFlow: []`) whose `setupScript` calls the framework's list API to
+enumerate ALL postings, rebuilds the listing container with one row per
+posting, then (optionally) fetches each detail/description endpoint with
+**bounded concurrency + retry/backoff** (these APIs throttle bursts —
+HTTP 429 — so cap concurrency ~6 and retry up to 3x; expect ~90-95%
+description coverage on a few-hundred-job site, 100% on list-level fields).
+
+- **Workday** (`*.myworkdayjobs.com`): list = `POST /wday/cxs/{tenant}/{site}/jobs`
+  with body `{appliedFacets:{}, limit:20, offset:N, searchText:"<q>"}`,
+  returns `{ total, jobPostings:[{ title, externalPath, locationsText, postedOn, bulletFields:[reqId] }] }`.
+  Per-job detail = `GET /wday/cxs/{tenant}/{site}{externalPath}` →
+  `jobPostingInfo.{ jobDescription(HTML), location, additionalLocations,
+  startDate, jobReqId, externalUrl }`. Reveal selector
+  `a[data-automation-id="jobTitle"]`; item selector
+  `[data-automation-id="jobResults"] li:has(a[data-automation-id="jobTitle"])`.
+  Reference: NVIDIA (siteId `cmplb58zt000601mvvpvedp8g`) — 480/480 jobs,
+  450 descriptions. The working setupScript + paired config is committed
+  at `sites/nvidia/setup.js`.
+- **Greenhouse** (`boards.greenhouse.io`, `*.greenhouse.io`): list JSON =
+  `https://boards-api.greenhouse.io/v1/boards/{token}/jobs?content=true`
+  (one call returns all jobs with `content` = full description HTML).
+- **Lever** (`jobs.lever.co`): list JSON =
+  `https://api.lever.co/v0/postings/{company}?mode=json` (all postings,
+  each with `descriptionPlain`).
+- **iCIMS / SmartRecruiters / Ashby**: also API-backed; inspect the
+  network tab (filter XHR) for the JSON endpoint and its `total`/paging.
+
+For these, the setupScript pattern is: (1) loop the list API by offset/page
+until you've collected `total` postings, (2) `ul.innerHTML=''` then append
+one `<li>` per posting with a title `<a>` plus hidden
+`[data-extracted-*]` spans (id, detailUrl, location, date), (3) enrich
+descriptions via the detail endpoint with concurrency ≤6 and retry. Because
+the worker now awaits async `setupScript` (2026-05-31 fix), top-level
+`await` works directly in the script body — do NOT wrap it in a
+self-invoking IIFE (the worker runs the script source as an AsyncFunction
+body and awaits it; an IIFE would resolve before its inner promise).
+
+#### Dynamic-loading detection (when NOT a known API framework)
 
 After your dry-run, check whether the item count you got matches the
 visible total on the page. Many sites display "Showing 15 of 47 jobs"
@@ -1687,13 +1751,20 @@ foreach ($j in $jobs.data) {
 }
 ```
 
-End with a 3-line wrap-up:
+End with a wrap-up. The `coverage` line is REQUIRED (see the mandatory
+coverage gate in Step 4) — state extracted-vs-total explicitly so a
+shortfall can never hide:
 
 ```
 ✓ siteId=<ID>  status=ACTIVE  jobs=<N>
+✓ coverage: <extracted>/<total> jobs   (or <extracted>/unknown if total couldn't be determined)
 ✓ config: <fieldCount> fields, itemSelector=<sel>
 ✓ dashboard: https://scrapper.haide-jobs.co.il/sites/<ID>
 ```
+
+If `coverage` is partial and the user did NOT sign off on partial
+coverage, the onboarding is NOT done — go back and implement full
+coverage (see the framework recipes / dynamic-loading options in Step 4).
 
 ## Notes on failure modes you'll hit
 
@@ -1715,9 +1786,12 @@ End with a 3-line wrap-up:
   WAF-protected sites" subsection). The worker applies the override per
   scrape, no env changes required. Reference site: bezeq.co.il
   (`cmpmv882i001x01mvhf9qfaqy`).
-- **Paginated sites:** if the page shows only N rows but there are more,
-  the rest will be missed. For MVP, set itemSelector to what's visible;
-  pagination support is a separate feature (`pageFlow`).
+- **Paginated sites:** NEVER silently ship page 1 — the Step 4 coverage
+  gate is mandatory. For URL-param pagination the worker has a `url`
+  pagination feature; for offset-API SPAs (Workday/Greenhouse/Lever/etc.)
+  use the `setupScript` enumeration recipe in Step 4's "Known SPA
+  frameworks" subsection. Only ship partial coverage with explicit user
+  sign-off, and always report `coverage: <extracted>/<total>`.
 - **Hebrew/RTL sites:** locale matters. Always set `locale: 'he-IL'` in
   the Playwright context for IL sites.
 - **`<br>` between every char** (rare, content-side bug): describe in

@@ -1344,6 +1344,7 @@ async function extractRawFieldsWithPageFlow(
   revealSelector: string | null = null,
   formCaptureConfig: FormCaptureConfig | null = null,
   pagination: PaginationConfig | null = null,
+  setupScript: string | null = null,
 ): Promise<Record<string, string>[]> {
   const rawFieldsList: Record<string, string>[] = [];
 
@@ -1365,6 +1366,13 @@ async function extractRawFieldsWithPageFlow(
   }
 
   await autoScrollUntilStable(page, itemSelector);
+
+  // Run setupScript on the listing page (parity with the single-page path) so
+  // listing-scope injections (hidden data-* spans, expanded content, API
+  // hydration) are present before we collect detail URLs and listing fields.
+  if (setupScript) {
+    await runSetupScript(page, setupScript);
+  }
 
   // If there's only one step in pageFlow, extract directly from listing page
   // (still honoring pagination so listing-only sites can page through results).
@@ -1636,6 +1644,15 @@ async function extractRawFieldsWithPageFlow(
             `[scrape] waitFor selector "${detailStep.waitFor}" not found on detail page: ${detailUrl}`,
           );
         }
+      }
+
+      // Run setupScript on the detail page too, so detail-scope injections
+      // (slicing a job-id out of a heading, normalizing a description, reading
+      // an apply email out of a mailto: link, etc.) work the same way they do
+      // on the listing page. Idempotent by convention — scripts guard with
+      // `if (!el.querySelector(...))` so re-running is safe.
+      if (setupScript) {
+        await runSetupScript(page, setupScript);
       }
 
       // Seed the row with listing-scope fields collected earlier from the
@@ -2498,6 +2515,7 @@ async function executeScrape(
       revealSelector,
       formCaptureConfig,
       pagination,
+      setupScript,
     );
     context.pageLoaded = true;
     context.selectorsMatched = rawFieldsList.length > 0;
