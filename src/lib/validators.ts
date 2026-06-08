@@ -46,6 +46,10 @@ export const updateSiteCompanyNameSchema = z.object({
   companyName: z.string().max(120).nullable(),
 });
 
+export const updateJobLocationSchema = z.object({
+  location: z.string().trim().min(1, "Location must not be empty").max(200),
+});
+
 export const jobsFilterSchema = z.object({
   siteId: z.string().optional(),
   scrapeRunId: z.string().optional(),

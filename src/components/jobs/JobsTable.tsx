@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import Link from "next/link";
 import {
   Table, TableBody, TableCell, TableHead,
@@ -8,6 +8,7 @@ import {
 } from "@/components/ui/table";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
+import { useUpdateJobLocation } from "@/hooks/useUpdateJobLocation";
 
 interface JobSite {
   id: string;
@@ -190,6 +191,63 @@ function ExpandedDetail({ job }: { job: Job }) {
   );
 }
 
+function EditableLocation({ jobId, location }: { jobId: string; location: string }) {
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(location);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const { mutate, isPending } = useUpdateJobLocation();
+
+  useEffect(() => {
+    if (editing) inputRef.current?.focus();
+  }, [editing]);
+
+  function handleSave() {
+    const trimmed = draft.trim();
+    if (!trimmed || trimmed === location) {
+      setDraft(location);
+      setEditing(false);
+      return;
+    }
+    mutate(
+      { jobId, location: trimmed },
+      { onSettled: () => setEditing(false) },
+    );
+  }
+
+  function handleKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
+    if (e.key === "Enter") handleSave();
+    if (e.key === "Escape") { setDraft(location); setEditing(false); }
+  }
+
+  if (editing) {
+    return (
+      <input
+        ref={inputRef}
+        value={draft}
+        onChange={(e) => setDraft(e.target.value)}
+        onBlur={handleSave}
+        onKeyDown={handleKeyDown}
+        disabled={isPending}
+        onClick={(e) => e.stopPropagation()}
+        className="w-full bg-[#18181b] border border-[#3b82f6] rounded px-1.5 py-0.5 text-sm text-[#fafafa] outline-none disabled:opacity-50"
+      />
+    );
+  }
+
+  return (
+    <span
+      className="group flex items-center gap-1 cursor-pointer rounded hover:bg-[#18181b] px-1 -mx-1"
+      onClick={(e) => { e.stopPropagation(); setEditing(true); }}
+      title="Click to edit location"
+    >
+      <span className={location && location !== "Unknown" ? "" : "text-[#52525b]"}>
+        {location || "Unknown"}
+      </span>
+      <span className="opacity-0 group-hover:opacity-60 text-[#71717a] text-[10px] select-none">✎</span>
+    </span>
+  );
+}
+
 export function JobsTable({
   jobs,
   isLoading,
@@ -264,7 +322,9 @@ export function JobsTable({
                     {isExpanded ? "▾" : "▸"}
                   </TableCell>
                   <TableCell className="text-sm">{job.title}</TableCell>
-                  <TableCell className="text-sm">{job.location}</TableCell>
+                  <TableCell className="text-sm">
+                    <EditableLocation jobId={job.id} location={job.location} />
+                  </TableCell>
                   <TableCell className="text-sm font-mono text-[#a1a1aa]">
                     {job.externalJobId || "—"}
                   </TableCell>

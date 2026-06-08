@@ -65,10 +65,11 @@ model Site {
   failedAt        DateTime?
   skippedAt       DateTime?
 
-  jobs            Job[]
-  scrapeRuns      ScrapeRun[]
-  analysisResults AnalysisResult[]
-  workerJobs      WorkerJob[]
+  jobs                 Job[]
+  scrapeRuns           ScrapeRun[]
+  analysisResults      AnalysisResult[]
+  workerJobs           WorkerJob[]
+  jobLocationOverrides JobLocationOverride[]
 }
 
 model Job {
@@ -110,6 +111,22 @@ model ScrapeRun {
 
   jobs Job[]
 
+  @@index([siteId])
+}
+
+// Stores per-job manual location overrides keyed by (siteId, jobKey).
+// jobKey = externalJobId ?? detailUrl — stable across re-scrapes.
+// The worker re-applies these after every scrape run so manual edits persist.
+model JobLocationOverride {
+  id        String   @id @default(cuid())
+  siteId    String
+  site      Site     @relation(fields: [siteId], references: [id], onDelete: Cascade)
+  jobKey    String
+  location  String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([siteId, jobKey])
   @@index([siteId])
 }
 

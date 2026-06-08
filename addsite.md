@@ -1,15 +1,17 @@
 ---
 name: 'addsite'
-description: 'Onboard a new jobs-listing site end-to-end: fetch the page, generate field-mapping JSON by analyzing the HTML, validate via Playwright dry-run, POST/PUT/PATCH against the prod scrapper API, trigger a scrape, sample results.'
+description: 'Onboard one or many jobs-listing sites end-to-end: accepts a single URL, multiple URLs, a plain-text file, or a CSV/Google-Sheets export; auto-skips blockers (login walls, unreachable, 0-item dry-runs, etc.) with SKIPPED + adminNote; prints an end-of-run summary table. Single-URL and batch modes share the same pipeline.'
 platform: 'windows-powershell'
 ---
 
 # /addsite — onboard a jobs site end-to-end (Windows / PowerShell)
 
 You are operating as the scrapnew onboarding agent. The user invoked
-`/addsite <URL>` (the argument may be missing — if so, ask once and stop).
-Your job is to take that single URL all the way from "never seen" to
+`/addsite` with one URL, multiple URLs, or a file/CSV path.
+Your job is to take each URL all the way from "never seen" to
 "first scrape returned valid jobs" without losing them in side-quests.
+In batch mode (more than one URL) you NEVER pause for user input — every
+blocker is auto-skipped with a note and you continue to the next URL.
 
 This is the **Windows / PowerShell** edition of the skill. All commands
 below assume `powershell` (Windows PowerShell 5.1 or PowerShell 7+).
@@ -51,15 +53,194 @@ folder is gitignored.
 
 ## Inputs
 
-- `$1`: the listing URL (e.g. `https://hr.technion.ac.il/positions/`).
-- If missing, respond once: "Usage: /addsite <listing-url>" and stop.
+**Single URL** (original mode):
+```
+/addsite https://hr.technion.ac.il/positions/
+```
 
-In PowerShell, capture the argument early:
+**Multiple URLs** (batch mode — space-separated):
+```
+/addsite https://a.com/jobs https://b.com/careers https://c.co.il/משרות
+```
+
+**From a plain-text file** (one URL per line, `#` for comments):
+```
+/addsite --file urls.txt
+```
+
+**From a CSV or Google Sheets export** (Google Sheets → File → Download → CSV):
+```
+/addsite --csv career_pages.csv --column "Career Page"
+/addsite --csv career_pages.csv --column "Career Page" --company-col "Company Name" --limit 20 --start 5
+```
+
+**Common batch flags** (all optional):
+- `--force` — re-attempt URLs already in `SKIPPED` or `FAILED` status
+- `--max-urls N` — safety cap (default 50; refuse larger batches without this flag)
+- `--limit N` / `--start N` — slice into the file/CSV for cheap partial runs
+- `--resume <path>` — path to a previous `batch-results.jsonl`; skip already-processed URLs
+
+If invoked with no arguments, respond once: "Usage: /addsite <URL> [URL…] [options]" and stop.
+
+**Detect batch vs single-URL mode** by counting the effective URLs after parsing. If ≥ 2 URLs: batch mode. If 1 URL: single-URL mode (Steps 1–9 as before, no batch log required, though you may still use `addsite-batch.ts log` for consistency).
+
+## Batch mode — autonomous multi-URL onboarding
+
+> Skip this section entirely when running single-URL mode.
+
+### B0 — Parse URL list and initialise batch context
+
+Run `addsite-batch.ts parse` to normalise, deduplicate, and classify all
+input URLs, then record the batch directory for use in subsequent steps.
 
 ```powershell
-$URL = '<the listing URL passed by the user>'
-if (-not $URL) { Write-Host 'Usage: /addsite <listing-url>'; return }
+# Example — adapt flags to match actual invocation:
+$parsedOut = npx tsx scripts/addsite-batch.ts parse `
+  --csv 'career_pages.csv' --column 'Career Page' --limit 20
+
+# Capture the batch dir from the last stdout line (format: BATCH_DIR:<path>)
+$BATCH_DIR = ($parsedOut | Select-String 'BATCH_DIR:').ToString() -replace 'BATCH_DIR:',''
+Write-Host "Batch dir: $BATCH_DIR"
+
+# Read the work list to iterate
+$workList = Get-Content (Join-Path $BATCH_DIR 'work-list.json') | ConvertFrom-Json
 ```
+
+`parse` automatically logs `ALREADY_ACTIVE`, `SKIP_PRIOR`, `DUPLICATE_IN_BATCH`,
+and `INVALID_URL` entries to `batch-results.jsonl`. Only entries with
+`preStatus = "PROCEED"` need to be run through Steps 1–9.
+
+### B1 — Iterate
+
+For each entry in `$workList` where `preStatus -eq 'PROCEED'`:
+1. Set `$URL = $entry.normalizedUrl` and `$SITE_ID = $entry.existingId` (may be `$null`).
+2. Run Steps 1–9 with the **batch overrides** below.
+3. At every gate failure: call `addsite-batch.ts skip` + `addsite-batch.ts log`, then `continue`.
+4. On success: call `addsite-batch.ts log --outcome ACTIVE --jobs <N>`.
+
+```powershell
+foreach ($entry in ($workList | Where-Object { $_.preStatus -eq 'PROCEED' })) {
+  $URL     = $entry.normalizedUrl
+  $SITE_ID = $entry.existingId     # may be $null (new site)
+
+  # ... Steps 1-9 with batch overrides below ...
+  # On any auto-skip gate (see matrix):
+  #   npx tsx scripts/addsite-batch.ts skip --url $URL --reason "<reason>" --batch-dir $BATCH_DIR [--site-id $SITE_ID]
+  #   continue
+  # On success:
+  #   npx tsx scripts/addsite-batch.ts log --batch-dir $BATCH_DIR --url $URL --outcome ACTIVE --reason "" --site-id $SITE_ID --jobs $jobCount
+}
+```
+
+### B1.5 — Reactivating an existing SKIPPED / FAILED site (`--force`)
+
+When `$SITE_ID` points to an **existing** site that is currently `SKIPPED`
+(re-onboarded via `--force`) or `FAILED`, you cannot just PUT config and PATCH
+ACTIVE — two traps:
+- **Transition rules:** `SKIPPED` may ONLY transition to `ANALYZING`
+  (`SKIPPED → REVIEW`/`ACTIVE` are rejected with 400). A fresh-from-`SKIPPED`
+  site must route `SKIPPED → ANALYZING → REVIEW → ACTIVE`.
+- **Analyzer clobber:** the `→ ANALYZING` transition **queues a new ANALYSIS
+  job** that re-derives and **overwrites `fieldMappings`**. If you PUT your
+  config before the analyzer finishes, it gets clobbered.
+
+So the **only reliable order** is: force re-analysis, wait for it to settle,
+THEN write your config so it wins the race:
+
+```powershell
+# Only when the existing site is SKIPPED (or FAILED and you want a clean re-run):
+$cur = ((Invoke-RestMethod -Method Get -Uri "$BASE/api/sites?id=$SITE_ID" -Headers $HEADERS).data |
+        Where-Object { $_.id -eq $SITE_ID } | Select-Object -First 1).status
+if ($cur -eq 'SKIPPED') {
+  Invoke-RestMethod -Method Patch -Uri "$BASE/api/sites/$SITE_ID" -Headers $HEADERS `
+    -ContentType 'application/json' -Body (@{ status = 'ANALYZING' } | ConvertTo-Json -Compress) | Out-Null
+  for ($i = 1; $i -le 30; $i++) {              # wait for analyzer to leave ANALYZING (~30-60s)
+    Start-Sleep -Seconds 5
+    $cur = ((Invoke-RestMethod -Method Get -Uri "$BASE/api/sites?id=$SITE_ID" -Headers $HEADERS).data |
+            Where-Object { $_.id -eq $SITE_ID } | Select-Object -First 1).status
+    if ($cur -ne 'ANALYZING') { break }        # settled to REVIEW (or FAILED)
+  }
+}
+# Now proceed with Step 6 (PUT config) + Step 7 (verify gate) + activate.
+# Because the analyzer has already run, your PUT wins; the Step 7 gate covers any residual race.
+```
+
+The `createScrapeRun` API accepts `ACTIVE`, `REVIEW`, or `FAILED`, so after the
+PUT you can PATCH `REVIEW → ACTIVE` and scrape normally. **Prefer deleting the
+site and re-adding it fresh** if you don't need to preserve its id — a brand-new
+site starts at `ANALYZING` and avoids this dance entirely (the analyzer still
+runs once up front, but the skill's Step 6 PUT naturally lands after it).
+
+### B2 — Auto-skip gate matrix
+
+**Every blocker uses this one-liner pattern** (adapt `--reason`):
+
+```powershell
+npx tsx scripts/addsite-batch.ts skip --url $URL --reason "<reason>" --batch-dir $BATCH_DIR [--site-id $SITE_ID]
+npx tsx scripts/addsite-batch.ts log  --batch-dir $BATCH_DIR --url $URL --outcome SKIPPED --reason "<reason>" [--site-id $SITE_ID]
+continue   # move to next URL
+```
+
+| Step | Trigger | Reason string |
+|------|---------|---------------|
+| Step 3 reachability | Gate exit 3 (network/captcha/IL-IP) | `Auto-skipped: unreachable (gate exit 3)` |
+| Step 3 reachability | UA-WAF detected, no override path in batch | `Auto-skipped: WAF requires manual browserOverrides` |
+| Step 3b fetch | Bot challenge page (Cloudflare/Reblaze in HTML) | `Auto-skipped: bot challenge page detected` |
+| Step 4 structure | No repeating job-listing structure in HTML | `Auto-skipped: no jobs listing detected in page structure` |
+| Step 5 dry-run | < 3 items after **2 selector iterations** | `Auto-skipped: dry-run found N items after 2 iterations` |
+| 5b exit 7 | Login-gated apply flow | `Auto-skipped: apply requires login (signal)` — see 5b-LOGIN |
+| 5b exit 2 | Form capture fail | Do **not** skip; continue with `formCapture: null` |
+| Step 7 verify | Config never sticks after 3 re-PUTs (analyzer race) | `Auto-skipped: analyzer kept overwriting config (3 attempts)` |
+| Step 8 scrape | FAILED, or low jobs vs dry-run | First run the Step 8 mismatch re-verify (re-PUT + re-scrape **once**). Only if it still fails: `Auto-skipped: test scrape produced 0 jobs` |
+
+**Hard anti-loop rules** — baked into batch mode, never override:
+1. **Max 2 selector iterations per URL.** If dry-run still < 3 items → auto-skip.
+2. **At most ONE re-scrape per URL**, and only via the Step 8
+   dry-run/scrape mismatch guard (scrape `<=1` while dry-run `>=3`): re-run
+   the Step 7 verify gate, then re-scrape once. No other re-scrape loops.
+3. **No form-capture retry loop.** One attempt; on exit 2 → continue with `formCapture: null`.
+4. **Doctor runs once** at batch start, not per URL.
+5. **No scrape for SKIPPED paths.** Sites that hit any gate above are skipped without a scrape.
+6. **Per-URL scratch isolation.** Create `.scratch/batch-<id>/<host>/` per URL so Playwright
+   artifacts don't clobber each other.
+
+### B3 — Print summary (mandatory last step in batch mode)
+
+After iterating all URLs:
+
+```powershell
+npx tsx scripts/addsite-batch.ts summary --batch-dir $BATCH_DIR
+```
+
+This prints the summary table to stdout and writes `$BATCH_DIR/summary.md`:
+
+```
+======================================================================
+Batch complete — 12 URLs processed
+======================================================================
+  ACTIVE                  4
+  SKIPPED                 6
+  ALREADY_ACTIVE          1
+  ERROR                   1
+  API scrapes triggered:  4
+======================================================================
+
+|   # | URL                                                    | Outcome          | Site ID          | Reason / Jobs                              |
+|-----|--------------------------------------------------------|------------------|------------------|--------------------------------------------|
+|   1 | https://cisecurity.wd1.myworkdayjobs.com/CIS_External  | SKIPPED          | cmq55ac8p000m... | Auto-skipped: apply requires login (pas... |
+|   2 | https://example.com/careers                            | SKIPPED          | cmq12345...      | Auto-skipped: dry-run found 0 items        |
+|   3 | https://good-site.co.il/jobs                           | ACTIVE           | cmq99999...      | 47 jobs scraped                            |
+|   4 | https://existing.com/jobs                              | ALREADY_ACTIVE   | cmq77777...      | existing site is ACTIVE; skipped           |
+```
+
+### B4 — Cost visibility
+
+Include in your final batch report:
+- Total Playwright browser sessions launched (one per PROCEED URL that passes reachability)
+- Total scrapes triggered (ACTIVE count)
+- Link to `$BATCH_DIR/summary.md` for the full table
+
+---
 
 ## Credentials & endpoints
 
@@ -97,8 +278,11 @@ $existing = Invoke-RestMethod -Method Get `
 
 If `$existing.data` has an entry, capture its `id` and `status`. Decide:
 - Status is `ANALYZING` or `REVIEW`: reuse the existing siteId, skip to step 3.
-- Status is `ACTIVE`: ask the user to confirm re-onboarding (it will trigger
-  ACTIVE → REVIEW). Stop and report if not explicitly told to proceed.
+- Status is `ACTIVE`:
+  - **Single-URL mode**: ask the user to confirm re-onboarding (it will trigger
+    ACTIVE → REVIEW). Stop and report if not explicitly told to proceed.
+  - **Batch mode**: log `ALREADY_ACTIVE` and `continue` to next URL — never ask.
+    (`addsite-batch.ts parse` already logs this; no extra action needed here.)
 - Status is `FAILED` / `SKIPPED`: reuse the id, skip to step 3.
 
 ```powershell
@@ -107,6 +291,7 @@ if ($existing.data -and $existing.data.Count -gt 0) {
   $STATUS  = $existing.data[0].status
   Write-Host "Found existing site $SITE_ID (status=$STATUS)"
   if ($STATUS -eq 'ACTIVE') {
+    # BATCH MODE: already handled by parse; this branch only runs in single-URL mode.
     Write-Host 'Site is ACTIVE. Stop and ask the user to confirm re-onboarding.'
     return
   }
@@ -585,6 +770,79 @@ description coverage on a few-hundred-job site, 100% on list-level fields).
   each with `descriptionPlain`).
 - **iCIMS / SmartRecruiters / Ashby**: also API-backed; inspect the
   network tab (filter XHR) for the JSON endpoint and its `total`/paging.
+- **Comeet / Spark Hire** (`comeet.com/jobs/...`, `comeet.co`,
+  `*.comeet.co`): **NOT an offset-API SPA — do NOT use the enumeration
+  recipe, and do NOT auto-skip it as "SPA renders client-side".** Comeet
+  embeds all positions in the initial HTML document and Angular hydrates
+  them client-side; they render reliably (present even at
+  `domcontentloaded`). Use a normal **single-page DOM config** with a
+  guarded polling `setupScript` as render-timing insurance:
+  - `itemSelector`: `li:has(> a.positionItem)`
+  - `title`: `.positionLink`  ·  `detailUrl` + `externalJobId`:
+    `a.positionItem` (attr `href`)  ·  `department`:
+    `ul.positionDetails li:first-child`
+  - **Detail-page fields** (all stable `data-qa` hooks, `capturedOnUrl` = a
+    detail URL): `description`: `[data-qa="positionDescription"]` ·
+    `requirements`: `[data-qa="positionRequirements"]` (a SEPARATE block from
+    description — map it) · `location`: `[data-qa="headerLocation"]`
+    (per-position, e.g. "Yiftah, North District, IL") · `employmentType`:
+    `[data-qa="headerEmploymentType"]` (e.g. "Full-time" — non-standard key,
+    lands in `rawData`/Additional Fields).
+  - `pageFlow`: listing URL + a `<listing>/*` detail glob (it's multi-page,
+    one detail page per position).
+  - **Apply form — use a HARDCODED `formCapture` template, do NOT auto-capture.**
+    The Comeet/Spark Hire apply form is a real application form (First/Last
+    name, Email, Phone, CV upload, LinkedIn, website, cover letter, portfolio,
+    personal note) — NOT login-gated. BUT the `"Apply for this job"` button
+    (`[data-qa="applyButton"]`) does **not** mount the form in headless
+    Chromium (bot/headless gating) even with scroll + click + 20s wait, so
+    capture-form.ts / Step 5b cannot grab it live. Instead, ship the static
+    template below as `formCapture`. The worker's `extractFormDataOrFallback`
+    tries the live `formSelector` (`form#applyForm`), fails headlessly, and
+    falls back to the static `fields[]` blob — surfacing the Application Form
+    panel on every job. The form is identical across all Comeet sites, so this
+    template is reusable verbatim:
+    ```json
+    "formCapture": {
+      "formSelector": "form#applyForm",
+      "actionUrl": "<site listing URL>",
+      "method": "POST",
+      "fields": [
+        { "name": "firstName", "label": "First name", "fieldType": "text", "required": true, "tagName": "input" },
+        { "name": "lastName", "label": "Last name", "fieldType": "text", "required": true, "tagName": "input" },
+        { "name": "email", "label": "Email", "fieldType": "email", "required": true, "tagName": "input" },
+        { "name": "phone", "label": "Phone", "fieldType": "tel", "required": true, "tagName": "input" },
+        { "name": "cv", "label": "Resume", "fieldType": "file", "required": true, "tagName": "input" },
+        { "name": "linkedin", "label": "LinkedIn Profile URL", "fieldType": "url", "required": false, "tagName": "input" },
+        { "name": "websiteUrl", "label": "Personal website", "fieldType": "url", "required": false, "tagName": "input" },
+        { "name": "coverLetter", "label": "Cover Letter", "fieldType": "file", "required": false, "tagName": "input" },
+        { "name": "portfolio", "label": "Portfolio", "fieldType": "file", "required": false, "tagName": "input" },
+        { "name": "comment", "label": "Personal note", "fieldType": "textarea", "required": false, "tagName": "textarea" }
+      ]
+    }
+    ```
+  - `setupScript` (waits for the listing to hydrate, no-ops on detail
+    pages so it costs nothing on the per-job fetches):
+    ```js
+    await new Promise((resolve) => {
+      if (document.querySelector('[data-qa="positionDescription"]')) { resolve(); return; }
+      let tries = 0;
+      const timer = setInterval(() => {
+        if (document.querySelectorAll('a.positionItem').length > 0 || tries++ > 40) { clearInterval(timer); resolve(); }
+      }, 250);
+    });
+    ```
+  - **Always set an `adminNote` on Comeet sites** (PATCH `adminNote` after the
+    site is ACTIVE) so the caveat is visible in the dashboard:
+    `Comeet/Spark Hire site. Apply form shipped as a static formCapture
+    template (it does NOT mount in headless Chromium). Auto-submit will need a
+    real/stealth browser session.`
+  - Reference: Netafim (siteId `cmq57x5gm000201qpvxa2grkv`) — 6/6 jobs, each
+    with title, department, location, employmentType, requirements,
+    description, and the 10-field apply-form template above. Earlier this site
+    was wrongly auto-skipped as "SPA chrome only" — the real cause was the
+    analyzer clobber (Step 7 guard) + the Step 8 dry-run/scrape mismatch (see
+    below), not the SPA.
 
 For these, the setupScript pattern is: (1) loop the list API by offset/page
 until you've collected `total` postings, (2) `ul.innerHTML=''` then append
@@ -697,6 +955,11 @@ npx tsx $dryRunPath $URL
 
 If any gate fails, iterate: re-read the HTML, pick different selectors,
 re-run. You get up to 3 iterations before aborting.
+
+**Batch mode**: remember the passing dry-run `count` as `$DRYRUN_N`. Step 8
+compares the test-scrape `jobCount` against it — a scrape returning `<=1`
+while `$DRYRUN_N >= 3` is the analyzer-clobber / render-timing signature and
+triggers the Step 8 re-verify (NOT an immediate skip).
 
 ## Step 5b — Capture the apply form (when applicable)
 
@@ -1245,13 +1508,19 @@ future scrape) and move the site to `SKIPPED`.
 5. **Do not run Step 8 (scrape).** Report the site as SKIPPED with the login
    reason. Done.
 
-### 5b-2 — When automatic capture fails: STOP and ask the user
+### 5b-2 — When automatic capture fails
 
-Do not pick this branch silently. Print the headless-capture failure
-output (URLs tried, form count per page) so the user has context, then
-ask the following three questions **in this exact order** (one
-`AskQuestion` invocation, three options). Do not invent a fourth option;
-the three branches below are the only supported outcomes.
+**Batch mode override**: In batch mode, form-capture failure (exit code 2) is NOT
+a stopping condition. Continue with `formCapture: null` in the config. Do NOT
+log a SKIPPED outcome — log the reason as a note in the final result but keep
+the site moving through the pipeline. The apply form will be absent from the
+dashboard for this site. Proceed directly to Step 6 with `formCapture: null`.
+
+**Single-URL mode**: Do not pick this branch silently. Print the headless-capture
+failure output (URLs tried, form count per page) so the user has context, then
+ask the following three questions **in this exact order** (one `AskQuestion`
+invocation, three options). Do not invent a fourth option; the three branches
+below are the only supported outcomes.
 
 ```
 Q1: "I tried to capture the apply form headlessly but couldn't find a
@@ -1828,16 +2097,85 @@ $patchResp = Invoke-RestMethod -Method Patch `
   -Body $patch
 ```
 
-Verify the response's `fieldMappings` contains YOUR selectors, not the
-analyzer's:
+### MANDATORY config-verification gate (analyzer-race guard)
+
+**This is a hard gate — do not scrape until it passes.** The double-PUT in
+Step 6 is supposed to win the race against the auto-analyzer, but it does NOT
+always win: the analyzer job (created at POST in Step 2) can finish *after*
+your second PUT and silently overwrite your `itemSelector`, field selectors,
+and `formCapture` with its own bad guesses. Observed live 2026-06-08 on
+yazamco.co.il — the analyzer replaced `itemSelector=div.job` with a broken
+`div.title-job.active-s > h3` that only matched the single expanded accordion
+row, so the scrape returned 1 job (all rows deduped on an empty externalJobId)
+instead of 12. A printed-only check (the old behaviour here) does not catch
+this reliably because it inspects the PATCH response, not the persisted config.
+
+Re-read the **persisted** config via GET and assert YOUR selectors survived.
+If they didn't, re-PUT and re-verify (up to 2 attempts), THEN scrape:
 
 ```powershell
-$patchResp.data.config.fieldMappings | ConvertTo-Json -Depth 10
+function Get-StoredConfig($siteId) {
+  $s = Invoke-RestMethod -Method Get -Uri "$BASE/api/sites?id=$siteId" -Headers $HEADERS
+  return ($s.data | Where-Object { $_.id -eq $siteId } | Select-Object -First 1).fieldMappings
+}
+
+$expectedItemSel = '<your itemSelector>'                      # e.g. 'div.job'
+$expectedFields  = @('title','externalJobId','description')   # keys you PUT
+$expectFormFields = 0                                          # set to your formCapture field count, or 0
+
+for ($attempt = 1; $attempt -le 3; $attempt++) {
+  $fm = Get-StoredConfig $SITE_ID
+  $itemOk  = ($fm._meta.itemSelector -eq $expectedItemSel)
+  $fieldsOk = $true
+  foreach ($k in $expectedFields) {
+    if (-not $fm.$k -or -not $fm.$k.selector) { $fieldsOk = $false; break }
+  }
+  $formOk = ($expectFormFields -eq 0) -or ($fm._meta.formCapture.fields.Count -ge $expectFormFields)
+
+  if ($itemOk -and $fieldsOk -and $formOk) {
+    Write-Host "[verify] config OK (itemSelector=$($fm._meta.itemSelector), fields=[$($expectedFields -join ',')], formFields=$($fm._meta.formCapture.fields.Count))"
+    break
+  }
+
+  Write-Host "[verify] attempt $attempt: analyzer clobber detected (itemOk=$itemOk fieldsOk=$fieldsOk formOk=$formOk). Re-PUT + re-PATCH ACTIVE."
+  if ($attempt -eq 3) { throw 'Config never stuck after 3 attempts — analyzer keeps winning. Stop and report.' }
+
+  # Re-PUT the same config file from Step 6, then PATCH back to ACTIVE
+  # (a PUT auto-demotes ACTIVE -> REVIEW).
+  Invoke-RestMethod -Method Put -Uri "$BASE/api/sites/$SITE_ID/config" `
+    -Headers $HEADERS -ContentType 'application/json' -InFile $configPath | Out-Null
+  Start-Sleep -Seconds 3
+  Invoke-RestMethod -Method Patch -Uri "$BASE/api/sites/$SITE_ID" `
+    -Headers $HEADERS -ContentType 'application/json' `
+    -Body (@{ status = 'ACTIVE' } | ConvertTo-Json -Compress) | Out-Null
+}
 ```
 
-If the analyzer's selectors are still in there, repeat step 6.
+Only proceed to Step 8 once this gate prints `config OK`.
+
+**Batch mode**: this gate runs inside the per-URL pipeline like any other.
+If it still fails after 3 attempts, do NOT `throw` — instead auto-skip per the
+gate matrix with `reason: "Auto-skipped: analyzer kept overwriting config (3 attempts)"`
+and `continue` to the next URL.
 
 ## Step 8 — Trigger scrape and wait
+
+**Batch mode — dry-run/scrape mismatch re-verify (do this BEFORE auto-skipping):**
+A test scrape that returns far fewer jobs than your Step 5 dry-run saw is the
+signature of an analyzer clobber or a render-timing miss — NOT a dead site.
+This is exactly what wrongly skipped Comeet/Netafim (dry-run 6, scrape 1).
+So when the poll loop finishes with `$C` suspiciously low relative to the
+dry-run count `$DRYRUN_N` (rule of thumb: `$DRYRUN_N -ge 3 -and $C -le 1`):
+1. Re-run the **Step 7 verification gate** (re-PUT config, confirm `config OK`).
+   If the stored config was clobbered, this fixes it.
+2. Re-trigger the scrape **exactly once** and re-poll.
+3. If the second scrape still returns `$C -le 1` while `$DRYRUN_N -ge 3`, THEN
+   auto-skip with `reason: "Auto-skipped: scrape returned $C vs dry-run $DRYRUN_N (config/render mismatch)"`.
+
+Only after that single re-verify+re-scrape: if `$S -eq 'FAILED'` or `$C -eq 0`,
+call the auto-skip pattern from the gate matrix
+(`reason: "Auto-skipped: test scrape produced 0 jobs"`) and `continue` to the
+next URL. Do not report a low/zero scrape as success.
 
 ```powershell
 $run = Invoke-RestMethod -Method Post `

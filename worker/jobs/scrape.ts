@@ -2878,6 +2878,16 @@ async function executeScrape(
     return result;
   }
 
+  // Load any manual location overrides set via the dashboard so they survive
+  // the deleteMany/re-create cycle. keyed by jobKey = externalJobId ?? detailUrl.
+  const locationOverrideRows = await prisma.jobLocationOverride.findMany({
+    where: { siteId: site.id },
+    select: { jobKey: true, location: true },
+  });
+  const locationOverrides = new Map<string, string>(
+    locationOverrideRows.map((r) => [r.jobKey, r.location]),
+  );
+
   // Save jobs in chunks so progress is preserved even if a timeout occurs.
   // Delete old jobs first, then insert in batches of CHUNK_SIZE, updating the
   // ScrapeRun progress after each chunk.
@@ -2890,12 +2900,15 @@ async function executeScrape(
 
     await prisma.$transaction(async (tx) => {
       for (const { normalized, validation } of chunk) {
+        const jobKey = normalized.externalJobId || normalized.url || null;
+        const overriddenLocation =
+          (jobKey && locationOverrides.get(jobKey)) || null;
         await tx.job.create({
           data: {
             title: normalized.title || "Untitled",
             description: normalized.description || null,
             requirements: normalized.requirements || null,
-            location: normalized.location || "Unknown",
+            location: overriddenLocation ?? normalized.location ?? "Unknown",
             department: normalized.department || null,
             externalJobId: normalized.externalJobId || null,
             publishDate: normalized.publishDate || null,
