@@ -1,15 +1,24 @@
 ---
 name: 'addsite'
-description: 'Onboard a new jobs-listing site end-to-end: fetch the page, generate field-mapping JSON by analyzing the HTML, validate via Playwright dry-run, POST/PUT/PATCH against the prod scrapper API, trigger a scrape, sample results.'
+description: 'Onboard one or many jobs-listing sites end-to-end: accepts a single URL, multiple URLs, a plain-text file, or a CSV/Google-Sheets export; auto-skips blockers (login walls, unreachable, 0-item dry-runs, etc.) with SKIPPED + adminNote; prints an end-of-run summary table. Single-URL and batch modes share the same pipeline.'
 platform: 'windows-powershell'
 ---
+
+<!-- CANONICAL SOURCE — do not edit copies directly.
+     Edit THIS file (addsite.md at the repo root), then run `pnpm sync:addsite`.
+     Copies kept in sync:
+       • .claude/commands/addsite.md  (CI-checked — drift blocks merges to main)
+       • ~/.cursor/skills/addsite/SKILL.md  (hardlinked locally by sync script)
+     If you see this comment in a copy, that copy is stale — run `pnpm sync:addsite`. -->
 
 # /addsite — onboard a jobs site end-to-end (Windows / PowerShell)
 
 You are operating as the scrapnew onboarding agent. The user invoked
-`/addsite <URL>` (the argument may be missing — if so, ask once and stop).
-Your job is to take that single URL all the way from "never seen" to
+`/addsite` with one URL, multiple URLs, or a file/CSV path.
+Your job is to take each URL all the way from "never seen" to
 "first scrape returned valid jobs" without losing them in side-quests.
+In batch mode (more than one URL) you NEVER pause for user input — every
+blocker is auto-skipped with a note and you continue to the next URL.
 
 This is the **Windows / PowerShell** edition of the skill. All commands
 below assume `powershell` (Windows PowerShell 5.1 or PowerShell 7+).
@@ -51,15 +60,194 @@ folder is gitignored.
 
 ## Inputs
 
-- `$1`: the listing URL (e.g. `https://hr.technion.ac.il/positions/`).
-- If missing, respond once: "Usage: /addsite <listing-url>" and stop.
+**Single URL** (original mode):
+```
+/addsite https://hr.technion.ac.il/positions/
+```
 
-In PowerShell, capture the argument early:
+**Multiple URLs** (batch mode — space-separated):
+```
+/addsite https://a.com/jobs https://b.com/careers https://c.co.il/משרות
+```
+
+**From a plain-text file** (one URL per line, `#` for comments):
+```
+/addsite --file urls.txt
+```
+
+**From a CSV or Google Sheets export** (Google Sheets → File → Download → CSV):
+```
+/addsite --csv career_pages.csv --column "Career Page"
+/addsite --csv career_pages.csv --column "Career Page" --company-col "Company Name" --limit 20 --start 5
+```
+
+**Common batch flags** (all optional):
+- `--force` — re-attempt URLs already in `SKIPPED` or `FAILED` status
+- `--max-urls N` — safety cap (default 50; refuse larger batches without this flag)
+- `--limit N` / `--start N` — slice into the file/CSV for cheap partial runs
+- `--resume <path>` — path to a previous `batch-results.jsonl`; skip already-processed URLs
+
+If invoked with no arguments, respond once: "Usage: /addsite <URL> [URL…] [options]" and stop.
+
+**Detect batch vs single-URL mode** by counting the effective URLs after parsing. If ≥ 2 URLs: batch mode. If 1 URL: single-URL mode (Steps 1–9 as before, no batch log required, though you may still use `addsite-batch.ts log` for consistency).
+
+## Batch mode — autonomous multi-URL onboarding
+
+> Skip this section entirely when running single-URL mode.
+
+### B0 — Parse URL list and initialise batch context
+
+Run `addsite-batch.ts parse` to normalise, deduplicate, and classify all
+input URLs, then record the batch directory for use in subsequent steps.
 
 ```powershell
-$URL = '<the listing URL passed by the user>'
-if (-not $URL) { Write-Host 'Usage: /addsite <listing-url>'; return }
+# Example — adapt flags to match actual invocation:
+$parsedOut = npx tsx scripts/addsite-batch.ts parse `
+  --csv 'career_pages.csv' --column 'Career Page' --limit 20
+
+# Capture the batch dir from the last stdout line (format: BATCH_DIR:<path>)
+$BATCH_DIR = ($parsedOut | Select-String 'BATCH_DIR:').ToString() -replace 'BATCH_DIR:',''
+Write-Host "Batch dir: $BATCH_DIR"
+
+# Read the work list to iterate
+$workList = Get-Content (Join-Path $BATCH_DIR 'work-list.json') | ConvertFrom-Json
 ```
+
+`parse` automatically logs `ALREADY_ACTIVE`, `SKIP_PRIOR`, `DUPLICATE_IN_BATCH`,
+and `INVALID_URL` entries to `batch-results.jsonl`. Only entries with
+`preStatus = "PROCEED"` need to be run through Steps 1–9.
+
+### B1 — Iterate
+
+For each entry in `$workList` where `preStatus -eq 'PROCEED'`:
+1. Set `$URL = $entry.normalizedUrl` and `$SITE_ID = $entry.existingId` (may be `$null`).
+2. Run Steps 1–9 with the **batch overrides** below.
+3. At every gate failure: call `addsite-batch.ts skip` + `addsite-batch.ts log`, then `continue`.
+4. On success: call `addsite-batch.ts log --outcome ACTIVE --jobs <N>`.
+
+```powershell
+foreach ($entry in ($workList | Where-Object { $_.preStatus -eq 'PROCEED' })) {
+  $URL     = $entry.normalizedUrl
+  $SITE_ID = $entry.existingId     # may be $null (new site)
+
+  # ... Steps 1-9 with batch overrides below ...
+  # On any auto-skip gate (see matrix):
+  #   npx tsx scripts/addsite-batch.ts skip --url $URL --reason "<reason>" --batch-dir $BATCH_DIR [--site-id $SITE_ID]
+  #   continue
+  # On success:
+  #   npx tsx scripts/addsite-batch.ts log --batch-dir $BATCH_DIR --url $URL --outcome ACTIVE --reason "" --site-id $SITE_ID --jobs $jobCount
+}
+```
+
+### B1.5 — Reactivating an existing SKIPPED / FAILED site (`--force`)
+
+When `$SITE_ID` points to an **existing** site that is currently `SKIPPED`
+(re-onboarded via `--force`) or `FAILED`, you cannot just PUT config and PATCH
+ACTIVE — two traps:
+- **Transition rules:** `SKIPPED` may ONLY transition to `ANALYZING`
+  (`SKIPPED → REVIEW`/`ACTIVE` are rejected with 400). A fresh-from-`SKIPPED`
+  site must route `SKIPPED → ANALYZING → REVIEW → ACTIVE`.
+- **Analyzer clobber:** the `→ ANALYZING` transition **queues a new ANALYSIS
+  job** that re-derives and **overwrites `fieldMappings`**. If you PUT your
+  config before the analyzer finishes, it gets clobbered.
+
+So the **only reliable order** is: force re-analysis, wait for it to settle,
+THEN write your config so it wins the race:
+
+```powershell
+# Only when the existing site is SKIPPED (or FAILED and you want a clean re-run):
+$cur = ((Invoke-RestMethod -Method Get -Uri "$BASE/api/sites?id=$SITE_ID" -Headers $HEADERS).data |
+        Where-Object { $_.id -eq $SITE_ID } | Select-Object -First 1).status
+if ($cur -eq 'SKIPPED') {
+  Invoke-RestMethod -Method Patch -Uri "$BASE/api/sites/$SITE_ID" -Headers $HEADERS `
+    -ContentType 'application/json' -Body (@{ status = 'ANALYZING' } | ConvertTo-Json -Compress) | Out-Null
+  for ($i = 1; $i -le 30; $i++) {              # wait for analyzer to leave ANALYZING (~30-60s)
+    Start-Sleep -Seconds 5
+    $cur = ((Invoke-RestMethod -Method Get -Uri "$BASE/api/sites?id=$SITE_ID" -Headers $HEADERS).data |
+            Where-Object { $_.id -eq $SITE_ID } | Select-Object -First 1).status
+    if ($cur -ne 'ANALYZING') { break }        # settled to REVIEW (or FAILED)
+  }
+}
+# Now proceed with Step 6 (PUT config) + Step 7 (verify gate) + activate.
+# Because the analyzer has already run, your PUT wins; the Step 7 gate covers any residual race.
+```
+
+The `createScrapeRun` API accepts `ACTIVE`, `REVIEW`, or `FAILED`, so after the
+PUT you can PATCH `REVIEW → ACTIVE` and scrape normally. **Prefer deleting the
+site and re-adding it fresh** if you don't need to preserve its id — a brand-new
+site starts at `ANALYZING` and avoids this dance entirely (the analyzer still
+runs once up front, but the skill's Step 6 PUT naturally lands after it).
+
+### B2 — Auto-skip gate matrix
+
+**Every blocker uses this one-liner pattern** (adapt `--reason`):
+
+```powershell
+npx tsx scripts/addsite-batch.ts skip --url $URL --reason "<reason>" --batch-dir $BATCH_DIR [--site-id $SITE_ID]
+npx tsx scripts/addsite-batch.ts log  --batch-dir $BATCH_DIR --url $URL --outcome SKIPPED --reason "<reason>" [--site-id $SITE_ID]
+continue   # move to next URL
+```
+
+| Step | Trigger | Reason string |
+|------|---------|---------------|
+| Step 3 reachability | Gate exit 3 (network/captcha/IL-IP) | `Auto-skipped: unreachable (gate exit 3)` |
+| Step 3 reachability | UA-WAF detected, no override path in batch | `Auto-skipped: WAF requires manual browserOverrides` |
+| Step 3b fetch | Bot challenge page (Cloudflare/Reblaze in HTML) | `Auto-skipped: bot challenge page detected` |
+| Step 4 structure | No repeating job-listing structure in HTML | `Auto-skipped: no jobs listing detected in page structure` |
+| Step 5 dry-run | < 3 items after **2 selector iterations** | `Auto-skipped: dry-run found N items after 2 iterations` |
+| 5b exit 7 | Login-gated apply flow | `Auto-skipped: apply requires login (signal)` — see 5b-LOGIN |
+| 5b exit 2 | Form capture fail | Do **not** skip; continue with `formCapture: null` |
+| Step 7 verify | Config never sticks after 3 re-PUTs (analyzer race) | `Auto-skipped: analyzer kept overwriting config (3 attempts)` |
+| Step 8 scrape | FAILED, or low jobs vs dry-run | First run the Step 8 mismatch re-verify (re-PUT + re-scrape **once**). Only if it still fails: `Auto-skipped: test scrape produced 0 jobs` |
+
+**Hard anti-loop rules** — baked into batch mode, never override:
+1. **Max 2 selector iterations per URL.** If dry-run still < 3 items → auto-skip.
+2. **At most ONE re-scrape per URL**, and only via the Step 8
+   dry-run/scrape mismatch guard (scrape `<=1` while dry-run `>=3`): re-run
+   the Step 7 verify gate, then re-scrape once. No other re-scrape loops.
+3. **No form-capture retry loop.** One attempt; on exit 2 → continue with `formCapture: null`.
+4. **Doctor runs once** at batch start, not per URL.
+5. **No scrape for SKIPPED paths.** Sites that hit any gate above are skipped without a scrape.
+6. **Per-URL scratch isolation.** Create `.scratch/batch-<id>/<host>/` per URL so Playwright
+   artifacts don't clobber each other.
+
+### B3 — Print summary (mandatory last step in batch mode)
+
+After iterating all URLs:
+
+```powershell
+npx tsx scripts/addsite-batch.ts summary --batch-dir $BATCH_DIR
+```
+
+This prints the summary table to stdout and writes `$BATCH_DIR/summary.md`:
+
+```
+======================================================================
+Batch complete — 12 URLs processed
+======================================================================
+  ACTIVE                  4
+  SKIPPED                 6
+  ALREADY_ACTIVE          1
+  ERROR                   1
+  API scrapes triggered:  4
+======================================================================
+
+|   # | URL                                                    | Outcome          | Site ID          | Reason / Jobs                              |
+|-----|--------------------------------------------------------|------------------|------------------|--------------------------------------------|
+|   1 | https://cisecurity.wd1.myworkdayjobs.com/CIS_External  | SKIPPED          | cmq55ac8p000m... | Auto-skipped: apply requires login (pas... |
+|   2 | https://example.com/careers                            | SKIPPED          | cmq12345...      | Auto-skipped: dry-run found 0 items        |
+|   3 | https://good-site.co.il/jobs                           | ACTIVE           | cmq99999...      | 47 jobs scraped                            |
+|   4 | https://existing.com/jobs                              | ALREADY_ACTIVE   | cmq77777...      | existing site is ACTIVE; skipped           |
+```
+
+### B4 — Cost visibility
+
+Include in your final batch report:
+- Total Playwright browser sessions launched (one per PROCEED URL that passes reachability)
+- Total scrapes triggered (ACTIVE count)
+- Link to `$BATCH_DIR/summary.md` for the full table
+
+---
 
 ## Credentials & endpoints
 
@@ -97,8 +285,11 @@ $existing = Invoke-RestMethod -Method Get `
 
 If `$existing.data` has an entry, capture its `id` and `status`. Decide:
 - Status is `ANALYZING` or `REVIEW`: reuse the existing siteId, skip to step 3.
-- Status is `ACTIVE`: ask the user to confirm re-onboarding (it will trigger
-  ACTIVE → REVIEW). Stop and report if not explicitly told to proceed.
+- Status is `ACTIVE`:
+  - **Single-URL mode**: ask the user to confirm re-onboarding (it will trigger
+    ACTIVE → REVIEW). Stop and report if not explicitly told to proceed.
+  - **Batch mode**: log `ALREADY_ACTIVE` and `continue` to next URL — never ask.
+    (`addsite-batch.ts parse` already logs this; no extra action needed here.)
 - Status is `FAILED` / `SKIPPED`: reuse the id, skip to step 3.
 
 ```powershell
@@ -107,6 +298,7 @@ if ($existing.data -and $existing.data.Count -gt 0) {
   $STATUS  = $existing.data[0].status
   Write-Host "Found existing site $SITE_ID (status=$STATUS)"
   if ($STATUS -eq 'ACTIVE') {
+    # BATCH MODE: already handled by parse; this branch only runs in single-URL mode.
     Write-Host 'Site is ACTIVE. Stop and ask the user to confirm re-onboarding.'
     return
   }
@@ -172,14 +364,14 @@ async function tryNav(label: string, opts: any) {
 (async () => {
   const bare = await tryNav('bare-worker-parity', {});
   if (bare.ok) { console.log('GATE: PASS (worker can navigate this site).'); return; }
-  const real = await tryNav('real-chrome-UA', {
-    userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36',
-    extraHTTPHeaders: { 'accept-language': 'he-IL,he;q=0.9,en-US;q=0.8,en;q=0.7' },
-  });
+  const realUA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36';
+  const realHeaders = { 'accept-language': 'he-IL,he;q=0.9,en-US;q=0.8,en;q=0.7' };
+  const real = await tryNav('real-chrome-UA', { userAgent: realUA, extraHTTPHeaders: realHeaders });
   if (real.ok) {
-    console.log('GATE: FAIL (UA-keyed WAF). Site rejects worker default UA but accepts a real Chrome UA.');
-    console.log('       Do NOT onboard. The worker needs a UA fix (or per-site UA override) first.');
-    process.exit(2);
+    console.log('GATE: UA-keyed WAF detected. Onboard with browserOverrides.');
+    console.log('       Carry this into the Step 6 PUT as fieldMappings._meta.browserOverrides:');
+    console.log(JSON.stringify({ userAgent: realUA, extraHeaders: realHeaders }, null, 2));
+    process.exit(0);
   }
   console.log('GATE: FAIL (network/region/captcha). Neither the worker default nor a real Chrome UA could reach the site.');
   console.log('       Likely IL-IP requirement, captcha, or true outage. Stop and report.');
@@ -195,15 +387,20 @@ npx tsx $reachPath $URL
 Gate decisions:
 
 - **PASS** (bare nav returned 200, no challenge markers): proceed to step
-  3b below — the regular fetch + structural summary.
-- **FAIL (UA-keyed WAF)** (bare nav failed AND real-Chrome-UA nav
-  succeeded): **STOP**. Do not create more state in prod. If a site row
-  already exists from step 2, PATCH it to `SKIPPED` with an admin note
-  pointing at this finding; otherwise just bail. Report to the user that
-  the site needs a worker-side fix before it can be onboarded (real
-  Chrome UA on the worker context, or a per-site UA-override config
-  field). Reference: bezeq.co.il (siteId
-  `cmpmv882i001x01mvhf9qfaqy`) is the canonical example.
+  3b below — the regular fetch + structural summary. No `browserOverrides`
+  needed.
+- **UA-keyed WAF** (bare nav failed AND real-Chrome-UA nav succeeded):
+  **Continue onboarding normally** — but the site needs a per-site
+  `browserOverrides` block on its config. Copy the `{ userAgent,
+  extraHeaders }` payload the gate script printed and carry it into the
+  Step 6 PUT (see "browserOverrides for WAF-protected sites" subsection
+  there). The worker reads `fieldMappings._meta.browserOverrides` per
+  scrape — no env changes, no risk to other sites. Reference: bezeq.co.il
+  (siteId `cmpmv882i001x01mvhf9qfaqy`) is the canonical example. Note that
+  step 3b's structural fetch and step 5's dry-run must also use the same
+  UA + headers locally, otherwise they'll hit the same TCP reset; reuse
+  the inline `userAgent` / `extraHTTPHeaders` from the gate snippet in
+  each Playwright invocation for this site.
 - **FAIL (both legs failed)**: the site is either IL-IP-only, behind a
   captcha/challenge that survives UA changes, or temporarily down. Stop
   and report — don't keep trying. The worker has IL IPs at runtime so it
@@ -211,7 +408,7 @@ Gate decisions:
   flag the uncertainty in your report and let the user decide whether to
   push through.
 
-Once the gate passes, continue with step 3b.
+Once the gate passes (or you've captured the WAF override), continue with step 3b.
 
 ## Step 3b — Fetch and inspect the page
 
@@ -417,44 +614,47 @@ Rules of thumb for `setupScript`:
 - Use a unique `data-extracted-<field>` attribute name per field —
   don't reuse `data-location` etc. because the page may already use
   those.
-- Keep it small and pure-JS (no external libs, no `await`). The worker
-  evaluates it synchronously in page context.
-- **Multi-page caveat**: confirmed to work on single-page sites
-  (`pageFlow: []`, e.g. goldpro.co.il). On multi-page sites
-  (`pageFlow` with a detail step) the worker does **not** run
-  `setupScript` on detail pages — re-verified on unitask-inc.com three
-  times now: (1) markers on `document.body`, (2) markers on `article`,
-  and (3) a dedicated probe field reading a `data-setup-ran` attribute
-  the script injects unconditionally on every load. All three came
-  back empty for every detail-page job. Treat `setupScript` as a
-  single-page-only tool. If you need to extract structured data from
-  the detail page, you must do it with a plain CSS selector; if no
-  clean selector exists, accept the value embedded inside `description`
-  (or, on a multi-page site, leave the field empty and clean it
-  downstream of the scraper).
-- **Multi-page listing caveat (added 2026-05-25)**: `setupScript`
-  also does **not** appear to run on the **listing** page of a
-  multi-page site. Verified on aman.co.il (siteId
-  `cmp9uvymo001t01lsb6gwy6at`): PUT'd a `setupScript` that calls the
-  site's own `/wp-admin/admin-ajax.php?action=data_fetch` endpoint
-  (returns 111 jobs as rendered HTML) and rewrites the listing
-  container with the response. With the same script in a single-page
-  config (pattern proven on Assuta/NESS), this would have produced
-  ~111 jobs. With `pageFlow` populated for detail-page visits, the
-  scrape returned 10 — identical to the no-`setupScript` baseline. So
-  the pattern "use `setupScript` to expand a paginated listing AND
-  use multi-page detail-page enrichment" does not work today.
-  Implication: **if a site has numbered pagination AND you need
-  detail-page fields, neither option works without a worker change.**
-  See `docs/engineer-notes-pagination.md` for the engineering ask.
-  Workarounds:
-  - If detail-page data is essential: stay multi-page, accept the
-    page-1-only outcome, and file the gap in your report.
-  - If full listing coverage is more important than detail fields:
-    drop `pageFlow` to `[]`, use `setupScript` to expand the listing,
-    accept truncated listing-only data.
-  - Crude path-pagination shim: onboard the same site multiple times
-    with `…/page/1/`, `…/page/2/`, etc.
+- Keep it small and pure-JS (no external libs). `await` **is** supported:
+  the worker runs the script body as an `AsyncFunction` and awaits it
+  (2026-05-31 fix), so top-level `await fetch(...)` enrichments work. Do
+  NOT wrap an awaiting script in a self-invoking IIFE — the worker awaits
+  the body, and an IIFE would resolve before its inner promise.
+- **Multi-page support (fixed 2026-06-03)**: `setupScript` now runs on
+  BOTH the listing page AND every detail page of a multi-page
+  (`pageFlow`) site. On each detail page the worker runs it right after
+  navigation, before field extraction — so detail-scope
+  `[data-extracted-*]` injections (slice a job-id out of a heading,
+  read an apply email from a `mailto:` link, normalize a description)
+  now work the same way they do on the listing. The script runs in
+  whatever DOM it lands in, so write it to handle both contexts: e.g.
+  `document.querySelectorAll('li.jobItemRow').forEach(...)` is a no-op
+  on detail pages (no rows), and a `document.querySelector('a.applyBtn')`
+  block is a no-op on the listing. Verified on mei-avivim.co.il (siteId
+  `cmpxma4wd000001qnyogf85tl`, `pageFlow=2`): `externalJobId` injected on
+  the listing + `applicationInfo` injected on each detail page both
+  returned clean values. Reference commit `4fe63e2` in
+  `worker/jobs/scrape.ts` (`extractRawFieldsWithPageFlow`).
+  - **Cost**: each `runSetupScript` call adds ~1.5s, and on multi-page it
+    fires once per detail page. A 10-job multi-page site with a
+    setupScript that also `fetch`es each detail took ~65s. Only sites
+    that actually set a setupScript pay this; plain multi-page sites are
+    unaffected (the calls are gated behind a presence check).
+  - **Implication**: the old workaround of "go single-page + async
+    `setupScript` that `fetch`es every detail page" is no longer
+    necessary just to get clean detail-scope fields — prefer a normal
+    multi-page `pageFlow` config and inject detail fields via
+    setupScript on the detail page. The single-page+fetch pattern is
+    still valid when you ALSO need it for listing expansion (see below).
+- **Paginated-listing expansion via `setupScript`**: rewriting a
+  paginated listing container with all results (e.g. aman.co.il calling
+  its own `/wp-admin/admin-ajax.php?action=data_fetch` to pull 111 jobs)
+  works in a **single-page** config (`pageFlow: []`, proven on
+  Assuta/NESS). With the 2026-06-03 fix `setupScript` also runs on a
+  multi-page listing, so combining listing-expansion with multi-page
+  detail visits should now work too — but that specific combination has
+  not been re-verified since the fix, so dry-run/scrape-verify it before
+  trusting it. If a site has numbered pagination AND needs detail-page
+  fields, this is the path to try first.
 - **Worker description-enrichment layer**: on multi-page sites the
   worker now runs a post-processor that parses the captured
   `description` text and writes `_enrichedFromDescription_<field>` keys
@@ -479,7 +679,13 @@ Rules of thumb for `setupScript`:
 When you write a `setupScript`, validate it in your Playwright dry-run
 the same way: paste it into the `evaluate()` block before reading
 fields, and confirm the `[data-extracted-*]` elements appear with the
-expected text.
+expected text. For a multi-page setupScript, dry-run it on BOTH a
+listing page and one detail page (navigate to each, run the script,
+then read the injected attrs) since the worker now executes it on both.
+Because the worker awaits async scripts, run it via an `AsyncFunction`
+in the dry-run too (and ship the `globalThis.__name = (f) => f;` shim
+before `evaluate`, or tsx/esbuild's keepNames helper will throw
+`__name is not defined`).
 
 ### Listing vs multi-page — decide before step 5
 
@@ -518,7 +724,144 @@ To validate detail-page selectors, **visit one detail URL** in Playwright
 during step 5 and run those selectors there (separately from the listing
 dry-run).
 
-### Listing completeness — count check + dynamic-loading detection
+### Listing completeness — MANDATORY coverage gate
+
+**This is a hard gate, not advice.** You MUST establish the site's true
+total job count and compare it to what your config will extract. Skipping
+this is how sites silently ship with only page 1 (e.g. NVIDIA Workday
+onboarded 2026-05-31 first shipped 20 of 480 jobs because this check was
+skipped). Do not mark a site done until one of these holds:
+
+1. `extracted >= total` (full coverage), OR
+2. you implemented full coverage (see framework recipes below), OR
+3. you got **explicit user sign-off** to ship partial coverage.
+
+**How to find the true total** (in priority order):
+- The results header / count element on the page ("480 Results",
+  "Showing 1-20 of 480", "47 jobs found"). Read it in your dry-run.
+- For known SPA frameworks, the list API returns it directly (see below).
+- As a fallback, paginate/scroll to exhaustion and count.
+
+**Every onboarding MUST end with a `coverage: <extracted>/<total>` line**
+in the Step 9 report. If you cannot determine the total, say so
+explicitly (`coverage: <extracted>/unknown`) rather than omitting it.
+
+#### Known SPA frameworks — detect by host, enumerate via their API
+
+If the listing host matches one of these, the page is an offset-paginated
+SPA. The page URL does NOT change between pages, so the worker's `url`
+pagination CANNOT drive it. The right approach is a single-page config
+(`pageFlow: []`) whose `setupScript` calls the framework's list API to
+enumerate ALL postings, rebuilds the listing container with one row per
+posting, then (optionally) fetches each detail/description endpoint with
+**bounded concurrency + retry/backoff** (these APIs throttle bursts —
+HTTP 429 — so cap concurrency ~6 and retry up to 3x; expect ~90-95%
+description coverage on a few-hundred-job site, 100% on list-level fields).
+
+- **Workday** (`*.myworkdayjobs.com`): list = `POST /wday/cxs/{tenant}/{site}/jobs`
+  with body `{appliedFacets:{}, limit:20, offset:N, searchText:"<q>"}`,
+  returns `{ total, jobPostings:[{ title, externalPath, locationsText, postedOn, bulletFields:[reqId] }] }`.
+  Per-job detail = `GET /wday/cxs/{tenant}/{site}{externalPath}` →
+  `jobPostingInfo.{ jobDescription(HTML), location, additionalLocations,
+  startDate, jobReqId, externalUrl }`. Reveal selector
+  `a[data-automation-id="jobTitle"]`; item selector
+  `[data-automation-id="jobResults"] li:has(a[data-automation-id="jobTitle"])`.
+  Reference: NVIDIA (siteId `cmplb58zt000601mvvpvedp8g`) — 480/480 jobs,
+  450 descriptions. The working setupScript + paired config is committed
+  at `sites/nvidia/setup.js`.
+- **Greenhouse** (`boards.greenhouse.io`, `*.greenhouse.io`): list JSON =
+  `https://boards-api.greenhouse.io/v1/boards/{token}/jobs?content=true`
+  (one call returns all jobs with `content` = full description HTML).
+- **Lever** (`jobs.lever.co`): list JSON =
+  `https://api.lever.co/v0/postings/{company}?mode=json` (all postings,
+  each with `descriptionPlain`).
+- **iCIMS / SmartRecruiters / Ashby**: also API-backed; inspect the
+  network tab (filter XHR) for the JSON endpoint and its `total`/paging.
+- **Comeet / Spark Hire** (`comeet.com/jobs/...`, `comeet.co`,
+  `*.comeet.co`): **NOT an offset-API SPA — do NOT use the enumeration
+  recipe, and do NOT auto-skip it as "SPA renders client-side".** Comeet
+  embeds all positions in the initial HTML document and Angular hydrates
+  them client-side; they render reliably (present even at
+  `domcontentloaded`). Use a normal **single-page DOM config** with a
+  guarded polling `setupScript` as render-timing insurance:
+  - `itemSelector`: `li:has(> a.positionItem)`
+  - `title`: `.positionLink`  ·  `detailUrl` + `externalJobId`:
+    `a.positionItem` (attr `href`)  ·  `department`:
+    `ul.positionDetails li:first-child`
+  - **Detail-page fields** (all stable `data-qa` hooks, `capturedOnUrl` = a
+    detail URL): `description`: `[data-qa="positionDescription"]` ·
+    `requirements`: `[data-qa="positionRequirements"]` (a SEPARATE block from
+    description — map it) · `location`: `[data-qa="headerLocation"]`
+    (per-position, e.g. "Yiftah, North District, IL") · `employmentType`:
+    `[data-qa="headerEmploymentType"]` (e.g. "Full-time" — non-standard key,
+    lands in `rawData`/Additional Fields).
+  - `pageFlow`: listing URL + a `<listing>/*` detail glob (it's multi-page,
+    one detail page per position).
+  - **Apply form — use a HARDCODED `formCapture` template, do NOT auto-capture.**
+    The Comeet/Spark Hire apply form is a real application form (First/Last
+    name, Email, Phone, CV upload, LinkedIn, website, cover letter, portfolio,
+    personal note) — NOT login-gated. BUT the `"Apply for this job"` button
+    (`[data-qa="applyButton"]`) does **not** mount the form in headless
+    Chromium (bot/headless gating) even with scroll + click + 20s wait, so
+    capture-form.ts / Step 5b cannot grab it live. Instead, ship the static
+    template below as `formCapture`. The worker's `extractFormDataOrFallback`
+    tries the live `formSelector` (`form#applyForm`), fails headlessly, and
+    falls back to the static `fields[]` blob — surfacing the Application Form
+    panel on every job. The form is identical across all Comeet sites, so this
+    template is reusable verbatim:
+    ```json
+    "formCapture": {
+      "formSelector": "form#applyForm",
+      "actionUrl": "<site listing URL>",
+      "method": "POST",
+      "fields": [
+        { "name": "firstName", "label": "First name", "fieldType": "text", "required": true, "tagName": "input" },
+        { "name": "lastName", "label": "Last name", "fieldType": "text", "required": true, "tagName": "input" },
+        { "name": "email", "label": "Email", "fieldType": "email", "required": true, "tagName": "input" },
+        { "name": "phone", "label": "Phone", "fieldType": "tel", "required": true, "tagName": "input" },
+        { "name": "cv", "label": "Resume", "fieldType": "file", "required": true, "tagName": "input" },
+        { "name": "linkedin", "label": "LinkedIn Profile URL", "fieldType": "url", "required": false, "tagName": "input" },
+        { "name": "websiteUrl", "label": "Personal website", "fieldType": "url", "required": false, "tagName": "input" },
+        { "name": "coverLetter", "label": "Cover Letter", "fieldType": "file", "required": false, "tagName": "input" },
+        { "name": "portfolio", "label": "Portfolio", "fieldType": "file", "required": false, "tagName": "input" },
+        { "name": "comment", "label": "Personal note", "fieldType": "textarea", "required": false, "tagName": "textarea" }
+      ]
+    }
+    ```
+  - `setupScript` (waits for the listing to hydrate, no-ops on detail
+    pages so it costs nothing on the per-job fetches):
+    ```js
+    await new Promise((resolve) => {
+      if (document.querySelector('[data-qa="positionDescription"]')) { resolve(); return; }
+      let tries = 0;
+      const timer = setInterval(() => {
+        if (document.querySelectorAll('a.positionItem').length > 0 || tries++ > 40) { clearInterval(timer); resolve(); }
+      }, 250);
+    });
+    ```
+  - **Always set an `adminNote` on Comeet sites** (PATCH `adminNote` after the
+    site is ACTIVE) so the caveat is visible in the dashboard:
+    `Comeet/Spark Hire site. Apply form shipped as a static formCapture
+    template (it does NOT mount in headless Chromium). Auto-submit will need a
+    real/stealth browser session.`
+  - Reference: Netafim (siteId `cmq57x5gm000201qpvxa2grkv`) — 6/6 jobs, each
+    with title, department, location, employmentType, requirements,
+    description, and the 10-field apply-form template above. Earlier this site
+    was wrongly auto-skipped as "SPA chrome only" — the real cause was the
+    analyzer clobber (Step 7 guard) + the Step 8 dry-run/scrape mismatch (see
+    below), not the SPA.
+
+For these, the setupScript pattern is: (1) loop the list API by offset/page
+until you've collected `total` postings, (2) `ul.innerHTML=''` then append
+one `<li>` per posting with a title `<a>` plus hidden
+`[data-extracted-*]` spans (id, detailUrl, location, date), (3) enrich
+descriptions via the detail endpoint with concurrency ≤6 and retry. Because
+the worker now awaits async `setupScript` (2026-05-31 fix), top-level
+`await` works directly in the script body — do NOT wrap it in a
+self-invoking IIFE (the worker runs the script source as an AsyncFunction
+body and awaits it; an IIFE would resolve before its inner promise).
+
+#### Dynamic-loading detection (when NOT a known API framework)
 
 After your dry-run, check whether the item count you got matches the
 visible total on the page. Many sites display "Showing 15 of 47 jobs"
@@ -536,23 +879,36 @@ or similar. If they differ:
    ```
    If the scrolled count matches the page's "of N" total, proceed normally.
 2. **"Load more" button** — explicit click required (no scroll trigger).
-   **Not supported by the worker yet.** Add the site anyway and warn in
-   the report: only the initial items will be scraped. Track in the issue
-   "worker: add loadMoreSelector config".
-3. **Numbered pagination** (page 1/2/3) — **not supported by the worker yet.**
-   For the MVP: scrape only page 1. Note this in the report so the user
-   can decide. If the listing is sorted by recency (most recent first),
-   page 1 may be sufficient.
-4. **URL-param pagination** (`?page=2`) — same as numbered. Workaround:
-   onboard the same site multiple times with different `?page=N` URLs
-   (each becomes its own site row). Crude but works.
+   **Supported** via the `loadMoreSelector` config field
+   (`worker/jobs/scrape.ts:clickLoadMoreUntilStable`): the worker clicks
+   it repeatedly until the button disappears/disables or item count
+   stops growing. Set `loadMoreSelector: "<css>"` in the config PUT.
+3. **Numbered pagination** (page 1/2/3) — **Supported** via the
+   `pagination` config field (`worker/jobs/scrape.ts:getPaginationConfig`
+   / `advanceToNextPage`). Two modes:
+   - **`type: "click"`** — `{ type: "click", nextSelector: "<css for Next>",
+     maxPages, settleMs }`. Best for SPAs (MUI pagination, etc.) that
+     don't change the URL. Worker clicks Next until it disappears/disables
+     or the first item stops changing.
+   - **`type: "url"`** — `{ type: "url", param: "page"|"paged", start, step,
+     maxPages, settleMs }`. Worker re-navigates the listing with an
+     incrementing query param (Drupal `start=0`, WordPress `start=1`).
+     This **composes with `pageFlow`** — each paginated listing page still
+     gets its detail pages visited. Auto-stops when a page repeats the
+     previous one or has no items, so a slightly-too-large `maxPages` is
+     safe. Verified on unitask-inc.com (`?paged=N`, 31 jobs across 4 pages).
+4. **URL-param pagination** (`?page=2`) — same as (3), use `type: "url"`
+   with the right `param`. Do NOT onboard the same site multiple times per
+   page; one site row with a `pagination` block covers all pages.
 5. **Filters** (dropdowns/checkboxes for category, location, etc.) — for
    MVP, **always scrape the unfiltered URL.** That's usually the parent
    listing showing all jobs. Setting filters means more work and
    shouldn't be necessary if the unfiltered list is complete.
 
-Document any of (2)/(3)/(4) you hit in your final report so the user
-knows it's incomplete and can prioritize the worker change.
+**Establish the true total and configure pagination to cover it** — do
+NOT silently ship page 1. If the page shows "N of M" or numbered pages,
+add the matching `loadMoreSelector` / `pagination` block and re-verify
+the scrape count against M.
 
 ## Step 5 — Dry-run
 
@@ -620,6 +976,11 @@ npx tsx $dryRunPath $URL
 If any gate fails, iterate: re-read the HTML, pick different selectors,
 re-run. You get up to 3 iterations before aborting.
 
+**Batch mode**: remember the passing dry-run `count` as `$DRYRUN_N`. Step 8
+compares the test-scrape `jobCount` against it — a scrape returning `<=1`
+while `$DRYRUN_N >= 3` is the analyzer-clobber / render-timing signature and
+triggers the Step 8 re-verify (NOT an immediate skip).
+
 ## Step 5b — Capture the apply form (when applicable)
 
 If the site has an HTML application form (CV upload, "Apply" / "שליחת
@@ -643,6 +1004,44 @@ live form can't be found, which is exactly what happens with
 image-captured forms whose `formSelector` is a non-replayable
 placeholder).
 
+### Two ways to enter Step 5b
+
+Step 5b can be invoked two ways. The 5b-1, 5b-2, 5b-3 substeps below are
+identical in both cases; only what happens after 5b-3 changes.
+
+- **As part of the linear /addsite flow** (steps 1 through 5 already ran
+  in this session): 5b-1 / 5b-2 / 5b-3 produce
+  `.\.scratch\scrap-form-capture.json` and control returns to Step 6,
+  which builds the full PUT payload including the captured form.
+- **Standalone for an already-onboarded site** (the user typed
+  `run step 5b <URL>` without the prior /addsite steps): same capture
+  flow, but after 5b-3 jump to the new 5b-4 instead of Step 6. 5b-4
+  merges the form into the existing site config in-place, PATCHes back
+  to ACTIVE, and fires a "Test 1"-equivalent scrape so per-job
+  `rawData._formData` populates immediately.
+
+Standalone mode requires the site to already exist. Check first, before
+running the capture script:
+
+```powershell
+$existing = Invoke-RestMethod -Method Get `
+  -Uri "https://scrapper.haide-jobs.co.il/api/sites?siteUrl=$([uri]::EscapeDataString($URL))" `
+  -Headers $HEADERS
+if (-not $existing.data -or $existing.data.Count -eq 0) {
+  throw "Site not onboarded for $URL. Run /addsite <URL> first for full onboarding."
+}
+$SITE_ID = $existing.data[0].id
+Write-Host "Standalone mode: targeting siteId=$SITE_ID (status=$($existing.data[0].status))"
+```
+
+If the site does NOT exist, the standalone shortcut isn't valid: stop
+and tell the user to run `/addsite <URL>` first, because Step 5b alone
+can't produce the per-field selectors needed to onboard.
+
+In the rest of Step 5b, "standalone mode" means "the agent entered via
+`run step 5b <URL>`"; "/addsite flow mode" means "the agent is doing
+the linear steps 1 through 9 of /addsite".
+
 ### 5b-1 — Try automatic headless capture
 
 Write the capture script (uses the same Playwright-in-headless pattern
@@ -653,6 +1052,7 @@ keepNames helper otherwise breaks any named binding inside
 ```powershell
 $captureFormScript = @'
 import { chromium, Page } from "playwright";
+import * as fs from "fs";
 
 interface Args {
   listingUrl: string;
@@ -660,15 +1060,25 @@ interface Args {
   detailSelector?: string;
   applySelector?: string;
   formSelector?: string;
+  expandSelector?: string;
+  dismissPopupSelector?: string;
+  outPath?: string;
   minFields: number;
   debug: boolean;
 }
+
+// Defaults cover the common IL "we use cookies" banners. Override with
+// --dismiss-popup="<sel,sel,...>" for any other overlay that intercepts
+// clicks. Hidden via style.display = "none" -- not removed, so any state
+// listeners on the page still see the elements.
+const DEFAULT_DISMISS_POPUP =
+  ".cookies-popup-wrapper,.wrapper-popup,#cookie-consent,.cc-banner";
 
 function parseArgs(argv: string[]): Args {
   const listingUrl = argv[2];
   if (!listingUrl) {
     console.error(
-      "Usage: capture-form.ts <listingUrl> [--detail-selector=...] [--apply-selector=...] [--detail-url=...] [--form-selector=...] [--min-fields=N] [--debug]",
+      "Usage: capture-form.ts <listingUrl> [--detail-selector=...] [--apply-selector=...] [--detail-url=...] [--form-selector=...] [--expand-selector=...] [--dismiss-popup=...] [--out=...] [--min-fields=N] [--debug]",
     );
     process.exit(64);
   }
@@ -681,6 +1091,9 @@ function parseArgs(argv: string[]): Args {
     else if (key === "detail-selector") out.detailSelector = val;
     else if (key === "apply-selector") out.applySelector = val;
     else if (key === "form-selector") out.formSelector = val;
+    else if (key === "expand-selector") out.expandSelector = val;
+    else if (key === "dismiss-popup") out.dismissPopupSelector = val;
+    else if (key === "out") out.outPath = val;
     else if (key === "min-fields") out.minFields = parseInt(val || "3", 10);
     else if (key === "debug") out.debug = true;
   }
@@ -882,6 +1295,45 @@ const captureLargestForm = async (
       await page.waitForLoadState("networkidle", { timeout: 8000 }).catch(() => {});
     }
 
+    // Dismiss overlays (cookies banners etc.) that intercept pointer events
+    // before any clicks. Hide via style.display = "none" -- not removed --
+    // so any listeners that fire on page load remain bound.
+    const dismissSel = args.dismissPopupSelector ?? DEFAULT_DISMISS_POPUP;
+    if (dismissSel) {
+      const dismissed = await page.evaluate((sel) => {
+        let n = 0;
+        try {
+          document.querySelectorAll(sel).forEach((el) => {
+            (el as HTMLElement).style.display = "none";
+            n++;
+          });
+        } catch {
+          /* ignore */
+        }
+        return n;
+      }, dismissSel);
+      debug.step2b_dismissedPopups = { selector: dismissSel, count: dismissed };
+    }
+
+    // Optional: expand an accordion / reveal a hidden form before reading
+    // forms. Some sites (single-page job portals) only render the apply
+    // form once a row is expanded. The click goes through page.evaluate so
+    // leftover overlays don't block it.
+    if (args.expandSelector) {
+      const expanded = await page.evaluate((sel) => {
+        const el = document.querySelector(sel) as HTMLElement | null;
+        if (!el) return false;
+        el.click();
+        return true;
+      }, args.expandSelector);
+      debug.step2c_expandSelector = args.expandSelector;
+      debug.step2c_expanded = expanded;
+      if (!expanded) {
+        throw new Error(`expand selector matched no element: ${args.expandSelector}`);
+      }
+      await page.waitForTimeout(2500);
+    }
+
     if (args.applySelector) {
       debug.step3_applySelector = args.applySelector;
       const apply = await page.$(args.applySelector);
@@ -892,7 +1344,14 @@ const captureLargestForm = async (
         debug.step3_applyHref = abs;
         await page.goto(abs, { waitUntil: "domcontentloaded", timeout: 30000 });
       } else {
-        await apply.click();
+        // DOM-level click via evaluate() bypasses Playwright's "stable +
+        // not intercepted" guard. The dismissPopup step above usually
+        // covers the common case, but defensive: don't fail if a sneaky
+        // overlay slips back in.
+        await page.evaluate((sel) => {
+          const el = document.querySelector(sel) as HTMLElement | null;
+          el?.click();
+        }, args.applySelector);
         await page.waitForTimeout(1500);
       }
       await page.waitForLoadState("networkidle", { timeout: 8000 }).catch(() => {});
@@ -901,11 +1360,80 @@ const captureLargestForm = async (
     debug.finalUrl = page.url();
     debug.formCount = await page.evaluate(() => document.querySelectorAll("form").length);
 
+    // Login-wall detection. If the apply destination forces sign-in / account
+    // creation before the application form is reachable (Workday "Create
+    // Account/Sign In", Greenhouse-via-login, etc.), the auto-submit product
+    // can't use this site — flag it so Step 5b/6 marks the site SKIPPED instead
+    // of ACTIVE. Mirrors worker/lib/applyGate.ts strong signals (kept inline so
+    // this script stays self-contained / runnable from .scratch via tsx).
+    const LOGIN_URL_RE =
+      /\/(login|log-in|signin|sign-in|sign_in|register|signup|sign-up|sign_up|create-account|createaccount|auth|authentication|sso|oauth2?)(\/|\?|#|$)/i;
+    const OAUTH_HOST_RE =
+      /(accounts\.google\.|login\.microsoftonline\.|github\.com\/login|linkedin\.com\/(oauth|uas\/login)|\.okta\.com|\.auth0\.com|\.onelogin\.com|login\.salesforce\.)/i;
+    const LOGIN_CTA_RE =
+      /\b(sign in|log ?in|create an? account|register now|sign up)\b|התחבר|הרשמ|צור חשבון/i;
+    let applyRequiresLogin = false;
+    let applyLoginReason: string | null = null;
+    const finalUrl = page.url();
+    if (LOGIN_URL_RE.test(finalUrl) || OAUTH_HOST_RE.test(finalUrl)) {
+      applyRequiresLogin = true;
+      applyLoginReason = "login-url";
+    } else {
+      const lw = await page.evaluate(() => {
+        const passwordInputs = document.querySelectorAll('input[type="password"]').length;
+        const signInAutomation = !!document.querySelector(
+          '[data-automation-id="signInContent"],[data-automation-id="signInLink"],[data-automation-id="signInSubmitButton"],[data-automation-id="createAccountLink"],[data-automation-id="createAccountSubmitButton"],[data-automation-id="createAccountCheckbox"]',
+        );
+        let hasApplyForm = false;
+        for (const f of Array.from(document.querySelectorAll("form"))) {
+          const file = f.querySelectorAll('input[type="file"]').length;
+          const email = f.querySelectorAll('input[type="email"]').length;
+          const textish = f.querySelectorAll('input[type="text"],input:not([type]),textarea').length;
+          if (file > 0 && (email > 0 || textish > 0)) { hasApplyForm = true; break; }
+        }
+        const bodyText = (document.body?.textContent || "").replace(/\s+/g, " ").slice(0, 6000);
+        return { passwordInputs, signInAutomation, hasApplyForm, bodyText };
+      });
+      if (lw.passwordInputs > 0) {
+        applyRequiresLogin = true;
+        applyLoginReason = `password-field(${lw.passwordInputs})`;
+      } else if (lw.signInAutomation) {
+        applyRequiresLogin = true;
+        applyLoginReason = "signin-automation-id";
+      } else if (!lw.hasApplyForm && LOGIN_CTA_RE.test(lw.bodyText)) {
+        applyRequiresLogin = true;
+        applyLoginReason = "login-cta-no-apply-form";
+      }
+    }
+    debug.applyRequiresLogin = applyRequiresLogin;
+    debug.applyLoginReason = applyLoginReason;
+
     const capture = await captureLargestForm(page, args.formSelector);
     const ok = !!capture && capture.fields.length >= args.minFields;
-    const out: Record<string, unknown> = { formCapture: capture };
+    const out: Record<string, unknown> = { formCapture: capture, applyRequiresLogin, applyLoginReason };
     if (args.debug) out.debug = debug;
     console.log(JSON.stringify(out, null, 2));
+    // Always write the apply-gate sidecar so Step 5b/6 can branch to SKIPPED
+    // even when no form was captured (a login wall typically has no apply form).
+    fs.writeFileSync(
+      ".scratch/scrap-apply-gate.json",
+      JSON.stringify({ applyRequiresLogin, applyLoginReason, finalUrl }, null, 2),
+      "utf8",
+    );
+    if (args.outPath && capture) {
+      // Write directly via Node so the JSON never round-trips through a
+      // shell pipe (PowerShell will mangle Hebrew labels otherwise).
+      fs.writeFileSync(args.outPath, JSON.stringify(capture, null, 2), "utf8");
+      console.error(`[capture-form] wrote formCapture to ${args.outPath}`);
+    }
+    if (applyRequiresLogin) {
+      // Distinct exit code 7 = login-gated apply flow. Step 5b/6 must mark the
+      // site SKIPPED (do NOT proceed to ACTIVE or trigger a scrape).
+      console.error(
+        `[capture-form] LOGIN-GATED apply flow detected (${applyLoginReason}). Final URL: ${page.url()} — site should be SKIPPED, not scraped.`,
+      );
+      process.exit(7);
+    }
     if (!ok) {
       console.error(
         `[capture-form] no usable form found (need >= ${args.minFields} fields). Final URL: ${page.url()} formCount=${debug.formCount}`,
@@ -928,37 +1456,91 @@ Set-Content -Path $capturePath -Value $captureFormScript -Encoding UTF8
 # you discovered during Step 5 (read it out of the dry-run sample's
 # detailUrl or title_href). For a single-page site pass the listing URL.
 $SAMPLE_DETAIL = '<paste one concrete detail URL here, or $URL if single-page>'
-# If the form is reached only after an extra click (e.g. an "Apply" button
-# on the detail page), pass its CSS selector via --apply-selector=...
-npx tsx $capturePath $URL --detail-url=$SAMPLE_DETAIL --debug | Tee-Object -Variable captureOut
+# Optional knobs (omit when not needed):
+#   --apply-selector=...   click an "Apply" button to reveal the form
+#   --expand-selector=...  click an accordion / row to reveal a hidden form
+#                          (single-page job portals like cellcom.co.il)
+#   --form-selector=...    target a specific <form> by id/class
+#   --dismiss-popup=...    comma-separated CSS for popups to hide before
+#                          interacting (defaults already cover the common
+#                          IL cookies banners)
+# The --out flag has Node write the JSON directly (bypasses PowerShell so
+# Hebrew labels don't get re-encoded into mojibake on stdout).
+npx tsx $capturePath $URL --detail-url=$SAMPLE_DETAIL `
+  --out=.\.scratch\scrap-form-capture.json --debug
 $CAPTURE_EXIT = $LASTEXITCODE
 ```
 
 **Gates**:
 
-- `$CAPTURE_EXIT -eq 0` AND the JSON has `formCapture.fields.length >= 3`:
-  success. Write the `formCapture` object verbatim to
-  `.\.scratch\scrap-form-capture.json` and proceed to Step 6 (it will
-  pick it up automatically). The simplest way:
-  ```powershell
-  ($captureOut -join "`n" | ConvertFrom-Json).formCapture |
-    ConvertTo-Json -Depth 20 |
-    Set-Content -Path '.\.scratch\scrap-form-capture.json' -Encoding UTF8
-  ```
+- `$CAPTURE_EXIT -eq 0` AND `.\.scratch\scrap-form-capture.json` exists with
+  `fields.Count >= 3`: success. The file is the canonical output that
+  Step 6 (or 5b-4 in standalone mode) reads. No further PowerShell
+  copy step needed.
+- `$CAPTURE_EXIT -eq 7` (**login-gated apply flow**): the apply path forces
+  sign-in / account creation before the form is reachable (Workday "Create
+  Account/Sign In", etc.). This site is unusable for auto-submit. **STOP the
+  normal flow and run 5b-LOGIN below** — the site is marked `SKIPPED`, NOT
+  `ACTIVE`, and NO scrape is triggered. `.\.scratch\scrap-apply-gate.json`
+  holds `{ applyRequiresLogin: true, applyLoginReason, finalUrl }`.
 - `$CAPTURE_EXIT -eq 2` (no usable form): **STOP** and run 5b-2 below.
   Do NOT silently fall through to `formCapture=null` — that's the
   pre-existing failure mode this step is designed to fix.
-- `$CAPTURE_EXIT -ne 0 -and $CAPTURE_EXIT -ne 2` (script crashed):
-  iterate once with different selectors / URLs. If still failing,
-  proceed to 5b-2.
+- `$CAPTURE_EXIT -ne 0 -and $CAPTURE_EXIT -ne 2 -and $CAPTURE_EXIT -ne 7`
+  (script crashed): iterate once with different selectors / URLs. If still
+  failing, proceed to 5b-2.
 
-### 5b-2 — When automatic capture fails: STOP and ask the user
+> **Reaching the apply flow for capture.** Login walls only show up once you
+> actually click "Apply". For ATS sites that gate behind an account (Workday
+> is the canonical case) drive the script to the apply page, e.g. for Workday:
+> `--detail-url=<job detail URL>` plus an `--apply-selector` chain isn't enough
+> because Workday's apply is multi-step — instead pass the direct
+> `.../job/.../apply/applyManually` URL as `--detail-url`. The script's login
+> detection runs on whatever page it lands on, so landing on the
+> account-creation step is exactly what trips the `password-field` /
+> `signin-automation-id` signal and returns exit 7.
 
-Do not pick this branch silently. Print the headless-capture failure
-output (URLs tried, form count per page) so the user has context, then
-ask the following three questions **in this exact order** (one
-`AskQuestion` invocation, three options). Do not invent a fourth option;
-the three branches below are the only supported outcomes.
+### 5b-LOGIN — Login-gated apply flow → mark SKIPPED
+
+The apply form is behind a sign-in / account-creation wall, so the auto-submit
+product can't use this site. Do **not** set it ACTIVE and do **not** scrape.
+Instead persist the flag in the site config (so the worker also refuses any
+future scrape) and move the site to `SKIPPED`.
+
+1. Read the reason for the report:
+   ```powershell
+   $gate = Get-Content '.\.scratch\scrap-apply-gate.json' -Raw | ConvertFrom-Json
+   Write-Host ("5b-LOGIN: applyRequiresLogin={0} reason={1} url={2}" -f `
+     $gate.applyRequiresLogin, $gate.applyLoginReason, $gate.finalUrl)
+   ```
+2. In the Step 6 config payload (below), set `"formCapture": null`,
+   `"applyRequiresLogin": true`, and `"applyLoginReason": "<reason>"`. These
+   fold into `fieldMappings._meta` and the worker's `getApplyRequiresLogin()`
+   short-circuit reads them.
+3. PUT the config (Step 6) as usual so the listing mappings + the
+   `applyRequiresLogin` flag are saved.
+4. **Skip Step 7's `ACTIVE` PATCH.** Instead PATCH the site to `SKIPPED`:
+   ```powershell
+   $patch = @{ status = 'SKIPPED' } | ConvertTo-Json -Compress
+   Invoke-RestMethod -Method Patch -Uri "$BASE/api/sites/$SITE_ID" `
+     -Headers $HEADERS -ContentType 'application/json' -Body $patch
+   ```
+5. **Do not run Step 8 (scrape).** Report the site as SKIPPED with the login
+   reason. Done.
+
+### 5b-2 — When automatic capture fails
+
+**Batch mode override**: In batch mode, form-capture failure (exit code 2) is NOT
+a stopping condition. Continue with `formCapture: null` in the config. Do NOT
+log a SKIPPED outcome — log the reason as a note in the final result but keep
+the site moving through the pipeline. The apply form will be absent from the
+dashboard for this site. Proceed directly to Step 6 with `formCapture: null`.
+
+**Single-URL mode**: Do not pick this branch silently. Print the headless-capture
+failure output (URLs tried, form count per page) so the user has context, then
+ask the following three questions **in this exact order** (one `AskQuestion`
+invocation, three options). Do not invent a fourth option; the three branches
+below are the only supported outcomes.
 
 ```
 Q1: "I tried to capture the apply form headlessly but couldn't find a
@@ -983,10 +1565,11 @@ Respond per branch:
 
 - **Q1 — user pastes a URL**: re-run the capture script with that URL.
   ```powershell
-  npx tsx $capturePath $URL --detail-url='<the URL the user pasted>' --debug
+  npx tsx $capturePath $URL --detail-url='<the URL the user pasted>' `
+    --out=.\.scratch\scrap-form-capture.json --debug
   ```
-  If it now succeeds, save to `.\.scratch\scrap-form-capture.json` and
-  proceed. If it fails again, fall back to Q2.
+  If it now succeeds (`$LASTEXITCODE -eq 0` and the JSON file has
+  `fields.Count >= 3`), proceed. If it fails again, fall back to Q2.
 
 - **Q2 — user pastes a screenshot of the form** (this is the
   image-only fallback): read each visible field in the image and
@@ -1006,31 +1589,49 @@ Respond per branch:
     (which get `"textarea"` / `"select"`).
 
   Construct the JSON file directly (do NOT run the headless capture
-  script for this path — there's nothing live to capture):
-  ```powershell
-  $fc = [ordered]@{
-    formSelector = '(image-captured, not auto-replayable)'
-    actionUrl    = '(unknown - captured from screenshot)'
-    method       = 'POST'   # apply forms are almost always POST; safe default
-    fields       = @(
-      [ordered]@{ name=''; label='שם פרטי';   fieldType='text';     required=$true;  tagName='input' }
-      [ordered]@{ name=''; label='שם משפחה';  fieldType='text';     required=$true;  tagName='input' }
-      [ordered]@{ name=''; label='טלפון';     fieldType='tel';      required=$true;  tagName='input' }
-      [ordered]@{ name=''; label='אימייל';    fieldType='email';    required=$true;  tagName='input' }
-      [ordered]@{ name=''; label='קורות חיים'; fieldType='file';     required=$true;  tagName='input' }
-      # ... one entry per visible field in the screenshot ...
-    )
+  script for this path — there's nothing live to capture).
+
+  **Important — bypass PowerShell for this write.** Hebrew labels travel
+  agent → shell tool bytes → PowerShell parser → file, and PS 5.1's
+  active code page on this machine can mangle non-ASCII at the parser
+  step (same encoding axis as the `capture-form.ts` stdout bug that
+  bit us live). Use the agent's file-write tool directly to create
+  `.\.scratch\scrap-form-capture.json` with the JSON body. The file
+  goes to disk as UTF-8 without ever touching PowerShell.
+
+  Template — replace the `fields` array with one entry per visible
+  field in the screenshot, keep the top-level keys as-is:
+
+  ```json
+  {
+    "formSelector": "(image-captured, not auto-replayable)",
+    "actionUrl": "(unknown - captured from screenshot)",
+    "method": "POST",
+    "fields": [
+      { "name": "", "label": "שם פרטי",    "fieldType": "text",     "required": true, "tagName": "input" },
+      { "name": "", "label": "שם משפחה",   "fieldType": "text",     "required": true, "tagName": "input" },
+      { "name": "", "label": "טלפון",      "fieldType": "tel",      "required": true, "tagName": "input" },
+      { "name": "", "label": "אימייל",     "fieldType": "email",    "required": true, "tagName": "input" },
+      { "name": "", "label": "קורות חיים", "fieldType": "file",     "required": true, "tagName": "input" }
+    ]
   }
-  $fc | ConvertTo-Json -Depth 20 |
-    Set-Content -Path '.\.scratch\scrap-form-capture.json' -Encoding UTF8
   ```
+
+  After the file is written, verify the encoding survived by reading
+  it back — `formCapture.fields[0].label` must still match the
+  Hebrew/English text from the screenshot byte-for-byte. If it
+  doesn't, re-write the file via the file tool (do NOT try to
+  re-encode via PowerShell — at that point the bytes on disk are
+  already wrong).
+
   Flag this clearly in your final report: "Apply form for this site is
   STATIC metadata (captured from screenshot); the worker won't be able
   to re-validate it on each scrape. If the site's form changes you'll
   need to re-onboard."
 
 - **Q3 — user says "skip"**: write the literal string `null` to the
-  file (so Step 6 knows to send `formCapture: null` explicitly):
+  file (so Step 6 / 5b-4 knows to send `formCapture: null` explicitly).
+  ASCII only — PowerShell is safe here:
   ```powershell
   Set-Content -Path '.\.scratch\scrap-form-capture.json' -Value 'null' -Encoding UTF8
   ```
@@ -1050,9 +1651,262 @@ if (-not $fcOnDisk -or $fcOnDisk.Trim() -eq 'null') {
 ```
 
 If the summary looks wrong (e.g. 1 field for an apply form that
-clearly has more), loop back to 5b-2 Q2 and re-do the image read.
+clearly has more), loop back to 5b-2 Q2 and re-do the image read. In
+standalone mode, "looks wrong" should not block 5b-4 by default — only
+re-loop if the field count is obviously off (zero, or far below what
+the user expected). Minor label nits can be fixed by re-running step 5b
+later.
+
+After 5b-3, the path forks:
+
+- **/addsite flow mode**: continue to Step 6 below. The PUT payload
+  there picks up `.\.scratch\scrap-form-capture.json` automatically.
+- **Standalone mode**: skip Steps 6 through 9 and run **5b-4** below.
+  When 5b-4 finishes the site is ACTIVE with the new form attached and
+  a fresh single-job Test scrape has run.
+
+### 5b-4 — Standalone push to existing site
+
+Standalone-mode only. Skip this section entirely when running as part
+of the linear /addsite flow.
+
+This step is the standalone equivalent of Steps 6 through 9 collapsed
+into one Node script:
+
+1. GET the current site (preserves itemSelector, fieldMappings,
+   setupScript, pageFlow as-is).
+2. Build a SaveConfigPayload with the new `formCapture` swapped in.
+3. PUT `/api/sites/<id>/config` twice (5s sleep between, mirrors the
+   analyzer-race pattern from Step 6).
+4. PATCH `{status: 'ACTIVE'}` — the PUT auto-demotes ACTIVE to REVIEW.
+5. POST `/api/sites/<id>/scrape` with body `{ maxJobs: 1 }` — same call
+   the dashboard "Test 1" button makes. The worker's
+   `prisma.job.deleteMany({ where: { siteId } })` runs before insert on
+   every scrape, so this also wipes any pre-existing jobs (no separate
+   "Clear Jobs" call needed).
+6. Poll for COMPLETED, fetch the single resulting job, confirm
+   `rawData._formData` is populated.
+
+Everything is done in Node (not PowerShell) so Hebrew strings flow
+through `JSON.parse`/`fetch`/`JSON.stringify` without round-tripping
+through Windows code pages.
+
+```powershell
+$mergeScript = @'
+import * as fs from "fs";
+import * as path from "path";
+
+const BASE = "https://scrapper.haide-jobs.co.il";
+
+async function main() {
+  const siteId = process.argv[2];
+  const formCapturePath = process.argv[3] || ".scratch/scrap-form-capture.json";
+  if (!siteId) {
+    console.error("Usage: merge-form-capture.ts <siteId> [formCaptureJsonPath]");
+    process.exit(64);
+  }
+
+  const TOKEN = fs
+    .readFileSync(path.resolve(".claude", "scrap-token"), "utf8")
+    .replace(/\s/g, "");
+  if (!TOKEN || TOKEN.startsWith("REPLACE_ME")) {
+    throw new Error(".claude/scrap-token empty or placeholder");
+  }
+  const headers: Record<string, string> = {
+    Authorization: `Bearer ${TOKEN}`,
+    "Content-Type": "application/json",
+  };
+
+  // Read the captured form. "null" or missing -> formCapture: null in
+  // the payload (lets the user explicitly clear an existing capture).
+  let formCapture: unknown = null;
+  if (fs.existsSync(formCapturePath)) {
+    const raw = fs.readFileSync(formCapturePath, "utf8");
+    if (raw.trim() && raw.trim() !== "null") {
+      formCapture = JSON.parse(raw);
+    }
+  }
+  const fcSummary =
+    formCapture && typeof formCapture === "object"
+      ? `selector=${(formCapture as any).formSelector} method=${(formCapture as any).method} fields=${(formCapture as any).fields?.length ?? 0}`
+      : "null";
+  console.log(`[5b-4] Loaded formCapture: ${fcSummary}`);
+
+  // GET the site via the list endpoint -- the single-resource path
+  // /api/sites/<id> returns 405 (the API exposes id-filtered lists only).
+  console.log(`[5b-4] Fetching site ${siteId}...`);
+  const listUrl = `${BASE}/api/sites?id=${encodeURIComponent(siteId)}`;
+  const siteResp = await fetch(listUrl, { headers });
+  if (!siteResp.ok) throw new Error(`GET site failed: ${siteResp.status}`);
+  const siteJson: any = await siteResp.json();
+  let site: any = null;
+  if (Array.isArray(siteJson.data)) {
+    site = siteJson.data.find((s: any) => s.id === siteId) || siteJson.data[0];
+  } else {
+    site = siteJson.data || siteJson;
+  }
+  if (!site) throw new Error("site not found in list response");
+  const cur = site.fieldMappings || {};
+  const meta = cur._meta || {};
+
+  // Build the PUT payload. The server stores top-level keys
+  // (itemSelector, setupScript, etc.) inside _meta but the PUT shape
+  // expects them flat. Field mappings (everything except _meta) copy
+  // through verbatim so we don't disturb existing selectors.
+  const fieldMappings: Record<string, unknown> = {};
+  for (const [k, v] of Object.entries(cur)) {
+    if (k === "_meta") continue;
+    fieldMappings[k] = v;
+  }
+  const payload: Record<string, unknown> = {
+    itemSelector: meta.itemSelector || ".item",
+    fieldMappings,
+    pageFlow: Array.isArray(site.pageFlow) ? site.pageFlow : [],
+    formCapture,
+  };
+  if (meta.listingSelector) payload.listingSelector = meta.listingSelector;
+  if (meta.setupScript) payload.setupScript = meta.setupScript;
+  if (meta.loadMoreSelector) payload.loadMoreSelector = meta.loadMoreSelector;
+  if (meta.revealSelector) payload.revealSelector = meta.revealSelector;
+  if (meta.pagination) payload.pagination = meta.pagination;
+
+  fs.writeFileSync(
+    path.resolve(".scratch", "merge-config-payload.json"),
+    JSON.stringify(payload, null, 2),
+    "utf8",
+  );
+  console.log(
+    `[5b-4] payload itemSelector=${payload.itemSelector} fieldKeys=[${Object.keys(fieldMappings).join(",")}] setupScriptBytes=${(payload.setupScript as string | undefined)?.length ?? 0}`,
+  );
+
+  const body = JSON.stringify(payload);
+  const putUrl = `${BASE}/api/sites/${siteId}/config`;
+
+  console.log("[5b-4] PUT #1...");
+  const r1 = await fetch(putUrl, { method: "PUT", headers, body });
+  if (!r1.ok)
+    throw new Error(`PUT #1 failed: ${r1.status} ${(await r1.text()).slice(0, 500)}`);
+  console.log("[5b-4] sleeping 5s before PUT #2 (race vs auto-analyzer)...");
+  await new Promise((r) => setTimeout(r, 5000));
+  console.log("[5b-4] PUT #2...");
+  const r2 = await fetch(putUrl, { method: "PUT", headers, body });
+  if (!r2.ok)
+    throw new Error(`PUT #2 failed: ${r2.status} ${(await r2.text()).slice(0, 500)}`);
+
+  // PUT auto-demotes ACTIVE to REVIEW; PATCH it back so the dashboard
+  // and the worker scheduler treat the site as live.
+  console.log("[5b-4] PATCH back to ACTIVE...");
+  const patchResp = await fetch(`${BASE}/api/sites/${siteId}`, {
+    method: "PATCH",
+    headers,
+    body: JSON.stringify({ status: "ACTIVE" }),
+  });
+  if (!patchResp.ok)
+    throw new Error(
+      `PATCH failed: ${patchResp.status} ${(await patchResp.text()).slice(0, 500)}`,
+    );
+
+  // Verify formCapture survived the PATCH.
+  const verifyResp = await fetch(listUrl, { headers });
+  const verifyJson: any = await verifyResp.json();
+  const verifySite =
+    (Array.isArray(verifyJson.data)
+      ? verifyJson.data.find((s: any) => s.id === siteId)
+      : verifyJson.data) || verifyJson;
+  const verifyFC = verifySite?.fieldMappings?._meta?.formCapture;
+  if (formCapture && !verifyFC) {
+    throw new Error("VERIFY: _meta.formCapture missing after PATCH");
+  }
+  console.log(
+    `[5b-4] verified status=${verifySite?.status} formCapture.fields=${verifyFC?.fields?.length ?? "n/a"}`,
+  );
+
+  // Trigger a "Test 1" scrape -- maxJobs: 1, same call the dashboard
+  // button makes. The worker's deleteMany clears existing jobs first.
+  console.log("[5b-4] POST /scrape { maxJobs: 1 } (Test 1 equivalent)...");
+  const scrapeResp = await fetch(`${BASE}/api/sites/${siteId}/scrape`, {
+    method: "POST",
+    headers,
+    body: JSON.stringify({ maxJobs: 1 }),
+  });
+  if (!scrapeResp.ok)
+    throw new Error(
+      `POST scrape failed: ${scrapeResp.status} ${(await scrapeResp.text()).slice(0, 500)}`,
+    );
+  const scrapeJson: any = await scrapeResp.json();
+  const runId = scrapeJson.data?.id || scrapeJson.id;
+  console.log(`[5b-4] scrape runId=${runId}`);
+
+  // Poll up to 90s.
+  let runStatus = "PENDING";
+  for (let i = 0; i < 18; i++) {
+    await new Promise((r) => setTimeout(r, 5000));
+    const sResp = await fetch(`${BASE}/api/sites/${siteId}/scrape`, { headers });
+    const sJson: any = await sResp.json();
+    const run = sJson.data || sJson;
+    runStatus = run?.status || "UNKNOWN";
+    const jc = run?.jobCount;
+    console.log(`[5b-4] tick ${i + 1} status=${runStatus} jobs=${jc}`);
+    if (runStatus === "COMPLETED" || runStatus === "FAILED") break;
+  }
+
+  // Read the single job and report whether _formData populated.
+  const jobsResp = await fetch(
+    `${BASE}/api/jobs?siteId=${siteId}&pageSize=1`,
+    { headers },
+  );
+  const jobsJson: any = await jobsResp.json();
+  const job = jobsJson.data?.[0];
+  const hasFormData =
+    !!(job?.rawData && (job.rawData as any)._formData);
+  const jobId = job?.id || "(none)";
+
+  console.log(
+    `\n5b-4: siteId=${siteId} status=${verifySite?.status} formCapture.fields=${verifyFC?.fields?.length ?? "n/a"} testScrape=${runId} ${runStatus} job=${jobId} hasFormData=${hasFormData}`,
+  );
+}
+
+main().catch((e) => {
+  console.error("[5b-4] ERROR:", e?.message || e);
+  process.exit(1);
+});
+'@
+
+$mergePath = '.\.scratch\merge-form-capture.ts'
+Set-Content -Path $mergePath -Value $mergeScript -Encoding UTF8
+npx tsx $mergePath $SITE_ID .scratch/scrap-form-capture.json
+$MERGE_EXIT = $LASTEXITCODE
+```
+
+**Gates** (all must pass — else report and stop):
+
+- `$MERGE_EXIT -eq 0`.
+- The final summary line shows `status=ACTIVE` and a non-empty
+  `formCapture.fields` count matching the local JSON.
+- `hasFormData=true` on the single test-scraped job (when the worker
+  successfully copies the static form into `rawData._formData`).
+
+If `hasFormData=false` but everything else passed: the site is
+configured correctly, but the static-fallback copy didn't happen on
+this scrape. Possible causes:
+
+- The worker's live form re-extraction tried and found the form (so it
+  preferred the live data) — `_formData` is still present but the key
+  shape may differ. Re-check the job's `rawData._formData` directly.
+- The form is hidden behind an expand/click that the worker doesn't
+  perform — re-onboard with a `setupScript` that pre-expands jobs, or
+  accept that the dashboard panel will only show the site-level
+  formCapture (from `_meta.formCapture`) rather than per-job.
+
+Report and continue — don't loop.
 
 ## Step 6 — PUT config (twice)
+
+> **Standalone-mode exit**: if the agent was invoked via
+> `run step 5b <URL>`, **skip Steps 6 through 9 entirely** — Step 5b-4
+> is the standalone equivalent (it does the PUTs, the PATCH back to
+> ACTIVE, the Test 1 scrape, and the verification). Steps 6-9 below
+> apply only to the linear /addsite flow.
 
 Build the SaveConfigPayload JSON (shape below) and PUT it. Then sleep 5s
 and PUT it AGAIN. The second PUT is critical because the server's auto
@@ -1089,6 +1943,22 @@ Per-field mapping attributes the worker actually honors:
 The API will silently accept `regex`, `transform`, `extractRegex`,
 `postProcess`, `extract`, etc., but the worker ignores them — don't
 waste a PUT trying to use them. Use `setupScript` instead.
+
+**Login-gated apply flow (`applyRequiresLogin`).** Only set when Step 5b
+returned exit 7 (see 5b-LOGIN). Add `applyRequiresLogin: true` and
+`applyLoginReason: '<reason from .scratch/scrap-apply-gate.json>'` to the
+payload, alongside `formCapture: null`. They fold into
+`fieldMappings._meta` and the worker's `getApplyRequiresLogin()`
+short-circuit (`worker/jobs/scrape.ts`) reads them — any scrape of a flagged
+site is turned into a `SKIPPED` transition instead of running. In PowerShell,
+building on the `$config` hashtable:
+```powershell
+$config.formCapture        = $null
+$config.applyRequiresLogin = $true
+$config.applyLoginReason   = $gate.applyLoginReason   # from 5b-LOGIN step 1
+```
+After PUT, finish via 5b-LOGIN (PATCH `SKIPPED`, no scrape) — do NOT run
+Step 7's ACTIVE PATCH or Step 8's scrape.
 
 In PowerShell, build the payload as a hashtable, convert to JSON, save
 to a temp file, then PUT it twice:
@@ -1164,6 +2034,79 @@ curl.exe -sS -X PUT "https://scrapper.haide-jobs.co.il/api/sites/$SITE_ID/config
   --data-binary "@$configPath"
 ```
 
+### browserOverrides for WAF-protected sites
+
+If Step 3's gate reported "UA-keyed WAF detected", add the `browserOverrides`
+field that the gate script printed to the config payload. Shape:
+
+```jsonc
+{
+  "itemSelector": "...",
+  "fieldMappings": { ... },
+  "pageFlow": [],
+  "formCapture": null,
+  "browserOverrides": {
+    "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+    "extraHeaders": {
+      "accept-language": "he-IL,he;q=0.9,en-US;q=0.8,en;q=0.7"
+    }
+  }
+}
+```
+
+In PowerShell, building on the `$config` hashtable from above:
+
+```powershell
+$config.browserOverrides = [ordered]@{
+  userAgent    = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36'
+  extraHeaders = [ordered]@{
+    'accept-language' = 'he-IL,he;q=0.9,en-US;q=0.8,en;q=0.7'
+  }
+}
+```
+
+Validation (per
+[src/lib/validators.ts](src/lib/validators.ts) `updateSiteConfigSchema`):
+`userAgent`, `extraHeaders`, and `bypassCSP` are all optional; any may be
+omitted. `userAgent` caps at 500 chars, each header value at 1000 chars.
+The API persists the block under `fieldMappings._meta.browserOverrides`
+next to `setupScript` and `loadMoreSelector`. The worker reads it in
+[worker/lib/playwright.ts](worker/lib/playwright.ts) `createPage()` —
+per-site `userAgent` wins over `SCRAPE_USER_AGENT`, per-site headers
+merge on top of the default `Accept-Language`. Nothing else needs to
+change about the rest of the config.
+
+#### `bypassCSP` — when the data API is on a separate subdomain
+
+Some sites render their listing via a setupScript that XHRs a different
+host (e.g. `www.bezeq.co.il` → `https://d-api.bezeq.co.il/...`). The page
+ships a Content-Security-Policy whose `connect-src` does NOT allowlist
+that data host, so Chromium aborts the XHR before it leaves the network
+stack and the setupScript silently produces zero items. CORS is unrelated
+— the network response is fine; CSP is what's killing it.
+
+Symptom: scrape runs to `COMPLETED` (not `FAILED`) but `jobs=0`. A
+diagnostic setupScript that captures `xhr.send()` exceptions reports
+`xhrSendThrew: Failed to execute 'send' on 'XMLHttpRequest': Failed to
+load 'https://...'` — the "Failed to load" wording is the CSP signature.
+
+Fix: add `bypassCSP: true` to the `browserOverrides` block. The worker
+passes it straight to `browser.newContext({ bypassCSP: true })`, which
+disables CSP enforcement for that browsing context only. Per-site,
+opt-in — no global change, no impact on any other site.
+
+```jsonc
+"browserOverrides": {
+  "userAgent": "...",
+  "extraHeaders": { "accept-language": "..." },
+  "bypassCSP": true
+}
+```
+
+Reference: bezeq.co.il (siteId `cmpmv882i001x01mvhf9qfaqy`) is the
+canonical case — TCP-resets bare Playwright (UA fix) and its setupScript
+hits `d-api.bezeq.co.il`, which the page CSP blocks (bypassCSP fix).
+
 ## Step 7 — PATCH to ACTIVE
 
 ```powershell
@@ -1174,16 +2117,85 @@ $patchResp = Invoke-RestMethod -Method Patch `
   -Body $patch
 ```
 
-Verify the response's `fieldMappings` contains YOUR selectors, not the
-analyzer's:
+### MANDATORY config-verification gate (analyzer-race guard)
+
+**This is a hard gate — do not scrape until it passes.** The double-PUT in
+Step 6 is supposed to win the race against the auto-analyzer, but it does NOT
+always win: the analyzer job (created at POST in Step 2) can finish *after*
+your second PUT and silently overwrite your `itemSelector`, field selectors,
+and `formCapture` with its own bad guesses. Observed live 2026-06-08 on
+yazamco.co.il — the analyzer replaced `itemSelector=div.job` with a broken
+`div.title-job.active-s > h3` that only matched the single expanded accordion
+row, so the scrape returned 1 job (all rows deduped on an empty externalJobId)
+instead of 12. A printed-only check (the old behaviour here) does not catch
+this reliably because it inspects the PATCH response, not the persisted config.
+
+Re-read the **persisted** config via GET and assert YOUR selectors survived.
+If they didn't, re-PUT and re-verify (up to 2 attempts), THEN scrape:
 
 ```powershell
-$patchResp.data.config.fieldMappings | ConvertTo-Json -Depth 10
+function Get-StoredConfig($siteId) {
+  $s = Invoke-RestMethod -Method Get -Uri "$BASE/api/sites?id=$siteId" -Headers $HEADERS
+  return ($s.data | Where-Object { $_.id -eq $siteId } | Select-Object -First 1).fieldMappings
+}
+
+$expectedItemSel = '<your itemSelector>'                      # e.g. 'div.job'
+$expectedFields  = @('title','externalJobId','description')   # keys you PUT
+$expectFormFields = 0                                          # set to your formCapture field count, or 0
+
+for ($attempt = 1; $attempt -le 3; $attempt++) {
+  $fm = Get-StoredConfig $SITE_ID
+  $itemOk  = ($fm._meta.itemSelector -eq $expectedItemSel)
+  $fieldsOk = $true
+  foreach ($k in $expectedFields) {
+    if (-not $fm.$k -or -not $fm.$k.selector) { $fieldsOk = $false; break }
+  }
+  $formOk = ($expectFormFields -eq 0) -or ($fm._meta.formCapture.fields.Count -ge $expectFormFields)
+
+  if ($itemOk -and $fieldsOk -and $formOk) {
+    Write-Host "[verify] config OK (itemSelector=$($fm._meta.itemSelector), fields=[$($expectedFields -join ',')], formFields=$($fm._meta.formCapture.fields.Count))"
+    break
+  }
+
+  Write-Host "[verify] attempt $attempt: analyzer clobber detected (itemOk=$itemOk fieldsOk=$fieldsOk formOk=$formOk). Re-PUT + re-PATCH ACTIVE."
+  if ($attempt -eq 3) { throw 'Config never stuck after 3 attempts — analyzer keeps winning. Stop and report.' }
+
+  # Re-PUT the same config file from Step 6, then PATCH back to ACTIVE
+  # (a PUT auto-demotes ACTIVE -> REVIEW).
+  Invoke-RestMethod -Method Put -Uri "$BASE/api/sites/$SITE_ID/config" `
+    -Headers $HEADERS -ContentType 'application/json' -InFile $configPath | Out-Null
+  Start-Sleep -Seconds 3
+  Invoke-RestMethod -Method Patch -Uri "$BASE/api/sites/$SITE_ID" `
+    -Headers $HEADERS -ContentType 'application/json' `
+    -Body (@{ status = 'ACTIVE' } | ConvertTo-Json -Compress) | Out-Null
+}
 ```
 
-If the analyzer's selectors are still in there, repeat step 6.
+Only proceed to Step 8 once this gate prints `config OK`.
+
+**Batch mode**: this gate runs inside the per-URL pipeline like any other.
+If it still fails after 3 attempts, do NOT `throw` — instead auto-skip per the
+gate matrix with `reason: "Auto-skipped: analyzer kept overwriting config (3 attempts)"`
+and `continue` to the next URL.
 
 ## Step 8 — Trigger scrape and wait
+
+**Batch mode — dry-run/scrape mismatch re-verify (do this BEFORE auto-skipping):**
+A test scrape that returns far fewer jobs than your Step 5 dry-run saw is the
+signature of an analyzer clobber or a render-timing miss — NOT a dead site.
+This is exactly what wrongly skipped Comeet/Netafim (dry-run 6, scrape 1).
+So when the poll loop finishes with `$C` suspiciously low relative to the
+dry-run count `$DRYRUN_N` (rule of thumb: `$DRYRUN_N -ge 3 -and $C -le 1`):
+1. Re-run the **Step 7 verification gate** (re-PUT config, confirm `config OK`).
+   If the stored config was clobbered, this fixes it.
+2. Re-trigger the scrape **exactly once** and re-poll.
+3. If the second scrape still returns `$C -le 1` while `$DRYRUN_N -ge 3`, THEN
+   auto-skip with `reason: "Auto-skipped: scrape returned $C vs dry-run $DRYRUN_N (config/render mismatch)"`.
+
+Only after that single re-verify+re-scrape: if `$S -eq 'FAILED'` or `$C -eq 0`,
+call the auto-skip pattern from the gate matrix
+(`reason: "Auto-skipped: test scrape produced 0 jobs"`) and `continue` to the
+next URL. Do not report a low/zero scrape as success.
 
 ```powershell
 $run = Invoke-RestMethod -Method Post `
@@ -1229,13 +2241,20 @@ foreach ($j in $jobs.data) {
 }
 ```
 
-End with a 3-line wrap-up:
+End with a wrap-up. The `coverage` line is REQUIRED (see the mandatory
+coverage gate in Step 4) — state extracted-vs-total explicitly so a
+shortfall can never hide:
 
 ```
 ✓ siteId=<ID>  status=ACTIVE  jobs=<N>
+✓ coverage: <extracted>/<total> jobs   (or <extracted>/unknown if total couldn't be determined)
 ✓ config: <fieldCount> fields, itemSelector=<sel>
 ✓ dashboard: https://scrapper.haide-jobs.co.il/sites/<ID>
 ```
+
+If `coverage` is partial and the user did NOT sign off on partial
+coverage, the onboarding is NOT done — go back and implement full
+coverage (see the framework recipes / dynamic-loading options in Step 4).
 
 ## Notes on failure modes you'll hit
 
@@ -1250,15 +2269,19 @@ End with a 3-line wrap-up:
   IP / cookies and stop — the worker will handle it during the real scrape.
 - **UA-keyed WAF (TCP-level reset):** distinct from a challenge page —
   the host rejects default-Playwright UA strings *before* any HTTP
-  response (`ERR_CONNECTION_RESET` in 2–5 seconds). Sites that do this
-  cannot be onboarded today because the worker uses Playwright's
-  default UA. The Step 3 reachability gate catches this fail-fast. If
-  you hit it, stop and file a worker fix (real Chrome UA on the
-  context, or a per-site UA-override config field). Reference site:
-  bezeq.co.il (`cmpmv882i001x01mvhf9qfaqy`).
-- **Paginated sites:** if the page shows only N rows but there are more,
-  the rest will be missed. For MVP, set itemSelector to what's visible;
-  pagination support is a separate feature (`pageFlow`).
+  response (`ERR_CONNECTION_RESET` in 2–5 seconds). The Step 3
+  reachability gate catches this; when it reports "UA-keyed WAF", carry
+  the `{ userAgent, extraHeaders }` payload it prints into the Step 6
+  PUT as `browserOverrides` (see Step 6's "browserOverrides for
+  WAF-protected sites" subsection). The worker applies the override per
+  scrape, no env changes required. Reference site: bezeq.co.il
+  (`cmpmv882i001x01mvhf9qfaqy`).
+- **Paginated sites:** NEVER silently ship page 1 — the Step 4 coverage
+  gate is mandatory. For URL-param pagination the worker has a `url`
+  pagination feature; for offset-API SPAs (Workday/Greenhouse/Lever/etc.)
+  use the `setupScript` enumeration recipe in Step 4's "Known SPA
+  frameworks" subsection. Only ship partial coverage with explicit user
+  sign-off, and always report `coverage: <extracted>/<total>`.
 - **Hebrew/RTL sites:** locale matters. Always set `locale: 'he-IL'` in
   the Playwright context for IL sites.
 - **`<br>` between every char** (rare, content-side bug): describe in
@@ -1293,3 +2316,35 @@ End with a 3-line wrap-up:
   appear to hang for 10-20s.
 - **Playwright browsers:** if `chromium.launch()` fails with "Executable
   doesn't exist", run `npx playwright install chromium` once.
+
+## Agent correctness rules
+
+These two rules exist because worker capabilities evolve faster than
+documentation. A single stale sentence in a copy caused a real incident
+(see git `84b52db` / `75d0424`).
+
+### Verify-before-trust
+Before asserting that any worker capability is or is not supported
+(pagination, `pageFlow`, `setupScript`, `formCapture`, `browserOverrides`,
+`loadMoreSelector`, `clickPagination`, etc.), **consult the code**, in
+this order:
+
+1. `worker/jobs/scrape.ts` — runtime behaviour and config reading.
+2. `src/lib/validators.ts` — Zod schemas; if a field is accepted by the
+   schema it is live in production regardless of what any doc says.
+
+**Code wins over prose.** If the code supports something and this doc
+says it doesn't, the doc is wrong. Update it and run `pnpm sync:addsite`.
+
+### Coverage gate is mandatory
+A site is NOT done until the scrape count matches the full listing count
+across all pages. Reporting page-1-only results without explicit user
+sign-off is a bug. Always:
+
+1. Confirm total job count from the listing (UI count, page nav, or
+   dry-run probe across pages).
+2. After the first scrape, compare `totalJobs` in the API response to the
+   expected total.
+3. If coverage is < 100 % (and the gap isn't explained by expired/filled
+   listings), configure pagination, re-PUT, and re-scrape before reporting
+   success.

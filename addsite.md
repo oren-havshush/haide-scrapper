@@ -4,6 +4,13 @@ description: 'Onboard one or many jobs-listing sites end-to-end: accepts a singl
 platform: 'windows-powershell'
 ---
 
+<!-- CANONICAL SOURCE — do not edit copies directly.
+     Edit THIS file (addsite.md at the repo root), then run `pnpm sync:addsite`.
+     Copies kept in sync:
+       • .claude/commands/addsite.md  (CI-checked — drift blocks merges to main)
+       • ~/.cursor/skills/addsite/SKILL.md  (hardlinked locally by sync script)
+     If you see this comment in a copy, that copy is stale — run `pnpm sync:addsite`. -->
+
 # /addsite — onboard a jobs site end-to-end (Windows / PowerShell)
 
 You are operating as the scrapnew onboarding agent. The user invoked
@@ -872,23 +879,36 @@ or similar. If they differ:
    ```
    If the scrolled count matches the page's "of N" total, proceed normally.
 2. **"Load more" button** — explicit click required (no scroll trigger).
-   **Not supported by the worker yet.** Add the site anyway and warn in
-   the report: only the initial items will be scraped. Track in the issue
-   "worker: add loadMoreSelector config".
-3. **Numbered pagination** (page 1/2/3) — **not supported by the worker yet.**
-   For the MVP: scrape only page 1. Note this in the report so the user
-   can decide. If the listing is sorted by recency (most recent first),
-   page 1 may be sufficient.
-4. **URL-param pagination** (`?page=2`) — same as numbered. Workaround:
-   onboard the same site multiple times with different `?page=N` URLs
-   (each becomes its own site row). Crude but works.
+   **Supported** via the `loadMoreSelector` config field
+   (`worker/jobs/scrape.ts:clickLoadMoreUntilStable`): the worker clicks
+   it repeatedly until the button disappears/disables or item count
+   stops growing. Set `loadMoreSelector: "<css>"` in the config PUT.
+3. **Numbered pagination** (page 1/2/3) — **Supported** via the
+   `pagination` config field (`worker/jobs/scrape.ts:getPaginationConfig`
+   / `advanceToNextPage`). Two modes:
+   - **`type: "click"`** — `{ type: "click", nextSelector: "<css for Next>",
+     maxPages, settleMs }`. Best for SPAs (MUI pagination, etc.) that
+     don't change the URL. Worker clicks Next until it disappears/disables
+     or the first item stops changing.
+   - **`type: "url"`** — `{ type: "url", param: "page"|"paged", start, step,
+     maxPages, settleMs }`. Worker re-navigates the listing with an
+     incrementing query param (Drupal `start=0`, WordPress `start=1`).
+     This **composes with `pageFlow`** — each paginated listing page still
+     gets its detail pages visited. Auto-stops when a page repeats the
+     previous one or has no items, so a slightly-too-large `maxPages` is
+     safe. Verified on unitask-inc.com (`?paged=N`, 31 jobs across 4 pages).
+4. **URL-param pagination** (`?page=2`) — same as (3), use `type: "url"`
+   with the right `param`. Do NOT onboard the same site multiple times per
+   page; one site row with a `pagination` block covers all pages.
 5. **Filters** (dropdowns/checkboxes for category, location, etc.) — for
    MVP, **always scrape the unfiltered URL.** That's usually the parent
    listing showing all jobs. Setting filters means more work and
    shouldn't be necessary if the unfiltered list is complete.
 
-Document any of (2)/(3)/(4) you hit in your final report so the user
-knows it's incomplete and can prioritize the worker change.
+**Establish the true total and configure pagination to cover it** — do
+NOT silently ship page 1. If the page shows "N of M" or numbered pages,
+add the matching `loadMoreSelector` / `pagination` block and re-verify
+the scrape count against M.
 
 ## Step 5 — Dry-run
 
@@ -2296,3 +2316,35 @@ coverage (see the framework recipes / dynamic-loading options in Step 4).
   appear to hang for 10-20s.
 - **Playwright browsers:** if `chromium.launch()` fails with "Executable
   doesn't exist", run `npx playwright install chromium` once.
+
+## Agent correctness rules
+
+These two rules exist because worker capabilities evolve faster than
+documentation. A single stale sentence in a copy caused a real incident
+(see git `84b52db` / `75d0424`).
+
+### Verify-before-trust
+Before asserting that any worker capability is or is not supported
+(pagination, `pageFlow`, `setupScript`, `formCapture`, `browserOverrides`,
+`loadMoreSelector`, `clickPagination`, etc.), **consult the code**, in
+this order:
+
+1. `worker/jobs/scrape.ts` — runtime behaviour and config reading.
+2. `src/lib/validators.ts` — Zod schemas; if a field is accepted by the
+   schema it is live in production regardless of what any doc says.
+
+**Code wins over prose.** If the code supports something and this doc
+says it doesn't, the doc is wrong. Update it and run `pnpm sync:addsite`.
+
+### Coverage gate is mandatory
+A site is NOT done until the scrape count matches the full listing count
+across all pages. Reporting page-1-only results without explicit user
+sign-off is a bug. Always:
+
+1. Confirm total job count from the listing (UI count, page nav, or
+   dry-run probe across pages).
+2. After the first scrape, compare `totalJobs` in the API response to the
+   expected total.
+3. If coverage is < 100 % (and the gap isn't explained by expired/filled
+   listings), configure pagination, re-PUT, and re-scrape before reporting
+   success.

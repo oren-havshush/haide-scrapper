@@ -24,6 +24,9 @@ jobs:
 
       - run: pnpm install --frozen-lockfile
 
+      - name: Check /addsite docs are in sync
+        run: pnpm check:addsite
+
       - run: pnpm lint
 
       - name: Build Next.js

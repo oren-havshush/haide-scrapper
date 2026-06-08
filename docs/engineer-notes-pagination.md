@@ -4,6 +4,31 @@ Produced while re-onboarding `https://www.aman.co.il/careers/all/` on 2026-05-25
 
 ---
 
+## ✅ RESOLVED (2026-06-08) — pagination shipped
+
+The engineering asks below have been **implemented**. The worker now
+supports listing pagination via a first-class `pagination` config field
+(`worker/jobs/scrape.ts:getPaginationConfig` / `advanceToNextPage`;
+zod schema in `src/lib/validators.ts`):
+
+- **`type: "url"`** — re-navigates the listing with an incrementing query
+  param (`{ type:"url", param, start, step, maxPages, settleMs }`). It
+  **composes with `pageFlow`**, so each paginated listing page still has
+  its detail pages visited. Auto-stops on a repeated/empty page.
+- **`type: "click"`** — clicks a `nextSelector` until it disappears/
+  disables (`{ type:"click", nextSelector, maxPages, settleMs }`).
+- A separate `loadMoreSelector` field handles append-style "load more".
+
+Verified end-to-end on unitask-inc.com (2026-06-08): `type:"url"`,
+`param:"paged"`, `start:1`, `maxPages:5` → 31 jobs across 4 pages, each
+with full detail-page descriptions + the apply form. The "numbered
+pagination AND detail fields can't coexist" conclusion below is therefore
+**obsolete** — kept only for historical context. The path-based aman.co.il
+case can now be onboarded with `type:"url"` (`param` per its scheme) or a
+`type:"click"` next-link selector.
+
+---
+
 ## TL;DR
 
 - **Listings with numbered pagination (e.g. aman.co.il — 114 jobs across 12 pages) currently scrape only page 1.** Worker has no pagination support: no `nextPageSelector`, no `pagination` config slot honored, no URL-template support. Confirmed today — aman's latest production scrape returned 10 jobs.
