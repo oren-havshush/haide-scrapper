@@ -2375,7 +2375,8 @@ export async function handleScrapeJob(
     console.info(
       `[scrape] Site ${site.id} flagged applyRequiresLogin — skipping (SKIPPED) without scraping.`,
     );
-    return await skipSiteForApplyLogin(scrapeRunId, site.id);
+    const result = await skipSiteForApplyLogin(scrapeRunId, site.id);
+    return { ...result };
   }
 
   if (Object.keys(fieldMappings).length === 0) {
