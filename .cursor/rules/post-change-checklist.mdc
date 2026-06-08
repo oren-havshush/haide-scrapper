@@ -1,0 +1,25 @@
+---
+description: After any substantive change, remind the user about commit / deploy / sync steps that are needed.
+alwaysApply: true
+---
+
+# Post-change checklist
+
+After completing any substantive change, ALWAYS end your response by prompting the user for each applicable action below. Do not silently skip steps or assume the user will remember.
+
+## When to prompt
+
+| Change made | Required follow-up |
+|---|---|
+| Any code / config / doc edit | **Commit** — ask if they want to commit (or commit yourself if asked) |
+| `addsite.md` edited | **Sync** — run `pnpm sync:addsite` before committing so `.claude/commands/addsite.md` stays identical |
+| Commit on `main` (server/worker/config changes) | **Deploy** — run the deploy script per the `deploy.mdc` rule |
+| DB schema / migration added | **Migrate on prod** — remind to run `prisma migrate deploy` on the server |
+
+## Wording
+
+Keep it short and direct. At the end of your reply, add a line like:
+
+> Next steps: commit these changes? / run `pnpm sync:addsite` then commit? / deploy to prod?
+
+Always list only the steps that actually apply to what was just changed.
