@@ -9,6 +9,7 @@ import type { ValidationResult } from "../lib/validator";
 import type { Browser, Page } from "playwright";
 import { emitWorkerEvent } from "../lib/emitEvent";
 import { DOM_FIELD_EXTRACT_SOURCE } from "../lib/domFieldExtract";
+import { APPLY_LOGIN_SKIP_NOTE, APPLY_LOGIN_FAILURE_CATEGORY } from "../lib/applyGate";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -2074,6 +2075,20 @@ async function firstItemSignature(
 // content behind app state (e.g. Angular scope) and needs a poke to render.
 // ---------------------------------------------------------------------------
 
+// ---------------------------------------------------------------------------
+// Helper: read the login-gated apply flag from fieldMappings JSON. Set at
+// onboarding (capture-form login detection) and persisted under
+// fieldMappings._meta.applyRequiresLogin. When true, the worker refuses to
+// spend scrape budget and marks the site SKIPPED (see skipSiteForApplyLogin).
+// ---------------------------------------------------------------------------
+
+function getApplyRequiresLogin(fieldMappingsRaw: unknown): boolean {
+  if (!fieldMappingsRaw || typeof fieldMappingsRaw !== "object") return false;
+  const raw = fieldMappingsRaw as Record<string, unknown>;
+  const meta = raw["_meta"] as Record<string, unknown> | undefined;
+  return meta?.["applyRequiresLogin"] === true;
+}
+
 function getSetupScript(fieldMappingsRaw: unknown): string | null {
   if (!fieldMappingsRaw || typeof fieldMappingsRaw !== "object") return null;
   const raw = fieldMappingsRaw as Record<string, unknown>;
@@ -2350,6 +2365,18 @@ export async function handleScrapeJob(
   const setupScript = getSetupScript(site.fieldMappings);
   const loadMoreSelector = getLoadMoreSelector(site.fieldMappings);
   const browserOverrides = getBrowserOverrides(site.fieldMappings);
+
+  // Login-gated apply flows are useless for auto-submit. The flag is set at
+  // onboarding (capture-form login detection); short-circuit here — before the
+  // empty-mappings check, so a flagged site always goes SKIPPED rather than
+  // FAILED — so we never burn a browser launch / scrape budget on a site we
+  // can't apply to.
+  if (getApplyRequiresLogin(site.fieldMappings)) {
+    console.info(
+      `[scrape] Site ${site.id} flagged applyRequiresLogin — skipping (SKIPPED) without scraping.`,
+    );
+    return await skipSiteForApplyLogin(scrapeRunId, site.id);
+  }
 
   if (Object.keys(fieldMappings).length === 0) {
     const result = await failScrapeRun(scrapeRunId, site.id, {
@@ -3012,6 +3039,57 @@ function createTimeoutPromise(
 // ---------------------------------------------------------------------------
 // Helper: fail a ScrapeRun and update site status
 // ---------------------------------------------------------------------------
+
+/**
+ * Mark a site SKIPPED because its apply flow is login-gated (sign-in / account
+ * creation required), which the auto-submit product can't use. The scrape run
+ * is closed out as FAILED with a dedicated category so the dashboard shows why
+ * nothing was scraped, while the site itself moves to SKIPPED (not FAILED) —
+ * the listings may be perfectly valid; it's only the apply path that's blocked.
+ */
+async function skipSiteForApplyLogin(
+  scrapeRunId: string,
+  siteId: string,
+): Promise<ScrapeResult> {
+  try {
+    await prisma.scrapeRun.update({
+      where: { id: scrapeRunId },
+      data: {
+        status: "FAILED",
+        error: APPLY_LOGIN_SKIP_NOTE,
+        failureCategory: APPLY_LOGIN_FAILURE_CATEGORY,
+        completedAt: new Date(),
+      },
+    });
+
+    await prisma.site.update({
+      where: { id: siteId },
+      data: {
+        status: "SKIPPED",
+        skippedAt: new Date(),
+        adminNote: APPLY_LOGIN_SKIP_NOTE,
+      },
+    });
+  } catch (dbError) {
+    console.error("[scrape] Failed to mark site SKIPPED (apply login):", dbError);
+  }
+
+  await emitWorkerEvent({
+    type: "site:status-changed",
+    payload: { siteId, status: "SKIPPED" },
+  });
+
+  // success:true so the WorkerJob completes (no retry) — skipping is the
+  // intended terminal outcome, not a transient failure.
+  return {
+    success: true,
+    scrapeRunId,
+    jobCount: 0,
+    totalJobs: 0,
+    validJobs: 0,
+    invalidJobs: 0,
+  };
+}
 
 async function failScrapeRun(
   scrapeRunId: string,

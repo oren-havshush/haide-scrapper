@@ -422,44 +422,47 @@ Rules of thumb for `setupScript`:
 - Use a unique `data-extracted-<field>` attribute name per field —
   don't reuse `data-location` etc. because the page may already use
   those.
-- Keep it small and pure-JS (no external libs, no `await`). The worker
-  evaluates it synchronously in page context.
-- **Multi-page caveat**: confirmed to work on single-page sites
-  (`pageFlow: []`, e.g. goldpro.co.il). On multi-page sites
-  (`pageFlow` with a detail step) the worker does **not** run
-  `setupScript` on detail pages — re-verified on unitask-inc.com three
-  times now: (1) markers on `document.body`, (2) markers on `article`,
-  and (3) a dedicated probe field reading a `data-setup-ran` attribute
-  the script injects unconditionally on every load. All three came
-  back empty for every detail-page job. Treat `setupScript` as a
-  single-page-only tool. If you need to extract structured data from
-  the detail page, you must do it with a plain CSS selector; if no
-  clean selector exists, accept the value embedded inside `description`
-  (or, on a multi-page site, leave the field empty and clean it
-  downstream of the scraper).
-- **Multi-page listing caveat (added 2026-05-25)**: `setupScript`
-  also does **not** appear to run on the **listing** page of a
-  multi-page site. Verified on aman.co.il (siteId
-  `cmp9uvymo001t01lsb6gwy6at`): PUT'd a `setupScript` that calls the
-  site's own `/wp-admin/admin-ajax.php?action=data_fetch` endpoint
-  (returns 111 jobs as rendered HTML) and rewrites the listing
-  container with the response. With the same script in a single-page
-  config (pattern proven on Assuta/NESS), this would have produced
-  ~111 jobs. With `pageFlow` populated for detail-page visits, the
-  scrape returned 10 — identical to the no-`setupScript` baseline. So
-  the pattern "use `setupScript` to expand a paginated listing AND
-  use multi-page detail-page enrichment" does not work today.
-  Implication: **if a site has numbered pagination AND you need
-  detail-page fields, neither option works without a worker change.**
-  See `docs/engineer-notes-pagination.md` for the engineering ask.
-  Workarounds:
-  - If detail-page data is essential: stay multi-page, accept the
-    page-1-only outcome, and file the gap in your report.
-  - If full listing coverage is more important than detail fields:
-    drop `pageFlow` to `[]`, use `setupScript` to expand the listing,
-    accept truncated listing-only data.
-  - Crude path-pagination shim: onboard the same site multiple times
-    with `…/page/1/`, `…/page/2/`, etc.
+- Keep it small and pure-JS (no external libs). `await` **is** supported:
+  the worker runs the script body as an `AsyncFunction` and awaits it
+  (2026-05-31 fix), so top-level `await fetch(...)` enrichments work. Do
+  NOT wrap an awaiting script in a self-invoking IIFE — the worker awaits
+  the body, and an IIFE would resolve before its inner promise.
+- **Multi-page support (fixed 2026-06-03)**: `setupScript` now runs on
+  BOTH the listing page AND every detail page of a multi-page
+  (`pageFlow`) site. On each detail page the worker runs it right after
+  navigation, before field extraction — so detail-scope
+  `[data-extracted-*]` injections (slice a job-id out of a heading,
+  read an apply email from a `mailto:` link, normalize a description)
+  now work the same way they do on the listing. The script runs in
+  whatever DOM it lands in, so write it to handle both contexts: e.g.
+  `document.querySelectorAll('li.jobItemRow').forEach(...)` is a no-op
+  on detail pages (no rows), and a `document.querySelector('a.applyBtn')`
+  block is a no-op on the listing. Verified on mei-avivim.co.il (siteId
+  `cmpxma4wd000001qnyogf85tl`, `pageFlow=2`): `externalJobId` injected on
+  the listing + `applicationInfo` injected on each detail page both
+  returned clean values. Reference commit `4fe63e2` in
+  `worker/jobs/scrape.ts` (`extractRawFieldsWithPageFlow`).
+  - **Cost**: each `runSetupScript` call adds ~1.5s, and on multi-page it
+    fires once per detail page. A 10-job multi-page site with a
+    setupScript that also `fetch`es each detail took ~65s. Only sites
+    that actually set a setupScript pay this; plain multi-page sites are
+    unaffected (the calls are gated behind a presence check).
+  - **Implication**: the old workaround of "go single-page + async
+    `setupScript` that `fetch`es every detail page" is no longer
+    necessary just to get clean detail-scope fields — prefer a normal
+    multi-page `pageFlow` config and inject detail fields via
+    setupScript on the detail page. The single-page+fetch pattern is
+    still valid when you ALSO need it for listing expansion (see below).
+- **Paginated-listing expansion via `setupScript`**: rewriting a
+  paginated listing container with all results (e.g. aman.co.il calling
+  its own `/wp-admin/admin-ajax.php?action=data_fetch` to pull 111 jobs)
+  works in a **single-page** config (`pageFlow: []`, proven on
+  Assuta/NESS). With the 2026-06-03 fix `setupScript` also runs on a
+  multi-page listing, so combining listing-expansion with multi-page
+  detail visits should now work too — but that specific combination has
+  not been re-verified since the fix, so dry-run/scrape-verify it before
+  trusting it. If a site has numbered pagination AND needs detail-page
+  fields, this is the path to try first.
 - **Worker description-enrichment layer**: on multi-page sites the
   worker now runs a post-processor that parses the captured
   `description` text and writes `_enrichedFromDescription_<field>` keys
@@ -484,7 +487,13 @@ Rules of thumb for `setupScript`:
 When you write a `setupScript`, validate it in your Playwright dry-run
 the same way: paste it into the `evaluate()` block before reading
 fields, and confirm the `[data-extracted-*]` elements appear with the
-expected text.
+expected text. For a multi-page setupScript, dry-run it on BOTH a
+listing page and one detail page (navigate to each, run the script,
+then read the injected attrs) since the worker now executes it on both.
+Because the worker awaits async scripts, run it via an `AsyncFunction`
+in the dry-run too (and ship the `globalThis.__name = (f) => f;` shim
+before `evaluate`, or tsx/esbuild's keepNames helper will throw
+`__name is not defined`).
 
 ### Listing vs multi-page — decide before step 5
 
@@ -1068,16 +1077,79 @@ const captureLargestForm = async (
     debug.finalUrl = page.url();
     debug.formCount = await page.evaluate(() => document.querySelectorAll("form").length);
 
+    // Login-wall detection. If the apply destination forces sign-in / account
+    // creation before the application form is reachable (Workday "Create
+    // Account/Sign In", Greenhouse-via-login, etc.), the auto-submit product
+    // can't use this site — flag it so Step 5b/6 marks the site SKIPPED instead
+    // of ACTIVE. Mirrors worker/lib/applyGate.ts strong signals (kept inline so
+    // this script stays self-contained / runnable from .scratch via tsx).
+    const LOGIN_URL_RE =
+      /\/(login|log-in|signin|sign-in|sign_in|register|signup|sign-up|sign_up|create-account|createaccount|auth|authentication|sso|oauth2?)(\/|\?|#|$)/i;
+    const OAUTH_HOST_RE =
+      /(accounts\.google\.|login\.microsoftonline\.|github\.com\/login|linkedin\.com\/(oauth|uas\/login)|\.okta\.com|\.auth0\.com|\.onelogin\.com|login\.salesforce\.)/i;
+    const LOGIN_CTA_RE =
+      /\b(sign in|log ?in|create an? account|register now|sign up)\b|התחבר|הרשמ|צור חשבון/i;
+    let applyRequiresLogin = false;
+    let applyLoginReason: string | null = null;
+    const finalUrl = page.url();
+    if (LOGIN_URL_RE.test(finalUrl) || OAUTH_HOST_RE.test(finalUrl)) {
+      applyRequiresLogin = true;
+      applyLoginReason = "login-url";
+    } else {
+      const lw = await page.evaluate(() => {
+        const passwordInputs = document.querySelectorAll('input[type="password"]').length;
+        const signInAutomation = !!document.querySelector(
+          '[data-automation-id="signInContent"],[data-automation-id="signInLink"],[data-automation-id="signInSubmitButton"],[data-automation-id="createAccountLink"],[data-automation-id="createAccountSubmitButton"],[data-automation-id="createAccountCheckbox"]',
+        );
+        let hasApplyForm = false;
+        for (const f of Array.from(document.querySelectorAll("form"))) {
+          const file = f.querySelectorAll('input[type="file"]').length;
+          const email = f.querySelectorAll('input[type="email"]').length;
+          const textish = f.querySelectorAll('input[type="text"],input:not([type]),textarea').length;
+          if (file > 0 && (email > 0 || textish > 0)) { hasApplyForm = true; break; }
+        }
+        const bodyText = (document.body?.textContent || "").replace(/\s+/g, " ").slice(0, 6000);
+        return { passwordInputs, signInAutomation, hasApplyForm, bodyText };
+      });
+      if (lw.passwordInputs > 0) {
+        applyRequiresLogin = true;
+        applyLoginReason = `password-field(${lw.passwordInputs})`;
+      } else if (lw.signInAutomation) {
+        applyRequiresLogin = true;
+        applyLoginReason = "signin-automation-id";
+      } else if (!lw.hasApplyForm && LOGIN_CTA_RE.test(lw.bodyText)) {
+        applyRequiresLogin = true;
+        applyLoginReason = "login-cta-no-apply-form";
+      }
+    }
+    debug.applyRequiresLogin = applyRequiresLogin;
+    debug.applyLoginReason = applyLoginReason;
+
     const capture = await captureLargestForm(page, args.formSelector);
     const ok = !!capture && capture.fields.length >= args.minFields;
-    const out: Record<string, unknown> = { formCapture: capture };
+    const out: Record<string, unknown> = { formCapture: capture, applyRequiresLogin, applyLoginReason };
     if (args.debug) out.debug = debug;
     console.log(JSON.stringify(out, null, 2));
+    // Always write the apply-gate sidecar so Step 5b/6 can branch to SKIPPED
+    // even when no form was captured (a login wall typically has no apply form).
+    fs.writeFileSync(
+      ".scratch/scrap-apply-gate.json",
+      JSON.stringify({ applyRequiresLogin, applyLoginReason, finalUrl }, null, 2),
+      "utf8",
+    );
     if (args.outPath && capture) {
       // Write directly via Node so the JSON never round-trips through a
       // shell pipe (PowerShell will mangle Hebrew labels otherwise).
       fs.writeFileSync(args.outPath, JSON.stringify(capture, null, 2), "utf8");
       console.error(`[capture-form] wrote formCapture to ${args.outPath}`);
+    }
+    if (applyRequiresLogin) {
+      // Distinct exit code 7 = login-gated apply flow. Step 5b/6 must mark the
+      // site SKIPPED (do NOT proceed to ACTIVE or trigger a scrape).
+      console.error(
+        `[capture-form] LOGIN-GATED apply flow detected (${applyLoginReason}). Final URL: ${page.url()} — site should be SKIPPED, not scraped.`,
+      );
+      process.exit(7);
     }
     if (!ok) {
       console.error(
@@ -1122,12 +1194,56 @@ $CAPTURE_EXIT = $LASTEXITCODE
   `fields.Count >= 3`: success. The file is the canonical output that
   Step 6 (or 5b-4 in standalone mode) reads. No further PowerShell
   copy step needed.
+- `$CAPTURE_EXIT -eq 7` (**login-gated apply flow**): the apply path forces
+  sign-in / account creation before the form is reachable (Workday "Create
+  Account/Sign In", etc.). This site is unusable for auto-submit. **STOP the
+  normal flow and run 5b-LOGIN below** — the site is marked `SKIPPED`, NOT
+  `ACTIVE`, and NO scrape is triggered. `.\.scratch\scrap-apply-gate.json`
+  holds `{ applyRequiresLogin: true, applyLoginReason, finalUrl }`.
 - `$CAPTURE_EXIT -eq 2` (no usable form): **STOP** and run 5b-2 below.
   Do NOT silently fall through to `formCapture=null` — that's the
   pre-existing failure mode this step is designed to fix.
-- `$CAPTURE_EXIT -ne 0 -and $CAPTURE_EXIT -ne 2` (script crashed):
-  iterate once with different selectors / URLs. If still failing,
-  proceed to 5b-2.
+- `$CAPTURE_EXIT -ne 0 -and $CAPTURE_EXIT -ne 2 -and $CAPTURE_EXIT -ne 7`
+  (script crashed): iterate once with different selectors / URLs. If still
+  failing, proceed to 5b-2.
+
+> **Reaching the apply flow for capture.** Login walls only show up once you
+> actually click "Apply". For ATS sites that gate behind an account (Workday
+> is the canonical case) drive the script to the apply page, e.g. for Workday:
+> `--detail-url=<job detail URL>` plus an `--apply-selector` chain isn't enough
+> because Workday's apply is multi-step — instead pass the direct
+> `.../job/.../apply/applyManually` URL as `--detail-url`. The script's login
+> detection runs on whatever page it lands on, so landing on the
+> account-creation step is exactly what trips the `password-field` /
+> `signin-automation-id` signal and returns exit 7.
+
+### 5b-LOGIN — Login-gated apply flow → mark SKIPPED
+
+The apply form is behind a sign-in / account-creation wall, so the auto-submit
+product can't use this site. Do **not** set it ACTIVE and do **not** scrape.
+Instead persist the flag in the site config (so the worker also refuses any
+future scrape) and move the site to `SKIPPED`.
+
+1. Read the reason for the report:
+   ```powershell
+   $gate = Get-Content '.\.scratch\scrap-apply-gate.json' -Raw | ConvertFrom-Json
+   Write-Host ("5b-LOGIN: applyRequiresLogin={0} reason={1} url={2}" -f `
+     $gate.applyRequiresLogin, $gate.applyLoginReason, $gate.finalUrl)
+   ```
+2. In the Step 6 config payload (below), set `"formCapture": null`,
+   `"applyRequiresLogin": true`, and `"applyLoginReason": "<reason>"`. These
+   fold into `fieldMappings._meta` and the worker's `getApplyRequiresLogin()`
+   short-circuit reads them.
+3. PUT the config (Step 6) as usual so the listing mappings + the
+   `applyRequiresLogin` flag are saved.
+4. **Skip Step 7's `ACTIVE` PATCH.** Instead PATCH the site to `SKIPPED`:
+   ```powershell
+   $patch = @{ status = 'SKIPPED' } | ConvertTo-Json -Compress
+   Invoke-RestMethod -Method Patch -Uri "$BASE/api/sites/$SITE_ID" `
+     -Headers $HEADERS -ContentType 'application/json' -Body $patch
+   ```
+5. **Do not run Step 8 (scrape).** Report the site as SKIPPED with the login
+   reason. Done.
 
 ### 5b-2 — When automatic capture fails: STOP and ask the user
 
@@ -1538,6 +1654,22 @@ Per-field mapping attributes the worker actually honors:
 The API will silently accept `regex`, `transform`, `extractRegex`,
 `postProcess`, `extract`, etc., but the worker ignores them — don't
 waste a PUT trying to use them. Use `setupScript` instead.
+
+**Login-gated apply flow (`applyRequiresLogin`).** Only set when Step 5b
+returned exit 7 (see 5b-LOGIN). Add `applyRequiresLogin: true` and
+`applyLoginReason: '<reason from .scratch/scrap-apply-gate.json>'` to the
+payload, alongside `formCapture: null`. They fold into
+`fieldMappings._meta` and the worker's `getApplyRequiresLogin()`
+short-circuit (`worker/jobs/scrape.ts`) reads them — any scrape of a flagged
+site is turned into a `SKIPPED` transition instead of running. In PowerShell,
+building on the `$config` hashtable:
+```powershell
+$config.formCapture        = $null
+$config.applyRequiresLogin = $true
+$config.applyLoginReason   = $gate.applyLoginReason   # from 5b-LOGIN step 1
+```
+After PUT, finish via 5b-LOGIN (PATCH `SKIPPED`, no scrape) — do NOT run
+Step 7's ACTIVE PATCH or Step 8's scrape.
 
 In PowerShell, build the payload as a hashtable, convert to JSON, save
 to a temp file, then PUT it twice:

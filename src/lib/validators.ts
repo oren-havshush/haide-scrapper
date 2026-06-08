@@ -135,4 +135,13 @@ export const updateSiteConfigSchema = z.object({
       bypassCSP: z.boolean().optional(),
     })
     .optional(),
+  // Login-gated apply flow flag. Set by onboarding when the apply path forces
+  // sign-in / account creation before the application form is reachable
+  // (Workday "Create Account/Sign In", etc.). The auto-submit product can't use
+  // such sites, so the worker skips them (SKIPPED) instead of scraping. Stored
+  // under fieldMappings._meta.applyRequiresLogin; the worker reads it via
+  // getApplyRequiresLogin() in scrape.ts.
+  applyRequiresLogin: z.boolean().optional(),
+  // Short machine-readable reason for the skip (e.g. "password-field(2)").
+  applyLoginReason: z.string().max(500).optional(),
 });
