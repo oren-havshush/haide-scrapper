@@ -371,6 +371,11 @@ Include in your final batch report:
 - Total Playwright browser sessions launched (one per PROCEED URL that passes reachability)
 - Total scrapes triggered (ACTIVE count)
 - Link to `$BATCH_DIR/summary.md` for the full table
+- **Candidate learnings** — after the summary table, append ONE consolidated
+  block per **"Declaring candidate learnings (both modes)"** (near the end of
+  this skill): a `LEARNING (candidate): …` block for each generalizable fix you
+  applied anywhere in the batch (deduplicated across URLs), or the single line
+  `No candidate learnings this run.` if none qualify.
 
 ---
 
@@ -2588,6 +2593,69 @@ UA-override re-attempt from B2.5); in **single-URL mode** report it and ask
 the user before shipping a listing-only config. Add a completeness line to
 the wrap-up, e.g. `✓ completeness: title+location+description+applyForm` or
 `✗ completeness: title+location only (detail pages blocked) → SKIPPED`.
+
+**Candidate learnings.** As the final part of the wrap-up, append a candidate
+learnings block per **"Declaring candidate learnings (both modes)"** below — a
+`LEARNING (candidate): …` block for each generalizable fix you applied this run,
+or the single line `No candidate learnings this run.` if none qualify.
+
+## Declaring candidate learnings (both modes)
+
+This skill keeps a deliberately **closed** fix set (the B2b remediation
+catalog: "the only sanctioned fixes... do not improvise"). When a real run
+turns up a fix that would help *future* runs, capture it here as a **candidate
+catalog entry** so it doesn't get lost as one-off prose. This is **summary-only
+and advisory**: you PRINT the candidate in the end-of-run summary as a proposal
+for the user — you do **not** edit this skill, the catalog, or any file
+yourself. The user reviews it and, if it's good, asks you to fold it into the
+cited section later (then re-sync + commit).
+
+A run touches dozens of site-specific details; almost none are learnings. The
+rubric below exists to keep declarations rare and high-signal.
+
+### Declare a learning ONLY when ALL four hold
+
+1. **Applied + verified this run.** You actually made the change and saw it flip
+   the outcome (0→N jobs, blocked→unblocked, junk→clean). Not a theory, not
+   "might work", not something you reverted.
+2. **Generalizes via a reusable signal.** It keys off something a future run can
+   recognize again: a vendor/WAF (Incapsula, Cloudflare, PerimeterX…), a SPA
+   framework (Workday/Comeet/Lever/Greenhouse…), a server/worker behavior
+   (analyzer race, single-threaded FIFO queue), or a recurring page pattern —
+   **NOT** a CSS selector unique to this one host.
+3. **Not already covered.** It isn't already in B2b, the Step 3 WAF recipes, the
+   Step 4 framework recipes, or B2.5. If it IS covered, do **not** declare —
+   just cite which existing entry handled it.
+4. **Future-useful.** A later run hitting the same signal would be faster or more
+   correct if the skill already knew this.
+
+### Do NOT declare (noise)
+
+- Site-specific selectors / field mappings — that's normal per-site work.
+- Local/env quirks unrelated to onboarding logic (PowerShell quoting, `pnpm`
+  not found, Windows path issues).
+- Anything already in the catalog/recipes — cite the existing entry instead.
+- Theories or fixes you did not apply and verify in this run.
+- Restatements of an existing gate.
+
+### Format (print this in the end-of-run summary)
+
+For each qualifying learning, emit one block:
+
+```
+LEARNING (candidate): <one-line title>
+  Signal:          <reusable trigger / failure signature observed>
+  Fix:             <what you changed that worked>
+  Generalizes to:  <vendor / framework / server-behavior / page-pattern>
+  Suggested home:  <B2b entry | Step 3 WAF recipe | Step 4 framework recipe | B2.5 | Step 2 race note>
+  Status:          new | refines <section>
+```
+
+When nothing qualifies, emit exactly one line so silence is unambiguous:
+
+```
+No candidate learnings this run.
+```
 
 ## Notes on failure modes you'll hit
 
