@@ -191,7 +191,7 @@ continue   # move to next URL
 | Step | Trigger | Reason string |
 |------|---------|---------------|
 | Step 3 reachability | Gate exit 3 (network/captcha/IL-IP) | `Auto-skipped: unreachable (gate exit 3)` |
-| Step 3 reachability | UA-WAF detected, no override path in batch | `Auto-skipped: WAF requires manual browserOverrides` |
+| Step 3 reachability | UA-WAF detected | First **apply the UA override within budget** (B2a/B2b Incapsula entry). Only if the block survives the override: `Auto-skipped: WAF survives UA override` |
 | Step 3b fetch | Bot challenge page (Cloudflare/Reblaze in HTML) | `Auto-skipped: bot challenge page detected` |
 | Step 4 structure | No repeating job-listing structure in HTML | `Auto-skipped: no jobs listing detected in page structure` |
 | Step 5 dry-run | < 3 items after **2 selector iterations** | `Auto-skipped: dry-run found N items after 2 iterations` |
@@ -199,17 +199,142 @@ continue   # move to next URL
 | 5b exit 2 | Form capture fail | Do **not** skip; continue with `formCapture: null` |
 | Step 7 verify | Config never sticks after 3 re-PUTs (analyzer race) | `Auto-skipped: analyzer kept overwriting config (3 attempts)` |
 | Step 8 scrape | FAILED, or low jobs vs dry-run | First run the Step 8 mismatch re-verify (re-PUT + re-scrape **once**). Only if it still fails: `Auto-skipped: test scrape produced 0 jobs` |
+| Step 9 completeness | Only partial data extractable (see B2.5) | `Auto-skipped: only partial data (no description + no apply path); detail pages blocked` |
+| Any step | Remediation budget exhausted — 3 fixes used, 2 no-progress steps, or 15 min cap (see B2a) | `Auto-skipped: remediation budget exhausted (<what was tried>)` |
 
-**Hard anti-loop rules** — baked into batch mode, never override:
-1. **Max 2 selector iterations per URL.** If dry-run still < 3 items → auto-skip.
-2. **At most ONE re-scrape per URL**, and only via the Step 8
-   dry-run/scrape mismatch guard (scrape `<=1` while dry-run `>=3`): re-run
-   the Step 7 verify gate, then re-scrape once. No other re-scrape loops.
-3. **No form-capture retry loop.** One attempt; on exit 2 → continue with `formCapture: null`.
-4. **Doctor runs once** at batch start, not per URL.
-5. **No scrape for SKIPPED paths.** Sites that hit any gate above are skipped without a scrape.
-6. **Per-URL scratch isolation.** Create `.scratch/batch-<id>/<host>/` per URL so Playwright
-   artifacts don't clobber each other.
+### B2a — Remediation budget (give fixes room, stay bounded)
+
+Batch mode is allowed — and expected — to **fix** the problems it
+recognizes (not just give up at the first blocker). The old rigid
+"one re-scrape, two iterations" caps conflated two different things:
+*blind retries* (re-running the same failing action — always bad) and
+*signal-triggered remediations* (recognizing a specific failure
+signature and applying a known fix — good). The budget below permits the
+second while making the first impossible.
+
+**Three guardrails — these make the budget provably terminate:**
+
+1. **Signal-gated.** A remediation may run **only** when a recognized
+   failure signature is present, and the fix must come from the
+   **Remediation catalog (B2b)**. No improvising fixes that aren't in the
+   catalog — if you can't name the signal and the matching catalog entry,
+   don't act, SKIP.
+2. **One-shot per distinct fix.** Each catalog remediation is attempted
+   **at most once** per URL. If you apply it and the signal persists
+   unchanged, that fix is **exhausted** — never repeat the same fix
+   hoping for a different result.
+3. **Total cap + progress requirement.** Hard ceilings per URL:
+   - **≤ 3 distinct remediations** per URL.
+   - **≤ 1 re-scrape per applied remediation** (a re-scrape is only
+     justified by a config change from a remediation, never blind).
+   - **Stop after 2 consecutive no-progress steps** — if two
+     remediations in a row don't change the observed signal/state
+     (same block markers, same item count, same missing fields), stop
+     and SKIP.
+   - **15-minute wall-clock backstop per site** — if you've spent ~15 min
+     on one URL, SKIP even if remediations remain. (The count + no-progress
+     rules normally stop you well before this; it's just a backstop so one
+     stubborn site can't eat the whole batch.)
+
+When the budget is exhausted (count, no-progress, or time), SKIP with
+`Auto-skipped: remediation budget exhausted (<what was tried>)` and
+`continue`.
+
+**Invariants that always hold (independent of the budget):**
+
+- **Doctor runs once** at batch start, not per URL.
+- **No scrape for SKIPPED paths.** Sites that hit a B2 gate are skipped
+  without a scrape.
+- **Per-URL scratch isolation.** Create `.scratch/batch-<id>/<host>/`
+  per URL so Playwright artifacts don't clobber each other.
+- **Partial data ⇒ SKIPPED, never ACTIVE** (see B2.5). A scrape that
+  returns only title/location stubs because the detail pages
+  (descriptions + apply form) couldn't be reached is NOT a success — log
+  it `SKIPPED`.
+
+### B2b — Remediation catalog (the only sanctioned fixes)
+
+Each entry: **trigger signal → sanctioned fix → exhausted when.** Drawing
+a fix from this catalog counts as one remediation against the B2a budget.
+Anything **not** listed here → do **not** improvise → SKIP.
+
+- **Incapsula/Imperva `HeadlessChrome` block** (tiny HTML with
+  `Request unsuccessful` / `_Incapsula_Resource` / incident id, on listing
+  or detail pages) → add `browserOverrides.userAgent` real-desktop-Chrome
+  UA (Step 3 "Incapsula/Imperva on detail pages" recipe) → **exhausted**
+  if the block markers persist after the override.
+- **Lazy / infinite-scroll / 0-items-but-JS-list** (HTML has the framework
+  shell but the dry-run finds 0–1 items) → longer `networkidle` wait +
+  scroll loop, or the matching framework recipe in Step 4 → **exhausted**
+  if the item count is unchanged after the wait/scroll.
+- **Wrong / low-yield itemSelector** (dry-run < 3 items but the page
+  clearly lists more) → re-pick the `itemSelector` (this is where the
+  prior "2 selector iterations" live) → **exhausted after 2 selector
+  picks**.
+- **Analyzer clobber** (config doesn't stick — Step 7 verify shows the
+  stored config overwritten) → re-PUT + re-verify (Step 7 loop) →
+  **exhausted after 3 re-PUTs**.
+- **Description / apply on detail pages** (B2.5 partial data: listing has
+  only title/snippet, the real content is on per-job pages) → switch to a
+  multi-page `pageFlow` config + capture the detail-page description and
+  `formCapture` → **exhausted** if the detail pages stay blocked after the
+  Incapsula UA remediation above.
+- **Paginated listing missing jobs** (dry-run yields only the first page
+  while the site paginates) → follow pagination / "next" in `pageFlow` →
+  **exhausted** if following pages yield no new items.
+- **Form capture fails** (5b exit 2) → **not** a remediation; continue
+  once with `formCapture: null` (no retry loop).
+- **Catch-all:** any failure whose signature is **not** in this catalog →
+  do NOT improvise a fix → SKIP with the appropriate B2 reason.
+
+### B2.5 — Data-completeness gate (partial data ⇒ SKIPPED)
+
+**A site is only ACTIVE-worthy if the scraped jobs are actually useful to a
+job seeker.** "Useful" means each job has, at minimum, a **description**
+*and* an **apply path** (an apply form via `formCapture`, OR an
+`applicationInfo` email/URL, OR a reachable `detailUrl` that contains them).
+A scrape that returns rows with only `title` + `location` — because the
+per-job detail pages that hold the description and apply form were blocked
+(WAF/Incapsula/challenge) — is **partial data**. In batch mode, partial data
+is logged **`SKIPPED`, not `ACTIVE`**. (This is the bankhapoalim lesson: it
+was wrongly shipped ACTIVE as 3 title-only stubs on the first batch pass.)
+
+Decision procedure, run right before you would log `ACTIVE` (Step 9):
+
+1. **Is the site genuinely single-page?** If the full description is on the
+   listing AND the apply path is on the listing (inline form, or an email /
+   external apply link), the data is **complete** — log `ACTIVE`. Sites like
+   halilit (apply-by-email) and eimsys (inline accordion form) are complete,
+   NOT partial. Do not skip these.
+2. **Does the site have per-job detail pages** (the listing only shows a
+   title/snippet and links to `/job/123`-style pages) that hold the
+   description / apply form? If yes and your config did **not** capture a
+   description AND did not capture any apply path, the detail pages are the
+   problem.
+3. **Before skipping, try to actually reach the detail pages** — this is
+   cheap and deterministic and is what would have saved bankhapoalim. Draw
+   the relevant fixes from the **remediation budget (B2a/B2b)** — they
+   count against the per-URL budget, each one-shot:
+   - Run the **Incapsula/HeadlessChrome UA-override probe** from Step 3
+     ("Incapsula/Imperva on detail pages") against one concrete detail URL
+     (catalog: *Incapsula UA override*).
+   - If the real-UA override unblocks it, add `browserOverrides.userAgent`,
+     switch to a multi-page (`pageFlow`) config with the detail-page
+     description + `formCapture` (catalog: *description/apply on detail
+     pages*), re-PUT, and re-scrape (the one re-scrape that remediation
+     permits). If jobs now have descriptions + apply form → log `ACTIVE`.
+   - These are signal-gated, one-shot remediations within the budget — not
+     a loop. Once exhausted (block survives the override, or budget spent),
+     stop and SKIP.
+4. **If the detail pages are still blocked** after the UA-override attempt
+   (true IP/captcha wall, or a challenge that survives UA changes), the site
+   can only yield title/location stubs → **`SKIPPED`** with reason
+   `Auto-skipped: only partial data (no description + no apply path); detail pages blocked`.
+   Use the standard skip+log one-liner from B2 and `continue`.
+
+In single-URL mode, do the same assessment but instead of auto-skipping,
+report the partial-data finding to the user and ask whether to ship the
+listing-only config anyway or stop.
 
 ### B3 — Print summary (mandatory last step in batch mode)
 
@@ -407,6 +532,87 @@ Gate decisions:
   *might* still succeed in prod, but you have no way to verify locally;
   flag the uncertainty in your report and let the user decide whether to
   push through.
+
+> **⚠️ The gate only proves the LISTING is reachable — it does NOT
+> prove detail/apply pages are.** A site can PASS bare on the listing
+> URL yet have *secondary* pages (per-job detail pages, the apply form
+> page) behind a WAF that rejects the default headless UA. This is the
+> exact trap that shipped bankhapoalim.co.il as listing-only on the
+> first pass. For any multi-page (`pageFlow`) site, OR any site where
+> the apply form lives on a detail page, **re-run the same bare-vs-
+> real-UA comparison against one concrete detail URL** before deciding
+> the detail pages are unreachable. See the
+> "Incapsula/Imperva on detail pages" recipe below.
+
+#### Incapsula/Imperva (`HeadlessChrome` UA block) on detail pages
+
+The single most common reason a detail/apply page "can't be reached"
+while the listing loads fine is **Imperva/Incapsula blocking the
+bundled Chromium's default `HeadlessChrome` user-agent.** The default
+UA Playwright sends is literally
+`Mozilla/5.0 (...) HeadlessChrome/<version> Safari/537.36` — the
+`HeadlessChrome` token (and the matching `sec-ch-ua` brand) is a strong
+automation signal that Incapsula returns a challenge page for
+(`<iframe ... _Incapsula_Resource ...>Request unsuccessful. Incapsula
+incident ID: ...`). The worker masks `navigator.webdriver` but does
+**not** override the UA by default (see `worker/lib/playwright.ts`), so
+these pages block.
+
+How to recognise it (vs a true IP/captcha wall):
+- The blocked HTML is tiny (≈800–1000 bytes) and contains
+  `Request unsuccessful` / `_Incapsula_Resource` / an `incident_id`.
+- It blocks even when you navigate to the listing first (same context,
+  cookies set) and then `goto` the detail page.
+
+The fix — **`browserOverrides.userAgent` set to a normal desktop Chrome
+UA** (drop the `HeadlessChrome` token; keep the major version close to
+the bundled Chromium so `sec-ch-ua` stays self-consistent). Find the
+bundled version with:
+
+```powershell
+npx tsx -e "const {chromium}=require('playwright');(async()=>{const b=await chromium.launch({headless:true});const c=await b.newContext();const p=await c.newPage();console.log(await p.evaluate(()=>navigator.userAgent));await b.close();})();"
+```
+
+If it prints `... HeadlessChrome/148.0.7778.96 ...`, use
+`Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML,
+like Gecko) Chrome/148.0.0.0 Safari/537.36` as the override (just
+`HeadlessChrome/<full>` → `Chrome/<major>.0.0.0`). Verify it actually
+unblocks a detail page using the **worker-parity stealth** (the worker
+already launches with `--disable-blink-features=AutomationControlled`
+and an init script that sets `navigator.webdriver=false`):
+
+```powershell
+$probe = @'
+import { chromium } from 'playwright';
+const UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36';
+async function test(label: string, useUA: boolean) {
+  const b = await chromium.launch({ headless: true, args: ['--no-sandbox','--disable-blink-features=AutomationControlled','--lang=he-IL'] });
+  const c = await b.newContext({ viewport:{width:1280,height:800}, ...(useUA?{userAgent:UA}:{}), locale:'he-IL', timezoneId:'Asia/Jerusalem', extraHTTPHeaders:{ 'Accept-Language':'he-IL,he;q=0.9,en-US;q=0.8,en;q=0.7' } });
+  await c.addInitScript(() => { Object.defineProperty(navigator,'webdriver',{get:()=>false}); });
+  const p = await c.newPage();
+  await p.goto(process.argv[2], { waitUntil:'domcontentloaded' });                 // listing first (set cookies)
+  await p.waitForLoadState('networkidle',{timeout:6000}).catch(()=>{});
+  await p.goto(process.argv[3], { waitUntil:'domcontentloaded' });                 // a concrete detail URL
+  await p.waitForTimeout(4000);
+  const html = await p.content();
+  console.log(`${label}: blocked=${/Request unsuccessful|_Incapsula_Resource/i.test(html)} bytes=${html.length}`);
+  await b.close();
+}
+(async () => { await test('worker-parity (no UA)', false); await test('+ real-UA override', true); })();
+'@
+Set-Content .\.scratch\detail-ua-probe.ts $probe -Encoding UTF8
+npx tsx .\.scratch\detail-ua-probe.ts "<listing URL>" "<one detail URL>"
+```
+
+If `worker-parity` is `blocked=true` but `+ real-UA override` is
+`blocked=false`, add the `browserOverrides.userAgent` (plus
+`accept-language` header) to the Step 6 config and proceed with a normal
+multi-page onboarding — descriptions and apply form will work. Your
+Step 5 detail dry-run and Step 5b form capture for this site must also
+use the same UA + stealth locally, or they'll hit the same block.
+Reference: bankhapoalim.co.il (siteId `cmq68fw91001101m9jpejoc9x`) —
+lobby passes bare, `/he/node/*` detail pages need the UA override; once
+set, all jobs get full descriptions + the live Drupal apply webform.
 
 Once the gate passes (or you've captured the WAF override), continue with step 3b.
 
@@ -2255,6 +2461,17 @@ shortfall can never hide:
 If `coverage` is partial and the user did NOT sign off on partial
 coverage, the onboarding is NOT done — go back and implement full
 coverage (see the framework recipes / dynamic-loading options in Step 4).
+
+**Data-completeness check (separate from coverage).** Coverage is about
+*how many* jobs; completeness is about *how much per job*. Before declaring
+success, run the **B2.5 data-completeness gate**: if the jobs have only
+title/location and are missing BOTH a description AND an apply path because
+the detail pages were blocked, that is partial data. In **batch mode** that
+means log `SKIPPED` (after the one permitted Incapsula/HeadlessChrome
+UA-override re-attempt from B2.5); in **single-URL mode** report it and ask
+the user before shipping a listing-only config. Add a completeness line to
+the wrap-up, e.g. `✓ completeness: title+location+description+applyForm` or
+`✗ completeness: title+location only (detail pages blocked) → SKIPPED`.
 
 ## Notes on failure modes you'll hit
 
