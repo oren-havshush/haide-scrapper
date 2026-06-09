@@ -698,6 +698,14 @@ summary and decide:
     **unique** per job. Prefer, in order:
     - element with `data-job`, `data-job-id`, `data-id` attr → set
       `extractAttr` to that attribute name.
+    - **per-item hidden form input** carrying a CMS post id — common on
+      WordPress/Elementor "now hiring" pages where each job's inline apply
+      form has `<input type="hidden" name="queried_id" value="215">` (the
+      job's post id, unique per item even though `post_id`/`referer_title`
+      are page-level constants). Map it with
+      `selector: 'input[name="queried_id"]'`, `extractAttr: 'value'`. This
+      is a true native id — prefer it over any synthesized hash. Verified
+      on eimsys.co.il (siteId `cmq68viva001b01m902an8gzs`).
     - text in a column like `"REQ-1234"` — extract as text.
     - if the listing only links to detail pages with no separate ID, use
       the same `<a href="...">` as a stable per-job id (the worker will
