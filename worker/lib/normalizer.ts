@@ -209,6 +209,36 @@ function extractExternalJobIdFallback(text: string): string | null {
   return null;
 }
 
+/**
+ * Extract a clean job-ID token from a (possibly noisy) labeled value.
+ *
+ * Labeled externalJobId capture (matchLabeled) can sweep trailing form text
+ * into the value — e.g. "מספר משרה: JB-1234 גודל הקובץ עד: 1MB" yields
+ * "JB-1234 גודל הקובץ עד: 1MB". A real job ID is a single, whitespace-free
+ * token of [A-Za-z0-9] plus internal separators (-, _, /, .) and carries at
+ * least one digit. We return the first such digit-bearing token, with leading
+ * non-alphanumerics (#, :, separators) and trailing punctuation stripped. This
+ * preserves compound IDs whole ("REQ-2024-00123" is not truncated at internal
+ * hyphens) and is idempotent on already-clean IDs ("JB-1234", "769", "12345").
+ * Returns null when no digit-bearing token exists, so we never invent an ID.
+ */
+export function cleanExternalJobId(value: string | null): string | null {
+  if (!value) return null;
+  for (const rawToken of value.split(/\s+/)) {
+    const token = rawToken
+      .replace(/^[^A-Za-z0-9]+/, "")
+      .replace(/[^A-Za-z0-9]+$/, "");
+    if (
+      token &&
+      /^[A-Za-z0-9][A-Za-z0-9._/-]*$/.test(token) &&
+      /\d/.test(token)
+    ) {
+      return token;
+    }
+  }
+  return null;
+}
+
 function extractApplicationInfoFallback(text: string): string | null {
   // Prefer email; fall back to IL phone (03-..., 050-..., 02-...).
   const email = /([A-Z0-9._%+\-]+@[A-Z0-9.\-]+\.[A-Z]{2,})/i.exec(text);
@@ -361,7 +391,11 @@ export function extractFieldsFromText(text: string): ExtractedFromText {
     location: matchLabeled(t, LABELS.location),
     department: matchLabeled(t, LABELS.department),
     externalJobId:
-      matchLabeled(t, LABELS.externalJobId) ?? extractExternalJobIdFallback(t),
+      // Labeled capture can sweep trailing form text into the value; reduce it
+      // to the bare job-ID token. The fallback already returns clean IDs (bare
+      // digits / codes), and cleanExternalJobId is idempotent on those.
+      cleanExternalJobId(matchLabeled(t, LABELS.externalJobId)) ??
+      extractExternalJobIdFallback(t),
     publishDate: extractPublishDate(t),
     requirements: extractRequirementsBlock(t),
     applicationInfo: extractApplicationInfoFallback(t),
