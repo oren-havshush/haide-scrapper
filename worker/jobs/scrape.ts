@@ -2290,6 +2290,7 @@ async function extractFormData(
       fieldType: string;
       required: boolean;
       tagName: string;
+      options?: Array<{ value: string; label: string }>;
     }> = [];
 
     const elements = form.querySelectorAll("input, select, textarea");
@@ -2321,12 +2322,23 @@ async function extractFormData(
       if (!label && name) label = name.replace(/([a-z])([A-Z])/g, "$1 $2").replace(/[_-]/g, " ").trim();
       if (!label) label = `${type} ${tag}`;
 
+      // Capture <select> options so a future auto-apply layer can map a
+      // per-job value (e.g. a job title) to the right option to submit.
+      let options: Array<{ value: string; label: string }> | undefined;
+      if (tag === "select") {
+        options = Array.from((el as HTMLSelectElement).options).map((o) => ({
+          value: o.value,
+          label: (o.textContent || "").replace(/\s+/g, " ").trim(),
+        }));
+      }
+
       fields.push({
         name,
         label,
         fieldType: type,
         required: el.hasAttribute("required"),
         tagName: tag,
+        ...(options ? { options } : {}),
       });
     }
 

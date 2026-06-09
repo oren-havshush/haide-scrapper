@@ -167,7 +167,7 @@ function matchLabeled(text: string, labelAlt: string): string | null {
 const LABELS = {
   location: String.raw`מיקום\s+המשרה|אזור\s+(?:גיאוגרפי|גאוגרפי)|מיקום|אזור|Location|Based\s+in|City`,
   department: String.raw`שם\s+המחלקה|מחלקה|אגף|צוות|Department|Team|Division`,
-  externalJobId: String.raw`מספר\s+משרה|מספר\s+דרושים|קוד\s+משרה|Job\s+ID|Job\s+Number|Requisition(?:\s+ID)?|Req(?:\s*ID)?|Position\s+ID|Vacancy\s+(?:ID|Number)`,
+  externalJobId: String.raw`מספר\s+משרה|מס['׳]?\s*משרה|משרה\s+מס['׳]?|מספר\s+דרושים|קוד\s+משרה|Job\s+ID|Job\s+Number|Requisition(?:\s+ID)?|Req(?:\s*ID)?|Position\s+ID|Vacancy\s+(?:ID|Number)`,
   jobType: String.raw`סוג\s+(?:ה)?משרה|היקף\s+(?:ה)?משרה|Job\s+Type|Employment\s+Type|Position\s+Type`,
 };
 
@@ -196,7 +196,17 @@ function extractExternalJobIdFallback(text: string): string | null {
   const m =
     /(?:[(\[#]|\bID\s+)\s*((?:REQ|JR|R|JOB|POS)[-_]?\d{2,8})\b/i.exec(text) ||
     /\b((?:REQ|JR|JOB)[-_]\d{2,8})\b/i.exec(text);
-  return m ? m[1].toUpperCase().replace(/_/g, "-") : null;
+  if (m) return m[1].toUpperCase().replace(/_/g, "-");
+
+  // Hebrew job-reference phrase: "מס' משרה 674", "מספר משרה: 1234",
+  // "מס' משרה אולם ירושלים: 624". Requires an ID-intent word AND the explicit
+  // keyword משרה, allows ~40 chars of intervening text (lazy), and captures
+  // 2+ digits with no upper cap. The (?!\s*:) guard rejects clock times so a
+  // run like "17" in "17:00" is skipped.
+  const heb = /(?:מס['׳]?|מספר|קוד|מזהה)\s*משרה[\s\S]{0,40}?(\d{2,})(?!\s*:)/u.exec(text);
+  if (heb) return heb[1];
+
+  return null;
 }
 
 function extractApplicationInfoFallback(text: string): string | null {

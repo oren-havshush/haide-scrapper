@@ -80,6 +80,11 @@ export const updateSiteConfigSchema = z.object({
       fieldType: z.string(),
       required: z.boolean(),
       tagName: z.string(),
+      // For <select> fields: the available options (value + visible label).
+      // Optional so non-select fields and older payloads remain valid.
+      options: z
+        .array(z.object({ value: z.string(), label: z.string() }))
+        .optional(),
     })),
   }).nullable(),
   originalMappings: z.record(z.string(), z.unknown()).optional(),

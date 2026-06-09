@@ -119,6 +119,12 @@ export interface NavigateModeState {
 
 // --- Form Record Mode Types (Story 3-5) ---
 
+/** A single <option> of a <select> form field */
+export interface FormFieldOption {
+  value: string;
+  label: string;
+}
+
 /** A single form field extracted from a <form> element */
 export interface FormFieldInfo {
   name: string;
@@ -126,6 +132,12 @@ export interface FormFieldInfo {
   fieldType: string;
   required: boolean;
   tagName: string;
+  /**
+   * For <select> fields only: the available options. Captured so a future
+   * auto-apply layer can map a per-job value (e.g. a job title) to the
+   * correct option to submit. Omitted for non-select fields.
+   */
+  options?: FormFieldOption[];
 }
 
 /** Complete form capture -- one click extracts the entire form */

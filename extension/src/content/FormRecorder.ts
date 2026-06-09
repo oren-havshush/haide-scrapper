@@ -84,12 +84,23 @@ function extractFormFields(form: HTMLFormElement): FormFieldInfo[] {
     // Skip submit/button/image inputs -- they're not data fields
     if (type === "submit" || type === "button" || type === "image" || type === "reset") continue;
 
+    // Capture <select> options so a future auto-apply layer can map a
+    // per-job value (e.g. a job title) to the right option to submit.
+    const options =
+      tag === "select"
+        ? Array.from((el as HTMLSelectElement).options).map((o) => ({
+            value: o.value,
+            label: (o.textContent || "").replace(/\s+/g, " ").trim(),
+          }))
+        : undefined;
+
     fields.push({
       name,
       label: inferLabel(el),
       fieldType: type,
       required: el.hasAttribute("required"),
       tagName: tag,
+      ...(options ? { options } : {}),
     });
   }
 
