@@ -48,7 +48,7 @@ folder is gitignored.
 
 - **Don't ask for permission step-by-step.** This skill is explicitly for
   autonomous, hands-off site addition. Only stop if a hard gate fails
-  (dry-run finds < 3 items, every field empty, API returns 5xx, etc.) —
+  (dry-run finds < 2 items, every field empty, API returns 5xx, etc.) —
   then report and bail.
 - **Don't invent selectors blind.** Every selector must be dry-run on the
   live page via Playwright before you POST anything to prod.
@@ -194,7 +194,7 @@ continue   # move to next URL
 | Step 3 reachability | UA-WAF detected | First **apply the UA override within budget** (B2a/B2b Incapsula entry). Only if the block survives the override: `Auto-skipped: WAF survives UA override` |
 | Step 3b fetch | Bot challenge page (Cloudflare/Reblaze in HTML) | `Auto-skipped: bot challenge page detected` |
 | Step 4 structure | No repeating job-listing structure in HTML | `Auto-skipped: no jobs listing detected in page structure` |
-| Step 5 dry-run | < 3 items after **2 selector iterations** | `Auto-skipped: dry-run found N items after 2 iterations` |
+| Step 5 dry-run | < 2 items after **2 selector iterations** | `Auto-skipped: dry-run found N items after 2 iterations` |
 | 5b exit 7 | Login-gated apply flow | `Auto-skipped: apply requires login (signal)` — see 5b-LOGIN |
 | 5b exit 2 | Form capture fail | Do **not** skip; continue with `formCapture: null` |
 | Step 7 verify | Config never sticks after 3 re-PUTs (analyzer race) | `Auto-skipped: analyzer kept overwriting config (3 attempts)` |
@@ -268,7 +268,7 @@ Anything **not** listed here → do **not** improvise → SKIP.
   shell but the dry-run finds 0–1 items) → longer `networkidle` wait +
   scroll loop, or the matching framework recipe in Step 4 → **exhausted**
   if the item count is unchanged after the wait/scroll.
-- **Wrong / low-yield itemSelector** (dry-run < 3 items but the page
+- **Wrong / low-yield itemSelector** (dry-run < 2 items but the page
   clearly lists more) → re-pick the `itemSelector` (this is where the
   prior "2 selector iterations" live) → **exhausted after 2 selector
   picks**.
@@ -1400,9 +1400,9 @@ npx tsx $dryRunPath $URL
 ```
 
 **Gates** (all must pass — else stop, print the failing sample, and bail):
-- `count >= 3`
-- For each of the first 3 sample records: at least 3 fields are non-null
-  AND not the empty string.
+- `count >= 2`
+- For each of the first 3 sample records (or all of them, if fewer than 3):
+  at least 3 fields are non-null AND not the empty string.
 - `title` is non-empty in every sample (this is the hard requirement —
   no title means we picked the wrong itemSelector).
 - **If multi-page (pageFlow set)**: also run a second mini-dry-run on one
@@ -1415,7 +1415,7 @@ re-run. You get up to 3 iterations before aborting.
 
 **Batch mode**: remember the passing dry-run `count` as `$DRYRUN_N`. Step 8
 compares the test-scrape `jobCount` against it — a scrape returning `<=1`
-while `$DRYRUN_N >= 3` is the analyzer-clobber / render-timing signature and
+while `$DRYRUN_N >= 2` is the analyzer-clobber / render-timing signature and
 triggers the Step 8 re-verify (NOT an immediate skip).
 
 ## Step 5b — Capture the apply form (when applicable)
