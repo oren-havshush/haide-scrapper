@@ -738,7 +738,18 @@ summary and decide:
 - Per-field selectors **relative** to the item (because the worker calls
   `item.querySelector(selector)` per item):
   - **title** — usually `h1`/`h2`/`h3`/`a` with the job name.
-  - **department** / **location** — secondary text on the row.
+  - **department** / **location** — secondary text on the row. If the
+    listing has **no** structured location field and the city only appears
+    in prose, the worker's IL gazetteer auto-fills `location` from the
+    description for *some* jobs (only those naming a token it recognizes),
+    so coverage is partial and inconsistent. For a **single-office**
+    employer where every role is at the same site, inject a **constant**
+    location via `setupScript` (a hidden `[data-loc]` span on each item,
+    mapped as `location: { selector: '[data-loc]' }`) so all jobs get it.
+    Verified on msh.co.il Migdal Capital Markets (siteId
+    `cmq6gxm6y001p01m9k3k3pwyv`): only 2/6 jobs got a gazetteer location;
+    injected a constant `תל אביב`. Caveat: only do this when you're
+    confident every posting shares that location.
   - **externalJobId** — the worker dedupes jobs across re-scrapes on this
     value, so it MUST be **stable** (same job → same id every scrape) and
     **unique** per job. Prefer, in order:
@@ -756,6 +767,19 @@ summary and decide:
     - if the listing only links to detail pages with no separate ID, use
       the same `<a href="...">` as a stable per-job id (the worker will
       store the URL path as `externalJobId`).
+    - **Don't map a framework-internal anchor as the id.** A Bootstrap
+      accordion toggle `href="#collapse-21421"` or a tab `aria-controls`
+      is an *internal widget id*, NOT the job's id — and it usually differs
+      from the visible job number. If the header shows a real
+      `"מס' משרה: NNNN"`, extract that number via `setupScript` (regex
+      `/משרה\D*?(\d+)/` against the header text) rather than mapping the
+      `#collapse-…` href. Verified on msh.co.il Migdal Capital Markets
+      (siteId `cmq6gxm6y001p01m9k3k3pwyv`): the accordion href was
+      `#collapse-21421` while the real `מס' משרה` was `4066`. (A single
+      page-level apply form — e.g. one shared Contact Form 7 for the whole
+      careers page, with no per-job apply link or hidden job-id input —
+      means `externalJobId` is pure dedup metadata and safe to change
+      without touching the apply flow.)
     - **Native id on SOME items but not all?** Don't discard the real ids
       just because they're sparse. Build a **hybrid** in `setupScript`: use
       the native id when present, fall back to a content hash otherwise (see
@@ -980,6 +1004,13 @@ Rules of thumb for `setupScript`:
 - Use a unique `data-extracted-<field>` attribute name per field —
   don't reuse `data-location` etc. because the page may already use
   those.
+- **Append injected spans to the item root, NOT to an element another
+  field already reads.** If `title` maps to `.panel-title__el` and you
+  append a hidden `[data-ex-id]`/`[data-loc]` span *inside* that same
+  element, its hidden text leaks into the title's `textContent` and
+  corrupts the title. Append to the `itemSelector` node (or a child no
+  other field reads) instead. (Bit us on msh.co.il, where the id/location
+  spans had to go on `.panel.panel-default`, not `.panel-title__el`.)
 - Keep it small and pure-JS (no external libs). `await` **is** supported:
   the worker runs the script body as an `AsyncFunction` and awaits it
   (2026-05-31 fix), so top-level `await fetch(...)` enrichments work. Do
