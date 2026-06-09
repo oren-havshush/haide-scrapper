@@ -756,6 +756,15 @@ summary and decide:
     - if the listing only links to detail pages with no separate ID, use
       the same `<a href="...">` as a stable per-job id (the worker will
       store the URL path as `externalJobId`).
+    - **Native id on SOME items but not all?** Don't discard the real ids
+      just because they're sparse. Build a **hybrid** in `setupScript`: use
+      the native id when present, fall back to a content hash otherwise (see
+      "Synthesizing a stable externalJobId" → hybrid recipe below). This is
+      common on IL sites that print a `"מס' משרה: NNN"` for a few postings
+      and nothing for the rest — scan for the native id first, hash only the
+      remainder. Verified on hamat-group.co.il (siteId
+      `cmq6gxlnk001n01m99axjfu8u`): 2/12 jobs carry a number (`002`/`003`),
+      the other 10 get `h-<hash(title)>`.
     - **No native id anywhere?** Synthesize one from **stable content**
       via `setupScript` (see "Synthesizing a stable externalJobId" below).
       **Never include the row index / position** in a synthesized id —
@@ -919,6 +928,45 @@ Notes:
   stable; it's strictly better than an index-based id.
 - Verified on halilit.com (siteId `cmq68mpnq001501m9p50vwgee`) — a plain
   id-less branch table; switched from `index-title` to `h-hash(title+branch)`.
+
+**Hybrid: native id when present, hash fallback otherwise.** When a site
+prints a real job number on *some* items but not all (e.g. a `"מס' משרה: 002"`
+row that only a few postings carry), don't hash everything — that throws away
+the genuine ids. Scan each item for the native id first; only fall back to the
+content hash when it's missing. The native ids stay canonical (`002`, `003`)
+while the unnumbered jobs get a stable `h-<hash>`:
+
+```js
+function haideHash(s){var h=5381,i=s.length;while(i){h=(h*33)^s.charCodeAt(--i);}return (h>>>0).toString(36);}
+document.querySelectorAll('div.job').forEach(function (job) {
+  if (job.querySelector('[data-ex-id]')) return;
+  var titleEl = job.querySelector('.h3.cursor-pointer');
+  var title = titleEl ? titleEl.textContent.replace(/\s+/g, ' ').trim() : '';
+  var jobNum = '';                                   // native id, if this item has one
+  job.querySelectorAll('.job__attribute').forEach(function (a) {
+    var full = a.textContent.replace(/\s+/g, ' ').trim();
+    if (/מס'?\s*משרה/.test(full)) {                  // "מס' משרה: 002" → "002"
+      var d = full.replace(/\D/g, '');
+      if (d) jobNum = d;
+    }
+  });
+  if (!title) return;
+  var idspan = document.createElement('span');
+  idspan.setAttribute('data-ex-id', '1');
+  idspan.style.display = 'none';
+  idspan.textContent = jobNum ? jobNum : ('h-' + haideHash(title.toLowerCase()));
+  job.appendChild(idspan);
+});
+```
+
+Notes on the hybrid:
+- The two id shapes never collide: the hash branch is always `h-`-prefixed,
+  so a native `002` can't clash with a synthesized id.
+- Accept one trade-off: if the site *later* assigns a number to a
+  currently-unnumbered job, that job's id flips from `h-…` to the number once
+  and is re-tracked as new. That's a rare, one-time churn — worth it to keep
+  the real ids for the jobs that have them.
+- Verified on hamat-group.co.il (siteId `cmq6gxlnk001n01m99axjfu8u`).
 
 Rules of thumb for `setupScript`:
 
