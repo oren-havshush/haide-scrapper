@@ -6,6 +6,8 @@
 // preserves the original rawFields for debugging and re-processing.
 // ---------------------------------------------------------------------------
 
+import { IL_CITIES, IL_REGIONS } from "../data/il-places";
+
 /** Standard job schema fields that map directly to Job model columns */
 const STANDARD_FIELDS = new Set([
   "title",
@@ -220,124 +222,110 @@ function extractRequirementsBlock(text: string): string | null {
 // Unlabeled IL city/area gazetteer fallback
 // Used as a LAST resort when no explicit "Location:" / "מיקום:" label exists
 // in the text. Only fires when location is still empty after matchLabeled.
+//
+// The place lists (IL_CITIES / IL_REGIONS) are generated from
+// "CSV files/city.csv" into worker/data/il-places.ts (regenerate with
+// `npx tsx scripts/build-il-places.ts`). They are large (~1,400 entries), so
+// rather than compiling one RegExp per place per call we precompile a handful
+// of single-alternation matchers once at module load.
 // ---------------------------------------------------------------------------
 
-const IL_REGIONS = [
-  "השפלה", "השרון", "הצפון", "הדרום", "המרכז", "הגליל", "הנגב", "הכרמל",
-];
+const escapeRe = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
-const IL_CITIES = [
-  "פתח תקווה", "פתח-תקווה",
-  "קריית אריה", "קרית אריה",
-  "תל אביב", "ת\"א",
-  "ירושלים",
-  "חיפה",
-  "באר שבע",
-  "ראשון לציון",
-  "נתניה",
-  "רמת גן",
-  "חולון",
-  "רחובות",
-  "הרצליה",
-  "כפר סבא",
-  "רעננה",
-  "מודיעין",
-  "אשדוד",
-  "אשקלון",
-  "בת ים",
-  "לוד",
-  "רמלה",
-  "רעננה",
-  "הוד השרון",
-  "כפר יונה",
-  "יבנה",
-  "קרית שמונה", "קריית שמונה",
-  "טבריה",
-  "נהריה",
-  "עכו",
-  "קרית ביאליק", "קריית ביאליק",
-  "קרית מוצקין", "קריית מוצקין",
-  "קרית ים", "קריית ים",
-  "אילת",
-  "אריאל",
-  "מעלה אדומים",
-  "בני ברק",
-  "גבעתיים",
-  "כפר סבא",
-  "הרצלייה",
-  "גדרה",
-  "יהוד",
-  "אור יהודה",
-  "אלעד",
-  "ראש העין",
-  "חדרה",
-  "זכרון יעקב",
-  "עפולה",
-  "נצרת",
-  "טירת כרמל",
-  "דימונה",
-  "ערד",
-  "קרית גת", "קריית גת",
-];
+// Build a regex alternation, longest name first so a more specific multi-word
+// place wins over a shorter substring at the same position.
+const altOf = (names: readonly string[]) =>
+  names
+    .slice()
+    .sort((a, b) => b.length - a.length)
+    .map(escapeRe)
+    .join("|");
+
+// Bare "ב<name>" patterns have no surrounding cue/label, so a short place name
+// that is also a common Hebrew word (e.g. "שחר"/"תמר"/"קשת") would false-match.
+// Gate those patterns to names of at least this length; cue/label/indicator
+// patterns keep the full list because their context makes a match reliable.
+const BARE_PREFIX_MIN_LEN = 4;
+
+const CITY_ALT = altOf(IL_CITIES);
+const REGION_ALT = altOf(IL_REGIONS);
+const CITY_ALT_LONG = altOf(
+  IL_CITIES.filter((c) => c.length >= BARE_PREFIX_MIN_LEN),
+);
+const REGION_ALT_LONG = altOf(
+  IL_REGIONS.filter((r) => r.length >= BARE_PREFIX_MIN_LEN),
+);
+
+// A location CUE: a pin/office emoji or a location noun
+// ("מיקום", "כתובת", "סניף", "פארק", "משרדי(נו)", "ממוקם", "עיר").
+const LOC_CUE =
+  String.raw`(?:\p{Extended_Pictographic}|מיקום|כתובת|סניף|פארק(?:\s+המדע)?|` +
+  String.raw`משרדי(?:נו)?|ממוקמ\w*|עיר|אתר)`;
+
+// Hebrew-letter word boundaries. JS `\b` is ASCII-only, so a place followed by
+// "!" or preceded by another Hebrew letter wouldn't be bounded correctly. We
+// instead require the matched name to not be glued to another Hebrew letter on
+// either side (so "אבן יהודה" matches in "...באבן יהודה!" but "תקווה" is not
+// matched as a suffix of an unrelated word).
+const NOT_HEB_BEFORE = String.raw`(?<![\u0590-\u05FF])`;
+const NOT_HEB_AFTER = String.raw`(?![\u0590-\u05FF])`;
+
+// Pattern A: explicit area indicator — "לאזור X" / "באזור X" / "בעיר X".
+const RE_REGION_INDICATOR = new RegExp(
+  String.raw`(?:ל?אזור|בעיר)\s+(` + REGION_ALT + String.raw`)` + NOT_HEB_AFTER,
+  "u",
+);
+const RE_CITY_INDICATOR = new RegExp(
+  String.raw`(?:ל?אזור|בעיר|במשרדי?(?:\s+ה\w+)?\s+ב)\s*(` +
+    CITY_ALT +
+    String.raw`)` +
+    NOT_HEB_AFTER,
+  "u",
+);
+// Pattern A2: a location cue followed within a short window by a known city,
+// even without a ":" label or a "ב" prefix (e.g. "📍 פארק המדע רחובות").
+const RE_CITY_CUE = new RegExp(
+  LOC_CUE +
+    String.raw`[\s\S]{0,30}?` +
+    NOT_HEB_BEFORE +
+    String.raw`(` +
+    CITY_ALT +
+    String.raw`)` +
+    NOT_HEB_AFTER,
+  "u",
+);
+// Pattern B/C: bare "ב<city>" / "ב<region>" prefix (length-gated). The "ב"
+// must itself start a word (not be glued to a preceding Hebrew letter).
+const RE_CITY_B = new RegExp(
+  NOT_HEB_BEFORE + String.raw`ב(` + CITY_ALT_LONG + String.raw`)` + NOT_HEB_AFTER,
+  "u",
+);
+const RE_REGION_B = new RegExp(
+  NOT_HEB_BEFORE +
+    String.raw`ב(` +
+    REGION_ALT_LONG +
+    String.raw`)` +
+    NOT_HEB_AFTER,
+  "u",
+);
 
 /**
  * Attempt to extract an unlabeled Israeli city/region from free-form text.
- * Prefers the most specific hit (a city over a region) and requires either:
- *   (a) "לאזור/לעיר <name>" or "באזור <name>" — explicit preposition+indicator,
- *   (b) "ב<city>" — "at / in <city>" Hebrew prefix with a city name.
- * Returns null if no reliable match is found.
+ * Tries, in order of confidence:
+ *   (A)  "לאזור/בעיר <region|city>" — explicit preposition + indicator,
+ *   (A2) a location cue (📍/"מיקום"/"סניף"/…) within 30 chars of a city,
+ *   (B)  bare "ב<city>" / "ב<region>" prefix (length-gated, see above).
+ * Returns the matched place name, or null if no reliable match is found.
  */
 export function extractLocationFromGazetteer(text: string): string | null {
   if (!text) return null;
-
-  // Pattern A: explicit area indicator — "לאזור X" / "באזור X" / "בעיר X"
-  for (const region of IL_REGIONS) {
-    const re = new RegExp(
-      String.raw`(?:ל?אזור|בעיר)\s+` + region.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"),
-      "u",
-    );
-    if (re.test(text)) return region;
-  }
-  for (const city of IL_CITIES) {
-    const escaped = city.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-    const re = new RegExp(
-      String.raw`(?:ל?אזור|בעיר|במשרדי?(?:\s+ה\w+)?\s+ב)\s*` + escaped,
-      "u",
-    );
-    if (re.test(text)) return city;
-  }
-
-  // Pattern A2: a location CUE — a pin/office emoji or a location noun
-  // ("מיקום", "כתובת", "סניף", "פארק", "משרדי(נו)", "ממוקם", "עיר") — followed
-  // within a short window by a known city, even without a ":" label or a "ב"
-  // prefix. Handles patterns like "📍 פארק המדע רחובות" / "סניף ראשי - חיפה".
-  const LOC_CUE =
-    String.raw`(?:\p{Extended_Pictographic}|מיקום|כתובת|סניף|פארק(?:\s+המדע)?|` +
-    String.raw`משרדי(?:נו)?|ממוקמ\w*|ממוקם|עיר|אתר)`;
-  for (const city of IL_CITIES) {
-    const escaped = city.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-    const re = new RegExp(
-      LOC_CUE + String.raw`[\s\S]{0,30}?` + escaped + String.raw`(?:\b|[\s,.()\n]|$)`,
-      "u",
-    );
-    if (re.test(text)) return city;
-  }
-
-  // Pattern B: "ב<city>" prepended — e.g. "בפתח תקווה", "בחיפה"
-  for (const city of IL_CITIES) {
-    const escaped = city.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-    const re = new RegExp(String.raw`ב` + escaped + String.raw`(?:\b|[\s,.()\n])`, "u");
-    if (re.test(text)) return city;
-  }
-
-  // Pattern C: region name on its own after a preposition, e.g. "לאזור השפלה"
-  for (const region of IL_REGIONS) {
-    const escaped = region.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-    const re = new RegExp(String.raw`ב` + escaped + String.raw`(?:\b|[\s,.()\n])`, "u");
-    if (re.test(text)) return region;
-  }
-
-  return null;
+  const m =
+    RE_REGION_INDICATOR.exec(text) ||
+    RE_CITY_INDICATOR.exec(text) ||
+    RE_CITY_CUE.exec(text) ||
+    RE_CITY_B.exec(text) ||
+    RE_REGION_B.exec(text);
+  return m ? m[1] : null;
 }
 
 /**
@@ -457,14 +445,6 @@ export function normalizeJobRecord(
       return found;
     };
     location = applyFallback("location", location);
-    // Second-stage gazetteer fallback: only when labeled extraction found nothing.
-    if (!location || location.trim().length === 0) {
-      const gazetteered = extractLocationFromGazetteer(fallbackSource);
-      if (gazetteered) {
-        location = gazetteered;
-        rawOut["_enrichedFromDescription_location"] = gazetteered;
-      }
-    }
     department = applyFallback("department", department);
     externalJobId = applyFallback("externalJobId", externalJobId);
     publishDate = applyFallback("publishDate", publishDate);
@@ -482,6 +462,24 @@ export function normalizeJobRecord(
     if (recovered.jobType && !additionalFields["jobType"]) {
       additionalFields["jobType"] = recovered.jobType;
       rawOut["_enrichedFromDescription_jobType"] = recovered.jobType;
+    }
+  }
+
+  // Second-stage gazetteer fallback for location: runs only when neither a
+  // dedicated selector nor labeled extraction produced one. Scans the title in
+  // addition to description + requirements — known-place matches only, so a
+  // role title without a place won't false-match (e.g. recovers "אבן יהודה"
+  // from "...במרלוג החדש באבן יהודה").
+  if (!location || location.trim().length === 0) {
+    const locationSource = [title, description, requirements]
+      .filter(Boolean)
+      .join("\n");
+    if (locationSource) {
+      const gazetteered = extractLocationFromGazetteer(locationSource);
+      if (gazetteered) {
+        location = gazetteered;
+        rawOut["_enrichedFromDescription_location"] = gazetteered;
+      }
     }
   }
 
