@@ -23,3 +23,14 @@ Keep it short and direct. At the end of your reply, add a line like:
 > Next steps: commit these changes? / run `pnpm sync:addsite` then commit? / deploy to prod?
 
 Always list only the steps that actually apply to what was just changed.
+
+## Batch the git steps — ask once, not one by one
+
+When more than one of **sync / commit / push** (and/or **deploy**) applies,
+offer them **together in a single question** and let the user approve the
+whole sequence at once. Do NOT ask about each step in a separate turn.
+
+> Next steps: sync, commit, and push these changes — do all? (then deploy?)
+
+If the user says yes, run the applicable steps in the correct order
+(sync → commit → push → deploy) without stopping to re-confirm each one.
