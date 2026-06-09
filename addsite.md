@@ -444,9 +444,50 @@ $SITE_ID = $created.data.id
 Write-Host "Created site $SITE_ID"
 ```
 
-Site is created in `ANALYZING`. **The server auto-creates an ANALYSIS
-workerJob.** Do NOT wait for it — that wastes time and the analyzer's
-selectors are usually wrong. Proceed immediately.
+Site is created in `ANALYZING`, and **the server enqueues an ANALYSIS
+workerJob into the same FIFO queue the scraper uses.** The worker process
+is single-threaded and FIFO — one job at a time, oldest first (see
+`worker/index.ts`: a single `isProcessing` guard plus a
+`findFirst({ where: { status: "PENDING" }, orderBy: { createdAt: "asc" } })`
+poll every 5s). When that ANALYSIS job runs it **re-derives
+`fieldMappings`, overwrites whatever config you PUT, and resets the site to
+`REVIEW`.**
+
+You may proceed **immediately** to the *local* discovery work (Steps 3–5b:
+reachability, fetch, dry-run, form capture) — those run in your own
+Playwright, cost the analyzer nothing, and overlapping them with the
+analysis is free and fast.
+
+**But you MUST NOT PUT config (Step 6) until the site has left
+`ANALYZING`.** The "double-PUT wins the race" trick in Step 6 only works if
+the analyzer has *already* run before your PUT. The worker is slow and FIFO,
+so for a freshly-created site the ANALYSIS job is usually still pending when
+you'd PUT — it then runs *after* your PUT and clobbers it, and your scrape
+runs against the analyzer's bad selectors (0 jobs, or junk like nav/menu
+rows). This bit a real 4-site batch on 2026-06-09: all four shipped
+0/garbage on the first pass because scrapes were triggered before the
+analyzer had run; re-PUTting after it settled fixed all four (msh, hamat,
+loreal, rad).
+
+So, right before Step 6, **gate on the analyzer settling**:
+
+```powershell
+# Wait for the auto-analyzer to leave ANALYZING (-> REVIEW) before Step 6.
+for ($i = 1; $i -le 60; $i++) {
+  $st = ((Invoke-RestMethod -Method Get -Uri "$BASE/api/sites?id=$SITE_ID" -Headers $HEADERS).data |
+         Where-Object { $_.id -eq $SITE_ID } | Select-Object -First 1).status
+  if ($st -ne 'ANALYZING') { Write-Host "[analyzer] settled to $st"; break }
+  Start-Sleep -Seconds 5
+}
+```
+
+Because the worker serializes everything, a single in-flight scrape/analysis
+elsewhere can make this wait several minutes — that's expected. Doing your
+local Steps 3–5b first usually means the analyzer has already finished by the
+time you reach this gate. Note this is the *creation-time* analyzer only;
+PUTting config and PATCHing `REVIEW -> ACTIVE` do **not** re-trigger it, so
+once it has run your config is the last writer and sticks. (The Step 7
+verify gate stays as a backstop for any residual race.)
 
 ## Step 3 — Reachability gate (worker-parity check) — DO THIS FIRST
 
@@ -2451,6 +2492,15 @@ gate matrix with `reason: "Auto-skipped: analyzer kept overwriting config (3 att
 and `continue` to the next URL.
 
 ## Step 8 — Trigger scrape and wait
+
+**One scrape at a time.** The worker is single-threaded FIFO (see Step 2 /
+`worker/index.ts`), so triggering several scrapes "in parallel" buys NO
+speedup — they just queue and drain one-by-one, and a backlog makes runs
+slow and hard to attribute. Onboard sites sequentially on the prod side
+(the batch loop in B1 already does this — one URL fully through Steps 1–9
+before the next). It's fine — and encouraged — to parallelize the *local*
+discovery work (Steps 3–5b) across URLs, but issue prod scrapes one at a
+time and let each finish before starting the next.
 
 **Batch mode — dry-run/scrape mismatch re-verify (do this BEFORE auto-skipping):**
 A test scrape that returns far fewer jobs than your Step 5 dry-run saw is the
