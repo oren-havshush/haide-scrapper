@@ -1311,6 +1311,15 @@ or similar. If they differ:
    (`worker/jobs/scrape.ts:clickLoadMoreUntilStable`): the worker clicks
    it repeatedly until the button disappears/disables or item count
    stops growing. Set `loadMoreSelector: "<css>"` in the config PUT.
+   **Composes with `pageFlow`** — the worker clicks Load More on the
+   listing page BEFORE collecting detail URLs, so multi-page sites
+   discover every job, then visit each detail page. (Before this was
+   wired into the multi-page path, `loadMoreSelector` was silently
+   ignored whenever a `pageFlow` was set, shipping only page 1.)
+   Verified on rad.com (`button.loadMoreCareerPosts`, multi-page,
+   8 → 12 jobs). If you ALSO need a setupScript on a multi-page +
+   Load-More site, the worker re-runs the setupScript after the clicks,
+   so keep injections idempotent (guard on `[data-ex-id]` etc.).
 3. **Numbered pagination** (page 1/2/3) — **Supported** via the
    `pagination` config field (`worker/jobs/scrape.ts:getPaginationConfig`
    / `advanceToNextPage`). Two modes:

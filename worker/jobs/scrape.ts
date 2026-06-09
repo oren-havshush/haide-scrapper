@@ -1346,6 +1346,7 @@ async function extractRawFieldsWithPageFlow(
   formCaptureConfig: FormCaptureConfig | null = null,
   pagination: PaginationConfig | null = null,
   setupScript: string | null = null,
+  loadMoreSelector: string | null = null,
 ): Promise<Record<string, string>[]> {
   const rawFieldsList: Record<string, string>[] = [];
 
@@ -1372,6 +1373,19 @@ async function extractRawFieldsWithPageFlow(
   // listing-scope injections (hidden data-* spans, expanded content, API
   // hydration) are present before we collect detail URLs and listing fields.
   if (setupScript) {
+    await runSetupScript(page, setupScript);
+  }
+
+  // Expand append-style "Load more" listings BEFORE collecting detail URLs, so
+  // multi-page sites discover every job (not just the first page). Parity with
+  // the single-page path — without this, loadMoreSelector was silently ignored
+  // whenever a pageFlow was configured (e.g. rad.com: 8 of 12 jobs).
+  await clickLoadMoreUntilStable(page, loadMoreSelector, itemSelector);
+
+  // Re-run setupScript so newly-appended items get the same enrichment. Scripts
+  // are idempotent by convention (guard with `if (!el.querySelector(...))`), so
+  // a second pass only touches the items that arrived after load-more.
+  if (setupScript && loadMoreSelector) {
     await runSetupScript(page, setupScript);
   }
 
@@ -2544,6 +2558,7 @@ async function executeScrape(
       formCaptureConfig,
       pagination,
       setupScript,
+      loadMoreSelector,
     );
     context.pageLoaded = true;
     context.selectorsMatched = rawFieldsList.length > 0;
