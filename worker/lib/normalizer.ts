@@ -127,10 +127,23 @@ const KNOWN_NEXT_LABELS = String.raw`(?:` +
   String.raw`Qualifications|Requirements|Nice\s+to\s+have|Bonus` +
   String.raw`)`;
 
+// Apply / "send your CV" call-to-action phrases. These reliably mark the end
+// of the structured metadata block on IL job pages — everything after them is
+// application instructions, not field values. Used as a value terminator so a
+// labeled field (e.g. "מיקום: רחובות") doesn't swallow the trailing apply prose.
+const CTA_TERMINATOR =
+  String.raw`(?:להגשת\s+מועמדות|לשליחת(?:\s+קורות(?:\s+חיים)?)?|יש\s+לשלוח|` +
+  String.raw`להגיש\s+מועמדות|נא\s+לשלוח|Apply(?:\s+now)?|To\s+apply|` +
+  String.raw`Send\s+(?:your\s+)?(?:cv|resume|application))`;
+
 // Where to stop the captured value: a known-label terminator, a hard
-// separator (| ) (newline), a sentence break, or end of string.
+// separator (| ) (newline), an emoji/pictograph (these are used as visual
+// section dividers on IL listings, e.g. "… רחובות 📩 להגשת מועמדות"), an
+// apply CTA phrase, a sentence break, or end of string.
 const VALUE_TERMINATOR =
-  String.raw`(?=\s+` + KNOWN_NEXT_LABELS + String.raw`\s*[:\-–]|\s*[|\n)]|\.\s|$)`;
+  String.raw`(?=\s+` + KNOWN_NEXT_LABELS + String.raw`\s*[:\-–]|` +
+  String.raw`\s*[|\n)]|\s*\p{Extended_Pictographic}|\s+` + CTA_TERMINATOR +
+  String.raw`|\.\s|$)`;
 
 function matchLabeled(text: string, labelAlt: string): string | null {
   const re = new RegExp(
@@ -289,6 +302,22 @@ export function extractLocationFromGazetteer(text: string): string | null {
     const escaped = city.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
     const re = new RegExp(
       String.raw`(?:ל?אזור|בעיר|במשרדי?(?:\s+ה\w+)?\s+ב)\s*` + escaped,
+      "u",
+    );
+    if (re.test(text)) return city;
+  }
+
+  // Pattern A2: a location CUE — a pin/office emoji or a location noun
+  // ("מיקום", "כתובת", "סניף", "פארק", "משרדי(נו)", "ממוקם", "עיר") — followed
+  // within a short window by a known city, even without a ":" label or a "ב"
+  // prefix. Handles patterns like "📍 פארק המדע רחובות" / "סניף ראשי - חיפה".
+  const LOC_CUE =
+    String.raw`(?:\p{Extended_Pictographic}|מיקום|כתובת|סניף|פארק(?:\s+המדע)?|` +
+    String.raw`משרדי(?:נו)?|ממוקמ\w*|ממוקם|עיר|אתר)`;
+  for (const city of IL_CITIES) {
+    const escaped = city.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const re = new RegExp(
+      LOC_CUE + String.raw`[\s\S]{0,30}?` + escaped + String.raw`(?:\b|[\s,.()\n]|$)`,
       "u",
     );
     if (re.test(text)) return city;
