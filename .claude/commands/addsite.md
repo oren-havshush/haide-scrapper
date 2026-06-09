@@ -693,13 +693,21 @@ summary and decide:
   `item.querySelector(selector)` per item):
   - **title** — usually `h1`/`h2`/`h3`/`a` with the job name.
   - **department** / **location** — secondary text on the row.
-  - **externalJobId** — common patterns:
+  - **externalJobId** — the worker dedupes jobs across re-scrapes on this
+    value, so it MUST be **stable** (same job → same id every scrape) and
+    **unique** per job. Prefer, in order:
     - element with `data-job`, `data-job-id`, `data-id` attr → set
       `extractAttr` to that attribute name.
     - text in a column like `"REQ-1234"` — extract as text.
     - if the listing only links to detail pages with no separate ID, use
       the same `<a href="...">` as a stable per-job id (the worker will
       store the URL path as `externalJobId`).
+    - **No native id anywhere?** Synthesize one from **stable content**
+      via `setupScript` (see "Synthesizing a stable externalJobId" below).
+      **Never include the row index / position** in a synthesized id —
+      reordering or adding/removing a job shifts every index and re-keys
+      unrelated jobs on the next scrape (mass duplicate/churn). Hash
+      `title` + a disambiguator (location/branch/company) instead.
   - **description** / **requirements** — see "listing vs multi-page" below.
   - **detailUrl** — anchor `<a>` to the detail page → `extractAttr: "href"`.
   - **publishDate** — *always look for this*. Common patterns:
@@ -807,6 +815,56 @@ office, one company name, one industry tag, etc.) but never spelled
 out per row in the listing. Verified on abt-industry.co.il, scrape
 run `cmp5ibrop000t01lsrqaasmq1` — both jobs returned
 `location: "תל אביב"` in the normalized column.
+
+Third pattern — **synthesize a stable `externalJobId` when the site has
+no native id.** Some listings (a plain `<table>`, a `<ul>` of `<div>`s
+with no ids/links) expose nothing usable as a job id. The worker dedupes
+on `externalJobId`, so you must produce one — but it has to be
+**reorder-proof**. The wrong way is `index + title` (the row position
+re-keys every job the moment the site adds/removes/reorders a posting,
+and an empty id collapses all rows into one deduped job). The right way
+is a deterministic hash of **stable content only** — the title plus a
+disambiguator (branch/location/company) so two same-title roles at
+different sites stay distinct:
+
+```js
+function haideHash(s){var h=5381,i=s.length;while(i){h=(h*33)^s.charCodeAt(--i);}return (h>>>0).toString(36);}
+document.querySelectorAll('#page_show_content table').forEach(function (t) {
+  if (t.querySelector('[data-ex-id]')) return;
+  var tds = t.querySelectorAll('td');
+  if (tds.length < 2) return;
+  var titleEl = tds[0].querySelector('h2');
+  var title = titleEl ? titleEl.textContent.replace(/\s+/g, ' ').trim() : '';
+  if (!title) return;
+  var branch = '';                                   // disambiguator (here: red-styled branch span)
+  tds[0].querySelectorAll('span').forEach(function (s) {
+    if (/ff0000/i.test(s.getAttribute('style') || '')) {
+      var t2 = (s.textContent || '').replace(/\s+/g, ' ').trim();
+      if (t2) branch = t2;
+    }
+  });
+  var key = (title + '|' + branch).toLowerCase().replace(/\s+/g, ' ').trim();
+  var idspan = document.createElement('span');
+  idspan.setAttribute('data-ex-id', '1');
+  idspan.style.display = 'none';
+  idspan.textContent = 'h-' + haideHash(key);         // e.g. "h-1a2b3c" — stable across reorders
+  tds[0].appendChild(idspan);
+});
+```
+
+Paired mapping is just `"externalJobId": { "selector": "[data-ex-id]", ... }`.
+Notes:
+- The hash makes the id compact and ASCII-safe (avoids RTL/Hebrew bytes
+  in the id column). Any small deterministic hash works; keep it pure-JS.
+- Choose the disambiguator to match how the site distinguishes otherwise-
+  identical postings (branch, city, department, company). If titles are
+  already globally unique, hashing the title alone is fine.
+- This is **last resort** — always prefer a native id / detail-URL first.
+- Trade-off to accept: the id still changes if the site *edits the title
+  text*. There's no fix for that when the site exposes nothing more
+  stable; it's strictly better than an index-based id.
+- Verified on halilit.com (siteId `cmq68mpnq001501m9p50vwgee`) — a plain
+  id-less branch table; switched from `index-title` to `h-hash(title+branch)`.
 
 Rules of thumb for `setupScript`:
 
