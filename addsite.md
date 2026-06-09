@@ -200,6 +200,7 @@ continue   # move to next URL
 | Step 7 verify | Config never sticks after 3 re-PUTs (analyzer race) | `Auto-skipped: analyzer kept overwriting config (3 attempts)` |
 | Step 8 scrape | FAILED, or low jobs vs dry-run | First run the Step 8 mismatch re-verify (re-PUT + re-scrape **once**). Only if it still fails: `Auto-skipped: test scrape produced 0 jobs` |
 | Step 9 completeness | Only partial data extractable (see B2.5) | `Auto-skipped: only partial data (no description + no apply path); detail pages blocked` |
+| Step 9 apply-usability | Descriptions OK but apply is login- or bot-challenge-gated with no alternative (see B2.5) | `Auto-skipped: no usable apply path (login/bot-challenge blocks apply)` |
 | Any step | Remediation budget exhausted — 3 fixes used, 2 no-progress steps, or 15 min cap (see B2a) | `Auto-skipped: remediation budget exhausted (<what was tried>)` |
 
 ### B2a — Remediation budget (give fixes room, stay bounded)
@@ -291,21 +292,39 @@ Anything **not** listed here → do **not** improvise → SKIP.
 
 **A site is only ACTIVE-worthy if the scraped jobs are actually useful to a
 job seeker.** "Useful" means each job has, at minimum, a **description**
-*and* an **apply path** (an apply form via `formCapture`, OR an
-`applicationInfo` email/URL, OR a reachable `detailUrl` that contains them).
-A scrape that returns rows with only `title` + `location` — because the
-per-job detail pages that hold the description and apply form were blocked
-(WAF/Incapsula/challenge) — is **partial data**. In batch mode, partial data
-is logged **`SKIPPED`, not `ACTIVE`**. (This is the bankhapoalim lesson: it
-was wrongly shipped ACTIVE as 3 title-only stubs on the first batch pass.)
+*and* a **usable apply path**. A *usable* apply path is one the product can
+actually act on: an apply form via `formCapture`, OR an `applicationInfo`
+email, OR a plain external apply URL/form **reachable without a login or a
+bot-challenge**, OR a reachable `detailUrl` that contains one of those.
+
+Two distinct ways a site fails this gate:
+
+- **Partial data** — a scrape that returns rows with only `title` + `location`
+  because the per-job detail pages that hold the description and apply form were
+  blocked (WAF/Incapsula/challenge). (The bankhapoalim lesson: wrongly shipped
+  ACTIVE as 3 title-only stubs on the first batch pass.)
+- **No *usable* apply path** — the jobs have full descriptions, but the only way
+  to apply is blocked for us: a **login/account wall** (see 5b-LOGIN) OR a
+  **bot-challenge (Cloudflare Turnstile / reCAPTCHA) our submit runtime can't
+  pass today**, with no alternative (email / plain URL / inline form). A
+  clickable apply URL that dead-ends at such a gate does **NOT** count as an
+  apply path — leaving the site ACTIVE would falsely imply it's appliable. (The
+  L'Oréal lesson: shipped ACTIVE with a Turnstile-gated apply; the Turnstile
+  fires right after the resume-method step, so the apply is unusable for
+  auto-submit — siteId `cmq6gxn3g001r01m9pfjejdhe`, later flipped to SKIPPED.)
+
+In batch mode, either failure is logged **`SKIPPED`, not `ACTIVE`** — even when
+the scrape itself succeeded and the descriptions are complete. It's fine to let
+the scrape run first; the apply-usability verdict sets the **final** status to
+SKIPPED.
 
 Decision procedure, run right before you would log `ACTIVE` (Step 9):
 
 1. **Is the site genuinely single-page?** If the full description is on the
-   listing AND the apply path is on the listing (inline form, or an email /
-   external apply link), the data is **complete** — log `ACTIVE`. Sites like
-   halilit (apply-by-email) and eimsys (inline accordion form) are complete,
-   NOT partial. Do not skip these.
+   listing AND a **usable** apply path is on the listing (inline form, or an
+   email / plain external apply link reachable without a login/challenge), the
+   data is **complete** — log `ACTIVE`. Sites like halilit (apply-by-email) and
+   eimsys (inline accordion form) are complete, NOT partial. Do not skip these.
 2. **Does the site have per-job detail pages** (the listing only shows a
    title/snippet and links to `/job/123`-style pages) that hold the
    description / apply form? If yes and your config did **not** capture a
@@ -331,10 +350,22 @@ Decision procedure, run right before you would log `ACTIVE` (Step 9):
    can only yield title/location stubs → **`SKIPPED`** with reason
    `Auto-skipped: only partial data (no description + no apply path); detail pages blocked`.
    Use the standard skip+log one-liner from B2 and `continue`.
+5. **Is the apply path usable?** Independently of data completeness — run this
+   even when descriptions are complete and the scrape succeeded. If the only
+   apply route is a **login/account wall** or a **bot-challenge
+   (Turnstile/reCAPTCHA) our submit runtime can't pass today**, with no email /
+   plain-URL / inline-form alternative, the site is **not appliable** →
+   **`SKIPPED`** with reason
+   `Auto-skipped: no usable apply path (login/bot-challenge blocks apply)`.
+   Set the **final** status to SKIPPED rather than ACTIVE. To confirm a
+   challenge (rather than assume one), drive the apply one step past the
+   method/Apply button: an interstitial titled e.g. "verify you are human" with
+   a Cloudflare Ray ID is a Turnstile. If our runtime later gains
+   Turnstile-solving, such sites requalify as ACTIVE.
 
 In single-URL mode, do the same assessment but instead of auto-skipping,
-report the partial-data finding to the user and ask whether to ship the
-listing-only config anyway or stop.
+report the finding (partial data, or no usable apply path) to the user and ask
+whether to ship the listing-only config anyway or stop.
 
 ### B3 — Print summary (mandatory last step in batch mode)
 
@@ -1924,6 +1955,36 @@ future scrape) and move the site to `SKIPPED`.
    ```
 5. **Do not run Step 8 (scrape).** Report the site as SKIPPED with the login
    reason. Done.
+
+> **Bot-challenge apply gates are the same class of blocker.** A Cloudflare
+> Turnstile / reCAPTCHA in front of the apply flow makes the site just as
+> unusable for auto-submit as a login wall — but capture usually does NOT
+> report it as exit 7 (it tends to return no usable form / exit 2, because the
+> challenge appears *after* the method/Apply step). So it isn't caught here;
+> it's caught by the **B2.5 "no usable apply path" gate** at end of run. Same
+> outcome: SKIPPED, not ACTIVE. See the Avature note below for the canonical
+> example.
+
+### Known apply-flow: Avature `ApplicationMethods` (paste method + post-method Turnstile)
+
+L'Oréal-style careers sites on the Avature ATS open apply as a 4-step wizard
+(`/jobs/ApplicationMethods?jobId=…`): **method → enter details → additional
+questions → consent & submit**. Two things worth knowing:
+
+- **Guest apply via "Copy & Paste" resume.** The method step exposes
+  `#methodButton--paste` ("Copy & Paste") → a `textarea#resumePaste` →
+  Continue `#uploadPasteResume`, with no login/account required (the "Already
+  have an account? Login" box is optional). For auto-submit this is the ideal
+  input: paste CV **text**, no file upload. (Avoid the social
+  `Continue with Google/Facebook/…` buttons — clicking one bounces into an
+  OAuth flow.)
+- **But a Cloudflare Turnstile gates step 1 → step 2.** It does **not** appear
+  on initial page load — it fires the instant you click Continue past the
+  method step, blocking the "Enter application details" form from rendering.
+  Headless capture can't pass it, so `formCapture` stays null and the form is
+  unreachable. Per the B2.5 usable-apply gate, such a site is **SKIPPED**, not
+  ACTIVE (unless our submit runtime can solve Turnstile). Verified on L'Oréal
+  Israel, siteId `cmq6gxn3g001r01m9pfjejdhe`.
 
 ### 5b-2 — When automatic capture fails
 
