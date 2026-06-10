@@ -10,7 +10,6 @@ import * as fs from "fs";
 const SITES: { id: string; url: string }[] = [
   { id: "cmpay3wac002201lsq3pdkijf", url: "https://career.malamteam.com/%D7%A8%D7%A9%D7%99%D7%9E%D7%AA-%D7%9E%D7%A9%D7%A8%D7%95%D7%AA/" },
   { id: "cmp9x7ztw001x01ls5d0qdxzl", url: "https://www.menoramivt.co.il/job-posting/open-position" },
-  { id: "cmp02wf3v000k01k5uaokbqbm", url: "https://www.natali.co.il/%d7%93%d7%a8%d7%95%d7%a9%d7%99%d7%9d/" },
   { id: "cmozjcfq5000s01phd9itwowu", url: "https://www.cal-online.co.il/about/jobs/" },
 ];
 
