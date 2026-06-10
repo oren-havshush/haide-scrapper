@@ -1494,6 +1494,24 @@ live form can't be found, which is exactly what happens with
 image-captured forms whose `formSelector` is a non-replayable
 placeholder).
 
+> **Pitfall — newsletter form shadowing (verified on gomobile.co.il).**
+> Many sites have an always-rendered footer **newsletter/subscribe** form
+> (typically just an email field + a privacy-consent checkbox). When the
+> real apply form only **mounts in a modal/sidebar on click** of the apply
+> button, that newsletter form is the only `<form>` in the DOM at capture
+> time, so a naive "first/visible/largest form" grab returns the wrong
+> form (email + consent only). Two defenses, both now in place:
+> 1. `captureLargestForm`'s scorer penalises newsletter/subscribe signals
+>    and email-only forms (see the `score()` edits below), so it won't pick
+>    them when a richer form exists.
+> 2. When the apply form is modal-mounted, **pass `--apply-selector`** (the
+>    apply button) so the script clicks it and the modal form enters the DOM
+>    before capture — or, if you already have the popup markup, ship a static
+>    `formCapture` with the correct `formSelector` (e.g. `.CV-popup form`).
+> Sanity check the result: if a captured "apply" form has only an email +
+> checkbox, it's almost certainly the newsletter form — re-capture with the
+> apply modal open.
+
 ### Two ways to enter Step 5b
 
 Step 5b can be invoked two ways. The 5b-1, 5b-2, 5b-3 substeps below are
@@ -1714,6 +1732,14 @@ const captureLargestForm = async (
       if (/\bsearch\b|\bquery\b|\bחיפוש\b|^q$/.test(fieldText)) s -= 50;
       const ar = (form.getAttribute("action") || "").toLowerCase();
       if (/search|query|filter/.test(ar)) s -= 30;
+      // Newsletter / subscribe forms are almost always present in the footer
+      // and shadow the real apply form when the latter only mounts in a modal
+      // on click. Penalise hard (a real apply form usually has >= 3 fields).
+      const html2k = form.outerHTML.slice(0, 2000);
+      if (/newsletter|subscribe|דיוור|הרשמה|הטבות|מבצעים/i.test(html2k)) s -= 40;
+      const emailish = fields.filter((f) => f.fieldType === "email" || /email|מייל|דוא/i.test(f.label + " " + f.name)).length;
+      const meaningful = fields.filter((f) => f.fieldType !== "checkbox" && f.fieldType !== "hidden").length;
+      if (emailish >= 1 && meaningful <= 1) s -= 40; // email-only form == newsletter, not an application
       if (
         /apply|application|cv|resume|מועמד|הגשת|רישום|register|signup/i.test(
           form.outerHTML.slice(0, 2000),
