@@ -23,7 +23,11 @@ const QUALITY_THRESHOLDS: Record<string, number> = {
 
 const NON_JOB_VALUE_PATTERNS = [
   /about us|about|home|contact|privacy|terms/i,
-  /על החברה|אודות|עמוד הבית|צור קשר|מדיניות|תנאים/u,
+  // NOTE: match the footer phrase "תנאי שימוש" (terms of use), NOT the bare
+  // word "תנאים" — "תנאים" ("conditions") is extremely common in legitimate IL
+  // job ads (e.g. "תנאים מצויינים" = "excellent conditions") and was silently
+  // dropping valid postings as non-job content.
+  /על החברה|אודות|עמוד הבית|צור קשר|מדיניות פרטיות|תנאי שימוש|תקנון/u,
   /לחצו עם העכבר|press esc/i,
 ];
 
