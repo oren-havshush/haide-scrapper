@@ -2273,9 +2273,15 @@ async function extractFormData(
     let form: HTMLFormElement | null = null;
 
     if (cfg?.formSelector) {
+      // A specific form was captured at onboarding. If it isn't present in the
+      // live DOM right now (e.g. the apply form lives in an Elementor/modal
+      // popup that only mounts on click), DON'T grab a random page <form> —
+      // that's how the WordPress search box ("s"/חיפוש) leaked into _formData.
+      // Return null so extractFormDataOrFallback uses the saved static fields.
       form = document.querySelector(cfg.formSelector) as HTMLFormElement | null;
-    }
-    if (!form) {
+      if (!form) return null;
+    } else {
+      // No selector configured (auto-detect mode) — best-effort first form.
       form = document.querySelector("form") as HTMLFormElement | null;
     }
     if (!form) return null;
