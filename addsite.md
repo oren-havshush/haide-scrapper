@@ -438,10 +438,39 @@ that file and re-run /addsite."
 
 ## Step 1 — Duplicate check
 
+> **The `/api/sites` list endpoint silently returns `[]` when `pageSize`
+> exceeds its cap (~100).** It does NOT clamp or error — a `pageSize=500`
+> (or `?page=2`) request comes back with an empty `data` array. So NEVER
+> dedupe by "fetch all sites + substring-match the URL": that approach
+> reports *every* already-onboarded site as new the moment the catalog grows
+> past one page. (Burned us on tafkid-plus.co.il — it was ACTIVE the whole
+> time but a `pageSize=500` sweep returned `[]`, so it looked un-onboarded.)
+> Always dedupe with the **exact `?siteUrl=` query** below. If you ever do
+> need to enumerate, page with `pageSize<=100` and walk `meta.total`
+> (`meta:{total,page,pageSize}` is in every list response), and treat an
+> unexpectedly empty `data` as a *cap failure to retry smaller*, not "no match".
+
+`?siteUrl=` is an **exact string match** — `…co.il/` and `…co.il` (no
+trailing slash), `http`/`https`, and `www.`/bare are all *different* keys,
+and only the exact stored string hits. So try the obvious variants before
+concluding a site is new:
+
 ```powershell
-$existing = Invoke-RestMethod -Method Get `
-  -Uri "https://scrapper.haide-jobs.co.il/api/sites?siteUrl=$([uri]::EscapeDataString($URL))" `
-  -Headers $HEADERS
+$variants = @(
+  $URL,
+  ($URL.TrimEnd('/')),
+  ($URL.TrimEnd('/') + '/'),
+  ($URL -replace '^https://','https://www.'),
+  ($URL -replace '^https://www\.','https://')
+) | Select-Object -Unique
+
+$existing = $null
+foreach ($u in $variants) {
+  $r = Invoke-RestMethod -Method Get `
+    -Uri "https://scrapper.haide-jobs.co.il/api/sites?siteUrl=$([uri]::EscapeDataString($u))" `
+    -Headers $HEADERS
+  if ($r.data -and $r.data.Count -gt 0) { $existing = $r; break }
+}
 ```
 
 If `$existing.data` has an entry, capture its `id` and `status`. Decide:
