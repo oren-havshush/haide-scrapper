@@ -153,4 +153,11 @@ export const updateSiteConfigSchema = z.object({
   applyRequiresLogin: z.boolean().optional(),
   // Short machine-readable reason for the skip (e.g. "password-field(2)").
   applyLoginReason: z.string().max(500).optional(),
+  // Drop jobs whose parseable publishDate is strictly before this ISO date
+  // (YYYY-MM-DD). Jobs with empty/unparseable publishDate are kept.
+  // Stored under fieldMappings._meta.minPublishDate; worker reads at scrape time.
+  minPublishDate: z
+    .string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/)
+    .optional(),
 });

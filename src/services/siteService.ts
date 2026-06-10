@@ -274,6 +274,7 @@ export async function saveSiteConfig(
     browserOverrides?: { userAgent?: string; extraHeaders?: Record<string, string>; bypassCSP?: boolean };
     applyRequiresLogin?: boolean;
     applyLoginReason?: string;
+    minPublishDate?: string;
   }
 ) {
   const site = await prisma.site.findUnique({ where: { id: siteId } });
@@ -295,6 +296,7 @@ export async function saveSiteConfig(
       browserOverrides: config.browserOverrides || null,
       applyRequiresLogin: config.applyRequiresLogin === true,
       applyLoginReason: config.applyLoginReason || null,
+      minPublishDate: config.minPublishDate || null,
       savedAt: new Date().toISOString(),
     },
   };

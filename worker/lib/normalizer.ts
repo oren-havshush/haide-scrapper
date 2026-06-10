@@ -190,6 +190,86 @@ function extractPublishDate(text: string): string | null {
   return m ? m[1].trim() : null;
 }
 
+const ENGLISH_MONTHS: Record<string, number> = {
+  jan: 0,
+  january: 0,
+  feb: 1,
+  february: 1,
+  mar: 2,
+  march: 2,
+  apr: 3,
+  april: 3,
+  may: 4,
+  jun: 5,
+  june: 5,
+  jul: 6,
+  july: 6,
+  aug: 7,
+  august: 7,
+  sep: 8,
+  september: 8,
+  oct: 9,
+  october: 9,
+  nov: 10,
+  november: 10,
+  dec: 11,
+  december: 11,
+};
+
+/**
+ * Parse a publish-date string to a UTC midnight Date for cutoff comparison.
+ * Returns null for empty, relative, or unparseable values (caller keeps the job).
+ */
+export function parsePublishDateToUtc(dateStr: string): Date | null {
+  const s = (dateStr || "").trim();
+  if (!s) return null;
+
+  const iso = /^(\d{4})-(\d{2})-(\d{2})/.exec(s);
+  if (iso) {
+    const y = Number(iso[1]);
+    const m = Number(iso[2]) - 1;
+    const d = Number(iso[3]);
+    if (m < 0 || m > 11 || d < 1 || d > 31) return null;
+    return new Date(Date.UTC(y, m, d));
+  }
+
+  const dmy = /^(\d{1,2})[/.-](\d{1,2})[/.-](\d{2,4})$/.exec(s);
+  if (dmy) {
+    const day = Number(dmy[1]);
+    const month = Number(dmy[2]) - 1;
+    let year = Number(dmy[3]);
+    if (year < 100) year += year < 50 ? 2000 : 1900;
+    if (month < 0 || month > 11 || day < 1 || day > 31) return null;
+    return new Date(Date.UTC(year, month, day));
+  }
+
+  const eng =
+    /^(Jan(?:uary)?|Feb(?:ruary)?|Mar(?:ch)?|Apr(?:il)?|May|Jun(?:e)?|Jul(?:y)?|Aug(?:ust)?|Sep(?:tember)?|Oct(?:ober)?|Nov(?:ember)?|Dec(?:ember)?)\s+(\d{1,2}),?\s+(\d{4})$/i.exec(
+      s,
+    );
+  if (eng) {
+    const month = ENGLISH_MONTHS[eng[1].toLowerCase()];
+    const day = Number(eng[2]);
+    const year = Number(eng[3]);
+    if (month === undefined || day < 1 || day > 31) return null;
+    return new Date(Date.UTC(year, month, day));
+  }
+
+  return null;
+}
+
+/** True when publishDate parses and is strictly before minIso (YYYY-MM-DD). */
+export function isPublishDateBeforeCutoff(
+  publishDate: string,
+  minIso: string,
+): boolean {
+  const parsed = parsePublishDateToUtc(publishDate);
+  if (!parsed) return false;
+  const min = parsePublishDateToUtc(minIso);
+  if (!min) return false;
+  return parsed.getTime() < min.getTime();
+}
+
 // Standalone patterns that don't require a label.
 function extractExternalJobIdFallback(text: string): string | null {
   // (#ID), [ID], or REQ-1234 / JR-1234 / R-12345 standalone, anywhere.

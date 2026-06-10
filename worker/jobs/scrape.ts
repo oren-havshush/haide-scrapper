@@ -2,7 +2,10 @@ import { prisma } from "../../src/lib/prisma";
 import type { WorkerJob, Site } from "../../src/generated/prisma/client";
 import { Prisma } from "../../src/generated/prisma/client";
 import { launchBrowser, createPage, closeBrowser, type BrowserOverrides } from "../lib/playwright";
-import { normalizeJobRecord } from "../lib/normalizer";
+import {
+  normalizeJobRecord,
+  isPublishDateBeforeCutoff,
+} from "../lib/normalizer";
 import type { NormalizedJobRecord } from "../lib/normalizer";
 import { validateJobRecord } from "../lib/validator";
 import type { ValidationResult } from "../lib/validator";
@@ -2103,6 +2106,22 @@ function getApplyRequiresLogin(fieldMappingsRaw: unknown): boolean {
   return meta?.["applyRequiresLogin"] === true;
 }
 
+/** Per-site publish-date floor (YYYY-MM-DD). Env SCRAPE_MIN_PUBLISH_DATE is fallback. */
+function getMinPublishDate(fieldMappingsRaw: unknown): string | null {
+  if (fieldMappingsRaw && typeof fieldMappingsRaw === "object") {
+    const meta = (fieldMappingsRaw as Record<string, unknown>)["_meta"] as
+      | Record<string, unknown>
+      | undefined;
+    const v = meta?.["minPublishDate"];
+    if (typeof v === "string" && /^\d{4}-\d{2}-\d{2}$/.test(v)) return v;
+  }
+  const env = process.env.SCRAPE_MIN_PUBLISH_DATE;
+  if (typeof env === "string" && /^\d{4}-\d{2}-\d{2}$/.test(env.trim())) {
+    return env.trim();
+  }
+  return null;
+}
+
 function getSetupScript(fieldMappingsRaw: unknown): string | null {
   if (!fieldMappingsRaw || typeof fieldMappingsRaw !== "object") return null;
   const raw = fieldMappingsRaw as Record<string, unknown>;
@@ -2862,12 +2881,22 @@ async function executeScrape(
   ).length;
   const invalidCount = validatedRecords.length - validCount;
 
+  const minPublishDate = getMinPublishDate(site.fieldMappings);
+  let stalePublishDateDropped = 0;
+
   // Dedup using normalized values (catches edge cases the raw dedup misses,
   // e.g. accordion wrappers matching the item selector).
   const dedupSeen = new Set<string>();
   const recordsToPersist = validatedRecords.filter((r) => {
     if (!r.validation.isValid) return false;
     const n = r.normalized;
+    if (
+      minPublishDate &&
+      isPublishDateBeforeCutoff(n.publishDate, minPublishDate)
+    ) {
+      stalePublishDateDropped++;
+      return false;
+    }
     const key =
       n.externalJobId ||
       n.url ||
@@ -2877,6 +2906,12 @@ async function executeScrape(
     dedupSeen.add(key);
     return true;
   });
+
+  if (minPublishDate && stalePublishDateDropped > 0) {
+    console.info(
+      `[scrape] minPublishDate=${minPublishDate} dropped=${stalePublishDateDropped} kept=${recordsToPersist.length}`,
+    );
+  }
 
   if (recordsToPersist.length === 0) {
     const result: ScrapeResult = {
