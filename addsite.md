@@ -123,19 +123,25 @@ For each entry in `$workList` where `preStatus -eq 'PROCEED'`:
 1. Set `$URL = $entry.normalizedUrl` and `$SITE_ID = $entry.existingId` (may be `$null`).
 2. Run Steps 1–9 with the **batch overrides** below.
 3. At every gate failure: call `addsite-batch.ts skip` + `addsite-batch.ts log`, then `continue`.
-4. On success: call `addsite-batch.ts log --outcome ACTIVE --jobs <N>`.
+4. On success: call `addsite-batch.ts log --outcome ACTIVE --jobs <N>`. When the
+   entry carries a `companyName` (from a CSV `--company-col`), pass it as
+   `--company $entry.companyName` — on an `ACTIVE` log the script PATCHes
+   `companyName` onto the live site so the dashboard shows the company name.
+   (`POST /api/sites` only accepts `siteUrl`, so the name is applied as this
+   follow-up PATCH.)
 
 ```powershell
 foreach ($entry in ($workList | Where-Object { $_.preStatus -eq 'PROCEED' })) {
   $URL     = $entry.normalizedUrl
   $SITE_ID = $entry.existingId     # may be $null (new site)
+  $COMPANY = $entry.companyName    # may be $null (no company column)
 
   # ... Steps 1-9 with batch overrides below ...
   # On any auto-skip gate (see matrix):
-  #   npx tsx scripts/addsite-batch.ts skip --url $URL --reason "<reason>" --batch-dir $BATCH_DIR [--site-id $SITE_ID]
+  #   npx tsx scripts/addsite-batch.ts skip --url $URL --reason "<reason>" --batch-dir $BATCH_DIR [--site-id $SITE_ID] [--company $COMPANY]
   #   continue
-  # On success:
-  #   npx tsx scripts/addsite-batch.ts log --batch-dir $BATCH_DIR --url $URL --outcome ACTIVE --reason "" --site-id $SITE_ID --jobs $jobCount
+  # On success (pass --company so the dashboard shows the company name):
+  #   npx tsx scripts/addsite-batch.ts log --batch-dir $BATCH_DIR --url $URL --outcome ACTIVE --reason "" --site-id $SITE_ID --jobs $jobCount [--company $COMPANY]
 }
 ```
 

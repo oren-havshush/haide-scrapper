@@ -638,6 +638,22 @@ async function cmdLog(argv: string[]): Promise<void> {
 
   fs.mkdirSync(batchDir, { recursive: true });
 
+  // For successful onboards, write the company name onto the live site so the
+  // dashboard shows it. POST /api/sites only accepts { siteUrl }, so the name
+  // has to be applied as a follow-up PATCH (mirrors the SKIPPED path). Best
+  // effort: a failure here must never break the batch log.
+  if (outcome === "ACTIVE" && company && siteId) {
+    try {
+      const headers = authHeaders(readToken());
+      await apiPatch(`/api/sites/${siteId}`, { companyName: company }, headers);
+      console.log(`[batch] Set companyName="${company}" on ${siteId}`);
+    } catch (e) {
+      console.warn(
+        `[batch] WARN: failed to set companyName on ${siteId}: ${(e as Error).message}`,
+      );
+    }
+  }
+
   const result: BatchResult = {
     url,
     siteId,
