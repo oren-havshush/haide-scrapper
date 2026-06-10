@@ -780,7 +780,20 @@ summary and decide:
     Verified on msh.co.il Migdal Capital Markets (siteId
     `cmq6gxm6y001p01m9k3k3pwyv`): only 2/6 jobs got a gazetteer location;
     injected a constant `תל אביב`. Caveat: only do this when you're
-    confident every posting shares that location.
+    confident every posting shares that location. When **most** roles share
+    an HQ but a few are regional and **state their own region** in the
+    title/prose (e.g. "לאזור המרכז"), don't blanket-inject — compute location
+    per item in `setupScript`: an explicit `לאזור/באזור <region>` wins,
+    otherwise default to the HQ city, and **always** inject so the value is
+    fully under your control (the gazetteer only runs when `location` is
+    empty, so injecting on every item bypasses it). Verified on natali.co.il
+    (siteId `cmq7sn3au000601mfqhld00pa`): 2 field roles → `המרכז`, the 9
+    call-centre/office roles → `רמת גן`. Gazetteer false-positive worth
+    knowing: the bare `ב<city>` matcher used to read **"במשמרות" ("in
+    shifts") as the moshav משמרות**. Fixed worker-wide (2026-06-10) with a
+    `BARE_PREFIX_DENYLIST` in `worker/lib/normalizer.ts`; if a resolved
+    location is really a common Hebrew word (a shift/role/condition term),
+    suspect the same common-word↔place collision and add it to that denylist.
   - **externalJobId** — the worker dedupes jobs across re-scrapes on this
     value, so it MUST be **stable** (same job → same id every scrape) and
     **unique** per job. Prefer, in order:
@@ -1114,6 +1127,46 @@ Because the worker awaits async scripts, run it via an `AsyncFunction`
 in the dry-run too (and ship the `globalThis.__name = (f) => f;` shim
 before `evaluate`, or tsx/esbuild's keepNames helper will throw
 `__name is not defined`).
+
+### Elementor popup-driven listings — pull details + id out of the popups
+
+Some WordPress/**Elementor Pro** "now hiring" pages render only a **title +
+an apply button** per job; the full description, requirements, and the apply
+form live in an **Elementor popup that only mounts when the button is
+clicked**. The button's href encodes the popup id, which equals the job's WP
+post id:
+
+```
+#elementor-action:...:popup:open&settings=<base64 of {"id":17627,...}>
+```
+
+That id is a perfect **stable, unique `externalJobId`**, and the popup body
+holds the real content. Drive it all from one `setupScript` (no real clicks):
+
+1. **Hide cookie/age/marketing popups first** — they intercept the
+   programmatic open and can wedge the loop:
+   `document.querySelectorAll('.cookies-popup-wrapper,...').forEach(el => el.style.display='none')`.
+2. Per item, decode the id from the button href
+   (`JSON.parse(atob(<settings>)).id`) and inject it as `[data-extracted-jobid]`.
+3. Open the popup programmatically:
+   `window.elementorProFrontend.modules.popup.showPopup({ id })`, then poll
+   `#elementor-popup-modal-<id>` until its text is populated (~40×150ms).
+4. Read the modal's `.elementor-widget-heading` / `.elementor-widget-text-editor`
+   widgets, splitting description vs requirements at the
+   "דרישות" / "להגשת מועמדות" headings; inject `[data-extracted-description]`
+   and `[data-extracted-requirements]`. **Scan only those widgets, never the
+   whole modal** — the apply form's "אזור מגורים" `<select>` would otherwise
+   leak region options into your text (and break any location heuristic).
+5. `modal.style.display='none'` before the next iteration so popups don't stack.
+
+Map the apply form as a **static `formCapture`** (Step 5b): it isn't in the
+DOM at scrape time, so live re-extraction can't see it — see the Step 5b
+"formSelector fallback" note (a configured `formSelector` that's absent at
+scrape time must yield the saved static fields, NOT a random page `<form>`,
+or the WordPress search box leaks in as the apply form). Verified on
+natali.co.il (siteId `cmq7sn3au000601mfqhld00pa`): 11/11 jobs with full
+description + requirements + correct apply form. Cost: ~one popup open per
+job (same order as the single-page + per-item fetch pattern).
 
 ### Listing vs multi-page — decide before step 5
 

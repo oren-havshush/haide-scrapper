@@ -287,14 +287,23 @@ const altOf = (names: readonly string[]) =>
 // patterns keep the full list because their context makes a match reliable.
 const BARE_PREFIX_MIN_LEN = 4;
 
+// Some place names are spelled identically to very common Hebrew job-ad words,
+// so the length gate alone isn't enough — the bare "ב<name>" prefix matches the
+// word, not the place. The classic case: "במשמרות" = "working in shifts", which
+// resolved to the moshav משמרות. Exclude these from the BARE-prefix lists only;
+// labeled/cue/indicator matches ("מיקום: …", "📍 …", "לאזור …") keep the full
+// list because their surrounding context makes the place reading reliable.
+const BARE_PREFIX_DENYLIST = new Set<string>([
+  "משמרות", // "במשמרות" = in shifts (shift work), not the moshav משמרות
+]);
+
+const passesBarePrefix = (name: string) =>
+  name.length >= BARE_PREFIX_MIN_LEN && !BARE_PREFIX_DENYLIST.has(name);
+
 const CITY_ALT = altOf(IL_CITIES);
 const REGION_ALT = altOf(IL_REGIONS);
-const CITY_ALT_LONG = altOf(
-  IL_CITIES.filter((c) => c.length >= BARE_PREFIX_MIN_LEN),
-);
-const REGION_ALT_LONG = altOf(
-  IL_REGIONS.filter((r) => r.length >= BARE_PREFIX_MIN_LEN),
-);
+const CITY_ALT_LONG = altOf(IL_CITIES.filter(passesBarePrefix));
+const REGION_ALT_LONG = altOf(IL_REGIONS.filter(passesBarePrefix));
 
 // A location CUE: a pin/office emoji or a location noun
 // ("מיקום", "כתובת", "סניף", "פארק", "משרדי(נו)", "ממוקם", "עיר").
