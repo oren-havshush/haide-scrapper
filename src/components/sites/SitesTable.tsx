@@ -171,6 +171,16 @@ export function SitesTable({
     );
   };
 
+  const handleFail = (siteId: string) => {
+    updateStatus.mutate(
+      { siteId, status: "FAILED" },
+      {
+        onSuccess: () => toast.success("Site marked as failed"),
+        onError: (err: Error) => toast.error(err.message),
+      }
+    );
+  };
+
   const handleReanalyze = (siteId: string, siteUrl: string) => {
     updateStatus.mutate(
       { siteId, status: "ANALYZING" },
@@ -378,6 +388,7 @@ export function SitesTable({
                     siteUrl={site.siteUrl}
                     status={site.status}
                     onSkip={handleSkip}
+                    onFail={handleFail}
                     onReanalyze={handleReanalyze}
                     onDelete={(id) => setDeleteTargetId(id)}
                     onScrape={handleScrape}
@@ -385,6 +396,7 @@ export function SitesTable({
                     onClearJobs={handleClearJobs}
                     onReview={handleReview}
                     isSkipping={updateStatus.isPending}
+                    isFailing={updateStatus.isPending}
                     isReanalyzing={updateStatus.isPending}
                     isScraping={isScraping}
                     hasFieldMappings={hasFieldMappings}

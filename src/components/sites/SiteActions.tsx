@@ -14,6 +14,7 @@ interface SiteActionsProps {
   siteUrl: string;
   status: "ANALYZING" | "REVIEW" | "ACTIVE" | "FAILED" | "SKIPPED";
   onSkip: (siteId: string) => void;
+  onFail: (siteId: string) => void;
   onReanalyze: (siteId: string, siteUrl: string) => void;
   onDelete: (siteId: string) => void;
   onScrape?: (siteId: string) => void;
@@ -21,6 +22,7 @@ interface SiteActionsProps {
   onClearJobs?: (siteId: string) => void;
   onReview?: (siteUrl: string) => void;
   isSkipping?: boolean;
+  isFailing?: boolean;
   isReanalyzing?: boolean;
   isScraping?: boolean;
   hasFieldMappings?: boolean;
@@ -31,6 +33,7 @@ export function SiteActions({
   siteUrl,
   status,
   onSkip,
+  onFail,
   onReanalyze,
   onDelete,
   onScrape,
@@ -38,15 +41,30 @@ export function SiteActions({
   onClearJobs,
   onReview,
   isSkipping,
+  isFailing,
   isReanalyzing,
   isScraping,
   hasFieldMappings,
 }: SiteActionsProps) {
   if (status === "ANALYZING") {
-    return <span style={{ color: "#71717a" }}>&mdash;</span>;
+    return (
+      <div className="flex items-center gap-1">
+        <Button
+          variant="ghost"
+          size="sm"
+          className="h-7 px-2 text-xs"
+          style={{ color: "#f87171" }}
+          onClick={() => onFail(siteId)}
+          disabled={isFailing}
+        >
+          {isFailing ? "..." : "Fail"}
+        </Button>
+      </div>
+    );
   }
 
   const showSkip = status === "ACTIVE" || status === "REVIEW";
+  const showFail = status !== "FAILED";
   const showReanalyze = status === "FAILED" || status === "SKIPPED";
   const showScrape = status === "ACTIVE" || status === "REVIEW";
   const showReview = status === "REVIEW" || status === "ACTIVE";
@@ -106,6 +124,18 @@ export function SiteActions({
           disabled={isSkipping}
         >
           {isSkipping ? "..." : "Skip"}
+        </Button>
+      )}
+      {showFail && (
+        <Button
+          variant="ghost"
+          size="sm"
+          className="h-7 px-2 text-xs"
+          style={{ color: "#f87171" }}
+          onClick={() => onFail(siteId)}
+          disabled={isFailing}
+        >
+          {isFailing ? "..." : "Fail"}
         </Button>
       )}
       {showReanalyze && (

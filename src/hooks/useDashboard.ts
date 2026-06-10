@@ -22,6 +22,13 @@ export interface DashboardOverviewData {
   };
   reviewQueueDepth: number;
   totalJobs: number;
+  jobCountsByStatus: {
+    ANALYZING: number;
+    REVIEW: number;
+    ACTIVE: number;
+    FAILED: number;
+    SKIPPED: number;
+  };
 }
 
 export interface FailedSiteLatestRun {

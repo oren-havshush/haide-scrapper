@@ -143,6 +143,41 @@ export function StatusPanels({ data, isLoading }: StatusPanelsProps) {
           )}
         </CardContent>
       </Card>
+
+      {/* Jobs by Status Panel */}
+      <Card style={{ backgroundColor: "#18181b" }}>
+        <CardHeader>
+          <CardTitle className="text-sm font-medium" style={{ color: "#a1a1aa" }}>
+            Jobs by Status
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {isLoading ? (
+            <div className="space-y-2">
+              {Array.from({ length: 5 }).map((_, i) => (
+                <Skeleton key={i} className="h-5 w-full" />
+              ))}
+            </div>
+          ) : (
+            <div className="space-y-1.5">
+              {STATUS_ORDER.map((status) => (
+                <div key={status} className="flex items-center justify-between">
+                  <StatusBadge status={status} />
+                  <span className="text-sm font-medium" style={{ color: "#fafafa" }}>
+                    {(data?.jobCountsByStatus[status] ?? 0).toLocaleString()}
+                  </span>
+                </div>
+              ))}
+              <div className="flex items-center justify-between pt-1.5 border-t border-zinc-700">
+                <span className="text-sm" style={{ color: "#a1a1aa" }}>Total</span>
+                <span className="text-sm font-semibold" style={{ color: "#fafafa" }}>
+                  {(data?.totalJobs ?? 0).toLocaleString()}
+                </span>
+              </div>
+            </div>
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 }

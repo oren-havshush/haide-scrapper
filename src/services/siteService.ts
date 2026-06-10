@@ -9,7 +9,7 @@ const VALID_STATUS_TRANSITIONS: Record<string, string[]> = {
   REVIEW: ["SKIPPED", "ACTIVE", "FAILED", "ANALYZING"],
   ACTIVE: ["SKIPPED", "FAILED", "REVIEW", "ANALYZING"],
   FAILED: ["SKIPPED", "ANALYZING", "ACTIVE"],
-  SKIPPED: ["ANALYZING"],
+  SKIPPED: ["ANALYZING", "FAILED"],
 };
 
 const STATUS_TIMESTAMP_MAP: Record<string, string> = {
@@ -191,10 +191,20 @@ export async function updateSiteStatus(siteId: string, newStatus: SiteStatus) {
     [timestampField]: new Date(),
   };
 
-  const updatedSite = await prisma.site.update({
-    where: { id: siteId },
-    data: updateData,
-  });
+  // Moving a site to FAILED wipes its scraped jobs automatically.
+  let updatedSite;
+  if (newStatus === "FAILED") {
+    const [, site2] = await prisma.$transaction([
+      prisma.job.deleteMany({ where: { siteId } }),
+      prisma.site.update({ where: { id: siteId }, data: updateData }),
+    ]);
+    updatedSite = site2;
+  } else {
+    updatedSite = await prisma.site.update({
+      where: { id: siteId },
+      data: updateData,
+    });
+  }
 
   // Emit SSE event for status change
   emitEvent({

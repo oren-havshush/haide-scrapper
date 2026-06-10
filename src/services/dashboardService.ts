@@ -13,7 +13,10 @@ export interface DashboardOverview {
   statusCounts: Record<string, number> & { total: number };
   reviewQueueDepth: number;
   totalJobs: number;
+  jobCountsByStatus: Record<string, number>;
 }
+
+const SITE_STATUSES = ["ANALYZING", "REVIEW", "ACTIVE", "FAILED", "SKIPPED"] as const;
 
 export interface FailedSiteRow {
   id: string;
@@ -35,10 +38,11 @@ export interface FailedSitesResult {
 
 export async function getDashboardOverview(): Promise<DashboardOverview> {
   // Run all queries in parallel for performance
-  const [statusCounts, scrapeHealth, totalJobs] = await Promise.all([
+  const [statusCounts, scrapeHealth, totalJobs, jobCountsByStatus] = await Promise.all([
     getStatusCounts(),
     getScrapeHealth(),
     prisma.job.count(),
+    getJobCountsByStatus(),
   ]);
 
   return {
@@ -46,7 +50,20 @@ export async function getDashboardOverview(): Promise<DashboardOverview> {
     statusCounts,
     reviewQueueDepth: statusCounts.REVIEW ?? 0,
     totalJobs,
+    jobCountsByStatus,
   };
+}
+
+async function getJobCountsByStatus(): Promise<Record<string, number>> {
+  const counts = await Promise.all(
+    SITE_STATUSES.map((status) => prisma.job.count({ where: { site: { status } } }))
+  );
+
+  const result: Record<string, number> = {};
+  SITE_STATUSES.forEach((status, i) => {
+    result[status] = counts[i];
+  });
+  return result;
 }
 
 async function getScrapeHealth(): Promise<ScrapeHealth> {
