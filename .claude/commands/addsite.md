@@ -119,9 +119,32 @@ and `INVALID_URL` entries to `batch-results.jsonl`. Only entries with
 
 ### B1 — Iterate
 
+> **THE BATCH CONTRACT — read this first.** Batch is **not a different mode of
+> onboarding.** It is **single-URL `/addsite`, run N times in a row.** The only
+> thing "batch" removes is the human handing you one URL at a time and waiting
+> for the previous one to finish — i.e. it removes *prompts and waiting*. It
+> removes **nothing** from the pipeline: same Steps 1–9, same detail-page
+> drilling, same apply-form capture, same field completeness, same depth, for
+> **every** URL. **The result for a given URL must be IDENTICAL whether it was
+> run alone or as part of a batch.** If a single run would have drilled into the
+> detail page to capture the form (e.g. yes — see B1.6), the batch run must do
+> exactly the same. Do **not** build a faster "batch path." There is no batch
+> path — there is only single `/addsite`, iterated.
+>
+> The *only* legitimate single-vs-batch difference: where single mode would
+> **prompt the human** (e.g. the 5b-2 manual screenshot fallback for a form that
+> is genuinely uncapturable by any automated means), batch can't prompt, so it
+> ships ACTIVE on the best apply path it *could* reach and records that one
+> deferred human step in the summary. That is the ONLY thing batch is allowed to
+> defer — and only *after* it has done everything an unattended single run does.
+
 For each entry in `$workList` where `preStatus -eq 'PROCEED'`:
 1. Set `$URL = $entry.normalizedUrl` and `$SITE_ID = $entry.existingId` (may be `$null`).
-2. Run Steps 1–9 with the **batch overrides** below.
+2. Run **the FULL Steps 1–9 — literally the single-URL pipeline**, with the
+   **batch overrides** below (the overrides change *prompts → auto-skip*, never
+   steps). Drilling into per-job detail pages for the description AND the apply
+   form is part of those steps — it is not optional and not "an enhancement."
+   See **B1.6** and the **B2.6 parity check** below.
 3. At every gate failure: call `addsite-batch.ts skip` + `addsite-batch.ts log`, then `continue`.
 4. On success: call `addsite-batch.ts log --outcome ACTIVE --jobs <N>`. When the
    entry carries a `companyName` (from a CSV `--company-col`), pass it as
@@ -144,6 +167,61 @@ foreach ($entry in ($workList | Where-Object { $_.preStatus -eq 'PROCEED' })) {
   #   npx tsx scripts/addsite-batch.ts log --batch-dir $BATCH_DIR --url $URL --outcome ACTIVE --reason "" --site-id $SITE_ID --jobs $jobCount [--company $COMPANY]
 }
 ```
+
+### B1.6 — The apply form is mandatory, and it usually lives on the per-job detail page
+
+> **Lesson (2.csv batch, 2026-06-10):** 11 sites were logged `ACTIVE` with
+> `formCapture: null` because the batch driver onboarded straight from a config
+> file and **never ran Step 5b**. Listings + descriptions + an apply route were
+> live, but no apply form was ever captured. That is a pipeline-step omission,
+> not a judgement call — it must never happen again.
+>
+> **Lesson (yes / career.yes.co.il, 2026-06-11) — the important one:** the batch
+> run shipped yes with NO apply form and I wrongly concluded the form was an
+> "uncapturable JS modal." It was not. The listing page (`/jobs-lobby/`) opens
+> apply via JS, but **each per-job detail page (`/jobs-lobby/<id>/`) carries a
+> real, server-rendered `<form>` that captures cleanly headlessly.** A careful
+> single run drilled into the detail page and captured the full form (FirstName,
+> LastName, phone, city, résumé file, …) into per-job `applicationInfo` for all
+> 17 jobs. The batch "couldn't" only because it judged capturability from the
+> **listing page** and never visited the detail page. **Moral: never decide a
+> form is uncapturable from the listing — go to the detail page first.** The
+> apply form most commonly lives per-job on the detail page, captured into
+> `applicationInfo`, NOT as a site-level `formCapture`. Both count as a captured
+> form.
+
+**Before you ever call a form "uncapturable," you MUST have actually tried to
+capture it on the per-job detail page** (the same page that holds the
+description), not just the listing. Treat per-job `applicationInfo` (a structured
+form object pulled from the detail page) and site-level `formCapture` as
+equivalent "form captured" outcomes.
+
+For **every** PROCEED site, before you log `ACTIVE`, you MUST resolve the apply
+path to exactly one of these outcomes (this is the inline 5b + B2.5 contract):
+
+| Apply outcome | What to do | Final status |
+|---|---|---|
+| **HTML apply form** — inline, OR (most common) a server-rendered `<form>` on the per-job **detail page** | Capture it: site-level `formCapture` for an inline/shared form, OR per-job `applicationInfo` when it's on the detail page (drill in via `pageFlow`). **Validate it's a real application form** (not newsletter/search/business-lead — scorer + eyeball labels). **Both `formCapture` and `applicationInfo` count as "form captured."** | `ACTIVE` |
+| **Email apply** (`mailto:` / `jobs@…`), incl. an address that wants a job-id/reference | Keep it as `applicationInfo`; preserve any job-id/reference. **Email is a usable apply path** — no form needed | `ACTIVE` |
+| **Plain external apply URL** reachable without login/challenge | Keep as `applicationInfo` / `detailUrl` | `ACTIVE` |
+| **Login / account wall**, or **bot-challenge (Turnstile/reCAPTCHA)** with no email/url/form alternative | This is **not** a usable apply path (B2.5) | **`SKIPPED`** — `Auto-skipped: no usable apply path (login/bot-challenge blocks apply)` |
+| **Apply form is genuinely uncapturable by any automated means** — you ALREADY tried the per-job detail page (not just the listing) AND a fallback apply path (reachable `detailUrl` / email / URL) exists | This is the *only* case where batch defers the form. Ship `ACTIVE` via the fallback, mark QA `formStatus = NEEDS_MANUAL`; the B3 summary lists `run step 5b <URL>` for the human-screenshot fallback (the one step batch can't do that single mode can) | `ACTIVE` + NEEDS_MANUAL flag |
+
+Rules:
+- **Go to the detail page before judging.** Never conclude "no form" / "modal /
+  uncapturable" from the listing page. The yes lesson: the form was a clean
+  detail-page `<form>` all along. A single run would have drilled in — so the
+  batch run must too.
+- **`formCapture` and per-job `applicationInfo` are equivalent** captured-form
+  outcomes. A site with a structured `applicationInfo` form on every job has its
+  apply form — it is **not** `NEEDS_MANUAL`.
+- **Never** log `ACTIVE` with no captured form *and* no email/url apply path —
+  that's the B2.5 "no usable apply path" skip, not a success.
+- **`NEEDS_MANUAL` is the rare exception, not a routine batch outcome.** It is
+  only valid after you have genuinely tried automated capture **on the detail
+  page** and it truly needs a human screenshot (5b-2). It is NOT a license to
+  skip the form-capture work and "flag it later." If a single run could capture
+  it, batch must capture it, and `NEEDS_MANUAL` is wrong.
 
 ### B1.5 — Reactivating an existing SKIPPED / FAILED site (`--force`)
 
@@ -373,6 +451,74 @@ In single-URL mode, do the same assessment but instead of auto-skipping,
 report the finding (partial data, or no usable apply path) to the user and ask
 whether to ship the listing-only config anyway or stop.
 
+**Field-completeness, not just apply-completeness.** B2.5 above is the *minimum*
+bar (description + a usable apply path). It does **not** mean "title + apply is
+enough" — a site whose detail pages expose `location` / `requirements` /
+`publishDate` must capture those too. That fuller audit is the **B2.6 QA gate**
+below; B2.5 gates ACTIVE-vs-SKIP, B2.6 gates ACTIVE-vs-needs-more-work.
+
+### B2.6 — Per-site quality gate (batch == solo) — MANDATORY before logging ACTIVE
+
+> **Lesson (l-b.co.il, 2.csv batch):** the site shipped `ACTIVE` with 559 jobs
+> but **no `location`, no `requirements`, and `formCapture: null`** — the detail
+> page exposed all three, but the batch driver onboarded from a listing-only
+> config and never audited the detail page or asked for the JS-modal form. A
+> careful solo run would have captured them. Batch must now **prove** it reached
+> the same quality, mechanically, for every site.
+
+This gate is a **parity check / safety net — NOT permission to ship thinner.**
+It exists to *prove* that the single-quality pipeline actually ran for each URL
+and to catch the case where you drifted; it does **not** make it OK for batch to
+produce less than a single run. If it reports a gap, the answer is "go finish the
+step you skipped," not "log it and move on." For **every** PROCEED site, after
+the scrape (Step 8) and before you log `ACTIVE`, run the committed QA gate:
+
+```powershell
+npx tsx scripts/addsite-qa.ts --site-id $SITE_ID --out .scratch/qa-$SITE_ID.json
+# add --stealth / --ua "<UA>" when the site uses browserOverrides.userAgent
+```
+
+It samples the scraped jobs, computes a **fill-rate per field**, probes one
+sample detail URL for fields the **page exposes but the jobs are missing**
+(`availableButUnmapped`), and classifies the apply path into a `formStatus`
+(`CAPTURED` / `NEEDS_MANUAL` / `EMAIL` / `URL` / `NONE`). A structured per-job
+`applicationInfo` form counts as captured (`formStatus = CAPTURED`), the same as
+a site-level `formCapture`. It writes a `qa` JSON and **exits non-zero (2) when
+Tier-A is incomplete**.
+
+- **Tier-A (hard — gates ACTIVE):** `title`, `externalJobId`, `description`, and a
+  usable apply path (`formStatus != NONE`). Tier-A incomplete ⇒ **SKIPPED** (this
+  is the same verdict as B2.5, now machine-checked).
+- **Tier-B (capture when the page exposes it):** `location`, `requirements`,
+  `publishDate`, `department`. When `availableButUnmapped` is non-empty you have
+  **not** matched a solo run yet — **hard-remediate**: add the detail-page
+  selectors for those fields (a `setupScript` / multi-page `pageFlow` per Step 4),
+  re-PUT, re-scrape **once** (within the B2a budget), and re-audit. Only after the
+  page-exposed fields are mapped (or proven genuinely absent) may you log `ACTIVE`.
+- **`NEEDS_MANUAL`:** only valid after you genuinely tried capturing the form on
+  the **per-job detail page** (not just the listing) and it truly needs a human
+  screenshot. If the gate reports `NEEDS_MANUAL` but you never checked the detail
+  page, that's a drift signal — go capture the detail-page form (it's usually a
+  clean `<form>` → `applicationInfo`) and re-audit. Only ship `NEEDS_MANUAL` when
+  the form is genuinely uncapturable unattended.
+
+Forward the verdict into the batch log so the summary can surface it:
+
+```powershell
+npx tsx scripts/addsite-batch.ts log --batch-dir $BATCH_DIR --url $URL `
+  --outcome ACTIVE --jobs $N --site-id $SITE_ID --qa-file .scratch/qa-$SITE_ID.json
+```
+
+> **`onboard-one.ts` is an OPTIONAL bookkeeping helper, NOT "the batch path."**
+> It can run the QA gate, a one-pass Tier-B remediation, and the SKIPPED/ACTIVE
+> transitions from a prebuilt config — but a prebuilt config is exactly how batch
+> drifted from single quality (listing-only configs that never drilled into
+> detail pages). **Do not treat feeding configs to this driver as a substitute
+> for running the real Steps 1–9 per URL.** Use it, if at all, only after the
+> per-URL config already reflects everything a single run would have done
+> (detail-page description + apply form included). The pipeline is the source of
+> truth; this script is just plumbing.
+
 ### B3 — Print summary (mandatory last step in batch mode)
 
 After iterating all URLs:
@@ -381,26 +527,39 @@ After iterating all URLs:
 npx tsx scripts/addsite-batch.ts summary --batch-dir $BATCH_DIR
 ```
 
-This prints the summary table to stdout and writes `$BATCH_DIR/summary.md`:
+This prints the summary table to stdout and writes `$BATCH_DIR/summary.md`.
+The **Form** column shows the QA `formStatus` (`form(N)` captured / `MANUAL 5b` /
+`email` / `url`), and **Gaps** lists Tier-B fields the page exposes but the jobs
+still lack. Two follow-up blocks appear below the table when applicable:
 
 ```
 ======================================================================
 Batch complete — 12 URLs processed
 ======================================================================
-  ACTIVE                  4
-  SKIPPED                 6
-  ALREADY_ACTIVE          1
-  ERROR                   1
-  API scrapes triggered:  4
+  ACTIVE                 4
+  SKIPPED                6
+  ALREADY_ACTIVE         1
+  ERROR                  1
+  API scrapes triggered: 4
 ======================================================================
 
-|   # | URL                                                    | Outcome          | Site ID          | Reason / Jobs                              |
-|-----|--------------------------------------------------------|------------------|------------------|--------------------------------------------|
-|   1 | https://cisecurity.wd1.myworkdayjobs.com/CIS_External  | SKIPPED          | cmq55ac8p000m... | Auto-skipped: apply requires login (pas... |
-|   2 | https://example.com/careers                            | SKIPPED          | cmq12345...      | Auto-skipped: dry-run found 0 items        |
-|   3 | https://good-site.co.il/jobs                           | ACTIVE           | cmq99999...      | 47 jobs scraped                            |
-|   4 | https://existing.com/jobs                              | ALREADY_ACTIVE   | cmq77777...      | existing site is ACTIVE; skipped           |
+|   # | URL                                         | Outcome         | Site ID          | Form        | Gaps                 | Reason / Jobs        |
+|-----|---------------------------------------------|-----------------|------------------|-------------|----------------------|----------------------|
+|   1 | https://good-site.co.il/jobs                | ACTIVE          | cmq99999...      | form(7)     | -                    | 47 jobs scraped      |
+|   2 | https://l-b.co.il/jobs                      | ACTIVE          | cmqBBB...        | MANUAL 5b   | location,requirement | 559 jobs scraped     |
+|   3 | https://example.com/careers                 | SKIPPED         | cmq12345...      | -           | -                    | dry-run found 0 items|
+
+Manual apply-form follow-ups (headless capture failed — run standalone Step 5b):
+  1. cmqBBB...  https://l-b.co.il/jobs
+     → run step 5b https://l-b.co.il/job/12230
+
+Quality gaps (page exposes fields the jobs are missing — re-map to reach solo parity):
+  1. cmqBBB...  https://l-b.co.il/jobs
+     Tier-B: location, requirements
 ```
+
+If neither block appears (and every ACTIVE site carries a QA verdict), the
+summary prints `… batch reached solo-quality parity.`
 
 ### B4 — Cost visibility
 
@@ -2895,6 +3054,27 @@ UA-override re-attempt from B2.5); in **single-URL mode** report it and ask
 the user before shipping a listing-only config. Add a completeness line to
 the wrap-up, e.g. `✓ completeness: title+location+description+applyForm` or
 `✗ completeness: title+location only (detail pages blocked) → SKIPPED`.
+
+**QA record (REQUIRED in BOTH modes — this is what makes batch == solo).** Run
+the **B2.6 QA gate** as the last completeness check, even for a single URL:
+
+```powershell
+npx tsx scripts/addsite-qa.ts --site-id $SITE_ID --out .scratch/qa-$SITE_ID.json
+```
+
+Fold its verdict into the wrap-up so a shortfall can never hide:
+- `✓ qa: formStatus=<CAPTURED|NEEDS_MANUAL|EMAIL|URL>  Tier-A=complete`
+- `✓ qa fill-rates: title=1.0 description=0.98 location=0.95 requirements=0.9 …`
+- `! qa gaps (page exposes, jobs missing): location, requirements` — when
+  `availableButUnmapped` is non-empty, you are **not** done: in batch hard-remediate
+  per B2.6 (re-map + one re-scrape); in single-URL mode map the fields (or confirm
+  with the user they're genuinely absent) before declaring success.
+- `! qa: formStatus=NEEDS_MANUAL → run step 5b <url>` — an on-page form headless
+  capture missed; ship ACTIVE via the fallback path and record the follow-up.
+
+In single-URL mode the same audit runs, but instead of auto-remediating silently
+you surface the gaps/NEEDS_MANUAL to the user. The audit itself is identical, so a
+solo run and a batch run reach the same bar.
 
 **Candidate learnings.** As the final part of the wrap-up, append a candidate
 learnings block per **"Declaring candidate learnings (both modes)"** below — a

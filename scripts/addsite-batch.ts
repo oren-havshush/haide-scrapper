@@ -13,6 +13,7 @@
  *   log       Append one result row to <batchDir>/batch-results.jsonl.
  *             Usage: log --batch-dir <dir> --url <URL> --outcome <OUTCOME>
  *                        --reason "<reason>" [--site-id <id>] [--jobs N]
+ *                        [--qa-file <path-to-addsite-qa.ts-output.json>]
  *
  *   summary   Read batch-results.jsonl, print summary table, write summary.md.
  *             Usage: summary --batch-dir <dir>
@@ -45,6 +46,23 @@ type Outcome =
   | "INVALID_URL"
   | "ERROR";
 
+/**
+ * Per-site quality verdict produced by `scripts/addsite-qa.ts` (see addsite.md
+ * B2.6). Persisted on the result row so the summary can prove batch == solo
+ * quality and list the follow-ups (manual Step 5b, residual field gaps).
+ */
+interface QaRecord {
+  fillRates?: Record<string, number>;
+  formStatus?: "CAPTURED" | "NEEDS_MANUAL" | "EMAIL" | "URL" | "NONE";
+  formFields?: number;
+  applyResolution?: string;
+  availableButUnmapped?: string[];
+  manualFormUrl?: string;
+  tierAComplete?: boolean;
+  tierAMissing?: string[];
+  sampled?: number;
+}
+
 interface BatchResult {
   url: string;
   siteId?: string;
@@ -53,6 +71,7 @@ interface BatchResult {
   reason: string;
   jobCount?: number;
   timestamp: string;
+  qa?: QaRecord;
 }
 
 interface WorkListEntry {
@@ -626,6 +645,7 @@ async function cmdLog(argv: string[]): Promise<void> {
   const siteId = flagStr(flags, "site-id");
   const company = flagStr(flags, "company");
   const jobsStr = flagStr(flags, "jobs");
+  const qaFile = flagStr(flags, "qa-file");
 
   if (!batchDir) throw new Error("--batch-dir is required");
   if (!url) throw new Error("--url is required");
@@ -654,6 +674,29 @@ async function cmdLog(argv: string[]): Promise<void> {
     }
   }
 
+  // Merge the QA verdict (addsite-qa.ts output) when supplied. Best effort:
+  // a malformed/missing qa file must never break the batch log.
+  let qa: QaRecord | undefined;
+  if (qaFile) {
+    try {
+      const raw = fs.readFileSync(qaFile, "utf8");
+      const parsed = JSON.parse(raw) as Record<string, unknown>;
+      qa = {
+        fillRates: parsed.fillRates as Record<string, number> | undefined,
+        formStatus: parsed.formStatus as QaRecord["formStatus"],
+        formFields: parsed.formFields as number | undefined,
+        applyResolution: parsed.applyResolution as string | undefined,
+        availableButUnmapped: parsed.availableButUnmapped as string[] | undefined,
+        manualFormUrl: parsed.manualFormUrl as string | undefined,
+        tierAComplete: parsed.tierAComplete as boolean | undefined,
+        tierAMissing: parsed.tierAMissing as string[] | undefined,
+        sampled: parsed.sampled as number | undefined,
+      };
+    } catch (e) {
+      console.warn(`[batch] WARN: could not read --qa-file ${qaFile}: ${(e as Error).message}`);
+    }
+  }
+
   const result: BatchResult = {
     url,
     siteId,
@@ -662,6 +705,7 @@ async function cmdLog(argv: string[]): Promise<void> {
     reason,
     jobCount: jobsStr !== undefined ? parseInt(jobsStr, 10) : undefined,
     timestamp: new Date().toISOString(),
+    ...(qa ? { qa } : {}),
   };
 
   appendBatchResult(batchDir, result);
@@ -705,15 +749,33 @@ async function cmdSummary(argv: string[]): Promise<void> {
   lines.push("=".repeat(70));
   lines.push("");
 
+  // Short label for the apply/form status (from the QA verdict).
+  const formLabel = (r: BatchResult): string => {
+    const fs = r.qa?.formStatus;
+    if (!fs) return "-";
+    if (fs === "CAPTURED") return `form(${r.qa?.formFields ?? "?"})`;
+    if (fs === "NEEDS_MANUAL") return "MANUAL 5b";
+    return fs.toLowerCase(); // email / url / none
+  };
+  // Residual Tier-B gaps the page exposes but the jobs are missing.
+  const gapsLabel = (r: BatchResult): string => {
+    const g = r.qa?.availableButUnmapped;
+    if (g && g.length) return g.join(",");
+    if (r.qa && r.qa.tierAComplete === false) return `Tier-A:${(r.qa.tierAMissing ?? []).join(",")}`;
+    return "-";
+  };
+
   // Table header
-  const urlW = 55;
-  const outW = 16;
+  const urlW = 48;
+  const outW = 15;
   const idW = 16;
-  const reasonW = 42;
+  const formW = 11;
+  const gapW = 20;
+  const reasonW = 30;
   const header =
-    `| ${"#".padStart(3)} | ${"URL".padEnd(urlW)} | ${"Outcome".padEnd(outW)} | ${"Site ID".padEnd(idW)} | ${"Reason / Jobs".padEnd(reasonW)} |`;
+    `| ${"#".padStart(3)} | ${"URL".padEnd(urlW)} | ${"Outcome".padEnd(outW)} | ${"Site ID".padEnd(idW)} | ${"Form".padEnd(formW)} | ${"Gaps".padEnd(gapW)} | ${"Reason / Jobs".padEnd(reasonW)} |`;
   const sep =
-    `|${"-".repeat(5)}|${"-".repeat(urlW + 2)}|${"-".repeat(outW + 2)}|${"-".repeat(idW + 2)}|${"-".repeat(reasonW + 2)}|`;
+    `|${"-".repeat(5)}|${"-".repeat(urlW + 2)}|${"-".repeat(outW + 2)}|${"-".repeat(idW + 2)}|${"-".repeat(formW + 2)}|${"-".repeat(gapW + 2)}|${"-".repeat(reasonW + 2)}|`;
 
   lines.push(header);
   lines.push(sep);
@@ -722,15 +784,50 @@ async function cmdSummary(argv: string[]): Promise<void> {
     const urlShort = r.url.length > urlW ? r.url.slice(0, urlW - 3) + "..." : r.url.padEnd(urlW);
     const out = r.outcome.padEnd(outW);
     const sid = (r.siteId ?? "").slice(0, idW).padEnd(idW);
+    const form = formLabel(r).slice(0, formW).padEnd(formW);
+    const gaps = gapsLabel(r).slice(0, gapW).padEnd(gapW);
     const reasonPart =
       r.outcome === "ACTIVE" && r.jobCount !== undefined
         ? `${r.jobCount} jobs scraped`
         : (r.reason ?? "").slice(0, reasonW);
     const reason = reasonPart.padEnd(reasonW);
-    lines.push(`| ${String(i + 1).padStart(3)} | ${urlShort} | ${out} | ${sid} | ${reason} |`);
+    lines.push(`| ${String(i + 1).padStart(3)} | ${urlShort} | ${out} | ${sid} | ${form} | ${gaps} | ${reason} |`);
   });
 
   lines.push("");
+
+  // --- Manual apply-form follow-ups (list-only; run standalone Step 5b) ---
+  const manual = results.filter((r) => r.qa?.formStatus === "NEEDS_MANUAL");
+  if (manual.length) {
+    lines.push("Manual apply-form follow-ups (headless capture failed — run standalone Step 5b):");
+    manual.forEach((r, i) => {
+      const target = r.qa?.manualFormUrl || r.url;
+      lines.push(`  ${i + 1}. ${r.siteId ?? "(no id)"}  ${r.url}`);
+      lines.push(`     → run step 5b ${target}`);
+    });
+    lines.push("");
+  }
+
+  // --- Quality gaps (page exposes a field the jobs are missing) ---
+  const gapped = results.filter(
+    (r) => (r.qa?.availableButUnmapped?.length ?? 0) > 0 || r.qa?.tierAComplete === false,
+  );
+  if (gapped.length) {
+    lines.push("Quality gaps (page exposes fields the jobs are missing — re-map to reach solo parity):");
+    gapped.forEach((r, i) => {
+      const tb = r.qa?.availableButUnmapped?.length ? `Tier-B: ${r.qa.availableButUnmapped.join(", ")}` : "";
+      const ta =
+        r.qa?.tierAComplete === false ? `Tier-A missing: ${(r.qa.tierAMissing ?? []).join(", ")}` : "";
+      lines.push(`  ${i + 1}. ${r.siteId ?? "(no id)"}  ${r.url}`);
+      lines.push(`     ${[ta, tb].filter(Boolean).join("  |  ")}`);
+    });
+    lines.push("");
+  }
+
+  if (!manual.length && !gapped.length && results.some((r) => r.qa)) {
+    lines.push("No manual form follow-ups and no field gaps detected — batch reached solo-quality parity.");
+    lines.push("");
+  }
 
   const output = lines.join("\n");
   console.log(output);
@@ -765,7 +862,7 @@ if (!cmd) {
     `  skip    --url <URL> --reason "<note>" [--site-id <id>] [--batch-dir <dir>]\n` +
     `\n` +
     `  log     --batch-dir <dir> --url <URL> --outcome <OUTCOME> --reason "<reason>"\n` +
-    `          [--site-id <id>] [--jobs N]\n` +
+    `          [--site-id <id>] [--jobs N] [--qa-file <addsite-qa.json>]\n` +
     `\n` +
     `  summary --batch-dir <dir>\n`,
   );
