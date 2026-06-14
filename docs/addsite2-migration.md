@@ -325,6 +325,12 @@ subcommands (reusing the existing CLI shape):
 - Assert **formCapture OR per-job applicationInfo present** (machine-check B1.6).
 - Flag detail-page Tier-B parity (already partially done via `availableButUnmapped`).
 - Emit a machine verdict aligned to the §4a.2 taxonomy: `ACTIVE | REQUEUE | REVIEW | SKIP`.
+  **✅ DONE (2026-06-14).** `qa.verdict` + `qa.verdictReason` now in the JSON and
+  stderr tail; mapping: REQUEUE = 0 jobs sampled; REVIEW = on-page form not
+  captured / Tier-B exposed-but-unmapped / suspected description-mapping miss /
+  inconclusive probe; SKIP = Tier-A incomplete with no recoverable signal;
+  ACTIVE = clean pass. Default exit stays `0/2` (back-compat); opt-in
+  `--verdict-exit` maps `0=ACTIVE, 2=SKIP, 3=REVIEW, 4=REQUEUE` for the v2 driver.
 
 Cross-run memory:
 - **`site-patterns.json`** (§4a.4) — `signature → working config pattern + overrides`.
@@ -501,3 +507,10 @@ get the 🟢-slice and below-bar numbers that justify Phase 1/2 sizing.
   The 92% "Tier-B gaps" headline is dominated by fleet-wide unmapped
   `publishDate` (probe-less artifact, not defects). Findings + honest business
   case recorded in §7a "Audit results". CSV → `.scratch/fleet-audit.csv` (gitignored).
+- **2026-06-14** — Phase 1 cont.: **QA verdict-taxonomy alignment** in
+  `scripts/addsite-qa.ts`. Added `decideVerdict()` → `qa.verdict` /
+  `qa.verdictReason` (ACTIVE/REQUEUE/REVIEW/SKIP per §4a.2), surfaced in JSON +
+  stderr tail. Default `0/2` exit unchanged (back-compat); opt-in `--verdict-exit`
+  gives the v2 driver distinct codes (0/2/3/4). Lint clean; smoke-tested
+  ACTIVE (tafkid → exit 0) and SKIP (ashtrom → exit 2). Remaining Phase 1:
+  `fingerprint` config-skeleton emission + `site-patterns.json` cache wiring.

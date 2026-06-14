@@ -14,20 +14,29 @@
  *        EMAIL      mailto / applicationInfo email apply path
  *        URL        plain external apply URL / reachable detailUrl
  *        NONE       no apply path detected
- *   4. Emits a `qa` JSON (stdout as `QA <json>`, and to --out) and EXITS
- *      non-zero (2) when Tier-A is incomplete, so a caller can hard-stop.
+ *   4. Emits a `qa` JSON (stdout as `QA <json>`, and to --out) including a v2
+ *      `verdict` (ACTIVE | REQUEUE | REVIEW | SKIP, see §4a.2 taxonomy) and
+ *      EXITS non-zero (2) when Tier-A is incomplete, so a caller can hard-stop.
  *
  * Tier-A (hard requirement, gates ACTIVE): title + externalJobId + description
  *   + a usable apply path (formStatus != NONE).
  * Tier-B (capture when the page exposes it): location, requirements,
  *   publishDate, department.
  *
+ * Verdict (qa.verdict, docs/addsite2-migration.md §4a.2):
+ *   ACTIVE  Tier-A complete + usable apply path, no gray-zone gaps.
+ *   REQUEUE no jobs sampled (scrape pending/empty) — a re-scrape can change it.
+ *   REVIEW  gray zone: on-page form not captured, Tier-B exposed-but-unmapped,
+ *           suspected description-mapping miss, or inconclusive detail probe.
+ *   SKIP    structural: Tier-A incomplete with no recoverable signal.
+ *
  * Usage:
  *   npx tsx scripts/addsite-qa.ts --site-id <id> [--detail-url <url>]
  *        [--sample 10] [--stealth] [--ua "<userAgent>"] [--out <path>]
- *        [--min-fill 0.6] [--no-probe]
+ *        [--min-fill 0.6] [--no-probe] [--verdict-exit]
  *
- * Exit codes: 0 = Tier-A complete; 2 = Tier-A incomplete; 1 = hard error.
+ * Exit codes (default, back-compat): 0 = Tier-A complete; 2 = incomplete; 1 = error.
+ * Exit codes (--verdict-exit): 0=ACTIVE, 2=SKIP, 3=REVIEW, 4=REQUEUE; 1=error.
  */
 import * as fs from "fs";
 import * as path from "path";
@@ -42,6 +51,12 @@ const ALL_FIELDS = [...TIER_A_FIELDS, ...TIER_B_FIELDS, "detailUrl", "applicatio
 
 type FormStatus = "CAPTURED" | "NEEDS_MANUAL" | "EMAIL" | "URL" | "NONE";
 
+// v2 failure taxonomy (docs/addsite2-migration.md §4a.2): the verdict is decided
+// by *why* a site falls short, not a flat pass/fail — so a caller knows whether
+// a retry can change the result (REQUEUE), a human should arbitrate (REVIEW), or
+// a 2nd try just pays to fail twice (SKIP).
+type Verdict = "ACTIVE" | "REQUEUE" | "REVIEW" | "SKIP";
+
 interface QaRecord {
   siteId: string;
   sampled: number;
@@ -53,8 +68,53 @@ interface QaRecord {
   manualFormUrl?: string;
   tierAComplete: boolean;
   tierAMissing: string[];
+  verdict: Verdict;
+  verdictReason: string;
   probedUrl?: string;
   notes: string[];
+}
+
+/**
+ * Map QA observations → §4a.2 verdict. Scope note: QA runs AFTER a scrape, so it
+ * cannot see build-time transients (analyzer race, 429, busy worker) — those are
+ * the batch driver's call during Pass B. The one transient QA *can* see is
+ * "no jobs sampled yet" (scrape pending/empty), which it maps to REQUEUE.
+ */
+function decideVerdict(args: {
+  sampled: number;
+  tierAComplete: boolean;
+  tierAMissing: string[];
+  formStatus: FormStatus;
+  availableButUnmapped: string[];
+  probeInconclusive: boolean; // wanted a detail probe but got no usable result (blocked / no detailUrl)
+  descMappingSuspect: boolean; // page has body text but description fill ~0
+}): { verdict: Verdict; reason: string } {
+  // 1. No data to judge → a re-scrape can still change the result.
+  if (args.sampled === 0)
+    return { verdict: "REQUEUE", reason: "no jobs sampled — scrape pending/empty; requeue once before judging" };
+
+  // 2. Clean-ish pass.
+  if (args.tierAComplete) {
+    if (args.formStatus === "NEEDS_MANUAL")
+      return { verdict: "REVIEW", reason: "apply form exists on page but isn't captured — run Step 5b / arbitrate" };
+    if (args.availableButUnmapped.length)
+      return { verdict: "REVIEW", reason: `Tier-B exposed but unmapped: ${args.availableButUnmapped.join(", ")}` };
+    return { verdict: "ACTIVE", reason: "Tier-A complete + usable apply path" };
+  }
+
+  // 3. Tier-A incomplete — recoverable (gray zone → REVIEW) vs structural (SKIP).
+  if (args.formStatus === "NEEDS_MANUAL")
+    return { verdict: "REVIEW", reason: "apply path missing but a form/modal exists on page — recoverable via Step 5b" };
+  if (args.descMappingSuspect)
+    return { verdict: "REVIEW", reason: "page has body text but description fill ~0 — likely a mapping miss, not missing data" };
+  if (args.probeInconclusive)
+    return { verdict: "REVIEW", reason: "no conclusive detail-page evidence (probe blocked / no detailUrl) — human eyes before SKIP" };
+
+  // 4. Structural: incomplete with no recoverable signal → a 2nd try fails twice.
+  return {
+    verdict: "SKIP",
+    reason: `structural: Tier-A incomplete (${args.tierAMissing.join(", ")}) with no recoverable apply/description signal`,
+  };
 }
 
 // ---------------------------------------------------------------------------
@@ -335,6 +395,7 @@ async function main() {
   let availableButUnmapped: string[] = [];
   let probe: Awaited<ReturnType<typeof probeDetail>> = null;
   let probedUrl: string | undefined;
+  let descMappingSuspect = false;
   if (!noProbe && detailUrl) {
     probedUrl = detailUrl;
     probe = await probeDetail(detailUrl, stealth || !!ovUa, ovUa || ua);
@@ -346,12 +407,16 @@ async function main() {
       }
       // description is Tier-A but also worth flagging if page has it and jobs don't
       if (probe.fieldsOnPage.description && fillRates.description < 0.2) {
+        descMappingSuspect = true;
         notes.push("detail page has body text but description fill-rate is ~0 — check description mapping");
       }
     }
   } else if (!detailUrl) {
     notes.push("no sample detailUrl available — skipped detail-page audit (single-page site or detailUrl unmapped)");
   }
+  // We wanted detail-page evidence but got none (probe blocked, or no detailUrl):
+  // can't prove a shortfall is structural, so don't let it harden into SKIP.
+  const probeInconclusive = !noProbe && !probe;
 
   // --- classify apply path / formStatus ---
   let formStatus: FormStatus;
@@ -380,6 +445,16 @@ async function main() {
   if (!hasUsableApply) tierAMissing.push("applyPath");
   const tierAComplete = tierAMissing.length === 0;
 
+  const { verdict, reason: verdictReason } = decideVerdict({
+    sampled: n,
+    tierAComplete,
+    tierAMissing,
+    formStatus,
+    availableButUnmapped,
+    probeInconclusive,
+    descMappingSuspect,
+  });
+
   const qa: QaRecord = {
     siteId,
     sampled: n,
@@ -391,6 +466,8 @@ async function main() {
     ...(manualFormUrl ? { manualFormUrl } : {}),
     tierAComplete,
     tierAMissing,
+    verdict,
+    verdictReason,
     ...(probedUrl ? { probedUrl } : {}),
     notes,
   };
@@ -406,6 +483,7 @@ async function main() {
     [
       ``,
       `── QA for ${siteId} (sampled ${n}) ──`,
+      `  verdict:    ${verdict}  (${verdictReason})`,
       `  formStatus: ${formStatus}${manualFormUrl ? `  (run step 5b ${manualFormUrl})` : ""}`,
       `  applyRate:  ${applyRate}`,
       `  Tier-A:     ${tierAComplete ? "COMPLETE" : "INCOMPLETE -> " + tierAMissing.join(", ")}`,
@@ -416,6 +494,13 @@ async function main() {
     ].join("\n"),
   );
 
+  // Exit contract:
+  //   default (back-compat): 0 = Tier-A complete (ACTIVE), 2 = anything else.
+  //   --verdict-exit (v2 pipeline): 0=ACTIVE, 2=SKIP, 3=REVIEW, 4=REQUEUE.
+  if (hasFlag("verdict-exit")) {
+    const code = verdict === "ACTIVE" ? 0 : verdict === "SKIP" ? 2 : verdict === "REVIEW" ? 3 : 4;
+    process.exit(code);
+  }
   process.exit(tierAComplete ? 0 : 2);
 }
 
