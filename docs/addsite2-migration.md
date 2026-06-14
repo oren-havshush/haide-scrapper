@@ -351,7 +351,48 @@ migration**:
 1. **Audit (read-only, cheap, safe anytime):** loop all ACTIVE sites, run
    `addsite-qa.ts --site-id` per site → write `fleet-audit.csv`, bucketing into
    ✅ meets-bar / ⚠️ Tier-B gaps / ❌ Tier-A broken (no description / no apply).
-   Pure reads, **no prod mutation.**
+   Pure reads, **no prod mutation.** **✅ DONE (2026-06-14)** — built
+   `scripts/addsite-fleet-audit.ts` (single-process, no per-site browser → fast;
+   pages `pageSize=100` per LRN-API-1) and ran it. See "Audit results" below.
+
+### Audit results (2026-06-14) — 79 ACTIVE sites
+
+| Bucket | Count | % |
+|---|---|---|
+| ❌ **BROKEN** (Tier-A incomplete) | **4** | **5%** |
+| ⚠️ TIER_B_GAPS (Tier-A ok, ≥1 Tier-B field low-fill) | 73 | 92% |
+| ✅ OK (Tier-A + Tier-B filled) | 2 | 3% |
+
+Apply path: **CAPTURED 45 (57%)**, EMAIL 22 (28%), URL 9 (11%), **NONE 3 (4%)**.
+
+**Honest read of the headline.** The hard bar (Tier-A: title + description +
+usable apply path) is **met by 95% of the fleet (75/79)** — the fleet is *not*
+broken. The scary-looking 92% "Tier-B gaps" is an artifact of a probe-less
+audit: it flags any Tier-B field under 0.2 fill, and **`publishDate` is unmapped
+on ~90% of sites** (and `department` on most), so nearly every site lands in the
+bucket on that one field alone. Without a per-site page probe we can't tell
+"page doesn't expose it" from "we didn't map it," so 92% is an **upper bound on
+headroom, not a defect count.**
+
+**Genuinely actionable backlog = 4 sites:**
+- `shahal.co.il/jobs` (`cmq9kh5qt…`) — form CAPTURED but **description fill = 0** → fix description mapping.
+- `careers.topmatch.co.il/diplomat-il` (`cmp9t2uj8…`) — **no apply path** (NONE).
+- `ashtrom.co.il/career` (`cmp02uvpp…`) — **no apply path** (NONE).
+- `l-w.ac.il/jobs` (`cmozix74p…`) — **no apply path** + low fills across the board.
+
+**Systemic opportunity (not a defect):** `publishDate` (and often `department`)
+is unmapped fleet-wide. Worth one investigation — is it absent from listing
+pages, or a recurring mapping miss the recipes should default? A real Tier-B
+verdict needs the full `addsite-qa.ts` per-site probe (skipped here for speed).
+
+**Business case for addsite2, restated honestly:** it is *not* "rescue a broken
+fleet." It is (a) **prevent regressions** (the analyzer race / listing-only
+configs that produced the few NONE/no-description sites), (b) **raise Tier-B
+capture** systematically (publishDate/department), and (c) **onboard the next
+batch cheaper** via triage. The clean 95% Tier-A pass rate is itself the proof
+the pipeline works; addsite2 protects and extends it.
+
+> Reproduce: `npx tsx scripts/addsite-fleet-audit.ts` (writes `.scratch/fleet-audit.csv`, gitignored).
 2. **Triage by value:** fix high-traffic ❌ and ⚠️ first; low-traffic cosmetic
    gaps can wait.
 3. **Fix with the lightest tool:** a missing form is often just standalone
@@ -453,3 +494,10 @@ get the 🟢-slice and below-bar numbers that justify Phase 1/2 sizing.
   clean; smoke-tested `fingerprint` (Workday host → GREEN) and `reach`
   (example.com → PASS 200) end-to-end. Still TODO: `fingerprint` config-skeleton
   emission + `addsite-qa.ts` verdict-taxonomy alignment (ACTIVE/REQUEUE/REVIEW/SKIP).
+- **2026-06-14** — Ran the **legacy fleet re-audit** (§7a). Built
+  `scripts/addsite-fleet-audit.ts` (read-only, single-process) and audited all
+  79 ACTIVE sites: **95% meet the Tier-A bar**; only **4 sites genuinely below
+  bar** (1 missing description, 3 no apply path); 57% have a CAPTURED apply form.
+  The 92% "Tier-B gaps" headline is dominated by fleet-wide unmapped
+  `publishDate` (probe-less artifact, not defects). Findings + honest business
+  case recorded in §7a "Audit results". CSV → `.scratch/fleet-audit.csv` (gitignored).
