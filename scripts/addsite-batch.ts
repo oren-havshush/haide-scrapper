@@ -26,6 +26,20 @@
  *                        [--expect-fields a,b,c] [--expect-form-fields N]
  *                        [--expect-file <config.json>]
  *
+ *   reach     Step 3 worker-parity reachability gate (bare vs real-UA nav).
+ *             Exit 3 = unreachable. Usage: reach --url <URL>
+ *
+ *   detail-reach  Incapsula/Imperva detail-page probe (LRN-WAF-2). Exit 2 =
+ *             needs UA override, 3 = blocked. Usage: detail-reach --listing <URL> --detail <URL>
+ *
+ *   fingerprint  Detect a known ATS/SPA framework (Workday/Greenhouse/Lever/
+ *             Comeet/iCIMS/SmartRecruiters/Ashby) or WordPress/Elementor by host+DOM;
+ *             emit lane + recipe pointer. Usage: fingerprint --url <URL>
+ *
+ *   triage    Pass A classifier (docs/addsite2-migration.md §4a): reach +
+ *             fingerprint + listing-structure probe → lane GREEN/YELLOW/GRAY/RED.
+ *             Usage: triage --url <URL>
+ *
  * Invocation examples (from the /addsite skill):
  *   npx tsx scripts/addsite-batch.ts parse https://a.com/jobs https://b.com/careers
  *   npx tsx scripts/addsite-batch.ts parse --file urls.txt [--force] [--max-urls 50]
@@ -965,6 +979,413 @@ async function cmdVerifyConfig(argv: string[]): Promise<void> {
 }
 
 // ---------------------------------------------------------------------------
+// Playwright-backed probes (reach / detail-reach / fingerprint / triage)
+// ---------------------------------------------------------------------------
+//
+// These power the v2 "Pass A — Triage" lane (see docs/addsite2-migration.md
+// §4a): cheap, scripted classification BEFORE the expensive build pass. They
+// import playwright lazily (like addsite-qa.ts) so the pure-fetch commands
+// above never require it.
+
+const REAL_UA =
+  "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36";
+const HE_HEADERS: Record<string, string> = {
+  "accept-language": "he-IL,he;q=0.9,en-US;q=0.8,en;q=0.7",
+};
+// Challenge/anti-bot interstitial markers (Cloudflare/Reblaze/etc.).
+const CHALLENGE_RE =
+  /just a moment|cf-mitigated|reblaze|access denied|attention required|enable javascript and cookies/i;
+// Imperva/Incapsula HeadlessChrome block markers (see LRN-WAF-2).
+const INCAPSULA_RE = /Request unsuccessful|_Incapsula_Resource/i;
+
+async function getChromium(): Promise<any | null> {
+  try {
+    const pw = (await import("playwright")) as any;
+    return pw.chromium;
+  } catch {
+    return null;
+  }
+}
+
+interface NavResult {
+  ok: boolean;
+  status?: number;
+  challenged?: boolean;
+  error?: string;
+  htmlLen: number;
+  html: string;
+}
+
+async function tryNav(chromium: any, url: string, opts: any): Promise<NavResult> {
+  const b = await chromium.launch({ headless: true });
+  try {
+    const ctx = await b.newContext(opts);
+    const p = await ctx.newPage();
+    const r = await p.goto(url, { waitUntil: "domcontentloaded", timeout: 15000 });
+    const html = await p.content().catch(() => "");
+    const challenged = CHALLENGE_RE.test(html);
+    return {
+      ok: !!r && r.status() < 400 && !challenged,
+      status: r?.status(),
+      challenged,
+      htmlLen: html.length,
+      html,
+    };
+  } catch (e: any) {
+    return { ok: false, error: String(e?.message || e).split("\n")[0], htmlLen: 0, html: "" };
+  } finally {
+    await b.close().catch(() => {});
+  }
+}
+
+// --- reach: Step 3 worker-parity reachability gate -------------------------
+// Exit 0 = reachable (JSON says whether a UA override is needed); 3 = unreachable.
+async function cmdReach(argv: string[]): Promise<void> {
+  const { flags } = parseArgs(argv);
+  const url = flagStr(flags, "url");
+  if (!url) throw new Error("--url is required");
+  const chromium = await getChromium();
+  if (!chromium) {
+    console.error("[reach] playwright unavailable — run `npx playwright install chromium`");
+    process.exit(1);
+  }
+
+  const bare = await tryNav(chromium, url, {});
+  if (bare.ok) {
+    console.log(JSON.stringify({ url, ok: true, needsUaOverride: false, lane: "reachable" }, null, 2));
+    console.error(`[reach] PASS bare (status=${bare.status})`);
+    return;
+  }
+  const real = await tryNav(chromium, url, { userAgent: REAL_UA, extraHTTPHeaders: HE_HEADERS });
+  if (real.ok) {
+    console.log(
+      JSON.stringify(
+        {
+          url,
+          ok: true,
+          needsUaOverride: true,
+          browserOverrides: { userAgent: REAL_UA, extraHeaders: HE_HEADERS },
+          lane: "reachable",
+        },
+        null,
+        2,
+      ),
+    );
+    console.error("[reach] UA-keyed WAF detected — carry browserOverrides.userAgent into the config (LRN-WAF-1).");
+    return;
+  }
+  console.log(
+    JSON.stringify(
+      {
+        url,
+        ok: false,
+        needsUaOverride: false,
+        reason: "unreachable (network/region/captcha)",
+        bareError: bare.error ?? null,
+        realError: real.error ?? null,
+      },
+      null,
+      2,
+    ),
+  );
+  console.error("[reach] FAIL: neither bare nor real-UA could reach the site (likely IL-IP/captcha/outage).");
+  process.exit(3);
+}
+
+// --- detail-reach: Incapsula detail-page probe (LRN-WAF-2) ------------------
+// Exit 0 = detail reachable bare; 2 = needs UA override; 3 = blocked even with UA.
+async function cmdDetailReach(argv: string[]): Promise<void> {
+  const { flags } = parseArgs(argv);
+  const listing = flagStr(flags, "listing");
+  const detail = flagStr(flags, "detail");
+  if (!listing || !detail) throw new Error("--listing and --detail are required");
+  const chromium = await getChromium();
+  if (!chromium) {
+    console.error("[detail-reach] playwright unavailable");
+    process.exit(1);
+  }
+
+  async function probe(useUA: boolean): Promise<{ blocked: boolean; bytes: number }> {
+    const b = await chromium.launch({
+      headless: true,
+      args: ["--no-sandbox", "--disable-blink-features=AutomationControlled", "--lang=he-IL"],
+    });
+    try {
+      const ctx = await b.newContext({
+        viewport: { width: 1280, height: 800 },
+        ...(useUA ? { userAgent: REAL_UA } : {}),
+        locale: "he-IL",
+        timezoneId: "Asia/Jerusalem",
+        extraHTTPHeaders: HE_HEADERS,
+      });
+      await ctx.addInitScript(() => Object.defineProperty(navigator, "webdriver", { get: () => false }));
+      const p = await ctx.newPage();
+      await p.goto(listing, { waitUntil: "domcontentloaded", timeout: 30000 }); // set cookies
+      await p.waitForLoadState("networkidle", { timeout: 6000 }).catch(() => {});
+      await p.goto(detail, { waitUntil: "domcontentloaded", timeout: 30000 });
+      await p.waitForTimeout(4000);
+      const html = await p.content();
+      return { blocked: INCAPSULA_RE.test(html), bytes: html.length };
+    } catch (e: any) {
+      return { blocked: true, bytes: 0 };
+    } finally {
+      await b.close().catch(() => {});
+    }
+  }
+
+  const parity = await probe(false);
+  const withUa = await probe(true);
+  console.log(
+    JSON.stringify(
+      {
+        listing,
+        detail,
+        workerParityBlocked: parity.blocked,
+        uaOverrideBlocked: withUa.blocked,
+        parityBytes: parity.bytes,
+        uaBytes: withUa.bytes,
+      },
+      null,
+      2,
+    ),
+  );
+  if (!parity.blocked) {
+    console.error("[detail-reach] OK: detail page reachable at worker parity.");
+    return;
+  }
+  if (!withUa.blocked) {
+    console.error("[detail-reach] NEEDS UA OVERRIDE: add browserOverrides.userAgent (LRN-WAF-2).");
+    process.exit(2);
+  }
+  console.error("[detail-reach] BLOCKED even with a real UA — detail pages unreachable today.");
+  process.exit(3);
+}
+
+// --- fingerprint: detect known ATS/SPA framework or WP, emit lane + recipe --
+interface Fingerprint {
+  url: string;
+  host: string;
+  vendor: string;
+  lane: "GREEN" | "YELLOW";
+  recipe: string | null;
+  signals: string[];
+}
+
+function fingerprintByHost(host: string): { vendor: string; recipe: string } | null {
+  const h = host.toLowerCase();
+  if (h.endsWith("myworkdayjobs.com") || h.includes(".myworkdayjobs."))
+    return { vendor: "workday", recipe: "recipes/spa-frameworks.md#workday" };
+  if (h.endsWith("greenhouse.io") || h.includes("boards.greenhouse"))
+    return { vendor: "greenhouse", recipe: "recipes/spa-frameworks.md#greenhouse" };
+  if (h.endsWith("lever.co")) return { vendor: "lever", recipe: "recipes/spa-frameworks.md#lever" };
+  if (h.includes("comeet.com") || h.endsWith("comeet.co"))
+    return { vendor: "comeet", recipe: "recipes/spa-frameworks.md#comeet" };
+  if (h.includes("icims.com")) return { vendor: "icims", recipe: "recipes/spa-frameworks.md#icims" };
+  if (h.includes("smartrecruiters.com"))
+    return { vendor: "smartrecruiters", recipe: "recipes/spa-frameworks.md#smartrecruiters" };
+  if (h.includes("ashbyhq.com")) return { vendor: "ashby", recipe: "recipes/spa-frameworks.md#ashby" };
+  return null;
+}
+
+async function cmdFingerprint(argv: string[]): Promise<void> {
+  const { flags } = parseArgs(argv);
+  const url = flagStr(flags, "url");
+  if (!url) throw new Error("--url is required");
+  let host = "";
+  try {
+    host = new URL(normalizeUrl(url)).hostname;
+  } catch {
+    throw new Error(`Invalid URL: ${url}`);
+  }
+
+  const signals: string[] = [];
+  const byHost = fingerprintByHost(host);
+  if (byHost) {
+    const fp: Fingerprint = {
+      url,
+      host,
+      vendor: byHost.vendor,
+      lane: "GREEN",
+      recipe: byHost.recipe,
+      signals: [`host matches ${byHost.vendor}`],
+    };
+    console.log(JSON.stringify(fp, null, 2));
+    console.error(`[fingerprint] GREEN: ${byHost.vendor} (host) → ${byHost.recipe}`);
+    return;
+  }
+
+  // Unknown host → sniff the DOM for embedded-framework / CMS signals.
+  let vendor = "unknown";
+  let recipe: string | null = null;
+  let lane: "GREEN" | "YELLOW" = "YELLOW";
+  const chromium = await getChromium();
+  if (chromium) {
+    const nav = await tryNav(chromium, url, {
+      locale: "he-IL",
+      extraHTTPHeaders: HE_HEADERS,
+    } as any);
+    const html = nav.html || "";
+    if (/greenhouse\.io\/embed|grnhse_app|boards\.greenhouse/i.test(html)) {
+      vendor = "greenhouse";
+      recipe = "recipes/spa-frameworks.md#greenhouse";
+      lane = "GREEN";
+      signals.push("greenhouse embed in DOM");
+    } else if (/comeet\.co|positionItem|data-qa="position/i.test(html)) {
+      vendor = "comeet";
+      recipe = "recipes/spa-frameworks.md#comeet";
+      lane = "GREEN";
+      signals.push("comeet markup in DOM");
+    } else if (/api\.lever\.co|lever-jobs/i.test(html)) {
+      vendor = "lever";
+      recipe = "recipes/spa-frameworks.md#lever";
+      lane = "GREEN";
+      signals.push("lever markup in DOM");
+    } else if (/elementor-widget|data-elementor-type/i.test(html)) {
+      vendor = "wordpress-elementor";
+      recipe = "recipes/setupscript-patterns.md#elementor";
+      lane = "YELLOW";
+      signals.push("Elementor detected");
+    } else if (/wp-content|wp-json|name="generator" content="WordPress/i.test(html)) {
+      vendor = "wordpress";
+      recipe = null;
+      lane = "YELLOW";
+      signals.push("WordPress detected");
+    } else if (!nav.ok) {
+      signals.push(`page nav not clean (status=${nav.status ?? "?"} challenged=${nav.challenged ?? false})`);
+    } else {
+      signals.push("no known framework signal");
+    }
+  } else {
+    signals.push("playwright unavailable — host-only fingerprint");
+  }
+
+  const fp: Fingerprint = { url, host, vendor, lane, recipe, signals };
+  console.log(JSON.stringify(fp, null, 2));
+  console.error(`[fingerprint] ${lane}: ${vendor}${recipe ? ` → ${recipe}` : ""}`);
+}
+
+// --- triage: Pass A classifier → lane GREEN/YELLOW/GRAY/RED ----------------
+// Composes reach + fingerprint + a quick listing-structure probe.
+async function cmdTriage(argv: string[]): Promise<void> {
+  const { flags } = parseArgs(argv);
+  const url = flagStr(flags, "url");
+  if (!url) throw new Error("--url is required");
+  const chromium = await getChromium();
+  if (!chromium) {
+    console.error("[triage] playwright unavailable");
+    process.exit(1);
+  }
+
+  // 1. Reachability (bare then real-UA).
+  let reachable = false;
+  let needsUaOverride = false;
+  const bare = await tryNav(chromium, url, {});
+  let listingHtml = bare.html;
+  if (bare.ok) {
+    reachable = true;
+  } else {
+    const real = await tryNav(chromium, url, { userAgent: REAL_UA, extraHTTPHeaders: HE_HEADERS });
+    if (real.ok) {
+      reachable = true;
+      needsUaOverride = true;
+      listingHtml = real.html;
+    }
+  }
+
+  let host = "";
+  try {
+    host = new URL(normalizeUrl(url)).hostname;
+  } catch {
+    /* ignore */
+  }
+
+  if (!reachable) {
+    const out = { url, host, lane: "RED", reason: "unreachable (network/region/captcha)" };
+    console.log(JSON.stringify(out, null, 2));
+    console.error("[triage] RED: unreachable");
+    return;
+  }
+
+  // 2. Known framework? (host first; DOM signal second from the fetched HTML)
+  const byHost = fingerprintByHost(host);
+  let vendor = byHost?.vendor ?? "unknown";
+  let recipe = byHost?.recipe ?? null;
+  if (!byHost && listingHtml) {
+    if (/grnhse_app|boards\.greenhouse|greenhouse\.io\/embed/i.test(listingHtml)) {
+      vendor = "greenhouse";
+      recipe = "recipes/spa-frameworks.md#greenhouse";
+    } else if (/positionItem|data-qa="position/i.test(listingHtml)) {
+      vendor = "comeet";
+      recipe = "recipes/spa-frameworks.md#comeet";
+    }
+  }
+
+  // 3. Quick listing-structure probe: largest cluster of similarly-classed
+  //    siblings (same heuristic as Step 3b) — a proxy for "is this a listing?"
+  let topCluster = 0;
+  try {
+    const b = await chromium.launch({ headless: true });
+    try {
+      const ctx = await b.newContext({
+        locale: "he-IL",
+        extraHTTPHeaders: HE_HEADERS,
+        ...(needsUaOverride ? { userAgent: REAL_UA } : {}),
+      });
+      const p = await ctx.newPage();
+      await p.goto(url, { waitUntil: "domcontentloaded", timeout: 20000 });
+      await p.waitForLoadState("networkidle", { timeout: 8000 }).catch(() => {});
+      topCluster = await p.evaluate(() => {
+        const stats: Record<string, number> = {};
+        for (const el of Array.from(document.querySelectorAll("*"))) {
+          if (!el.parentElement || !el.classList.length) continue;
+          const sig =
+            el.parentElement.tagName + ">" + el.tagName + "." + Array.from(el.classList).sort().join(".");
+          stats[sig] = (stats[sig] ?? 0) + 1;
+        }
+        const counts = Object.values(stats).filter((c) => c >= 2 && c <= 500);
+        return counts.length ? Math.max(...counts) : 0;
+      });
+    } finally {
+      await b.close().catch(() => {});
+    }
+  } catch {
+    /* leave topCluster=0 */
+  }
+
+  // 4. Decide the lane.
+  let lane: "GREEN" | "YELLOW" | "GRAY";
+  let reason: string;
+  if (vendor !== "unknown") {
+    lane = "GREEN";
+    reason = `known framework: ${vendor}`;
+  } else if (topCluster >= 3) {
+    lane = "YELLOW";
+    reason = `novel site with a repeating listing structure (top cluster ~${topCluster})`;
+  } else {
+    lane = "GRAY";
+    reason = `no obvious repeating listing structure (top cluster ${topCluster}) — needs human eyes`;
+  }
+
+  const out = {
+    url,
+    host,
+    lane,
+    reason,
+    reachable,
+    needsUaOverride,
+    vendor,
+    recipe,
+    topCluster,
+    ...(needsUaOverride ? { browserOverrides: { userAgent: REAL_UA, extraHeaders: HE_HEADERS } } : {}),
+  };
+  console.log(JSON.stringify(out, null, 2));
+  console.error(
+    `[triage] ${lane}: ${reason}${needsUaOverride ? " (UA override required)" : ""}` +
+      `${recipe ? ` → ${recipe}` : ""}`,
+  );
+}
+
+// ---------------------------------------------------------------------------
 // Entry point
 // ---------------------------------------------------------------------------
 
@@ -976,12 +1397,16 @@ const commands: Record<string, (argv: string[]) => Promise<void>> = {
   log: cmdLog,
   summary: cmdSummary,
   "verify-config": cmdVerifyConfig,
+  reach: cmdReach,
+  "detail-reach": cmdDetailReach,
+  fingerprint: cmdFingerprint,
+  triage: cmdTriage,
 };
 
 const cmd = commands[subcommand];
 if (!cmd) {
   console.error(
-    `Usage: npx tsx scripts/addsite-batch.ts <parse|skip|log|summary|verify-config> [options]\n` +
+    `Usage: npx tsx scripts/addsite-batch.ts <command> [options]\n` +
     `\n` +
     `  parse         --file <path> | --csv <path> --column <col> | <URL...>\n` +
     `                [--force] [--max-urls N] [--limit N] [--start N] [--resume <jsonl>]\n` +
@@ -995,7 +1420,12 @@ if (!cmd) {
     `\n` +
     `  verify-config --site-id <id> [--expect-item <sel>] [--expect-fields a,b,c]\n` +
     `                [--expect-form-fields N] [--expect-file <config.json>]\n` +
-    `                (exit 2 = analyzer clobbered the config)\n`,
+    `                (exit 2 = analyzer clobbered the config)\n` +
+    `\n` +
+    `  reach         --url <URL>   (exit 3 = unreachable; JSON says if UA override needed)\n` +
+    `  detail-reach  --listing <URL> --detail <URL>  (exit 2 = needs UA override; 3 = blocked)\n` +
+    `  fingerprint   --url <URL>   (detect ATS/SPA/WP framework → lane + recipe + JSON)\n` +
+    `  triage        --url <URL>   (Pass A classifier → lane GREEN/YELLOW/GRAY/RED + JSON)\n`,
   );
   process.exit(1);
 }

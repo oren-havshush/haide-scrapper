@@ -314,10 +314,10 @@ subcommands (reusing the existing CLI shape):
 
 | New subcommand | Replaces prose in | Behavior | Exit contract |
 |---|---|---|---|
-| `reach --url` | Step 3 gate script | bare-vs-realUA listing probe | 0 PASS / prints UA block / 3 unreachable |
-| `detail-reach --listing --detail` | Step 3 Incapsula detail probe | worker-parity vs +UA on a detail URL | 0 ok / 2 needs-UA / 3 blocked |
-| `fingerprint --url` | Step 4 SPA detection | detect Workday/Greenhouse/Lever/Comeet/known WP themes by host/DOM; **emit a ready-to-PUT config skeleton** (not just a label) + the lane (🟢/🟡) | 0 + JSON |
-| `triage --url` (or batch) | new (Pass A) | run `reach` + `fingerprint` + quick count/apply-path sniff → emit **lane** 🟢/🟡/⬜/🔴 | 0 + JSON lane |
+| `reach --url` | Step 3 gate script | bare-vs-realUA listing probe | 0 PASS / prints UA block / 3 unreachable — **✅ DONE (2026-06-14)** |
+| `detail-reach --listing --detail` | Step 3 Incapsula detail probe | worker-parity vs +UA on a detail URL | 0 ok / 2 needs-UA / 3 blocked — **✅ DONE (2026-06-14)** |
+| `fingerprint --url` | Step 4 SPA detection | detect Workday/Greenhouse/Lever/Comeet/iCIMS/SmartRecruiters/Ashby/WP by host+DOM; emit lane (🟢/🟡) + recipe pointer | 0 + JSON — **✅ DONE (2026-06-14)** (config-skeleton emission still TODO) |
+| `triage --url` (or batch) | new (Pass A) | run `reach` + `fingerprint` + listing-structure probe → emit **lane** 🟢/🟡/⬜/🔴 | 0 + JSON lane — **✅ DONE (2026-06-14)** |
 | `verify-config --site-id --expect-*` | Step 7 verify gate | GET persisted config, assert itemSelector + field keys + formCapture survived | 0 ok / 2 clobbered — **✅ DONE (2026-06-14)** |
 | `cost --batch-dir` | B4 | tally browser sessions, scrapes, **+ agent turns/scripts run** | 0 + JSON |
 
@@ -445,3 +445,11 @@ get the 🟢-slice and below-bar numbers that justify Phase 1/2 sizing.
   compiles clean, no lint errors. `addsite`'s existing subcommands untouched.
   Remaining Phase 1: `reach` / `detail-reach` / `fingerprint` (+skeleton) /
   `triage` (all Playwright-backed) and the QA verdict-taxonomy alignment.
+- **2026-06-14** — Phase 1 cont.: added the **Playwright-backed triage gates**
+  to `scripts/addsite-batch.ts`: `reach` (Step 3 reachability, exit 3),
+  `detail-reach` (Incapsula detail probe, exit 2/3), `fingerprint` (host+DOM ATS
+  detection → lane + recipe), `triage` (Pass A classifier → GREEN/YELLOW/GRAY/RED).
+  Lazy `import("playwright")` so pure-fetch commands stay dependency-free. Lint
+  clean; smoke-tested `fingerprint` (Workday host → GREEN) and `reach`
+  (example.com → PASS 200) end-to-end. Still TODO: `fingerprint` config-skeleton
+  emission + `addsite-qa.ts` verdict-taxonomy alignment (ACTIVE/REQUEUE/REVIEW/SKIP).
