@@ -34,11 +34,20 @@
  *
  *   fingerprint  Detect a known ATS/SPA framework (Workday/Greenhouse/Lever/
  *             Comeet/iCIMS/SmartRecruiters/Ashby) or WordPress/Elementor by host+DOM;
- *             emit lane + recipe pointer. Usage: fingerprint --url <URL>
+ *             emit lane + recipe pointer + config skeleton (ready-to-PUT starting
+ *             point). Consults scripts/site-patterns.json first.
+ *             Usage: fingerprint --url <URL>
  *
  *   triage    Pass A classifier (docs/addsite2-migration.md §4a): reach +
  *             fingerprint + listing-structure probe → lane GREEN/YELLOW/GRAY/RED.
+ *             Includes skeleton in output when GREEN.
  *             Usage: triage --url <URL>
+ *
+ *   patterns-update  Save/update a working config as a named vendor pattern in
+ *             scripts/site-patterns.json (cross-run memory, §4a.4). Called after
+ *             a successful onboard to benefit the next site of the same type.
+ *             Usage: patterns-update --vendor <name> --skeleton-file <config.json>
+ *                        [--notes "<free text>"]
  *
  * Invocation examples (from the /addsite skill):
  *   npx tsx scripts/addsite-batch.ts parse https://a.com/jobs https://b.com/careers
@@ -1161,6 +1170,180 @@ async function cmdDetailReach(argv: string[]): Promise<void> {
   process.exit(3);
 }
 
+// ---------------------------------------------------------------------------
+// Config skeletons + site-patterns.json cross-run memory (§4a.4)
+// ---------------------------------------------------------------------------
+//
+// A "skeleton" is a ready-to-PUT starting config for a known vendor — NOT a
+// finished config. The agent verifies selectors via a dry-run before using it.
+// Skeletons save cold-start time; they don't replace discovery on novel sites.
+
+interface FieldMappingSkeletonEntry {
+  selector: string;
+  attr?: string;
+}
+
+interface ConfigSkeleton {
+  itemSelector: string;
+  fieldMappings: Record<string, FieldMappingSkeletonEntry>;
+  browserOverrides?: Record<string, string>;
+  notes?: string; // human hint for the agent, e.g. "dept is a parent heading, use setupScript"
+}
+
+// Built-in skeletons sourced from hard-won incidents in docs/addsite-learnings.md.
+// These are STARTING POINTS — the agent dry-runs to confirm before PUT.
+const BUILT_IN_SKELETONS: Record<string, ConfigSkeleton> = {
+  workday: {
+    itemSelector: "li[data-automation-id='jobItem']",
+    fieldMappings: {
+      title: { selector: "a[data-automation-id='jobItem']" },
+      location: { selector: "dd[data-automation-id='subtitle']" },
+      detailUrl: { selector: "a[data-automation-id='jobItem']", attr: "href" },
+    },
+    browserOverrides: { userAgent: REAL_UA },
+    notes:
+      "Workday uses a React SPA; UA override usually required. Department lives in a separate filter facet — map via setupScript if needed. detailUrl is absolute.",
+  },
+  greenhouse: {
+    itemSelector: ".opening, tr.job-post",
+    fieldMappings: {
+      title: { selector: "a" },
+      department: { selector: ".department h2" },
+      location: { selector: ".location" },
+      detailUrl: { selector: "a", attr: "href" },
+    },
+    notes:
+      "Department is often a parent <h2> above a list of openings — may need setupScript to inject it. For embedded boards use #grnhse_app .opening.",
+  },
+  lever: {
+    itemSelector: ".posting",
+    fieldMappings: {
+      title: { selector: ".posting-title h5, .posting-name" },
+      department: { selector: ".posting-categories .sort-by-team" },
+      location: { selector: ".posting-categories .sort-by-location" },
+      detailUrl: { selector: "a.posting-title, h5 > a", attr: "href" },
+    },
+    notes: "Lever boards are static HTML; reliable selectors. detailUrl is relative — worker resolves against siteUrl.",
+  },
+  comeet: {
+    itemSelector: "[data-qa='position'], .positionItem",
+    fieldMappings: {
+      title: { selector: "[data-qa='position-name'], .position-name" },
+      location: { selector: ".position-location, [data-qa='position-location']" },
+      department: { selector: ".position-department, [data-qa='position-department']" },
+      detailUrl: { selector: "a", attr: "href" },
+    },
+    notes: "Comeet boards load via XHR; may need networkidle wait. formCapture: use static template (LRN-SPA-3).",
+  },
+  icims: {
+    itemSelector: ".iCIMS_JobsTable .iCIMS_Expandable_Container, .job-row",
+    fieldMappings: {
+      title: { selector: ".iCIMS_JobTitle a, .title a" },
+      location: { selector: ".iCIMS_InfoMsg_Job" },
+      detailUrl: { selector: ".iCIMS_JobTitle a", attr: "href" },
+    },
+    notes:
+      "iCIMS boards vary significantly by customer theme. Verify selector on a dry-run before committing. Some instances need ?mobile=false appended to URL.",
+  },
+  smartrecruiters: {
+    itemSelector: ".job-item, li[data-job-id]",
+    fieldMappings: {
+      title: { selector: ".job-title, h4.title" },
+      location: { selector: ".job-location, .location" },
+      department: { selector: ".job-category, .department" },
+      detailUrl: { selector: "a.job-item-link, a", attr: "href" },
+    },
+    notes: "SmartRecruiters careers pages are often embedded; check if iframe wrapping is present.",
+  },
+  ashby: {
+    itemSelector: "[data-testid='jobPosting'], .ashby-job-posting-brief",
+    fieldMappings: {
+      title: { selector: ".ashby-job-posting-brief-title, h3" },
+      department: { selector: ".ashby-job-posting-brief-department" },
+      location: { selector: ".ashby-job-posting-brief-location" },
+      detailUrl: { selector: "a", attr: "href" },
+    },
+    notes: "Ashby boards are React SPAs. Use networkidle wait. Detail page usually carries a full apply form.",
+  },
+};
+
+// ---------------------------------------------------------------------------
+// site-patterns.json — persisted cross-run pattern cache
+// ---------------------------------------------------------------------------
+
+const PATTERNS_PATH = path.join(process.cwd(), "scripts", "site-patterns.json");
+
+interface SitePattern {
+  vendor: string;
+  lastUpdated: string; // ISO date
+  skeleton: ConfigSkeleton;
+  successCount: number; // how many sites confirmed this pattern
+  notes?: string;
+}
+
+interface SitePatternsFile {
+  version: 1;
+  patterns: Record<string, SitePattern>; // keyed by vendor name
+}
+
+function readPatterns(): SitePatternsFile {
+  try {
+    if (fs.existsSync(PATTERNS_PATH)) {
+      return JSON.parse(fs.readFileSync(PATTERNS_PATH, "utf8")) as SitePatternsFile;
+    }
+  } catch {
+    /* corrupted file — start fresh */
+  }
+  return { version: 1, patterns: {} };
+}
+
+function writePatterns(data: SitePatternsFile): void {
+  fs.mkdirSync(path.dirname(PATTERNS_PATH), { recursive: true });
+  fs.writeFileSync(PATTERNS_PATH, JSON.stringify(data, null, 2) + "\n", "utf8");
+}
+
+/** Resolve skeleton for a vendor: cached pattern wins over built-in if newer. */
+function resolveSkeletonForVendor(vendor: string, cache: SitePatternsFile): ConfigSkeleton | null {
+  const cached = cache.patterns[vendor];
+  if (cached) return cached.skeleton;
+  return BUILT_IN_SKELETONS[vendor] ?? null;
+}
+
+// --- patterns-update: save a confirmed working config as a vendor pattern ----
+async function cmdPatternsUpdate(argv: string[]): Promise<void> {
+  const { flags } = parseArgs(argv);
+  const vendor = flagStr(flags, "vendor");
+  const skeletonFile = flagStr(flags, "skeleton-file");
+  const notes = flagStr(flags, "notes");
+  if (!vendor) throw new Error("--vendor is required");
+  if (!skeletonFile) throw new Error("--skeleton-file is required");
+
+  const raw = JSON.parse(fs.readFileSync(path.resolve(skeletonFile), "utf8"));
+  // Accept either a full site config (with fieldMappings) or a bare skeleton.
+  const skeleton: ConfigSkeleton = {
+    itemSelector: raw.itemSelector ?? raw._meta?.itemSelector ?? "",
+    fieldMappings: raw.fieldMappings ?? {},
+    ...(raw.browserOverrides ? { browserOverrides: raw.browserOverrides } : {}),
+    ...(notes ? { notes } : raw.notes ? { notes: raw.notes } : {}),
+  };
+  if (!skeleton.itemSelector) throw new Error("skeleton-file has no itemSelector");
+
+  const data = readPatterns();
+  const existing = data.patterns[vendor];
+  data.patterns[vendor] = {
+    vendor,
+    lastUpdated: new Date().toISOString().slice(0, 10),
+    skeleton,
+    successCount: (existing?.successCount ?? 0) + 1,
+    ...(skeleton.notes ? { notes: skeleton.notes } : {}),
+  };
+  writePatterns(data);
+  console.log(JSON.stringify({ updated: vendor, successCount: data.patterns[vendor].successCount }, null, 2));
+  console.error(
+    `[patterns-update] saved ${vendor} → ${PATTERNS_PATH} (successCount=${data.patterns[vendor].successCount})`,
+  );
+}
+
 // --- fingerprint: detect known ATS/SPA framework or WP, emit lane + recipe --
 interface Fingerprint {
   url: string;
@@ -1168,6 +1351,7 @@ interface Fingerprint {
   vendor: string;
   lane: "GREEN" | "YELLOW";
   recipe: string | null;
+  skeleton: ConfigSkeleton | null;
   signals: string[];
 }
 
@@ -1198,19 +1382,27 @@ async function cmdFingerprint(argv: string[]): Promise<void> {
     throw new Error(`Invalid URL: ${url}`);
   }
 
+  const cache = readPatterns();
   const signals: string[] = [];
   const byHost = fingerprintByHost(host);
   if (byHost) {
+    const skeleton = resolveSkeletonForVendor(byHost.vendor, cache);
+    const cacheHit = !!cache.patterns[byHost.vendor];
+    if (cacheHit) signals.push(`pattern cache hit (successCount=${cache.patterns[byHost.vendor].successCount})`);
+    signals.push(`host matches ${byHost.vendor}`);
     const fp: Fingerprint = {
       url,
       host,
       vendor: byHost.vendor,
       lane: "GREEN",
       recipe: byHost.recipe,
-      signals: [`host matches ${byHost.vendor}`],
+      skeleton,
+      signals,
     };
     console.log(JSON.stringify(fp, null, 2));
-    console.error(`[fingerprint] GREEN: ${byHost.vendor} (host) → ${byHost.recipe}`);
+    console.error(
+      `[fingerprint] GREEN: ${byHost.vendor} (host)${cacheHit ? " [cache hit]" : " [built-in skeleton]"} → ${byHost.recipe}`,
+    );
     return;
   }
 
@@ -1259,9 +1451,14 @@ async function cmdFingerprint(argv: string[]): Promise<void> {
     signals.push("playwright unavailable — host-only fingerprint");
   }
 
-  const fp: Fingerprint = { url, host, vendor, lane, recipe, signals };
+  const skeleton = resolveSkeletonForVendor(vendor, cache);
+  if (skeleton && cache.patterns[vendor]) {
+    signals.push(`pattern cache hit (successCount=${cache.patterns[vendor].successCount})`);
+  }
+
+  const fp: Fingerprint = { url, host, vendor, lane, recipe, skeleton, signals };
   console.log(JSON.stringify(fp, null, 2));
-  console.error(`[fingerprint] ${lane}: ${vendor}${recipe ? ` → ${recipe}` : ""}`);
+  console.error(`[fingerprint] ${lane}: ${vendor}${recipe ? ` → ${recipe}` : ""}${skeleton ? " [skeleton available]" : ""}`);
 }
 
 // --- triage: Pass A classifier → lane GREEN/YELLOW/GRAY/RED ----------------
@@ -1307,6 +1504,7 @@ async function cmdTriage(argv: string[]): Promise<void> {
   }
 
   // 2. Known framework? (host first; DOM signal second from the fetched HTML)
+  const cache = readPatterns();
   const byHost = fingerprintByHost(host);
   let vendor = byHost?.vendor ?? "unknown";
   let recipe = byHost?.recipe ?? null;
@@ -1319,6 +1517,7 @@ async function cmdTriage(argv: string[]): Promise<void> {
       recipe = "recipes/spa-frameworks.md#comeet";
     }
   }
+  const skeleton = resolveSkeletonForVendor(vendor, cache);
 
   // 3. Quick listing-structure probe: largest cluster of similarly-classed
   //    siblings (same heuristic as Step 3b) — a proxy for "is this a listing?"
@@ -1375,6 +1574,7 @@ async function cmdTriage(argv: string[]): Promise<void> {
     needsUaOverride,
     vendor,
     recipe,
+    skeleton: skeleton ?? null,
     topCluster,
     ...(needsUaOverride ? { browserOverrides: { userAgent: REAL_UA, extraHeaders: HE_HEADERS } } : {}),
   };
@@ -1401,6 +1601,7 @@ const commands: Record<string, (argv: string[]) => Promise<void>> = {
   "detail-reach": cmdDetailReach,
   fingerprint: cmdFingerprint,
   triage: cmdTriage,
+  "patterns-update": cmdPatternsUpdate,
 };
 
 const cmd = commands[subcommand];
@@ -1424,8 +1625,10 @@ if (!cmd) {
     `\n` +
     `  reach         --url <URL>   (exit 3 = unreachable; JSON says if UA override needed)\n` +
     `  detail-reach  --listing <URL> --detail <URL>  (exit 2 = needs UA override; 3 = blocked)\n` +
-    `  fingerprint   --url <URL>   (detect ATS/SPA/WP framework → lane + recipe + JSON)\n` +
-    `  triage        --url <URL>   (Pass A classifier → lane GREEN/YELLOW/GRAY/RED + JSON)\n`,
+    `  fingerprint   --url <URL>   (detect ATS/SPA/WP framework → lane + recipe + skeleton)\n` +
+    `  triage        --url <URL>   (Pass A classifier → lane GREEN/YELLOW/GRAY/RED + skeleton)\n` +
+    `  patterns-update --vendor <name> --skeleton-file <config.json> [--notes "<text>"]\n` +
+    `                (save a confirmed working config to scripts/site-patterns.json)\n`,
   );
   process.exit(1);
 }

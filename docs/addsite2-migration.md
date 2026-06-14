@@ -316,7 +316,7 @@ subcommands (reusing the existing CLI shape):
 |---|---|---|---|
 | `reach --url` | Step 3 gate script | bare-vs-realUA listing probe | 0 PASS / prints UA block / 3 unreachable — **✅ DONE (2026-06-14)** |
 | `detail-reach --listing --detail` | Step 3 Incapsula detail probe | worker-parity vs +UA on a detail URL | 0 ok / 2 needs-UA / 3 blocked — **✅ DONE (2026-06-14)** |
-| `fingerprint --url` | Step 4 SPA detection | detect Workday/Greenhouse/Lever/Comeet/iCIMS/SmartRecruiters/Ashby/WP by host+DOM; emit lane (🟢/🟡) + recipe pointer | 0 + JSON — **✅ DONE (2026-06-14)** (config-skeleton emission still TODO) |
+| `fingerprint --url` | Step 4 SPA detection | detect Workday/Greenhouse/Lever/Comeet/iCIMS/SmartRecruiters/Ashby/WP by host+DOM; emit lane (🟢/🟡) + recipe pointer + **config skeleton** | 0 + JSON — **✅ DONE (2026-06-14)** |
 | `triage --url` (or batch) | new (Pass A) | run `reach` + `fingerprint` + listing-structure probe → emit **lane** 🟢/🟡/⬜/🔴 | 0 + JSON lane — **✅ DONE (2026-06-14)** |
 | `verify-config --site-id --expect-*` | Step 7 verify gate | GET persisted config, assert itemSelector + field keys + formCapture survived | 0 ok / 2 clobbered — **✅ DONE (2026-06-14)** |
 | `cost --batch-dir` | B4 | tally browser sessions, scrapes, **+ agent turns/scripts run** | 0 + JSON |
@@ -335,7 +335,10 @@ subcommands (reusing the existing CLI shape):
 Cross-run memory:
 - **`site-patterns.json`** (§4a.4) — `signature → working config pattern + overrides`.
   `fingerprint` writes successful patterns here and reads them first, so repeat
-  themes/ATSes onboard near-instantly.
+  themes/ATSes onboard near-instantly. **✅ DONE (2026-06-14).** `scripts/site-patterns.json`
+  seeded with all 7 known vendors (Workday/Greenhouse/Lever/Comeet/iCIMS/SmartRecruiters/Ashby).
+  `fingerprint` reads cache first and emits skeleton in JSON. `patterns-update` subcommand
+  saves a confirmed working config back to the cache (call after a successful onboard).
 
 > Reusing the scripts keeps behavioral parity; the new subcommands are additive,
 > so `addsite` keeps working unchanged during the transition.
@@ -500,6 +503,15 @@ get the 🟢-slice and below-bar numbers that justify Phase 1/2 sizing.
   clean; smoke-tested `fingerprint` (Workday host → GREEN) and `reach`
   (example.com → PASS 200) end-to-end. Still TODO: `fingerprint` config-skeleton
   emission + `addsite-qa.ts` verdict-taxonomy alignment (ACTIVE/REQUEUE/REVIEW/SKIP).
+- **2026-06-14** — **Phase 1 COMPLETE.** `fingerprint` config-skeleton emission +
+  `site-patterns.json` cross-run cache (§4a.4). `fingerprint` now reads
+  `scripts/site-patterns.json` first and emits a ready-to-PUT `skeleton` in its
+  JSON output (7 vendors seeded: Workday/Greenhouse/Lever/Comeet/iCIMS/
+  SmartRecruiters/Ashby, all with `itemSelector`+`fieldMappings`+notes from
+  learnings). `triage` threads the skeleton through to GREEN results.
+  New `patterns-update` subcommand saves a confirmed working config back to the
+  cache after a successful onboard (cross-run memory for the next site of the same
+  type). Lint clean. Phase 1 fully done — all script enforcement gates built.
 - **2026-06-14** — Ran the **legacy fleet re-audit** (§7a). Built
   `scripts/addsite-fleet-audit.ts` (read-only, single-process) and audited all
   79 ACTIVE sites: **95% meet the Tier-A bar**; only **4 sites genuinely below

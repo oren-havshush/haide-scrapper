@@ -1,0 +1,170 @@
+{
+  "version": 1,
+  "patterns": {
+    "workday": {
+      "vendor": "workday",
+      "lastUpdated": "2026-06-14",
+      "successCount": 0,
+      "notes": "Workday uses a React SPA; UA override usually required. Department lives in a separate filter facet — map via setupScript if needed. detailUrl is absolute.",
+      "skeleton": {
+        "itemSelector": "li[data-automation-id='jobItem']",
+        "fieldMappings": {
+          "title": {
+            "selector": "a[data-automation-id='jobItem']"
+          },
+          "location": {
+            "selector": "dd[data-automation-id='subtitle']"
+          },
+          "detailUrl": {
+            "selector": "a[data-automation-id='jobItem']",
+            "attr": "href"
+          }
+        },
+        "browserOverrides": {
+          "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36"
+        }
+      }
+    },
+    "greenhouse": {
+      "vendor": "greenhouse",
+      "lastUpdated": "2026-06-14",
+      "successCount": 0,
+      "notes": "Department is often a parent <h2> above a list of openings — may need setupScript to inject it. For embedded boards use #grnhse_app .opening.",
+      "skeleton": {
+        "itemSelector": ".opening, tr.job-post",
+        "fieldMappings": {
+          "title": {
+            "selector": "a"
+          },
+          "department": {
+            "selector": ".department h2"
+          },
+          "location": {
+            "selector": ".location"
+          },
+          "detailUrl": {
+            "selector": "a",
+            "attr": "href"
+          }
+        }
+      }
+    },
+    "lever": {
+      "vendor": "lever",
+      "lastUpdated": "2026-06-14",
+      "successCount": 0,
+      "notes": "Lever boards are static HTML; reliable selectors. detailUrl is relative — worker resolves against siteUrl.",
+      "skeleton": {
+        "itemSelector": ".posting",
+        "fieldMappings": {
+          "title": {
+            "selector": ".posting-title h5, .posting-name"
+          },
+          "department": {
+            "selector": ".posting-categories .sort-by-team"
+          },
+          "location": {
+            "selector": ".posting-categories .sort-by-location"
+          },
+          "detailUrl": {
+            "selector": "a.posting-title, h5 > a",
+            "attr": "href"
+          }
+        }
+      }
+    },
+    "comeet": {
+      "vendor": "comeet",
+      "lastUpdated": "2026-06-14",
+      "successCount": 0,
+      "notes": "Comeet boards load via XHR; may need networkidle wait. formCapture: use static template (LRN-SPA-3).",
+      "skeleton": {
+        "itemSelector": "[data-qa='position'], .positionItem",
+        "fieldMappings": {
+          "title": {
+            "selector": "[data-qa='position-name'], .position-name"
+          },
+          "location": {
+            "selector": ".position-location, [data-qa='position-location']"
+          },
+          "department": {
+            "selector": ".position-department, [data-qa='position-department']"
+          },
+          "detailUrl": {
+            "selector": "a",
+            "attr": "href"
+          }
+        }
+      }
+    },
+    "icims": {
+      "vendor": "icims",
+      "lastUpdated": "2026-06-14",
+      "successCount": 0,
+      "notes": "iCIMS boards vary significantly by customer theme. Verify selector on a dry-run before committing. Some instances need ?mobile=false appended to URL.",
+      "skeleton": {
+        "itemSelector": ".iCIMS_JobsTable .iCIMS_Expandable_Container, .job-row",
+        "fieldMappings": {
+          "title": {
+            "selector": ".iCIMS_JobTitle a, .title a"
+          },
+          "location": {
+            "selector": ".iCIMS_InfoMsg_Job"
+          },
+          "detailUrl": {
+            "selector": ".iCIMS_JobTitle a",
+            "attr": "href"
+          }
+        }
+      }
+    },
+    "smartrecruiters": {
+      "vendor": "smartrecruiters",
+      "lastUpdated": "2026-06-14",
+      "successCount": 0,
+      "notes": "SmartRecruiters careers pages are often embedded; check if iframe wrapping is present.",
+      "skeleton": {
+        "itemSelector": ".job-item, li[data-job-id]",
+        "fieldMappings": {
+          "title": {
+            "selector": ".job-title, h4.title"
+          },
+          "location": {
+            "selector": ".job-location, .location"
+          },
+          "department": {
+            "selector": ".job-category, .department"
+          },
+          "detailUrl": {
+            "selector": "a.job-item-link, a",
+            "attr": "href"
+          }
+        }
+      }
+    },
+    "ashby": {
+      "vendor": "ashby",
+      "lastUpdated": "2026-06-14",
+      "successCount": 0,
+      "notes": "Ashby boards are React SPAs. Use networkidle wait. Detail page usually carries a full apply form.",
+      "skeleton": {
+        "itemSelector": "[data-testid='jobPosting'], .ashby-job-posting-brief",
+        "fieldMappings": {
+          "title": {
+            "selector": ".ashby-job-posting-brief-title, h3"
+          },
+          "department": {
+            "selector": ".ashby-job-posting-brief-department"
+          },
+          "location": {
+            "selector": ".ashby-job-posting-brief-location"
+          },
+          "detailUrl": {
+            "selector": "a",
+            "attr": "href"
+          }
+        }
+      }
+    }
+  }
+}
