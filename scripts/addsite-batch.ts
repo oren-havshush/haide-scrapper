@@ -18,6 +18,14 @@
  *   summary   Read batch-results.jsonl, print summary table, write summary.md.
  *             Usage: summary --batch-dir <dir>
  *
+ *   verify-config  Re-read the PERSISTED site config and assert the itemSelector,
+ *             field selectors, and formCapture field count survived the
+ *             auto-analyzer race (Step 7 gate; see docs/addsite-learnings.md
+ *             LRN-RACE-2). Exits 2 when clobbered so callers drive the re-PUT loop.
+ *             Usage: verify-config --site-id <id> [--expect-item <sel>]
+ *                        [--expect-fields a,b,c] [--expect-form-fields N]
+ *                        [--expect-file <config.json>]
+ *
  * Invocation examples (from the /addsite skill):
  *   npx tsx scripts/addsite-batch.ts parse https://a.com/jobs https://b.com/careers
  *   npx tsx scripts/addsite-batch.ts parse --file urls.txt [--force] [--max-urls 50]
@@ -839,6 +847,124 @@ async function cmdSummary(argv: string[]): Promise<void> {
 }
 
 // ---------------------------------------------------------------------------
+// Command: verify-config  (Step 7 analyzer-clobber gate, as code)
+// ---------------------------------------------------------------------------
+//
+// Re-reads the PERSISTED config (not a PATCH response) and asserts that the
+// itemSelector + the field selectors you PUT + the formCapture field count all
+// survived the auto-analyzer race (see docs/addsite-learnings.md LRN-RACE-2,
+// yazamco.co.il). Prints a JSON verdict and exits 2 when the config was
+// clobbered so callers can drive the re-PUT loop without parsing prose.
+//
+//   npx tsx scripts/addsite-batch.ts verify-config --site-id <id> \
+//     --expect-item "div.job" --expect-fields "title,externalJobId,description" \
+//     [--expect-form-fields 7]
+//
+//   # or derive all expectations from the config JSON you PUT in Step 6:
+//   npx tsx scripts/addsite-batch.ts verify-config --site-id <id> \
+//     --expect-file .scratch/scrap-config.json
+//
+// Exit codes: 0 = config OK · 2 = clobbered/mismatch · 1 = usage/API error.
+
+interface StoredFieldMapping {
+  selector?: string;
+  [k: string]: unknown;
+}
+interface StoredMeta {
+  itemSelector?: string;
+  formCapture?: { fields?: unknown[] } | null;
+  [k: string]: unknown;
+}
+type StoredFieldMappings = Record<string, StoredFieldMapping | StoredMeta> & {
+  _meta?: StoredMeta;
+};
+
+async function getStoredFieldMappings(
+  siteId: string,
+  headers: Record<string, string>,
+): Promise<StoredFieldMappings | undefined> {
+  const r = (await apiGet(
+    `/api/sites?id=${encodeURIComponent(siteId)}`,
+    headers,
+  )) as { data?: Array<{ id: string; fieldMappings?: StoredFieldMappings }> };
+  const site = r?.data?.find((s) => s.id === siteId) ?? r?.data?.[0];
+  return site?.fieldMappings;
+}
+
+async function cmdVerifyConfig(argv: string[]): Promise<void> {
+  const { flags } = parseArgs(argv);
+  const siteId = flagStr(flags, "site-id");
+  if (!siteId) throw new Error("--site-id is required");
+
+  // Expectations: either explicit flags, or derived from the PUT config file.
+  let expectItem = flagStr(flags, "expect-item");
+  let expectFields = (flagStr(flags, "expect-fields") ?? "")
+    .split(",")
+    .map((s) => s.trim())
+    .filter(Boolean);
+  let expectFormFields = flagInt(flags, "expect-form-fields", 0);
+
+  const expectFile = flagStr(flags, "expect-file");
+  if (expectFile) {
+    const cfg = JSON.parse(fs.readFileSync(expectFile, "utf8")) as {
+      itemSelector?: string;
+      fieldMappings?: Record<string, unknown>;
+      formCapture?: { fields?: unknown[] } | null;
+    };
+    if (!expectItem) expectItem = cfg.itemSelector;
+    if (!expectFields.length && cfg.fieldMappings) {
+      expectFields = Object.keys(cfg.fieldMappings);
+    }
+    if (!flagStr(flags, "expect-form-fields")) {
+      expectFormFields = cfg.formCapture?.fields?.length ?? 0;
+    }
+  }
+
+  const headers = authHeaders(readToken());
+  const fm = await getStoredFieldMappings(siteId, headers);
+  if (!fm) throw new Error(`No fieldMappings found for site ${siteId}`);
+
+  const meta = (fm._meta ?? {}) as StoredMeta;
+  const storedItem = meta.itemSelector;
+  const storedFormFields = meta.formCapture?.fields?.length ?? 0;
+
+  const itemOk = !expectItem || storedItem === expectItem;
+  const missingFields = expectFields.filter((k) => {
+    const f = fm[k] as StoredFieldMapping | undefined;
+    return !f || !f.selector;
+  });
+  const fieldsOk = missingFields.length === 0;
+  const formOk = expectFormFields === 0 || storedFormFields >= expectFormFields;
+
+  const ok = itemOk && fieldsOk && formOk;
+  const verdict = {
+    siteId,
+    ok,
+    itemOk,
+    fieldsOk,
+    formOk,
+    expectedItem: expectItem ?? null,
+    storedItem: storedItem ?? null,
+    missingFields,
+    expectedFormFields: expectFormFields,
+    storedFormFields,
+  };
+  console.log(JSON.stringify(verdict, null, 2));
+
+  if (!ok) {
+    console.error(
+      `[verify-config] CLOBBERED: itemOk=${itemOk} fieldsOk=${fieldsOk} formOk=${formOk}` +
+        (missingFields.length ? ` missing=[${missingFields.join(",")}]` : "") +
+        ` (stored itemSelector="${storedItem ?? ""}")`,
+    );
+    process.exit(2);
+  }
+  console.error(
+    `[verify-config] OK: itemSelector="${storedItem ?? ""}" fields=[${expectFields.join(",")}] formFields=${storedFormFields}`,
+  );
+}
+
+// ---------------------------------------------------------------------------
 // Entry point
 // ---------------------------------------------------------------------------
 
@@ -849,22 +975,27 @@ const commands: Record<string, (argv: string[]) => Promise<void>> = {
   skip: cmdSkip,
   log: cmdLog,
   summary: cmdSummary,
+  "verify-config": cmdVerifyConfig,
 };
 
 const cmd = commands[subcommand];
 if (!cmd) {
   console.error(
-    `Usage: npx tsx scripts/addsite-batch.ts <parse|skip|log|summary> [options]\n` +
+    `Usage: npx tsx scripts/addsite-batch.ts <parse|skip|log|summary|verify-config> [options]\n` +
     `\n` +
-    `  parse   --file <path> | --csv <path> --column <col> | <URL...>\n` +
-    `          [--force] [--max-urls N] [--limit N] [--start N] [--resume <jsonl>]\n` +
+    `  parse         --file <path> | --csv <path> --column <col> | <URL...>\n` +
+    `                [--force] [--max-urls N] [--limit N] [--start N] [--resume <jsonl>]\n` +
     `\n` +
-    `  skip    --url <URL> --reason "<note>" [--site-id <id>] [--batch-dir <dir>]\n` +
+    `  skip          --url <URL> --reason "<note>" [--site-id <id>] [--batch-dir <dir>]\n` +
     `\n` +
-    `  log     --batch-dir <dir> --url <URL> --outcome <OUTCOME> --reason "<reason>"\n` +
-    `          [--site-id <id>] [--jobs N] [--qa-file <addsite-qa.json>]\n` +
+    `  log           --batch-dir <dir> --url <URL> --outcome <OUTCOME> --reason "<reason>"\n` +
+    `                [--site-id <id>] [--jobs N] [--qa-file <addsite-qa.json>]\n` +
     `\n` +
-    `  summary --batch-dir <dir>\n`,
+    `  summary       --batch-dir <dir>\n` +
+    `\n` +
+    `  verify-config --site-id <id> [--expect-item <sel>] [--expect-fields a,b,c]\n` +
+    `                [--expect-form-fields N] [--expect-file <config.json>]\n` +
+    `                (exit 2 = analyzer clobbered the config)\n`,
   );
   process.exit(1);
 }
