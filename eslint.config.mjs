@@ -19,6 +19,16 @@ const eslintConfig = defineConfig([
     // exploratory probes/dryruns full of intentional `any`s and `require()`s.
     "sites/**",
   ]),
+  {
+    // CLI / ops scripts (committed tools, NOT shipped app code): the /addsite
+    // batch + QA + audit helpers wrap untyped `fetch()` JSON responses and
+    // dynamically-imported Playwright handles, so explicit `any` is pragmatic
+    // here — the same rationale as the ignored `sites/**` probes. We keep the
+    // rest of the ruleset on (unused-vars, prefer-const, etc.) so these stay
+    // genuinely linted.
+    files: ["scripts/**/*.{ts,mts,mjs}"],
+    rules: { "@typescript-eslint/no-explicit-any": "off" },
+  },
 ]);
 
 export default eslintConfig;

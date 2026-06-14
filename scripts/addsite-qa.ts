@@ -392,7 +392,7 @@ async function main() {
   if (!hasFormCapture && appFormFields >= 2) hasFormCapture = true;
 
   // --- probe one detail page for exposed-but-unmapped fields + apply form ---
-  let availableButUnmapped: string[] = [];
+  const availableButUnmapped: string[] = [];
   let probe: Awaited<ReturnType<typeof probeDetail>> = null;
   let probedUrl: string | undefined;
   let descMappingSuspect = false;

@@ -1126,7 +1126,7 @@ async function cmdDetailReach(argv: string[]): Promise<void> {
       await p.waitForTimeout(4000);
       const html = await p.content();
       return { blocked: INCAPSULA_RE.test(html), bytes: html.length };
-    } catch (e: any) {
+    } catch {
       return { blocked: true, bytes: 0 };
     } finally {
       await b.close().catch(() => {});
