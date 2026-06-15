@@ -60,6 +60,13 @@
 import * as fs from "fs";
 import * as path from "path";
 
+// Ensure Playwright resolves its browsers from the project-local node_modules
+// installation (PLAYWRIGHT_BROWSERS_PATH=0), matching how the worker runs.
+// Must be set before any `import("playwright")` call.
+if (!process.env.PLAYWRIGHT_BROWSERS_PATH) {
+  process.env.PLAYWRIGHT_BROWSERS_PATH = "0";
+}
+
 const BASE_URL = "https://scrapper.haide-jobs.co.il";
 const TOKEN_PATH = path.join(process.cwd(), ".claude", "scrap-token");
 const DEFAULT_MAX_URLS = 50;
