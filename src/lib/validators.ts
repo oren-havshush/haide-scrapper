@@ -160,4 +160,12 @@ export const updateSiteConfigSchema = z.object({
     .string()
     .regex(/^\d{4}-\d{2}-\d{2}$/)
     .optional(),
+  // Rolling stale-job cutoff: drop jobs whose parseable publishDate is older
+  // than this many days at scrape time (worker computes today − N each run, so
+  // the window is always relative — unlike the frozen minPublishDate). Jobs
+  // with empty/unparseable publishDate are kept. Stored under
+  // fieldMappings._meta.minPublishDays. Precedence (worker): an explicit
+  // minPublishDate (absolute) wins over minPublishDays (relative) wins over the
+  // SCRAPE_MIN_PUBLISH_DATE env fallback. New onboards set this to 90.
+  minPublishDays: z.number().int().min(1).max(3650).optional(),
 });

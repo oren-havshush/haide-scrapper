@@ -5,6 +5,7 @@ import { launchBrowser, createPage, closeBrowser, type BrowserOverrides } from "
 import {
   normalizeJobRecord,
   isPublishDateBeforeCutoff,
+  resolveMetaMinPublishDate,
 } from "../lib/normalizer";
 import type { NormalizedJobRecord } from "../lib/normalizer";
 import { validateJobRecord } from "../lib/validator";
@@ -2106,14 +2107,29 @@ function getApplyRequiresLogin(fieldMappingsRaw: unknown): boolean {
   return meta?.["applyRequiresLogin"] === true;
 }
 
-/** Per-site publish-date floor (YYYY-MM-DD). Env SCRAPE_MIN_PUBLISH_DATE is fallback. */
-function getMinPublishDate(fieldMappingsRaw: unknown): string | null {
+/**
+ * Resolve the effective publish-date floor (YYYY-MM-DD) for this scrape.
+ *
+ * Precedence (first match wins):
+ *   1. _meta.minPublishDate  — absolute ISO date, frozen (explicit override).
+ *   2. _meta.minPublishDays  — relative window; cutoff = today − N days,
+ *      recomputed every scrape so the window keeps rolling.
+ *   3. SCRAPE_MIN_PUBLISH_DATE env — global absolute fallback.
+ *
+ * Jobs with empty/unparseable publishDate are always kept (the consuming filter
+ * returns false for them) — so a cutoff never drops date-less jobs, regardless
+ * of which rule produced it. `now` is injectable for tests.
+ */
+function getMinPublishDate(
+  fieldMappingsRaw: unknown,
+  now: Date = new Date(),
+): string | null {
   if (fieldMappingsRaw && typeof fieldMappingsRaw === "object") {
     const meta = (fieldMappingsRaw as Record<string, unknown>)["_meta"] as
-      | Record<string, unknown>
+      | { minPublishDate?: unknown; minPublishDays?: unknown }
       | undefined;
-    const v = meta?.["minPublishDate"];
-    if (typeof v === "string" && /^\d{4}-\d{2}-\d{2}$/.test(v)) return v;
+    const fromMeta = resolveMetaMinPublishDate(meta, now);
+    if (fromMeta) return fromMeta;
   }
   const env = process.env.SCRAPE_MIN_PUBLISH_DATE;
   if (typeof env === "string" && /^\d{4}-\d{2}-\d{2}$/.test(env.trim())) {

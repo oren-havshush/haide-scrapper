@@ -335,7 +335,8 @@ Signal to capture: the QA gate returns `formStatus: NEEDS_MANUAL` or `NONE` and 
   "formCapture": { ... },          // if captured in §8
   "browserOverrides": { ... },     // if reachability required UA
   "setupScript": "...",            // if fields required injection
-  "minPublishDate": "YYYY-MM-DD",  // optional stale-job cutoff
+  "minPublishDays": 90,            // MANDATORY rolling stale-job cutoff (see §10)
+  "minPublishDate": "YYYY-MM-DD",  // optional — only to OVERRIDE the rolling window with a frozen date
   "bypassCSP": true                // if setupScript XHRs a different subdomain
 }
 ```
@@ -373,16 +374,34 @@ npx tsx scripts/addsite-batch.ts verify-config \
 
 ---
 
-## 10. Step 7 — Set minPublishDate (optional but recommended)
+## 10. Step 7 — Set the rolling stale-job cutoff (MANDATORY)
 
-Stale jobs flood the listing and reduce signal quality.
+Stale jobs flood the listing and reduce signal quality, so **every** site gets a
+rolling cutoff. Set `minPublishDays: 90` in the config payload — **always, on
+every onboard**, regardless of whether `publishDate` is mapped.
+
 ```bash
-# Use a cutoff ~90 days back, or inspect oldest published dates in the dry-run sample.
-curl -s -X PUT "$BASE/api/sites/$SITE_ID/config" \
-  -H "$AUTH" -H "Content-Type: application/json" \
-  -d "$(echo $CONFIG_PAYLOAD | jq '.minPublishDate = "'"$(date -d '90 days ago' '+%Y-%m-%d')"'"')"
+# minPublishDays is part of the config payload (§9.1). It survives the analyzer.
+# The worker recomputes the cutoff (today − N days) on EVERY scrape, so the
+# 90-day window keeps rolling forward on its own — no cron, no re-PUT needed.
 ```
-Then run `verify-config` again (minPublishDate is not a `fieldMapping` — it survives the analyzer).
+
+**How it behaves (worker `getMinPublishDate` → `resolveMetaMinPublishDate`):**
+- Jobs whose parseable `publishDate` is older than 90 days are dropped each scrape.
+- **Jobs with no / unparseable `publishDate` are always KEPT** — `minPublishDays`
+  never drops date-less jobs. So it's safe to set even on sites that don't expose
+  a date (IAA, alubin, mikud): nothing is dropped there, but the day the site
+  starts publishing dated posts the window applies automatically.
+- A job that's fresh at onboarding is dropped on a later scrape once it ages past
+  90 days (rolling). Combined with the minimum-2 rule (§7), a site whose dated
+  jobs all age out drops below 2 and becomes a SKIP candidate ("no recent jobs").
+
+**Precedence (override):** to pin a site to a *frozen* absolute floor instead of
+the rolling window (e.g. a campaign cutoff), set `minPublishDate: "YYYY-MM-DD"` —
+it wins over `minPublishDays`. Use a longer window per-site (e.g.
+`minPublishDays: 365`) when a site keeps postings open for a year.
+
+Then run `verify-config` again (these live under `_meta`, not `fieldMappings` — they survive the analyzer).
 
 ---
 

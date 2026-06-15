@@ -292,6 +292,37 @@ export function isPublishDateBeforeCutoff(
   return parsed.getTime() < min.getTime();
 }
 
+/**
+ * Resolve a publish-date floor (YYYY-MM-DD) from a site config `_meta` block.
+ *
+ * Precedence (first match wins):
+ *   1. minPublishDate — absolute ISO date, frozen (explicit per-site override).
+ *   2. minPublishDays — relative window; cutoff = `now` − N days, recomputed on
+ *      every call so the window keeps rolling forward.
+ *
+ * Returns null when neither is present/valid (callers may then fall back to a
+ * global env default). This never affects date-less jobs: the consuming filter
+ * (`isPublishDateBeforeCutoff`) keeps jobs whose publishDate is empty or
+ * unparseable, whatever cutoff this produces.
+ */
+export function resolveMetaMinPublishDate(
+  meta: { minPublishDate?: unknown; minPublishDays?: unknown } | null | undefined,
+  now: Date = new Date(),
+): string | null {
+  if (!meta) return null;
+
+  const abs = meta.minPublishDate;
+  if (typeof abs === "string" && /^\d{4}-\d{2}-\d{2}$/.test(abs)) return abs;
+
+  const days = meta.minPublishDays;
+  if (typeof days === "number" && Number.isFinite(days) && days >= 1) {
+    const cutoff = new Date(now.getTime());
+    cutoff.setUTCDate(cutoff.getUTCDate() - Math.floor(days));
+    return cutoff.toISOString().slice(0, 10);
+  }
+  return null;
+}
+
 // Standalone patterns that don't require a label.
 function extractExternalJobIdFallback(text: string): string | null {
   // (#ID), [ID], or REQ-1234 / JR-1234 / R-12345 standalone, anywhere.
