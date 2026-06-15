@@ -74,7 +74,7 @@ If the existing status is SKIPPED or FAILED and `--force` is set:
 |---|---|---|
 | Site unreachable (reach exit 3) | `reach` | SKIPPED (structural) |
 | Detail pages Incapsula-blocked (detail-reach exit 3) | `detail-reach` | SKIPPED or REVIEW |
-| Dry-run returns 0 items (2× attempts) | dry-run | SKIPPED |
+| Dry-run returns fewer than 2 items (0–1, 2× attempts) | dry-run | SKIPPED |
 | Tier-A incomplete after scrape | `addsite-qa` | SKIP / REVIEW / REQUEUE (per verdict) |
 | Config clobbered after PUT | `verify-config` | Re-PUT (max 2×), then REVIEW |
 
@@ -236,7 +236,7 @@ curl -s -A "$REAL_UA" "$URL" -o listing.html
 ```
 
 **itemSelector rules:**
-- Must select ≥3 consistent siblings per page.
+- Must select every job row as consistent siblings — typically many, but as few as 2 on a genuinely small site (don't force ≥3; the volume bar is `< 2` → SKIP, see §7).
 - Each item must contain all mapped fields independently (no cross-item contamination).
 - Prefer a dedicated job-card class over generic `<li>` or `<div>`.
 - Verify with the dry-run tool, not by eye.
@@ -287,10 +287,15 @@ DRY=$(curl -s -X POST "$BASE/api/sites/$SITE_ID/analyze" \
 echo $DRY | jq '{count: (.data | length), sample: (.data[0:2])}'
 ```
 
+> **Minimum job count = 2.** A site is only skipped on volume when it yields
+> **fewer than 2 jobs** (0 or 1). 2+ valid jobs is shippable — never SKIP a site
+> just because the count is "low" or "thin" (e.g. 2–4 jobs). Job count is NOT an
+> ROI/complexity judgment call; the only volume bar is `< 2`.
+
 | Result | Action |
 |---|---|
-| ≥3 items, title + externalJobId present | Proceed to §8 (PUT). |
-| 0 items | Check: wrong selector? JS-heavy page? → fix or read recipe. If 2nd attempt also 0 → SKIP. |
+| ≥2 items, title + externalJobId present | Proceed to §8 (PUT). |
+| Fewer than 2 items (0–1) | Check: wrong selector? JS-heavy page? → fix or read recipe. If 2nd attempt still <2 → SKIP. |
 | Items but no title | Fix `title` selector. Count against remediation budget. |
 | Items but externalJobId all identical or index-based | Fix before PUT. **LANDMINE.** |
 
