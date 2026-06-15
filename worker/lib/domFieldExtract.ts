@@ -50,14 +50,19 @@ export const domFieldExtract = function (
   // / Arabic where word boundaries depend on whitespace that browsers
   // *render* via block layout or <br> rather than insert as characters.
   // Insert a space at every visual break so downstream tools see real words.
-  clone.querySelectorAll("br").forEach((n) => n.replaceWith(" "));
+  clone.querySelectorAll("br").forEach((n) => n.replaceWith("\n"));
   clone
     .querySelectorAll(
       "p, div, li, tr, h1, h2, h3, h4, h5, h6, section, article, header, footer, blockquote",
     )
-    .forEach((b) => b.append(" "));
+    .forEach((b) => b.append("\n"));
 
-  return (clone.textContent || "").replace(/\s+/g, " ").trim();
+  return (clone.textContent || "")
+    .replace(/[^\S\n]+/g, " ")   // collapse horizontal whitespace, keep newlines
+    .replace(/\n{3,}/g, "\n\n")  // max two consecutive newlines
+    .replace(/ \n/g, "\n")       // drop space before newline
+    .replace(/\n /g, "\n")       // drop space after newline
+    .trim();
 };
 
 // esbuild/tsx injects `__name(fn, "fnName")` calls after every function
