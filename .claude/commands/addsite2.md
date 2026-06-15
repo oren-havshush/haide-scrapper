@@ -407,11 +407,22 @@ REASON=$(echo $QA_JSON | jq -r '.verdictReason')
 
 | Exit / Verdict | Action |
 |---|---|
-| 0 / ACTIVE | `PATCH /api/sites/$SITE_ID {"status":"ACTIVE"}`. Log outcome. Done. |
+| 0 / ACTIVE | Run the **externalJobId gate** (below). If it passes → `PATCH /api/sites/$SITE_ID {"status":"ACTIVE"}`. Log outcome. Done. |
 | 2 / SKIP | `PATCH /api/sites/$SITE_ID {"status":"SKIPPED","adminNote":"$REASON"}`. Log. Done. |
 | 3 / REVIEW | `PATCH /api/sites/$SITE_ID {"status":"REVIEW","adminNote":"$REASON"}`. Log. Done. |
 | 4 / REQUEUE | Append URL to end of work-list with `attempt+1`. If `attempt ≥ 2` → escalate to REVIEW. |
 | 1 / ERROR | Check error; if transient retry once; else REVIEW. |
+
+**externalJobId gate (MANDATORY before ACTIVE) — value-based, not prose-based:**
+```bash
+npx tsx scripts/addsite-batch.ts verify-jobids --site-id $SITE_ID
+# Exit 2 = bad ids (raw-title reused as id, index-based, all-identical, or fill < 0.9)
+```
+This inspects the **actual scraped id values** (the dedup key), so it catches the
+class of bug that prose rules miss — e.g. shipping the raw job title as the id.
+Exit 2 → do **not** mark ACTIVE: fix the `externalJobId` mapping (read
+`addsite2-recipes/setupscript-patterns.md` §3, hash-synthesis), re-PUT, re-scrape,
+re-run the gate. Cite: `LRN-ID-4`.
 
 **Completeness gate (double-check before ACTIVE):** if `formStatus === "NONE"` → override verdict to SKIP regardless of QA exit code. Apply path is mandatory.
 
@@ -461,6 +472,6 @@ Pre-reading all recipes defeats the lean-core cost goal.
 1. **Code wins over prose.** If a script exits 2, the site is not ACTIVE. Not even if the HTML looks good.
 2. **`verify-config` is not optional.** Every PUT must be followed by a successful `verify-config`.
 3. **Coverage line is mandatory.** Emit `coverage: X/Y` for every site. Never silently ship page-1-only.
-4. **externalJobId must be stable.** Test: two dry-runs must produce identical ids for the same jobs.
+4. **externalJobId must be stable AND verified by code.** Never mark ACTIVE without a passing `verify-jobids` (exit 0). The id is the dedup key: raw-title reuse, index-based, or all-identical ids are blockers. Prefer `h-<hash>` synthesis (recipe §3). Prose intent is not enough — the gate checks the real values.
 5. **Apply path is mandatory for ACTIVE.** No form + no email + no URL = SKIP, not ACTIVE.
 6. **REVIEW is not failure.** Routing to REVIEW with an honest reason is a correct outcome and saves both cost and product quality.

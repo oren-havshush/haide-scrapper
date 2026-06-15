@@ -177,6 +177,18 @@
   visible `מס' משרה` number via setupScript regex, don't map the `#collapse-` href.
 - **Generalizes to:** WP/Elementor "now hiring" + Bootstrap accordions. **Home:** Step 4 id rules.
 
+### LRN-ID-4 — Enforce externalJobId quality with a value-based gate, not prose
+- **Date / site:** alubin.com (`cmqe7idzs004l01lcvjr73xau`) — Elementor sectioned listing
+- **Signal:** despite the "never raw title / never index" rule being documented,
+  a build shipped `externalJobId === raw Hebrew title`. Prose rules don't stop the
+  miss; `verify-config` only checks the selector *survived*, not the id *values*.
+- **Fix:** added `addsite-batch.ts verify-jobids` — fetches the scraped jobs and
+  exits 2 on raw-title reuse (`id === title`), index-based ids, all-identical
+  collapse, or fill < 0.9. Wired as a MANDATORY gate before ACTIVE in `addsite2.md`
+  §12 + correctness rule #4. Re-keyed alubin to `h-<haideHash(title)>` (ASCII-safe).
+- **Generalizes to:** every site — the gate runs on real id values regardless of how
+  the config was built. **Home:** `addsite2.md` §12 / `recipes/setupscript-patterns.md` §3.
+
 ---
 
 ## E. Location & gazetteer

@@ -77,29 +77,53 @@ for (const item of document.querySelectorAll('.job-item')) {
 
 **Use case:** no native job ID attribute; no stable URL slug; need a stable dedup key.
 
+**Priority order (always try in this order):**
+1. **Native id** — `data-job-id` / `data-id` attr, or a printed "מס' משרה" / req number.
+2. **detailUrl slug** — `detailUrl.split('/').filter(Boolean).pop()` (readable + stable).
+3. **Hash synthesis** — last resort, below.
+
+Use the synchronous `haideHash` (djb2) — **not** `crypto.subtle.digest`, which is
+async and adds an `await` round-trip inside the injected script. Always prefix
+the synthesized id with **`h-`** so it can never collide with a native numeric id
+in a hybrid site, and so the `verify-jobids` gate can recognise it.
+
 ```js
-// setupScript — hash of title + department + location
-async function hashStr(s) {
-  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(s));
-  return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, '0')).join('').slice(0, 16);
-}
+// setupScript — h-<hash> of stable content (title + disambiguator)
+function haideHash(s){var h=5381,i=s.length;while(i){h=(h*33)^s.charCodeAt(--i);}return (h>>>0).toString(36);}
 for (const item of document.querySelectorAll('.job-item')) {
   if (item.querySelector('.__ai-eid')) continue;
   const title = item.querySelector('.job-title')?.innerText?.trim() ?? '';
   const loc   = item.querySelector('.job-location')?.innerText?.trim() ?? '';
   const dept  = item.querySelector('.job-dept')?.innerText?.trim() ?? '';
-  const id    = await hashStr(`${title}|${loc}|${dept}`);
+  // disambiguator (loc/dept/branch) only needed when titles can repeat;
+  // if titles are globally unique, hash the title alone.
+  const key   = `${title}|${loc}|${dept}`.toLowerCase().replace(/\s+/g, ' ').trim();
   const span  = document.createElement('span');
   span.className = '__ai-eid';
   span.style.display = 'none';
-  span.textContent = id;
-  item.appendChild(span);
+  span.textContent = 'h-' + haideHash(key);   // ASCII-safe, compact, reorder-proof
+  item.appendChild(span);                      // append to item root, NOT the title el
 }
 ```
 
-> **Hybrid approach (preferred):** if the `detailUrl` contains a job ID slug, extract it instead of hashing:
-> `detailUrl.split('/').filter(Boolean).pop()` — more stable than a hash and readable.
-> Cite: `LRN-ID-1`, `LRN-ID-2` in `docs/addsite-learnings.md`.
+**Hybrid (native-id-first, hash fallback):** when only *some* items carry a native
+id, keep the real ones and only hash the rest. The `h-` prefix guarantees the two
+shapes never collide:
+```js
+span.textContent = nativeId ? nativeId : ('h-' + haideHash(key));
+```
+
+**Why these rules (enforced by `verify-jobids`, exit 2):**
+- **Never reuse the raw title as the id** — the id must differ from the title;
+  raw Hebrew/RTL titles also fail the ASCII-safe check. (Caught on alubin.com,
+  `LRN-ID-4`.)
+- **Never index-based** (`item-0`, `0`, `1`) — re-keys on every reorder.
+- **Never all-identical / empty** — collapses every row into one deduped job.
+- Trade-off: the hash still changes if the site *edits the title text* — unavoidable
+  with no native id, but strictly better than index/title.
+
+> Cite: `LRN-ID-1`, `LRN-ID-2`, `LRN-ID-4` in `docs/addsite-learnings.md`.
+> Verified hash recipe: halilit.com, hamat-group.co.il (addsite), alubin.com (addsite2).
 
 ---
 

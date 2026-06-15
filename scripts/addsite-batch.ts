@@ -995,6 +995,113 @@ async function cmdVerifyConfig(argv: string[]): Promise<void> {
 }
 
 // ---------------------------------------------------------------------------
+// Command: verify-jobids  (externalJobId dedup-health gate, value-based)
+// ---------------------------------------------------------------------------
+//
+// Fetches the ACTUAL scraped jobs for a site and inspects the externalJobId
+// *values* (not just whether the selector survived — that's verify-config).
+// This is the gate that catches the "I followed the rules in prose but the
+// ids are still garbage" class of bug: raw title reused as id, index-based
+// ids, all-identical ids, or low fill. Per addsite2.md §externalJobId, ids
+// MUST be stable + distinct; the worker dedupes on this value.
+//
+//   npx tsx scripts/addsite-batch.ts verify-jobids --site-id <id>
+//     [--min-fill 0.9] [--require-prefix h-]
+//
+// Exit codes: 0 = ids healthy · 2 = bad ids (block ACTIVE) · 1 = usage/API error.
+
+interface ApiJob {
+  title?: string;
+  externalJobId?: string;
+}
+
+async function cmdVerifyJobIds(argv: string[]): Promise<void> {
+  const { flags } = parseArgs(argv);
+  const siteId = flagStr(flags, "site-id");
+  if (!siteId) throw new Error("--site-id is required");
+  const minFill = flagStr(flags, "min-fill")
+    ? Number(flagStr(flags, "min-fill"))
+    : 0.9;
+  const requirePrefix = flagStr(flags, "require-prefix");
+
+  const headers = authHeaders(readToken());
+  const r = (await apiGet(
+    `/api/jobs?siteId=${encodeURIComponent(siteId)}&pageSize=100`,
+    headers,
+  )) as { data?: ApiJob[] };
+  const jobs = Array.isArray(r?.data) ? r.data : [];
+  const total = jobs.length;
+
+  const ids = jobs.map((j) => (j.externalJobId ?? "").trim());
+  const titles = jobs.map((j) => (j.title ?? "").trim());
+  const nonEmpty = ids.filter(Boolean);
+  const distinct = new Set(nonEmpty);
+  const fillRate = total ? nonEmpty.length / total : 0;
+  const distinctRate = nonEmpty.length ? distinct.size / nonEmpty.length : 0;
+
+  // Raw-title reuse: id === its own title (the alubin miss).
+  const idEqualsTitle = ids.filter(
+    (id, i) => id && titles[i] && id === titles[i],
+  ).length;
+  // Index-based: every id is a bare integer or item-N / item_N / itemN.
+  const indexLike =
+    nonEmpty.length > 1 &&
+    nonEmpty.every((id) => /^(item[-_]?)?\d{1,4}$/i.test(id));
+  // Non-ASCII (RTL/Hebrew) bytes — our hash convention wants ASCII-safe ids.
+  // eslint-disable-next-line no-control-regex
+  const nonAscii = nonEmpty.filter((id) => /[^\x00-\x7F]/.test(id)).length;
+  const prefixOk =
+    !requirePrefix || nonEmpty.every((id) => id.startsWith(requirePrefix));
+
+  const collapsed = total > 1 && distinct.size === 1; // all rows dedup into one
+
+  const hardFails: string[] = [];
+  if (total === 0) hardFails.push("no jobs scraped");
+  if (fillRate < minFill)
+    hardFails.push(`fill ${fillRate.toFixed(2)} < ${minFill}`);
+  if (collapsed) hardFails.push("all externalJobId identical (dedup collapse)");
+  if (idEqualsTitle > 0)
+    hardFails.push(`${idEqualsTitle} id(s) equal the raw title (not stable)`);
+  if (indexLike) hardFails.push("index-based ids (re-key on reorder)");
+  if (!prefixOk) hardFails.push(`ids missing required prefix "${requirePrefix}"`);
+
+  const warnings: string[] = [];
+  if (nonAscii > 0)
+    warnings.push(`${nonAscii} id(s) contain non-ASCII bytes (prefer hash)`);
+  if (!collapsed && distinctRate < 1)
+    warnings.push(`distinctRate ${distinctRate.toFixed(2)} (<1 → some dup ids)`);
+
+  const ok = hardFails.length === 0;
+  const verdict = {
+    siteId,
+    ok,
+    total,
+    fillRate: Number(fillRate.toFixed(3)),
+    distinctRate: Number(distinctRate.toFixed(3)),
+    idEqualsTitle,
+    indexLike,
+    nonAscii,
+    sampleIds: nonEmpty.slice(0, 5),
+    hardFails,
+    warnings,
+  };
+  console.log(JSON.stringify(verdict, null, 2));
+
+  if (!ok) {
+    console.error(`[verify-jobids] BAD IDS: ${hardFails.join("; ")}`);
+    // Use exitCode (not process.exit) so a pending fetch handle can't trigger
+    // the libuv UV_HANDLE_CLOSING assertion crash on Windows, which would
+    // clobber the intended exit-2 with a crash code and break callers.
+    process.exitCode = 2;
+    return;
+  }
+  console.error(
+    `[verify-jobids] OK: ${total} jobs, fill=${fillRate.toFixed(2)}, distinct=${distinct.size}` +
+      (warnings.length ? ` (warnings: ${warnings.join("; ")})` : ""),
+  );
+}
+
+// ---------------------------------------------------------------------------
 // Playwright-backed probes (reach / detail-reach / fingerprint / triage)
 // ---------------------------------------------------------------------------
 //
@@ -1604,6 +1711,7 @@ const commands: Record<string, (argv: string[]) => Promise<void>> = {
   log: cmdLog,
   summary: cmdSummary,
   "verify-config": cmdVerifyConfig,
+  "verify-jobids": cmdVerifyJobIds,
   reach: cmdReach,
   "detail-reach": cmdDetailReach,
   fingerprint: cmdFingerprint,
@@ -1629,6 +1737,9 @@ if (!cmd) {
     `  verify-config --site-id <id> [--expect-item <sel>] [--expect-fields a,b,c]\n` +
     `                [--expect-form-fields N] [--expect-file <config.json>]\n` +
     `                (exit 2 = analyzer clobbered the config)\n` +
+    `\n` +
+    `  verify-jobids --site-id <id> [--min-fill 0.9] [--require-prefix h-]\n` +
+    `                (exit 2 = bad externalJobId: raw-title/index/identical/low-fill)\n` +
     `\n` +
     `  reach         --url <URL>   (exit 3 = unreachable; JSON says if UA override needed)\n` +
     `  detail-reach  --listing <URL> --detail <URL>  (exit 2 = needs UA override; 3 = blocked)\n` +
