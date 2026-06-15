@@ -59,6 +59,20 @@ export function normalizeWhitespace(text: string): string {
 }
 
 /**
+ * Like normalizeWhitespace but preserves intentional line breaks.
+ * Use for multi-line fields (description, requirements).
+ */
+export function normalizeMultilineWhitespace(text: string): string {
+  return text
+    .replace(/\u00A0/g, " ")          // nbsp → space
+    .replace(/[^\S\n]+/g, " ")        // collapse horizontal whitespace, keep \n
+    .replace(/\n{3,}/g, "\n\n")       // max two consecutive newlines
+    .replace(/ \n/g, "\n")            // drop space before newline
+    .replace(/\n /g, "\n")            // drop space after newline
+    .trim();
+}
+
+/**
  * Full normalization pipeline for a single field value:
  * 1. Strip HTML tags
  * 2. Normalize whitespace (collapse + trim)
@@ -67,6 +81,14 @@ export function normalizeWhitespace(text: string): string {
 export function normalizeField(rawValue: string | null | undefined): string {
   if (!rawValue) return "";
   return normalizeWhitespace(stripHtmlTags(rawValue));
+}
+
+/**
+ * Like normalizeField but preserves line breaks — use for description/requirements.
+ */
+export function normalizeMultilineField(rawValue: string | null | undefined): string {
+  if (!rawValue) return "";
+  return normalizeMultilineWhitespace(stripHtmlTags(rawValue));
 }
 
 /**
@@ -514,13 +536,13 @@ export function normalizeJobRecord(
 
   // Map standard fields through normalization
   const title = normalizeField(rawFields["title"]);
-  let description = normalizeField(rawFields["description"]);
+  let description = normalizeMultilineField(rawFields["description"]);
   if (looksLikeCss(description)) {
     rawOut["_cssRejected_description"] = "true";
     description = "";
   }
 
-  let requirements = normalizeField(rawFields["requirements"]);
+  let requirements = normalizeMultilineField(rawFields["requirements"]);
   if (looksLikeCss(requirements)) {
     rawOut["_cssRejected_requirements"] = "true";
     requirements = "";
