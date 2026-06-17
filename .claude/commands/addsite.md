@@ -52,6 +52,11 @@ folder is gitignored.
   then report and bail.
 - **Don't invent selectors blind.** Every selector must be dry-run on the
   live page via Playwright before you POST anything to prod.
+- **Don't skip a site just because `formCapture` is null.** Null form capture
+  only means there is no HTML apply form — it does **not** mean there is no
+  apply path. Run **Step 5a** first: email apply (`applicationInfo`), external
+  apply URLs, and reachable detail-page forms all count. Never SKIPPED with
+  "no per-job apply path" when the page gives a careers email + job identifiers.
 - **Don't hardcode credentials in your output.** Read them from the env
   files described below.
 - **Don't skip the "PUT again after analyzer" step.** The server's auto
@@ -408,7 +413,12 @@ Decision procedure, run right before you would log `ACTIVE` (Step 9):
    listing AND a **usable** apply path is on the listing (inline form, or an
    email / plain external apply link reachable without a login/challenge), the
    data is **complete** — log `ACTIVE`. Sites like halilit (apply-by-email) and
-   eimsys (inline accordion form) are complete, NOT partial. Do not skip these.
+   eimsys (inline accordion form) are complete, NOT partial. **Site-wide email
+   apply** (one shared address + stable `externalJobId` per job — see Step 5a)
+   counts too: `formCapture: null` + `applicationInfo` email on every job is
+   ACTIVE, not SKIPPED. (benjerry.co.il lesson — wrongly skipped because 5b saw
+   a newsletter form and the run required per-job detailUrl / CV upload.)
+   Do not skip these.
 2. **Does the site have per-job detail pages** (the listing only shows a
    title/snippet and links to `/job/123`-style pages) that hold the
    description / apply form? If yes and your config did **not** capture a
@@ -1728,7 +1738,90 @@ compares the test-scrape `jobCount` against it — a scrape returning `<=1`
 while `$DRYRUN_N >= 2` is the analyzer-clobber / render-timing signature and
 triggers the Step 8 re-verify (NOT an immediate skip).
 
+## Step 5a — Detect email apply (run BEFORE Step 5b)
+
+**Why this exists (benjerry.co.il lesson):** The site was wrongly `SKIPPED` with
+*"No per-job apply path: jobs listed without detailUrl, only a generic
+contact/interest form (no CV upload, no job reference)."* The real apply path
+was a **site-wide careers email** (`cv@benjerry.co.il`) with instructions to
+cite job title + number; each listing row carries a native `מס משרה NNNNN`.
+Step 5b only saw a footer newsletter/interest `<form>` (email + consent, no CV
+upload) and the run incorrectly treated `formCapture: null` as "no usable apply
+path."
+
+**The logic gap — three things were conflated:**
+
+| What was observed | What it actually means |
+|---|---|
+| `formCapture: null` | No HTML apply form for auto-submit — **normal for email-apply sites** |
+| No per-job `detailUrl` / per-item `mailto:` | Listing-only site — **not a blocker** when apply is site-wide |
+| Newsletter/interest form in DOM | Wrong form grabbed by 5b — **ignore it**; look for email in prose |
+
+**Fix for future runs:** email apply is already ACTIVE-worthy in the Step 5b /
+B2.5 apply matrix (`formStatus = EMAIL` passes Tier-A). The missing piece was
+an **explicit pre-5b detection step** so the agent never skips just because form
+capture failed. Run Step 5a after Step 5 dry-run passes and **before** Step 5b.
+
+**Detect email apply** — any of these on the listing page (intro block OR per
+item):
+
+- `a[href^="mailto:"]` linking to a careers/HR address
+- A visible email address (`\b[\w.-]+@[\w.-]+\.\w+\b`) near apply keywords:
+  `קורות חיים`, `מועמדות`, `שלח`, `לשלוח`, `הגש`, `apply`, `CV`, `resume`
+- Instructions like *"ציין שם משרה ומספר משרה"* / *"include job title and number"*
+
+**Site-wide email (one address shared by all jobs) is a usable apply path when:**
+
+- Each scraped job has a stable **`externalJobId`** (native `מס משרה NNNN`, detail
+  URL path, or content hash — see hybrid id recipe in Step 4), **and**
+- The page tells applicants what to include in the email (job title/number), **or**
+  that metadata is obvious from each listing row (title contains the job number).
+
+**Do NOT `SKIPPED` a site because:**
+
+- Step 5b found only a newsletter/subscribe/interest form (email + checkbox, no CV)
+- There is no per-job mailto or `detailUrl`
+- The captured form has no file upload
+- `formCapture` would be `null` — that is **expected** for email apply
+
+**When email apply is detected — procedure:**
+
+1. **Skip Step 5b entirely.** Set `formCapture: null` in Step 6 — this is correct.
+2. Map **`applicationInfo`** on every item:
+   - Per-item `mailto:` → use that address.
+   - Site-wide email in intro → inject the same address on each item via
+     `setupScript` (hidden `.haide-apply` / `[data-extracted-apply]` span).
+3. Extract **`externalJobId`** from each row when the title/header shows
+   `מס משרה NNNN` / `מס' משרה: NNNN` (regex + hybrid recipe in Step 4).
+4. Proceed Steps 6 → 8 → ACTIVE. QA gate: `formStatus = EMAIL` ⇒ Tier-A pass.
+
+**When it is NOT email apply:** no careers email anywhere, or the only email is
+clearly general contact ("info@", "center@") with **no** job-application
+instructions and no per-job identifiers → proceed to Step 5b as usual.
+
+References:
+- benjerry.co.il (siteId `cmqe6ce8q004401lcpn12brnw`) — 10 jobs,
+  `cv@benjerry.co.il`, native ids `875012`…, listing selector `.single_item`.
+- halilit.com (siteId `cmq68mpnq001501m9p50vwgee`) — per-branch email in listing.
+
+Quick Playwright probe (run after Step 5 dry-run, before 5b):
+
+```ts
+const emailApply = await page.evaluate(() => {
+  const mailtos = [...document.querySelectorAll('a[href^="mailto:"]')]
+    .map(a => a.getAttribute('href')!.replace(/^mailto:/i, '').split('?')[0]);
+  const body = document.body.innerText || '';
+  const prose = /\b[\w.+-]+@[\w.-]+\.\w+\b/.exec(body)?.[0] || null;
+  const applyCue = /קורות\s*חיים|מועמדות|לשלוח|הגש|apply|cv|resume|מס[\s'']?משרה/i.test(body);
+  return { mailtos, prose, applyCue, likelyEmailApply: (mailtos.length > 0 || !!prose) && applyCue };
+});
+// likelyEmailApply === true  →  skip 5b, map applicationInfo, ship ACTIVE
+```
+
 ## Step 5b — Capture the apply form (when applicable)
+
+**Skip this step when Step 5a detected email apply.** Email apply sites ship
+`formCapture: null` by design — that is not a failure.
 
 If the site has an HTML application form (CV upload, "Apply" / "שליחת
 קורות חיים" button that opens a form, etc.), capture it now so the
