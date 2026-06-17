@@ -277,7 +277,7 @@ continue   # move to next URL
 | Step 3 reachability | Gate exit 3 (network/captcha/IL-IP) | `Auto-skipped: unreachable (gate exit 3)` |
 | Step 3 reachability | UA-WAF detected | First **apply the UA override within budget** (B2a/B2b Incapsula entry). Only if the block survives the override: `Auto-skipped: WAF survives UA override` |
 | Step 3b fetch | Bot challenge page (Cloudflare/Reblaze in HTML) | `Auto-skipped: bot challenge page detected` |
-| Step 4 structure | No repeating job-listing structure in HTML | `Auto-skipped: no jobs listing detected in page structure` |
+| Step 4 structure | No repeating job-listing structure in HTML | **First check for Wix** (`[data-testid="richTextElement"]` / `wixui-*` / `comp-*`) — if matched, apply the Step 4 "Wix richText sites" recipe instead of skipping. Only if that recipe's dry-run yields < 2 jobs: `Auto-skipped: no jobs listing detected in page structure` |
 | Step 5 dry-run | < 2 items after **2 selector iterations** | `Auto-skipped: dry-run found N items after 2 iterations` |
 | 5b exit 7 | Login-gated apply flow | `Auto-skipped: apply requires login (signal)` — see 5b-LOGIN |
 | 5b exit 2 | Form capture fail | Do **not** skip; continue with `formCapture: null` |
@@ -1370,6 +1370,52 @@ or the WordPress search box leaks in as the apply form). Verified on
 natali.co.il (siteId `cmq7sn3au000601mfqhld00pa`): 11/11 jobs with full
 description + requirements + correct apply form. Cost: ~one popup open per
 job (same order as the single-page + per-item fetch pattern).
+
+### Wix richText sites — no repeating structure, jobs live in `richTextElement` blocks
+
+Wix careers pages usually have **no repeating job-listing structure** — each
+job is a free-form rich-text block, so the Step 3b cluster scan finds nothing
+and the page looks like a Step 4 "no jobs listing detected" auto-skip. **Do NOT
+skip a Wix page on that basis.** Detect the platform first and try this recipe;
+only skip if the recipe's dry-run yields < 2 jobs.
+
+**Detect Wix** from the fetched HTML / a quick dry-run: presence of
+`[data-testid="richTextElement"]`, `wixui-*` classes, or `comp-*` element ids.
+
+**The reliable structural unit** is a `<section>` that contains **exactly one**
+`[data-testid="richTextElement"]` **and** at least one `a[href^="mailto:"]`. That
+pairing isolates real job blocks and naturally drops the page header, nav,
+footer, and tender/מכרז notices (those sections either have 0 mailto links, or
+the outer container has several richText elements). Filter on
+`section.querySelectorAll('[data-testid="richTextElement"]').length === 1 &&
+section.querySelector('a[href^="mailto:"]')`.
+
+Per matched section, inject hidden `[data-extracted-*]` (or `haide-job-*`) nodes:
+- **title** — the **first non-empty text line** of the richText block
+  (`innerText.split('\n').map(trim).filter(len>2)[0]`).
+- **description** — the full `innerText` of the richText block.
+- **applicationInfo** — the section's `mailto:` address
+  (`a[href^="mailto:"].href.replace('mailto:','')`). Email is a usable apply
+  path (per the Step 5b matrix), so a Wix richText site needs **no** form.
+- **externalJobId** — no native id exists; synthesize `haideHash(title)` per the
+  "Synthesizing a stable externalJobId" recipe above (hash title only — these
+  blocks have no stable numeric id).
+- **location** — usually **not** a structured field; it sits inside the prose.
+  Leave it **empty** in an automated run (the description still carries it, and
+  the worker's IL gazetteer fills some). Only hardcode a constant location when
+  a human can confirm the **whole site is single-city** (e.g. a municipal/「city」
+  employer whose city is in the company name) — that single-city judgment is the
+  one part this recipe does NOT automate.
+
+Config shape: single-page (`pageFlow: []`, `formCapture: null`),
+`waitUntil: "domcontentloaded"` + `waitAfterLoad: ~5000` (Wix `networkidle`
+never settles — see Step 3), `itemSelector` pointing at the injected job nodes.
+Validate the setupScript in a Playwright dry-run (`domcontentloaded` + 5s wait,
+inject, read back) and confirm ≥ 2 unique-id jobs before the PUT. Reference:
+tarbut-herzliya.co.il (siteId `cmqe6q0i3004a01lcx1zvh6d2`): 5 jobs, each with
+title + description + per-job apply email, `הרצליה` hardcoded (single-city
+municipal cultural company); the מכרז פומבי tender block was correctly dropped
+because it has no `mailto:` link.
 
 ### Listing vs multi-page — decide before step 5
 
