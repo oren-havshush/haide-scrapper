@@ -7,7 +7,7 @@ export function successResponse<T>(data: T, status = 200): NextResponse<ApiRespo
 
 export function listResponse<T>(
   data: T[],
-  meta: { total: number; page: number; pageSize: number },
+  meta: { total: number; page: number; pageSize: number; [key: string]: unknown },
 ): NextResponse<ApiListResponse<T>> {
   return NextResponse.json({ data, meta });
 }
