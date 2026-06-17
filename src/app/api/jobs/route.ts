@@ -20,6 +20,7 @@ export async function GET(request: NextRequest) {
       validationStatus: searchParams.get("validationStatus") ?? undefined,
       siteUrlSearch: searchParams.get("siteUrlSearch") ?? undefined,
       companyNameSearch: searchParams.get("companyNameSearch") ?? undefined,
+      ageBucket: searchParams.get("ageBucket") ?? undefined,
     });
 
     // Build Prisma where clause
@@ -65,9 +66,34 @@ export async function GET(request: NextRequest) {
       };
     }
 
+    // Age-bucket filter: build where.ageBucket from the friendly param.
+    if (filters.ageBucket) {
+      switch (filters.ageBucket) {
+        case "over90":
+          where.ageBucket = { in: ["d90", "d180", "d365"] };
+          break;
+        case "over180":
+          where.ageBucket = { in: ["d180", "d365"] };
+          break;
+        case "over365":
+          where.ageBucket = "d365";
+          break;
+        case "fresh":
+          where.ageBucket = "fresh";
+          break;
+        case "none":
+          where.ageBucket = null;
+          break;
+      }
+    }
+
     const skip = (pagination.page - 1) * pagination.pageSize;
 
-    const [jobs, total] = await Promise.all([
+    // Base scope for age counts: same as `where` but without the ageBucket
+    // filter so we always get counts for all buckets.
+    const whereForCounts: Prisma.JobWhereInput = { ...where, ageBucket: undefined };
+
+    const [jobs, total, ageBucketGroups] = await Promise.all([
       prisma.job.findMany({
         where,
         skip,
@@ -80,12 +106,31 @@ export async function GET(request: NextRequest) {
         },
       }),
       prisma.job.count({ where }),
+      prisma.job.groupBy({
+        by: ["ageBucket"],
+        where: whereForCounts,
+        _count: { ageBucket: true },
+      }),
     ]);
+
+    // Shape into { fresh, d90, d180, d365, none } for the UI.
+    const ageCounts: Record<string, number> = {
+      fresh: 0,
+      d90: 0,
+      d180: 0,
+      d365: 0,
+      none: 0,
+    };
+    for (const row of ageBucketGroups) {
+      const key = row.ageBucket ?? "none";
+      ageCounts[key] = (ageCounts[key] ?? 0) + row._count.ageBucket;
+    }
 
     return listResponse(jobs, {
       total,
       page: pagination.page,
       pageSize: pagination.pageSize,
+      ageCounts,
     });
   } catch (error) {
     return formatErrorResponse(error);

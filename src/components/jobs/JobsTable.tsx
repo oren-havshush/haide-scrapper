@@ -24,6 +24,7 @@ interface Job {
   department: string | null;
   externalJobId: string | null;
   publishDate: string | null;
+  ageBucket: string | null;
   applicationInfo: string | null;
   rawData: Record<string, string> | null;
   validationStatus: string | null;
@@ -46,6 +47,30 @@ const STANDARD_KEYS = new Set([
   "title", "description", "requirements", "location",
   "department", "externalJobId", "publishDate", "applicationInfo",
 ]);
+
+const AGE_BADGE_CONFIG: Record<string, { label: string; className: string }> = {
+  d90: {
+    label: "90d+",
+    className:
+      "text-[10px] font-bold px-1.5 py-0.5 rounded border border-amber-500/40 bg-amber-500/10 text-amber-400",
+  },
+  d180: {
+    label: "180d+",
+    className:
+      "text-[10px] font-bold px-1.5 py-0.5 rounded border border-orange-500/40 bg-orange-500/10 text-orange-400",
+  },
+  d365: {
+    label: "365d+",
+    className:
+      "text-[10px] font-bold px-1.5 py-0.5 rounded border border-red-500/40 bg-red-500/10 text-red-400",
+  },
+};
+
+function AgeBadge({ ageBucket }: { ageBucket: string | null }) {
+  if (!ageBucket || !AGE_BADGE_CONFIG[ageBucket]) return null;
+  const { label, className } = AGE_BADGE_CONFIG[ageBucket];
+  return <span className={className}>{label}</span>;
+}
 
 function DetailSection({ label, value }: { label: string; value: string | null | undefined }) {
   if (!value || !value.trim()) return null;
@@ -321,7 +346,12 @@ export function JobsTable({
                   <TableCell className="text-xs text-[#71717a] px-2">
                     {isExpanded ? "▾" : "▸"}
                   </TableCell>
-                  <TableCell className="text-sm">{job.title}</TableCell>
+                  <TableCell className="text-sm">
+                    <span className="flex items-center gap-1.5">
+                      {job.title}
+                      <AgeBadge ageBucket={job.ageBucket} />
+                    </span>
+                  </TableCell>
                   <TableCell className="text-sm">
                     <EditableLocation jobId={job.id} location={job.location} />
                   </TableCell>

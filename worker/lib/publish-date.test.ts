@@ -4,6 +4,7 @@ import {
   parsePublishDateToUtc,
   isPublishDateBeforeCutoff,
   resolveMetaMinPublishDate,
+  computeAgeBucket,
 } from "./normalizer";
 
 function assert(cond: boolean, msg: string) {
@@ -136,5 +137,43 @@ assert(
   !isPublishDateBeforeCutoff("", cutoffAugust!),
   "date-less job kept under rolling cutoff",
 );
+
+// computeAgeBucket — boundaries and edge cases
+// Fixed reference: 2026-06-17 UTC
+const bucketNow = new Date(Date.UTC(2026, 5, 17)); // 2026-06-17
+
+// unparseable / empty → null
+assert(computeAgeBucket("", bucketNow) === null, "bucket: empty → null");
+assert(computeAgeBucket(null, bucketNow) === null, "bucket: null → null");
+assert(computeAgeBucket("not a date", bucketNow) === null, "bucket: garbage → null");
+
+// fresh: < 90 days
+// 89 days before 2026-06-17 → 2026-03-20
+assert(computeAgeBucket("2026-03-20", bucketNow) === "fresh", "bucket: 89d → fresh");
+// exactly 0 days (today)
+assert(computeAgeBucket("2026-06-17", bucketNow) === "fresh", "bucket: 0d → fresh");
+// future-dated → treated as fresh
+assert(computeAgeBucket("2026-07-01", bucketNow) === "fresh", "bucket: future → fresh");
+
+// d90: 90–179 days
+// exactly 90 days before → 2026-03-19
+assert(computeAgeBucket("2026-03-19", bucketNow) === "d90", "bucket: 90d → d90");
+// 179 days before → 2025-12-20
+assert(computeAgeBucket("2025-12-20", bucketNow) === "d90", "bucket: 179d → d90");
+
+// d180: 180–364 days
+// exactly 180 days before → 2025-12-19
+assert(computeAgeBucket("2025-12-19", bucketNow) === "d180", "bucket: 180d → d180");
+// 364 days before → 2025-06-18
+assert(computeAgeBucket("2025-06-18", bucketNow) === "d180", "bucket: 364d → d180");
+
+// d365: >= 365 days
+// exactly 365 days before → 2025-06-17
+assert(computeAgeBucket("2025-06-17", bucketNow) === "d365", "bucket: 365d → d365");
+// old job → 2023-01-01
+assert(computeAgeBucket("2023-01-01", bucketNow) === "d365", "bucket: old → d365");
+
+// DD/MM/YYYY input accepted
+assert(computeAgeBucket("17.06.2026", bucketNow) === "fresh", "bucket: DD.MM.YYYY today → fresh");
 
 console.log("publish-date.test.ts: all passed");

@@ -280,6 +280,35 @@ export function parsePublishDateToUtc(dateStr: string): Date | null {
   return null;
 }
 
+/**
+ * Classify a publishDate string into an age bucket relative to `now`.
+ *
+ * Buckets (based on calendar days elapsed since the publish date):
+ *   null    — empty or unparseable date (no badge)
+ *   "fresh" — < 90 days
+ *   "d90"   — 90–179 days
+ *   "d180"  — 180–364 days
+ *   "d365"  — >= 365 days
+ */
+export function computeAgeBucket(
+  publishDate: string | null | undefined,
+  now: Date = new Date(),
+): string | null {
+  if (!publishDate) return null;
+  const parsed = parsePublishDateToUtc(publishDate);
+  if (!parsed) return null;
+  const nowUtcMidnight = new Date(
+    Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()),
+  );
+  const diffMs = nowUtcMidnight.getTime() - parsed.getTime();
+  const days = Math.floor(diffMs / 86_400_000);
+  if (days < 0) return "fresh"; // future-dated
+  if (days < 90) return "fresh";
+  if (days < 180) return "d90";
+  if (days < 365) return "d180";
+  return "d365";
+}
+
 /** True when publishDate parses and is strictly before minIso (YYYY-MM-DD). */
 export function isPublishDateBeforeCutoff(
   publishDate: string,

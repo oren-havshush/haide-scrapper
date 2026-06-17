@@ -328,12 +328,17 @@
   relying on enrichment.
 - **Home:** Step 4 setupScript notes.
 
-### LRN-WRK-5 — `minPublishDate` drops stale postings at scrape time
-- **Date / site:** tafkid-plus.co.il (`תאריך פרסום: DD.MM.YYYY`)
-- **Signal:** `publishDate` mapped with parseable (not relative-only) dates.
-- **Fix:** add `minPublishDate: "2026-01-01"`; worker drops jobs strictly before it,
-  keeps empty/unparseable. Don't set when no reliable date.
-- **Home:** Step 6 minPublishDate.
+### LRN-WRK-5 — `publishDate` age-bucket flagging (keep-all, not drop)
+- **Date / site:** tafkid-plus.co.il (`תאריך פרסום: DD.MM.YYYY`), diplomat-il (hidden `activationDate`)
+- **Signal:** `publishDate` mapped with parseable dates.
+- **Old behavior (deprecated):** `minPublishDate: "2026-01-01"` dropped jobs strictly before it.
+- **New behavior:** worker assigns `ageBucket` (`fresh` / `d90` / `d180` / `d365`) at scrape
+  time. Every job is kept. Dashboard shows bold badges and an age counter bar; age filter lets
+  you drill by bucket. `minPublishDate` / `minPublishDays` are now inert — do not set for
+  new onboards.
+- **RedMatch hidden date:** `<span data-field="activationDate" style="display:none">` on listing
+  cards → selector `[data-field='activationDate']`, source `LISTING`.
+- **Home:** Step 4 publishDate patterns + Step 6 (minPublishDate section).
 
 ---
 

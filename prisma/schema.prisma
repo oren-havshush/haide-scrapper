@@ -81,6 +81,7 @@ model Job {
   department       String?
   externalJobId    String?
   publishDate      String?
+  ageBucket        String?
   applicationInfo  String?
   detailUrl        String?
   rawData          Json
@@ -93,6 +94,7 @@ model Job {
 
   @@index([siteId])
   @@index([scrapeRunId])
+  @@index([ageBucket])
 }
 
 model ScrapeRun {

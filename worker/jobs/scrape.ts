@@ -4,8 +4,8 @@ import { Prisma } from "../../src/generated/prisma/client";
 import { launchBrowser, createPage, closeBrowser, type BrowserOverrides } from "../lib/playwright";
 import {
   normalizeJobRecord,
-  isPublishDateBeforeCutoff,
   resolveMetaMinPublishDate,
+  computeAgeBucket,
 } from "../lib/normalizer";
 import type { NormalizedJobRecord } from "../lib/normalizer";
 import { validateJobRecord } from "../lib/validator";
@@ -2897,22 +2897,12 @@ async function executeScrape(
   ).length;
   const invalidCount = validatedRecords.length - validCount;
 
-  const minPublishDate = getMinPublishDate(site.fieldMappings);
-  let stalePublishDateDropped = 0;
-
   // Dedup using normalized values (catches edge cases the raw dedup misses,
   // e.g. accordion wrappers matching the item selector).
   const dedupSeen = new Set<string>();
   const recordsToPersist = validatedRecords.filter((r) => {
     if (!r.validation.isValid) return false;
     const n = r.normalized;
-    if (
-      minPublishDate &&
-      isPublishDateBeforeCutoff(n.publishDate, minPublishDate)
-    ) {
-      stalePublishDateDropped++;
-      return false;
-    }
     const key =
       n.externalJobId ||
       n.url ||
@@ -2922,12 +2912,6 @@ async function executeScrape(
     dedupSeen.add(key);
     return true;
   });
-
-  if (minPublishDate && stalePublishDateDropped > 0) {
-    console.info(
-      `[scrape] minPublishDate=${minPublishDate} dropped=${stalePublishDateDropped} kept=${recordsToPersist.length}`,
-    );
-  }
 
   if (recordsToPersist.length === 0) {
     const result: ScrapeResult = {
@@ -2996,6 +2980,7 @@ async function executeScrape(
             department: normalized.department || null,
             externalJobId: normalized.externalJobId || null,
             publishDate: normalized.publishDate || null,
+            ageBucket: computeAgeBucket(normalized.publishDate),
             applicationInfo: normalized.applicationInfo || null,
             detailUrl: normalized.url || null,
             rawData: normalized.rawFields as Prisma.InputJsonValue,

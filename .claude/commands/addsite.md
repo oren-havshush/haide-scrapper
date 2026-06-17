@@ -1052,17 +1052,21 @@ summary and decide:
     - Hidden in a `meta[itemprop="datePosted"]` or `<script type="application/ld+json">`
       JobPosting structured data. The ld+json path requires post-processing
       so prefer visible HTML.
+    - **RedMatch/TopMatch pattern:** each listing card contains a hidden
+      `<span data-field="activationDate" style="display:none">DD/MM/YYYY</span>`.
+      Map it with `selector: "[data-field='activationDate']"` on the `LISTING`
+      source — no `extractAttr` needed (textContent). Example:
+      `careers.topmatch.co.il/diplomat-il/index.html`.
     - If truly absent from both listing and detail, skip it — don't invent
       one.
-    - **Stale-job cutoff:** when `publishDate` is mapped and dry-run samples
-      show parseable dates (not relative-only like "3 days ago"), **always**
-      include `minPublishDate: "2026-01-01"` in the Step 6 PUT. The worker
-      (`worker/jobs/scrape.ts:getMinPublishDate`) drops jobs whose parseable
-      `publishDate` is strictly before that date; jobs with empty or
-      unparseable dates are **kept**. Do **not** set `minPublishDate` when the
-      site has no reliable publish date. Reference: tafkid-plus.co.il — labeled
-      `תאריך פרסום: DD.MM.YYYY` in `span.text_icon` → setupScript injects
-      `[data-haide-date]` → field mapping + `minPublishDate`.
+    - **Age-bucket flagging (no longer dropping):** mapping `publishDate` now
+      feeds the dashboard's age-badge system. The worker assigns every job an
+      `ageBucket` (`fresh` / `d90` / `d180` / `d365`) at scrape time — old jobs
+      are **kept**, not dropped. Bold badges and an age counter appear in the
+      dashboard. You no longer need to set `minPublishDate` / `minPublishDays`
+      for new onboards — both are now inert. Reference: tafkid-plus.co.il —
+      labeled `תאריך פרסום: DD.MM.YYYY` in `span.text_icon` → setupScript
+      injects `[data-haide-date]` → field mapping.
 - `extractAttr` rule of thumb: any field whose value is in an attribute
   (most often `href`, `data-*`, `datetime`) needs `extractAttr` set.
   Leaving it unset means "extract textContent."
@@ -1726,12 +1730,13 @@ If any gate fails, iterate: re-read the HTML, pick different selectors,
 re-run. You get up to 3 iterations before aborting.
 
 **Publish-date check (when `publishDate` is mapped):** after a passing
-dry-run, print sample `publishDate` values from the first 3 items and count
-how many items would survive `minPublishDate: "2026-01-01"`. Use the same
-parse rules as `worker/lib/normalizer.ts:parsePublishDateToUtc` (supports
-`DD.MM.YYYY`, `DD/MM/YYYY`, `YYYY-MM-DD`, English month names). Relative or
-empty dates count as "kept" (unparseable). If every sample date is
-unparseable, do **not** set `minPublishDate` in Step 6.
+dry-run, print sample `publishDate` values from the first 3 items and confirm
+the parser can handle them (`DD.MM.YYYY`, `DD/MM/YYYY`, `YYYY-MM-DD`,
+English month names — see `worker/lib/normalizer.ts:parsePublishDateToUtc`).
+Relative or empty values are fine; the worker stores `null` for those.
+The worker automatically assigns an `ageBucket` at scrape time — old jobs are
+**kept** in the DB and shown with bold age badges in the dashboard.
+You no longer need to set `minPublishDate` in Step 6.
 
 **Batch mode**: remember the passing dry-run `count` as `$DRYRUN_N`. Step 8
 compares the test-scrape `jobCount` against it — a scrape returning `<=1`
@@ -2831,7 +2836,6 @@ per the "setupScript fallback" guidance in step 4):
   },
   "pageFlow": [],
   "formCapture": null,  // or { formSelector, actionUrl, method, fields[] } from Step 5b
-  "minPublishDate": "2026-01-01"   // only when publishDate is mapped with parseable dates
 }
 ```
 
@@ -2900,7 +2904,6 @@ $config = [ordered]@{
   }
   pageFlow    = @()
   formCapture = $formCaptureRaw   # populated by Step 5b; $null if you skipped it
-  # minPublishDate = '2026-01-01'  # uncomment when publishDate is mapped with parseable dates
 }
 
 $configPath = '.\.scratch\scrap-config.json'
@@ -3005,24 +3008,16 @@ Reference: bezeq.co.il (siteId `cmpmv882i001x01mvhf9qfaqy`) is the
 canonical case — TCP-resets bare Playwright (UA fix) and its setupScript
 hits `d-api.bezeq.co.il`, which the page CSP blocks (bypassCSP fix).
 
-#### `minPublishDate` — drop stale postings at scrape time
+#### `minPublishDate` / `minPublishDays` — now inert
 
-When `publishDate` is mapped and dry-run samples show parseable dates, add
-`minPublishDate: "2026-01-01"` to the config PUT (ISO `YYYY-MM-DD`). Stored
-under `fieldMappings._meta.minPublishDate`; the worker filters after
-normalization. Jobs with empty or unparseable `publishDate` are kept.
-Optional env fallback: `SCRAPE_MIN_PUBLISH_DATE=2026-01-01`.
+These config keys are **no longer needed for new onboards.** The worker now
+keeps every job regardless of age and assigns an `ageBucket` field at scrape
+time (`fresh` / `d90` / `d180` / `d365`). Old jobs surface in the dashboard
+with bold colored badges and an age-counter bar; the Jobs page age-filter
+lets you drill into each bucket.
 
-```jsonc
-{
-  "itemSelector": "...",
-  "fieldMappings": { "publishDate": { ... }, ... },
-  "minPublishDate": "2026-01-01"
-}
-```
-
-In PowerShell: `$config.minPublishDate = '2026-01-01'` on the Step 6
-hashtable when applicable.
+Existing sites that already have `minPublishDate` or `minPublishDays` in
+their config are unaffected — those keys are silently ignored at scrape time.
 
 ## Step 7 — PATCH to ACTIVE
 
@@ -3174,7 +3169,7 @@ shortfall can never hide:
 ```
 ✓ siteId=<ID>  status=ACTIVE  jobs=<N>
 ✓ coverage: <jobCount>/<dryRunCount> jobs   (or <jobCount>/unknown if total couldn't be determined)
-✓ publishDate filter: min=2026-01-01, dropped=<totalJobs - jobCount> (kept jobs with no date)   (omit line when minPublishDate not set)
+✓ publishDate: <sample values from first 3 jobs>   (omit line when publishDate not mapped)
 ✓ config: <fieldCount> fields, itemSelector=<sel>
 ✓ dashboard: https://scrapper.haide-jobs.co.il/sites/<ID>
 ```
