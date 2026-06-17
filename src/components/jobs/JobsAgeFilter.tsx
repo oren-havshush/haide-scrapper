@@ -1,7 +1,7 @@
 "use client";
 
 const AGE_OPTIONS = [
-  { value: "", label: "All ages" },
+  { value: "", label: "All publish dates" },
   { value: "fresh", label: "Fresh (< 90 days)" },
   { value: "over90", label: "Older than 90 days" },
   { value: "over180", label: "Older than 180 days" },
