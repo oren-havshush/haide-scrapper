@@ -24,6 +24,7 @@ AUTH="Authorization: Bearer $TOKEN"
 - Never use index-based `externalJobId` (`item-0`, `item-1`). Dedup will collapse on re-scrape.
 - Never skip the `verify-config` gate after a PUT — the analyzer overwrites configs.
 - Never run parallel prod scrapes — the worker is single-threaded FIFO; parallel scrapes queue, not parallelise.
+- Never `PATCH /api/sites/:id` with more than one of `status` / `adminNote` / `companyName` in the same body. The route honors **exactly one**, in priority `companyName` → `adminNote` → `status`; the rest are **silently ignored**. To set a status *and* a note, send **two separate PATCH calls**. **LANDMINE** (caused the one1 duplicate that stayed ACTIVE).
 
 ### 0.3 Inputs
 ```
@@ -95,8 +96,9 @@ If budget exhausted → emit `SKIPPED` with the last observed failure reason.
 | Items found on listing but detail pages Incapsula-blocked | Add `browserOverrides.userAgent` | [waf-bypasses.md] |
 | `setupScript` XHR fails with CSP error | Add `bypassCSP: true` | [waf-bypasses.md] |
 | Field value inside complex DOM not reachable by selector | Write `setupScript` to inject a span | [setupscript-patterns.md] |
+| Description is one run-on line, or missing labeled sections (דרישות/כישורים) | `structuredText` helper + merge sections | [setupscript-patterns.md §7–8] |
 | Apply form on detail page, not captured | Run Step 5b | [form-capture.md] |
-| Jobs load lazily / "load more" button / infinite scroll | Add `pageFlow` or `setupScript` | [pagination-and-loading.md] |
+| Jobs load lazily / "load more" button ("טען עוד") / infinite scroll | Prefer native `_meta.loadMoreSelector`; else `pageFlow` / `setupScript` | [pagination-and-loading.md §2] |
 | Known ATS (Workday/Greenhouse/Lever/Comeet/iCIMS/etc.) | Use skeleton from fingerprint + recipe | [spa-frameworks.md] |
 
 ### B2.5 Completeness gate — NEVER activate partial data
@@ -246,12 +248,12 @@ curl -s -A "$REAL_UA" "$URL" -o listing.html
 | Field | Strategy |
 |---|---|
 | `title` | Direct text selector inside item. |
-| `externalJobId` | (1) Native job ID attr (`data-job-id`, `data-id`). (2) Slug from `detailUrl`. (3) Hash of title+department+location (stable, disambiguated). **Never index-based.** |
-| `description` | Often only on the detail page — map `detailUrl` and let worker fetch it. |
+| `externalJobId` | (1) Native job ID attr (`data-job-id`, `data-id`), **or a req number printed in the title** (`"משרה 231: …"` → regex it out). (2) Slug from `detailUrl`. (3) Hash of title+department+location (stable, disambiguated). **Never index-based.** |
+| `description` | Often only on the detail page — map `detailUrl` and let worker fetch it. **If the detail page splits the body into labeled sections (תיאור / דרישות / כישורים / תנאים), the analyzer maps only ONE — merge them all** (setupScript §8). **If the text comes back as one run-on line, preserve block line breaks** via the `structuredText` helper — NEVER `.replace(/\s+/g,' ')` (setupScript §7). |
 | `detailUrl` | Anchor `href` inside item; must be stable (not JS-generated blob). |
-| `location` | Direct selector, or `setupScript` if embedded in a formatted string. |
+| `location` | Direct selector; `setupScript` if embedded in a formatted string or in the title (split on dash); or **hardcode a constant** for a confirmed single-office employer. |
 | `publishDate` | If not in item DOM → skip (don't block ACTIVE on a missing Tier-B field). |
-| `requirements` | Detail-page field; often merged with description. |
+| `requirements` | Detail-page field; usually merge into `description` (setupScript §8) preserving line breaks (§7). |
 
 **Coverage gate — MANDATORY:**
 Establish the true total before submitting. Never silently ship only page 1.
@@ -432,10 +434,12 @@ REASON=$(echo $QA_JSON | jq -r '.verdictReason')
 | Exit / Verdict | Action |
 |---|---|
 | 0 / ACTIVE | Run the **externalJobId gate** (below). If it passes → `PATCH /api/sites/$SITE_ID {"status":"ACTIVE"}`. Log outcome. Done. |
-| 2 / SKIP | `PATCH /api/sites/$SITE_ID {"status":"SKIPPED","adminNote":"$REASON"}`. Log. Done. |
-| 3 / REVIEW | `PATCH /api/sites/$SITE_ID {"status":"REVIEW","adminNote":"$REASON"}`. Log. Done. |
+| 2 / SKIP | **Two separate PATCH calls** (never combined — see §0.2 landmine): `PATCH {"adminNote":"$REASON"}` then `PATCH {"status":"SKIPPED"}`. Log. Done. |
+| 3 / REVIEW | **Two separate PATCH calls**: `PATCH {"adminNote":"$REASON"}` then `PATCH {"status":"REVIEW"}`. Log. Done. |
 | 4 / REQUEUE | Append URL to end of work-list with `attempt+1`. If `attempt ≥ 2` → escalate to REVIEW. |
 | 1 / ERROR | Check error; if transient retry once; else REVIEW. |
+
+> **Verify the transition stuck.** After setting a terminal status, GET the site and confirm `status` actually changed — a combined `{status, adminNote}` PATCH silently leaves the old status in place.
 
 **externalJobId gate (MANDATORY before ACTIVE) — value-based, not prose-based:**
 ```bash
@@ -485,7 +489,7 @@ Pre-reading all recipes defeats the lean-core cost goal.
 |---|---|
 | `triage.vendor` is a known ATS (Workday/Greenhouse/Lever/Comeet/iCIMS/SmartRecruiters/Ashby) | `addsite2-recipes/spa-frameworks.md` |
 | `detail-reach` exit 2/3, or `browserOverrides.userAgent` needed | `addsite2-recipes/waf-bypasses.md` |
-| Field value not extractable by CSS selector | `addsite2-recipes/setupscript-patterns.md` |
+| Field value not extractable by CSS selector; description is one-line or missing labeled sections (דרישות/כישורים); id/location in title | `addsite2-recipes/setupscript-patterns.md` |
 | `formStatus: NEEDS_MANUAL` or apply form capture needed | `addsite2-recipes/form-capture.md` |
 | `extracted < total` (coverage gap), lazy loading, or "load more" detected | `addsite2-recipes/pagination-and-loading.md` |
 

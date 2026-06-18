@@ -67,25 +67,48 @@ Then map `itemSelector: .__ai-job`.
 
 ## 2. "Load more" button
 
-**Pattern:** clicking a button appends more items to the list.
+**Pattern:** clicking a button appends more items to the list (e.g. one1.co.il "טען עוד").
 
-The worker does NOT click. Strategies:
+**Strategy A (PREFERRED): native `loadMoreSelector` config.** The worker has a
+built-in load-more clicker — you do NOT need a setupScript loop. Add the button
+selector under `fieldMappings._meta.loadMoreSelector`:
+```json
+{ "fieldMappings": { "_meta": { "loadMoreSelector": "button.load-more-btn" } } }
+```
+The worker (`clickLoadMoreUntilStable`) clicks it until the button disappears /
+disables or the item count stops growing — defaults: maxClicks 100, settle 3 s,
+stop after 2 no-growth rounds, cap 2000 items. It also re-runs your `setupScript`
+after expansion so injected fields cover the appended items. This is the robust
+path that avoids the async-await landmine below. Use a **CSS** selector
+(`button.load-more-btn`), not a Playwright `:has-text()` pseudo — the worker does a
+plain `page.$(selector)`.
 
-**Strategy A: find the underlying API** — open Network tab, click "Load more", find the XHR call. Then use the `setupScript` fetch approach from §1 Strategy C.
+**Strategy B: find the underlying API** — open Network tab, click "Load more", find the XHR call. Then use the `setupScript` fetch approach from §1 Strategy C.
 
-**Strategy B: inject click loop** — if no API is available:
+**Strategy C: inject click loop** — only if `loadMoreSelector` can't target the
+button (e.g. text-only match needed) and there's no API:
 ```js
-// setupScript — click "Load more" until exhausted
-const BTN = '.load-more, button:has-text("הצג עוד"), button:has-text("Load more")';
-let btn = document.querySelector(BTN);
-while (btn && !btn.disabled) {
+// setupScript — bare top-level await (NO IIFE wrapper — see landmine)
+let btn = document.querySelector('.load-more, [data-load-more]');
+let prev = -1, noGrowth = 0;
+while (btn && btn.offsetParent !== null) {
   btn.click();
-  await new Promise(r => setTimeout(r, 1200)); // wait for items to render
-  btn = document.querySelector(BTN);
+  await new Promise(r => setTimeout(r, 1500)); // wait for items to render
   const total = document.querySelectorAll('.job-item').length;
+  if (total === prev) { if (++noGrowth >= 2) break; } else { noGrowth = 0; }
+  prev = total;
+  btn = document.querySelector('.load-more, [data-load-more]');
   if (total > 500) break; // safety cap
 }
 ```
+
+> **LANDMINE — the worker only `await`s your script if it doesn't swallow the
+> promise.** The worker runs `new AsyncFunction(src); await fn()`. Bare top-level
+> `await` statements (as above) are awaited correctly. But a **bare async IIFE**
+> `(async () => { …await… })();` is an un-returned expression — `fn()` resolves
+> immediately and the worker proceeds **before your loop finishes**, so only the
+> first page is scraped (one1: 30/104). If you must use an IIFE, **`return` it**:
+> `return (async () => { …await… })();`. Simplest: don't wrap in an IIFE at all.
 
 Validate with a dry-run: `coverage: N/total` should now be close to total.
 
