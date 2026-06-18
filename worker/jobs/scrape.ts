@@ -2155,6 +2155,9 @@ async function runSetupScript(page: Page, script: string): Promise<void> {
     // description JSON) fully resolve before extraction. Plain synchronous
     // scripts (sync XHR injection, DOM pokes) keep working — the async wrapper
     // just resolves immediately.
+    // Use a 90s timeout to allow long-running scripts (e.g. load-more loops with
+    // multiple AJAX clicks and sleeps that can easily exceed the 30s default).
+    page.setDefaultTimeout(90_000);
     await page.evaluate(async (src: string) => {
       const AsyncFunction = Object.getPrototypeOf(
         async function () {},
@@ -2162,6 +2165,7 @@ async function runSetupScript(page: Page, script: string): Promise<void> {
       const fn = new AsyncFunction(src);
       await fn();
     }, script);
+    page.setDefaultTimeout(30_000);
     await page.waitForTimeout(1_500);
     console.info(`[scrape] setupScript executed (${script.length} chars)`);
   } catch (e) {
