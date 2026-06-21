@@ -173,12 +173,24 @@ Also check: trailing-slash variant, http↔https swap, www/no-www prefix.
 
 ## 4. Step 2 — Create site + wait for analyzer
 
+**Always include `companyName` in the create payload** when the work-list carries one
+(CSV `company` column, etc.). Creating with only `siteUrl` + `status` leaves
+`companyName: null` — the gap that shipped the 5.csv batch nameless. The field is a
+plain string on the create body; pass it through verbatim (Hebrew is fine, just keep
+the JSON UTF-8 / BOM-free per §14).
+
 ```bash
+# $COMPANY = company name from the work-list (omit the field entirely if none)
 SITE=$(curl -s -X POST "$BASE/api/sites" \
   -H "$AUTH" -H "Content-Type: application/json" \
-  -d "{\"siteUrl\":\"$URL\",\"status\":\"ACTIVE\"}")
+  -d "{\"siteUrl\":\"$URL\",\"status\":\"ACTIVE\",\"companyName\":\"$COMPANY\"}")
 SITE_ID=$(echo $SITE | jq -r '.data.id')
 ```
+
+> If you only learn the company name later, PATCH it standalone:
+> `PATCH /api/sites/$SITE_ID {"companyName":"$COMPANY"}` (one field per PATCH — §0.2 landmine).
+> The `addsite-batch.ts` create path already does this (it PATCHes `companyName` after create);
+> the gap only appears when you create sites by hand, so don't skip the field here.
 
 **Immediately wait for ANALYZING to leave** — the server auto-enqueues an ANALYSIS job that will **overwrite your config** if you PUT before it finishes.
 
