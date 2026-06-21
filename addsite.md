@@ -1468,6 +1468,77 @@ To validate detail-page selectors, **visit one detail URL** in Playwright
 during step 5 and run those selectors there (separately from the listing
 dry-run).
 
+### Description / Requirements separation — guardrails for setupScript splitting
+
+When a site has no clean DOM separator between description and requirements
+(no `[data-qa="positionRequirements"]`, no dedicated `.requirements` div),
+the setupScript must heuristically split the job body. These guardrails
+prevent the three most common failure modes (learned from calanit.co.il and
+similar Israeli sites):
+
+**1. Narrow bullet-marker regex — never classify plain `•` / `●` as "requirements".**
+
+Many sites use plain bullets (`\u2022`, `\u25CF`) for ALL content sections —
+job overview, responsibilities, conditions, AND requirements alike. Only
+distinctive emoji markers should auto-classify a block as requirements:
+`✅ ⭐ ✔ ✓ ☑ ❖ ✦ ➤` (Unicode `\u2705 \u2B50 \u2714 \u2713 \u2611 \u2756
+\u2726 \u27A4`). If the only list marker is `•` or `●`, that block is NOT
+automatically requirements — require a heading keyword (Format B below) to
+classify it.
+
+**2. Heading-keyword detection must require a SHORT element (< 120 chars).**
+
+Format B: "a heading labelled דרישות/requirements/advantages followed by a
+list". The heading MUST be either an `<H1>`–`<H6>` tag, OR a short text node
+(< 120 chars) ending with `:`. Long paragraphs that incidentally contain the
+word "דרישות" in body text (e.g. "על בסיס דרישות שהוגדרו" = "based on
+requirements defined by...") must NOT trigger classification. Without the
+length cap, a 500-char paragraph containing "דרישות" once will swallow the
+entire description into requirements.
+
+```javascript
+// GOOD: length-guarded heading detection
+const rawTxt = (node.textContent || '').trim();
+const isHeading = /^H[1-6]$/.test(node.tagName)
+  || (/:\s*$/.test(rawTxt) && rawTxt.length < 120);
+if (isHeading && reqKw.test(txt)) { /* classify as req section */ }
+
+// BAD: no length guard — matches long body paragraphs
+const isHeading = /^H[1-6]$/.test(node.tagName)
+  || /:\s*$/.test((node.textContent || '').trim());
+```
+
+**3. Final dedup guard — if `description === requirements`, clear requirements.**
+
+When the entire job body is requirements-style content (100% emoji-bullet
+formatted with no non-requirements prose), the fallback logic puts the same
+text in both fields. Always add a final check:
+
+```javascript
+if (description && requirements && description === requirements) {
+  requirements = '';
+}
+```
+
+This ensures no user ever sees fully duplicated content. An empty
+`requirements` field is always preferable to a duplicated one.
+
+**4. Short-description fallback — trigger on length, not just emptiness.**
+
+After removing requirement nodes from the description clone, some jobs may
+retain only a trivial closing line (e.g. "המשרה פונה לשני המינים" — 24 chars)
+while requirements captured the real body. Trigger the fallback when
+`description.length < 40 && requirements.length > 100`, not only when
+`description` is empty. The fallback should use the full body (minus
+metadata/buttons/CTAs) so description is never near-blank.
+
+**Dry-run validation:** After building any setupScript that splits desc/req,
+test on at least 3 representative jobs (one "normal", one all-bullet, one
+with incidental keyword mentions) and verify:
+- `description.length > 40` for all
+- No job has `description === requirements`
+- `overlap = lines_in_req_that_appear_in_desc / total_req_lines < 0.3`
+
 ### Listing completeness — MANDATORY coverage gate
 
 **This is a hard gate, not advice.** You MUST establish the site's true
