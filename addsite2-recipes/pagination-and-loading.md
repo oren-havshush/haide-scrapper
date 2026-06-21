@@ -31,6 +31,16 @@ via `fetch()` and rebuild the DOM from the response — this is cheaper and more
 reliable than DOM-based pagination. Reference: my.migdal.co.il (43 jobs via
 `/data/api/ContentData/FrontContentData?ListType=Jobs`, DOM only showed 10).
 
+**WordPress `admin-ajax.php` — use the "all jobs" action, not the "hot/featured" one.**
+WordPress job boards often fire multiple AJAX calls on page load:
+- one for **all jobs** (e.g. `action=tb_get_jobs`) — returns the full list
+- one for **featured/hot jobs** (e.g. `action=tb_get_hot_jobs`) — returns only 3–5 highlighted items
+
+Always intercept ALL `admin-ajax.php` POST calls and compare counts. The featured
+action will look identical in structure but return a tiny subset. Use the action
+that returns the highest count. Cite: `LRN-COV-2` (tigbur.co.il — `tb_get_hot_jobs`
+returned 5 jobs; `tb_get_jobs` returned 576).
+
 ---
 
 ## 1. Numbered pagination (query param)

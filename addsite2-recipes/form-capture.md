@@ -53,6 +53,21 @@ The correct approach — no `formCapture` needed:
    fields to capture; the anchor URL is sufficient for the apply link.
 Reference: `shagrir.co.il` (`cmqjkta3n000r01p6p7i3nkhe`). Cite: `LRN-FORM-4`.
 
+**Two apply paths — WhatsApp + site-level CV upload (no per-job URL)**
+Some sites (e.g. `tigbur.co.il`) expose both:
+- A **per-job WhatsApp link** in the API response (`job_wa_link`)
+- A **site-level CV upload modal** triggered by checkboxes (multi-select, JS-driven,
+  no per-job anchor URL)
+
+When both exist and the CV upload has no addressable per-job URL, store both in
+`applicationInfo` concatenated with `\n`:
+```js
+var applyVal = job.job_wa_link + '\\n' + 'https://site.co.il/jobs/';
+item.appendChild(mk('__ai-apply-url', applyVal));
+```
+Set `formCapture: null` — the modal form is JS-only, nothing to capture server-side.
+Reference: `tigbur.co.il` (`cmqjk3tp1000k01p64hssobp7`). Cite: `LRN-FORM-5`.
+
 **Do NOT SKIP just because:**
 - Step 5b found only a newsletter/subscribe form (no CV upload)
 - There is no per-job `detailUrl`
