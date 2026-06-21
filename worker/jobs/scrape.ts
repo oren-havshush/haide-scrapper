@@ -76,7 +76,7 @@ interface ValidatedRecord {
 // Constants
 // ---------------------------------------------------------------------------
 
-const SCRAPE_TIMEOUT_MS = 600_000; // 10 minutes (large infinite-scroll listings + per-row extraction)
+const SCRAPE_TIMEOUT_MS = 900_000; // 15 minutes (large infinite-scroll listings + per-row extraction on multi-step pageFlow sites)
 const DETAIL_PAGE_TIMEOUT_MS = 15_000; // 15 seconds per detail page
 const NAVIGATION_TIMEOUT_MS = 30_000; // 30 seconds for page navigation
 const MAX_EXTRACTED_ITEMS = 2000;
@@ -1652,6 +1652,20 @@ async function extractRawFieldsWithPageFlow(
         detailNavStatus = "http_error";
       }
 
+      // Dead detail page (404/410/5xx): the posting no longer exists. Skip it
+      // entirely instead of (a) wasting the full waitFor timeout on a page that
+      // will never contain our selector and (b) persisting an empty shell row.
+      // On multi-step (pageFlow) sites a listing often outlives its detail
+      // pages, so without this dozens of dead links both fill the output with
+      // blank jobs AND burn the global scrape budget (15s each), starving the
+      // tail of the listing of any time at all.
+      if (detailNavStatus === "http_error") {
+        console.warn(
+          `[scrape] Skipping dead detail page (HTTP ${response ? response.status() : "?"}): ${detailUrl}`,
+        );
+        continue;
+      }
+
       // Wait for detail page selector if specified
       if (detailStep.waitFor) {
         try {
@@ -3109,7 +3123,7 @@ function createTimeoutPromise(
           });
         } else {
           await failScrapeRun(scrapeRunId, siteId, {
-            error: "Scrape execution exceeded 10-minute timeout",
+            error: `Scrape execution exceeded ${SCRAPE_TIMEOUT_MS / 60_000}-minute timeout`,
             failureCategory: "timeout",
           });
         }
@@ -3117,7 +3131,7 @@ function createTimeoutPromise(
         console.error("[scrape] Failed to update ScrapeRun on timeout:", updateError);
       }
 
-      reject(new Error("Scrape execution exceeded 10-minute timeout"));
+      reject(new Error(`Scrape execution exceeded ${SCRAPE_TIMEOUT_MS / 60_000}-minute timeout`));
     }, SCRAPE_TIMEOUT_MS);
   });
   return { promise, cancel: () => clearTimeout(timerId) };
