@@ -26,11 +26,32 @@ const emailApply = await page.evaluate(() => {
 ```
 
 **If `likelyEmailApply === true`:**
-- Skip this entire recipe (Step 5b). Set `formCapture: null`.
-- Map `applicationInfo` on every item: per-item `mailto:` href, or inject the
-  site-wide email via `setupScript` into a hidden `.__ai-apply` span.
-- Ensure each job has a stable `externalJobId`.
-- `formStatus = EMAIL` passes Tier-A. Ship ACTIVE.
+- **First check**: does each job ALSO have its own file-upload form on the page?
+  Look for `<form action=".../file-upload">` or Dropzone elements inside each job
+  card. A visible email in the header/footer does NOT mean email-apply — it may
+  be a general HR contact. If per-job upload forms exist, follow the
+  **Dropzone / listing-page upload** path below instead.
+- If no per-job form exists: Skip Step 5b. Set `formCapture: null`.
+  Inject `mailto:` per-item or site-wide email via `setupScript` into `.__ai-apply`.
+  `formStatus = EMAIL` passes Tier-A. Ship ACTIVE.
+
+**Dropzone / listing-page file-upload (no detail pages)**
+Some sites (e.g. `shagrir.co.il`) embed a Dropzone.js upload form for each job
+directly on the listing page (no separate detail URL). Pattern:
+```html
+<form action="/file-upload" id="dropzone-{id}">
+  <input type="hidden" name="job_cv_id" value="{id}">
+</form>
+```
+The correct approach — no `formCapture` needed:
+1. Extract the numeric job ID from the toggle anchor: `href="#collapseJobsItem{id}"`.
+2. Inject a per-job anchor URL as `applicationInfo`:
+   ```js
+   item.appendChild(mk('__ai-apply-url', 'https://site.co.il/jobs#jobs-cv-' + jobId));
+   ```
+3. Set `formCapture: null` — the Dropzone upload is pure JS, no server-side form
+   fields to capture; the anchor URL is sufficient for the apply link.
+Reference: `shagrir.co.il` (`cmqjkta3n000r01p6p7i3nkhe`). Cite: `LRN-FORM-4`.
 
 **Do NOT SKIP just because:**
 - Step 5b found only a newsletter/subscribe form (no CV upload)
