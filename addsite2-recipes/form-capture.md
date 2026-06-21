@@ -7,6 +7,41 @@
 
 ---
 
+## Step5a. Detect email apply BEFORE running this recipe
+
+Run after Step 5 dry-run, **before** attempting form capture. Prevents false
+SKIP when the real apply path is a site-wide careers email (no HTML form).
+
+```js
+// Playwright probe — run on the listing page
+const emailApply = await page.evaluate(() => {
+  const mailtos = [...document.querySelectorAll('a[href^="mailto:"]')]
+    .map(a => a.getAttribute('href').replace(/^mailto:/i, '').split('?')[0]);
+  const body = document.body.innerText || '';
+  const prose = /\b[\w.+-]+@[\w.-]+\.\w+\b/.exec(body)?.[0] || null;
+  const applyCue = /קורות\s*חיים|מועמדות|לשלוח|הגש|apply|cv|resume|מס[\s'']?משרה/i.test(body);
+  return { mailtos, prose, applyCue,
+    likelyEmailApply: (mailtos.length > 0 || !!prose) && applyCue };
+});
+```
+
+**If `likelyEmailApply === true`:**
+- Skip this entire recipe (Step 5b). Set `formCapture: null`.
+- Map `applicationInfo` on every item: per-item `mailto:` href, or inject the
+  site-wide email via `setupScript` into a hidden `.__ai-apply` span.
+- Ensure each job has a stable `externalJobId`.
+- `formStatus = EMAIL` passes Tier-A. Ship ACTIVE.
+
+**Do NOT SKIP just because:**
+- Step 5b found only a newsletter/subscribe form (no CV upload)
+- There is no per-job `detailUrl`
+- `formCapture: null` — expected for email-apply sites
+
+References: benjerry.co.il (`cmqe6ce8q004401lcpn12brnw`), halilit.com.
+Cite: `LRN-FORM-3`.
+
+---
+
 ## 0. When to capture vs when to skip
 
 | Signal | Action |

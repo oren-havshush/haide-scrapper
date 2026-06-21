@@ -305,3 +305,131 @@ if (!document.querySelector('.__ai-description')) {
 > The same `setupScript` runs on listing AND detail pages, so combine the
 > listing-scope injection (ids, location) and this detail-scope merge in one script,
 > each guarded by an existence check.
+
+---
+
+## 9. Description vs Requirements — splitting a mixed job body
+
+**When to use this vs §8:** §8 (merge labeled sections) is for sites where the DOM
+already segments the content into clearly-labeled rows. Use §9 when the job body
+is **one unseparated block** that contains both description and requirements and you
+want to populate a separate `requirements` field. If you don't need a separate
+`requirements` field, use §8 (or just inject the full body as `description`).
+
+**Signal:** single `.job-body` or `.jobPosition` block with description prose +
+requirements bullets/list all mixed in, and the site has a `requirements` field.
+
+### Guardrails (learned from calanit.co.il — applied + verified 2026-06-21)
+
+**1. Narrow bullet-marker regex — never treat plain `•`/`●` as "requirements".**
+
+Many sites use plain bullets (`\u2022`, `\u25CF`) for ALL sections — overview,
+responsibilities, conditions, AND requirements. Only distinctive emoji markers
+should auto-classify a block as requirements:
+`✅ ⭐ ✔ ✓ ☑ ❖ ✦ ➤` (`\u2705 \u2B50 \u2714 \u2713 \u2611 \u2756 \u2726 \u27A4`).
+
+```js
+// GOOD: exclude plain bullets
+const bulletRe = /[\u2705\u2B50\u2714\u2713\u2611\u2756\u2726\u27A4]/;
+// BAD: includes • and ● — will over-classify any bulleted content as requirements
+const bulletRe = /[\u2705\u2B50\u2714\u2713\u2611\u2022\u25CF\u2756\u2726\u27A4]/;
+```
+
+**2. Heading-keyword detection must require a SHORT element (< 120 chars).**
+
+A Format-B requirements heading ("דרישות חובה:", "Requirements:") is short. A
+500-char paragraph that incidentally contains "דרישות" in body text must NOT
+trigger classification.
+
+```js
+// GOOD: length-guarded
+const rawTxt = (node.textContent || '').trim();
+const isHeading = /^H[1-6]$/.test(node.tagName)
+  || (/:\s*$/.test(rawTxt) && rawTxt.length < 120);
+
+// BAD: no length guard — matches "על בסיס דרישות שהוגדרו ע״י..." (300 chars)
+const isHeading = /^H[1-6]$/.test(node.tagName)
+  || /:\s*$/.test((node.textContent || '').trim());
+```
+
+**3. Final dedup guard — if `description === requirements`, clear requirements.**
+
+When the entire job body is 100% emoji-bullet content, the fallback puts the
+same text in both fields. Always guard before injecting:
+
+```js
+if (description && requirements && description === requirements) {
+  requirements = '';
+}
+```
+
+**4. Short-description fallback — trigger on length, not just emptiness.**
+
+After removing requirement nodes from the description clone, some jobs retain
+only a trivial footer line ("המשרה פונה לשני המינים" — 24 chars). Trigger the
+fallback when `description.length < 40 && requirements.length > 100`:
+
+```js
+if ((!description || (description.length < 40 && requirements.length > 100)) && requirements) {
+  // re-build description from full body minus metadata/buttons/CTAs
+}
+```
+
+**Dry-run validation:** test on ≥ 3 representative jobs before PUT:
+- `description.length > 40` for all
+- No job has `description === requirements`
+- `overlap = reqLines_that_appear_in_desc / total_reqLines < 0.3`
+
+---
+
+## 10. Wix richText sites — jobs in `[data-testid="richTextElement"]` blocks
+
+**Signal:** page has `[data-testid="richTextElement"]`, `wixui-*` classes, or
+`comp-*` element IDs. The Step 3b cluster scan finds nothing (no repeating job
+structure), and it looks like an auto-skip candidate. **Do NOT skip on that
+basis.** Try this recipe; only skip if the dry-run yields < 2 jobs.
+
+**Detect:** check fetched HTML for `richTextElement` / `wixui-` / `comp-`.
+
+**Structural unit:** a `<section>` that contains **exactly one**
+`[data-testid="richTextElement"]` **and** at least one `a[href^="mailto:"]`.
+This pairing naturally excludes header/nav/footer and מכרז/tender notices.
+
+```js
+const items = Array.from(document.querySelectorAll('section')).filter(s =>
+  s.querySelectorAll('[data-testid="richTextElement"]').length === 1 &&
+  s.querySelector('a[href^="mailto:"]')
+);
+items.forEach(section => {
+  const rt = section.querySelector('[data-testid="richTextElement"]');
+  const lines = (rt.innerText || '').split('\n').map(l => l.trim()).filter(l => l.length > 2);
+  const title = lines[0] || '';
+  const description = (rt.innerText || '').trim();
+  const email = (section.querySelector('a[href^="mailto:"]').getAttribute('href') || '')
+    .replace(/^mailto:/i, '').split('?')[0];
+  // stable id: hash of title (no native id on Wix richText blocks)
+  const id = 'wix-' + [...title].reduce((h, c) => (Math.imul(31, h) + c.charCodeAt(0)) | 0, 0);
+
+  const el = document.createElement('div');
+  el.setAttribute('data-haide-job', '1');
+  const mk = (cls, val) => { if (!val) return; const d = document.createElement('div');
+    d.className = cls; d.style.display = 'none'; d.textContent = val; el.appendChild(d); };
+  mk('__ai-title', title);
+  mk('__ai-jobid', id);
+  mk('__ai-description', description);
+  mk('__ai-apply', email);
+  // inject el into a root container
+});
+```
+
+**Config shape:** single-page (`pageFlow: []`, `formCapture: null`),
+`waitUntil: "domcontentloaded"` + `waitAfterLoad: 5000` (Wix `networkidle`
+never settles). `applicationInfo` field → `.__ai-apply`.
+
+**Location:** usually not structured — leave empty; the worker's IL gazetteer
+fills some. Only hardcode a constant location when the whole site is confirmed
+single-city.
+
+**Reference:** tarbut-herzliya.co.il (`cmqe6q0i3004a01lcx1zvh6d2`) — 5 jobs,
+per-job apply email, `הרצליה` hardcoded (single-city municipal employer); the
+מכרז פומבי tender block correctly excluded (no `mailto:`).

@@ -1,3 +1,17 @@
+---
+name: 'addsite2'
+description: 'Onboard one or many jobs-listing sites end-to-end (v2): triage → build pipeline, externalJobId gate, email-apply detection, age-bucket flagging, Wix/Comeet/Workday recipes, multi-file recipe architecture. Accepts a single URL, multiple URLs, a plain-text file, or a CSV export.'
+platform: 'windows-powershell'
+---
+
+<!-- CANONICAL SOURCE — do not edit copies directly.
+     Edit THIS file (addsite2.md at the repo root), then run `pnpm sync:addsite2`.
+     Copies kept in sync:
+       • .claude/commands/addsite2.md  (CI-checked — drift blocks merges to main)
+       • ~/.cursor/skills/addsite2/SKILL.md  (hardlinked locally by sync script)
+     Recipe files (addsite2-recipes/*.md) → ~/.cursor/skills/addsite2/recipes/*.md
+     If you see this comment in a copy, that copy is stale — run `pnpm sync:addsite2`. -->
+
 # /addsite2 — site onboarding skill v2
 
 > **Success is NOT a raw ACTIVE count.** Success = each site reaches its *correct*
@@ -260,7 +274,7 @@ curl -s -A "$REAL_UA" "$URL" -o listing.html
 | Field | Strategy |
 |---|---|
 | `title` | Direct text selector inside item. |
-| `externalJobId` | (1) Native job ID attr (`data-job-id`, `data-id`), **or a req number printed in the title** (`"משרה 231: …"` → regex it out). (2) Slug from `detailUrl`. (3) Hash of title+department+location (stable, disambiguated). **Never index-based.** |
+| `externalJobId` | (1) Native job ID attr (`data-job-id`, `data-id`), **or a req number printed in the title** (`"משרה 231: …"` → regex it out). (2) Slug from `detailUrl`. (3) Hash of title+department+location (stable, disambiguated). **Never index-based.** **CAUTION:** a printed "job number" field (e.g. `numberJob`) can be reused across distinct postings by the same recruiter — verify uniqueness. Prefer the unique record ID (e.g. CMS `_id`) when a printed number collides. If `saved jobs < API count` after scraping, the id field is non-unique. |
 | `description` | Often only on the detail page — map `detailUrl` and let worker fetch it. **If the detail page splits the body into labeled sections (תיאור / דרישות / כישורים / תנאים), the analyzer maps only ONE — merge them all** (setupScript §8). **If the text comes back as one run-on line, preserve block line breaks** via the `structuredText` helper — NEVER `.replace(/\s+/g,' ')` (setupScript §7). |
 | `detailUrl` | Anchor `href` inside item; must be stable (not JS-generated blob). |
 | `location` | Direct selector; `setupScript` if embedded in a formatted string or in the title (split on dash); or **hardcode a constant** for a confirmed single-office employer. |
@@ -349,8 +363,8 @@ Signal to capture: the QA gate returns `formStatus: NEEDS_MANUAL` or `NONE` and 
   "formCapture": { ... },          // if captured in §8
   "browserOverrides": { ... },     // if reachability required UA
   "setupScript": "...",            // if fields required injection
-  "minPublishDays": 90,            // MANDATORY rolling stale-job cutoff (see §10)
-  "minPublishDate": "YYYY-MM-DD",  // optional — only to OVERRIDE the rolling window with a frozen date
+  // minPublishDays / minPublishDate — no longer needed; see §10
+  "minPublishDate": "YYYY-MM-DD",  // optional — only to set a hard frozen floor (rare)
   "bypassCSP": true                // if setupScript XHRs a different subdomain
 }
 ```
@@ -388,32 +402,21 @@ npx tsx scripts/addsite-batch.ts verify-config \
 
 ---
 
-## 10. Step 7 — Set the rolling stale-job cutoff (MANDATORY)
+## 10. Step 7 — Age-bucket flagging (replaces stale-job cutoff)
 
-Stale jobs flood the listing and reduce signal quality, so **every** site gets a
-rolling cutoff. Set `minPublishDays: 90` in the config payload — **always, on
-every onboard**, regardless of whether `publishDate` is mapped.
+**`minPublishDays` and `minPublishDate` are now inert — do not set them.**
+The worker keeps every job regardless of age and assigns an `ageBucket` field
+at scrape time: `fresh` / `d90` / `d180` / `d365`. Old jobs surface in the
+dashboard with colored age-counter badges; the Jobs page age-filter lets you
+drill by bucket. You no longer need to gate scrapes on publish age.
 
-```bash
-# minPublishDays is part of the config payload (§9.1). It survives the analyzer.
-# The worker recomputes the cutoff (today − N days) on EVERY scrape, so the
-# 90-day window keeps rolling forward on its own — no cron, no re-PUT needed.
-```
+Existing sites that already have `minPublishDate` or `minPublishDays` in their
+config are unaffected — those keys are **silently ignored** at scrape time.
 
-**How it behaves (worker `getMinPublishDate` → `resolveMetaMinPublishDate`):**
-- Jobs whose parseable `publishDate` is older than 90 days are dropped each scrape.
-- **Jobs with no / unparseable `publishDate` are always KEPT** — `minPublishDays`
-  never drops date-less jobs. So it's safe to set even on sites that don't expose
-  a date (IAA, alubin, mikud): nothing is dropped there, but the day the site
-  starts publishing dated posts the window applies automatically.
-- A job that's fresh at onboarding is dropped on a later scrape once it ages past
-  90 days (rolling). Combined with the minimum-2 rule (§7), a site whose dated
-  jobs all age out drops below 2 and becomes a SKIP candidate ("no recent jobs").
-
-**Precedence (override):** to pin a site to a *frozen* absolute floor instead of
-the rolling window (e.g. a campaign cutoff), set `minPublishDate: "YYYY-MM-DD"` —
-it wins over `minPublishDays`. Use a longer window per-site (e.g.
-`minPublishDays: 365`) when a site keeps postings open for a year.
+**When to set `minPublishDate` (rare override):** if you need a one-time hard
+floor (e.g. a campaign cutoff unrelated to age-buckets), set
+`minPublishDate: "YYYY-MM-DD"` in the payload. It wins over any age-bucket
+logic. Do not use it as a routine onboarding step.
 
 Then run `verify-config` again (these live under `_meta`, not `fieldMappings` — they survive the analyzer).
 
@@ -453,6 +456,35 @@ REASON=$(echo $QA_JSON | jq -r '.verdictReason')
 
 > **Verify the transition stuck.** After setting a terminal status, GET the site and confirm `status` actually changed — a combined `{status, adminNote}` PATCH silently leaves the old status in place.
 
+**Step 5a — Detect email apply BEFORE running form capture:**
+Run this quick probe after the dry-run passes and before Step 5b. It prevents
+the class of false SKIP where a site-wide careers email is the real apply path
+but form capture finds only a newsletter/subscribe form and returns `NONE`.
+
+```bash
+# In Playwright, after page.goto(listingUrl):
+emailApply = await page.evaluate(() => {
+  const mailtos = [...document.querySelectorAll('a[href^="mailto:"]')]
+    .map(a => a.getAttribute('href').replace(/^mailto:/i,'').split('?')[0]);
+  const body = document.body.innerText || '';
+  const prose = /\b[\w.+-]+@[\w.-]+\.\w+\b/.exec(body)?.[0] || null;
+  const applyCue = /קורות\s*חיים|מועמדות|לשלוח|הגש|apply|cv|resume|מס[\s'']?משרה/i.test(body);
+  return { mailtos, prose, applyCue,
+    likelyEmailApply: (mailtos.length > 0 || !!prose) && applyCue };
+});
+```
+
+If `likelyEmailApply === true`:
+- **Skip Step 5b entirely.** Set `formCapture: null` (correct for email apply).
+- Map `applicationInfo` on every item — per-item `mailto:` or inject a site-wide
+  address via `setupScript`.
+- Ensure each job has a stable `externalJobId` (native number, detail URL slug, or hash).
+- `formStatus = EMAIL` → Tier-A pass. Proceed to ACTIVE.
+
+**Do NOT SKIP** just because Step 5b found only a newsletter form, no per-job
+`detailUrl`, or `formCapture: null`. Those are expected on email-apply sites.
+Full recipe in `addsite2-recipes/form-capture.md` §Step5a. Cite: `LRN-FORM-3`.
+
 **externalJobId gate (MANDATORY before ACTIVE) — value-based, not prose-based:**
 ```bash
 npx tsx scripts/addsite-batch.ts verify-jobids --site-id $SITE_ID
@@ -463,6 +495,9 @@ class of bug that prose rules miss — e.g. shipping the raw job title as the id
 Exit 2 → do **not** mark ACTIVE: fix the `externalJobId` mapping (read
 `addsite2-recipes/setupscript-patterns.md` §3, hash-synthesis), re-PUT, re-scrape,
 re-run the gate. Cite: `LRN-ID-4`.
+Exit 0 but `saved jobs < API/DOM total` → the id field has collisions (non-unique
+native number). Switch to the record's unique internal id (CMS `_id`, DB row id,
+detail URL path) and re-scrape. Cite: `LRN-ID-5`.
 
 **Completeness gate (double-check before ACTIVE):** if `formStatus === "NONE"` → override verdict to SKIP regardless of QA exit code. Apply path is mandatory.
 

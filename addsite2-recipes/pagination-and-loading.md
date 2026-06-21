@@ -20,6 +20,17 @@ If `extracted === total` → no pagination needed, proceed.
 
 **LANDMINE:** never silently ship page-1-only. If coverage is unclear, instrument it.
 
+**Custom CMS sites are often API-backed too** — not just named SPA frameworks.
+If DOM scraping returns a suspiciously low or round count (10, 20…) and
+scroll/load-more does nothing, open the Network tab before concluding the site
+has a DOM pagination problem. Many custom .NET/Umbraco/CMS sites expose a JSON
+list endpoint (e.g. `/data/api/ContentData/FrontContentData?ListType=Jobs`)
+that returns all jobs in one call. Filter XHR responses by `json` content-type
+and look for an array of job-like objects. If found, call it from `setupScript`
+via `fetch()` and rebuild the DOM from the response — this is cheaper and more
+reliable than DOM-based pagination. Reference: my.migdal.co.il (43 jobs via
+`/data/api/ContentData/FrontContentData?ListType=Jobs`, DOM only showed 10).
+
 ---
 
 ## 1. Numbered pagination (query param)
