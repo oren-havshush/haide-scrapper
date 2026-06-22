@@ -87,6 +87,10 @@ export const updateSiteConfigSchema = z.object({
       options: z
         .array(z.object({ value: z.string(), label: z.string() }))
         .optional(),
+      // Optional grouping label so a multi-method apply page (e.g. a CV-upload
+      // form + a contact form) can render its fields under separate subheaders
+      // on the dashboard. Worker passes it through verbatim in the static blob.
+      group: z.string().optional(),
     })),
   }).nullable(),
   originalMappings: z.record(z.string(), z.unknown()).optional(),

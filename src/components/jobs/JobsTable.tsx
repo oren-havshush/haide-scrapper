@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, Fragment } from "react";
 import Link from "next/link";
 import {
   Table, TableBody, TableCell, TableHead,
@@ -87,6 +87,7 @@ interface FormDataField {
   label: string;
   fieldType: string;
   required: boolean;
+  group?: string;
 }
 
 interface FormData {
@@ -137,14 +138,27 @@ function FormDataSection({ formData }: { formData: FormData }) {
             </tr>
           </thead>
           <tbody>
-            {formData.fields.map((f, i) => (
-              <tr key={`${f.name}-${i}`} className="border-b border-[#1a1a1a] last:border-0">
-                <td className="px-3 py-1 font-mono text-[#d4d4d8]">{f.name || "—"}</td>
-                <td className="px-3 py-1 text-[#a1a1aa] truncate max-w-[150px]" title={f.label}>{f.label}</td>
-                <td className="px-3 py-1 text-[#71717a]">{f.fieldType}</td>
-                <td className="px-3 py-1 text-center">{f.required ? <span className="text-amber-400">*</span> : ""}</td>
-              </tr>
-            ))}
+            {formData.fields.map((f, i) => {
+              const prev = formData.fields[i - 1];
+              const showGroupHeader = !!f.group && f.group !== prev?.group;
+              return (
+                <Fragment key={`${f.name}-${i}`}>
+                  {showGroupHeader && (
+                    <tr className="bg-[#101013] border-b border-[#27272a]">
+                      <td colSpan={4} className="px-3 py-1 text-[10px] font-semibold uppercase tracking-wider text-[#a1a1aa]">
+                        {f.group}
+                      </td>
+                    </tr>
+                  )}
+                  <tr className="border-b border-[#1a1a1a] last:border-0">
+                    <td className="px-3 py-1 font-mono text-[#d4d4d8]">{f.name || "—"}</td>
+                    <td className="px-3 py-1 text-[#a1a1aa] truncate max-w-[150px]" title={f.label}>{f.label}</td>
+                    <td className="px-3 py-1 text-[#71717a]">{f.fieldType}</td>
+                    <td className="px-3 py-1 text-center">{f.required ? <span className="text-amber-400">*</span> : ""}</td>
+                  </tr>
+                </Fragment>
+              );
+            })}
           </tbody>
         </table>
       </div>

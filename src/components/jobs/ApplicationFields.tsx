@@ -8,6 +8,7 @@ interface FormFieldInfo {
   label: string;
   fieldType: string;
   required: boolean;
+  group?: string;
 }
 
 interface FormCapture {
@@ -23,6 +24,21 @@ interface SiteConfig {
       formCapture?: FormCapture;
     };
   } | null;
+}
+
+function groupFields(
+  fields: FormFieldInfo[],
+): { group?: string; fields: FormFieldInfo[] }[] {
+  const groups: { group?: string; fields: FormFieldInfo[] }[] = [];
+  for (const f of fields) {
+    const last = groups[groups.length - 1];
+    if (last && last.group === f.group) {
+      last.fields.push(f);
+    } else {
+      groups.push({ group: f.group, fields: [f] });
+    }
+  }
+  return groups;
 }
 
 export function ApplicationFields({ siteId }: { siteId: string }) {
@@ -53,20 +69,29 @@ export function ApplicationFields({ siteId }: { siteId: string }) {
           {form.actionUrl}
         </a>
       </div>
-      <div className="flex flex-wrap gap-2">
-        {form.fields.map((f, i) => (
-          <div
-            key={i}
-            className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-[#18181b] border border-[#27272a]"
-          >
-            <span className="text-[10px] uppercase font-medium text-[#71717a]">
-              {f.fieldType}
-            </span>
-            <span className="text-xs text-[#d4d4d8]">{f.name || f.label}</span>
-            {f.required && <span className="text-[10px] text-amber-400">*</span>}
+      {groupFields(form.fields).map((grp, gi) => (
+        <div key={gi} className={gi > 0 ? "mt-3" : undefined}>
+          {grp.group && (
+            <div className="text-[10px] font-semibold uppercase tracking-wider text-[#a1a1aa] mb-1.5">
+              {grp.group}
+            </div>
+          )}
+          <div className="flex flex-wrap gap-2">
+            {grp.fields.map((f, i) => (
+              <div
+                key={i}
+                className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-[#18181b] border border-[#27272a]"
+              >
+                <span className="text-[10px] uppercase font-medium text-[#71717a]">
+                  {f.fieldType}
+                </span>
+                <span className="text-xs text-[#d4d4d8]">{f.name || f.label}</span>
+                {f.required && <span className="text-[10px] text-amber-400">*</span>}
+              </div>
+            ))}
           </div>
-        ))}
-      </div>
+        </div>
+      ))}
     </div>
   );
 }
