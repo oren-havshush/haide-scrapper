@@ -3208,13 +3208,17 @@ async function failScrapeRun(
       },
     });
 
-    await prisma.site.update({
-      where: { id: siteId },
-      data: {
-        status: "FAILED",
-        failedAt: new Date(),
-      },
-    });
+    // Moving a site to FAILED wipes its scraped jobs (mirror siteService path).
+    await prisma.$transaction([
+      prisma.job.deleteMany({ where: { siteId } }),
+      prisma.site.update({
+        where: { id: siteId },
+        data: {
+          status: "FAILED",
+          failedAt: new Date(),
+        },
+      }),
+    ]);
   } catch (dbError) {
     console.error("[scrape] Failed to update ScrapeRun/Site on failure:", dbError);
   }

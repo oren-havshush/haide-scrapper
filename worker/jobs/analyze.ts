@@ -105,14 +105,18 @@ export async function handleAnalysisJob(
         },
       });
 
-      await prisma.site.update({
-        where: { id: site.id },
-        data: {
-          status: "FAILED",
-          failedAt: new Date(),
-          confidenceScore: 0.0,
-        },
-      });
+      // Moving a site to FAILED wipes its scraped jobs (mirror siteService path).
+      await prisma.$transaction([
+        prisma.job.deleteMany({ where: { siteId: site.id } }),
+        prisma.site.update({
+          where: { id: site.id },
+          data: {
+            status: "FAILED",
+            failedAt: new Date(),
+            confidenceScore: 0.0,
+          },
+        }),
+      ]);
       await emitWorkerEvent({
         type: "site:status-changed",
         payload: { siteId: site.id, status: "FAILED" },

@@ -21,10 +21,14 @@ async function recoverInterruptedJobs() {
       data: { status: "FAILED", error: "Worker interrupted" },
     });
 
-    await prisma.site.update({
-      where: { id: job.siteId },
-      data: { status: "FAILED", failedAt: new Date() },
-    });
+    // Moving a site to FAILED wipes its scraped jobs (mirror siteService path).
+    await prisma.$transaction([
+      prisma.job.deleteMany({ where: { siteId: job.siteId } }),
+      prisma.site.update({
+        where: { id: job.siteId },
+        data: { status: "FAILED", failedAt: new Date() },
+      }),
+    ]);
   }
 
   console.info(`[worker] Recovered ${interrupted.length} interrupted job(s)`);
