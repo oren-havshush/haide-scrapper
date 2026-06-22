@@ -78,6 +78,27 @@ Cite: `LRN-FORM-3`.
 
 ---
 
+## LRN-FORM-6 — Capture the form BEFORE the first PUT; a `NEEDS_MANUAL` REVIEW is remediable
+- **Signal:** a site has a real apply form on the detail page but the config was
+  PUT + scraped with no `formCapture`, QA returned `formStatus: NEEDS_MANUAL` /
+  `NONE`, and the site was logged REVIEW. Three 6.csv sites (clalitsmile, proportsia,
+  and madanes for requirements) stalled in REVIEW this way despite having capturable
+  forms — wasting a full scrape+QA round each.
+- **Fix:** treat Step 5b as **mandatory before the first PUT** whenever there is no
+  captured form / email / per-item apply URL yet. If you only discover the gap at QA
+  time, do NOT log REVIEW — go back to Step 5b, capture the form, re-PUT, re-scrape,
+  re-QA (within the §B2a remediation budget). A `NEEDS_MANUAL` reason is a remediable
+  signal, not a terminal verdict.
+- **Multi-form pages:** when several forms exist (e.g. a CV-upload form behind
+  reCAPTCHA AND a plain `contact-about-job` form with no CAPTCHA), capture the
+  CAPTCHA-free one. Reference: clalitsmile.co.il (Formidable Forms, 3 forms).
+- **Generalizes to:** every site where the apply path isn't email and isn't a
+  per-item URL. **Home:** Step 5b + Step 9 verdict routing.
+- References: clalitsmile.co.il (`cmqo82p3v000x01qpmtxsxv25`),
+  proportsia.co.il (`cmqo82pcr001101qplimsnicc`).
+
+---
+
 ## 0. When to capture vs when to skip
 
 | Signal | Action |

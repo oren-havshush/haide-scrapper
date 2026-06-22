@@ -433,3 +433,57 @@ single-city.
 **Reference:** tarbut-herzliya.co.il (`cmqe6q0i3004a01lcx1zvh6d2`) — 5 jobs,
 per-job apply email, `הרצליה` hardcoded (single-city municipal employer); the
 מכרז פומבי tender block correctly excluded (no `mailto:`).
+
+---
+
+## 11. Detail-page fetch from the listing — `description`/`requirements` only on detail pages
+
+**Signal (`LRN-SETUP-2`):** the listing page has title/location/id but the
+`description` (and/or `requirements`) live **only on each job's detail page**, and
+you do NOT want to rely on the worker's per-detail-page visit (e.g. the worker only
+extracts from the listing, or you want both fields in one pass). Symptom at QA:
+`description=0` / `requirements=0` despite the detail pages clearly having the text.
+
+**Fix — attempt this in Step 5b, BEFORE the first PUT** (do not wait for QA to flag
+`description=0`). Write a listing-scope `setupScript` that `await fetch()`es each
+item's detail URL, parses the returned HTML, and injects `.__ai-description` /
+`.__ai-requirements` into that item.
+
+```js
+// LISTING page — fetch each detail page and inject its body into the item.
+// Use bare top-level await (NOT a bare async IIFE — see §0 rule 3).
+const items = Array.from(document.querySelectorAll('YOUR_ITEM_SELECTOR'));
+for (const item of items) {
+  if (item.querySelector('.__ai-description')) continue;
+  const href = item.querySelector('a')?.href;
+  if (!href) continue;
+  try {
+    const html = await fetch(href).then(r => r.text());
+    const doc = new DOMParser().parseFromString(html, 'text/html');
+    // adapt these selectors / heading matches to the site:
+    const descEl = doc.querySelector('SECTION_FOR_DESCRIPTION');
+    const reqEl  = doc.querySelector('SECTION_FOR_REQUIREMENTS');
+    const mk = (cls, el) => {
+      const txt = el && (el.innerText || el.textContent || '').trim();
+      if (!txt) return;
+      const span = document.createElement('div');
+      span.className = cls; span.style.display = 'none'; span.textContent = txt;
+      item.appendChild(span);
+    };
+    mk('__ai-description', descEl);
+    mk('__ai-requirements', reqEl);
+  } catch (e) { /* skip this item on fetch error */ }
+}
+```
+
+**Notes:**
+- This issues N extra requests (one per job) at scrape time — fine for small/medium
+  listings; for hundreds of jobs prefer a JSON list endpoint (pagination recipe §0)
+  or let the worker visit detail pages via a `detailUrl` mapping instead.
+- If the detail page splits the body into labeled sections, reuse the §8 merge logic
+  on the fetched `doc`.
+- If `fetch()` to the detail page hits a CSP error, add `bypassCSP: true` to the config.
+
+**Reference:** madanes.com (`cmqo82ph6001301qpa01wzqn7`) — 7 jobs; description +
+requirements fetched from each detail page's `במסגרת התפקיד` / `דרישות` `<h2>`
+sections and injected into the listing items. Cite: `LRN-SETUP-2`.

@@ -331,17 +331,33 @@ echo $DRY | jq '{count: (.data | length), sample: (.data[0:2])}'
 
 ## 8. Step 5b — Apply form capture (run when no captured form yet)
 
-> Skip if `triage` or QA reports `formStatus: CAPTURED` already.
+> **This step is MANDATORY before the first PUT — not optional, not a remediation
+> step.** The ONLY reasons to skip it are: (a) `triage`/QA already reports
+> `formStatus: CAPTURED`, (b) Step 5a detected email apply (`formStatus: EMAIL`),
+> or (c) a per-item apply URL is already mapped. Otherwise you MUST attempt capture
+> here, BEFORE you PUT and scrape. Do **not** PUT a config with no apply path and
+> let QA flag it later — that wastes a full scrape+QA round and is the exact mistake
+> that left the 6.csv batch sites (clalitsmile/proportsia) stuck in REVIEW. Cite: `LRN-FORM-6`.
 
-Signal to capture: the QA gate returns `formStatus: NEEDS_MANUAL` or `NONE` and you can see a real apply form/button on the detail page.
+Signal to capture: there is no captured form yet and you can see a real apply form/button on the detail page (or QA returns `formStatus: NEEDS_MANUAL` / `NONE`).
 
 1. Navigate to a sample detail URL.
 2. Find and interact with the apply form (click "Apply", wait for modal if needed).
 3. Capture the form structure (action URL, method, input field names and types).
 → Read `addsite2-recipes/form-capture.md` for the full capture-form.ts script and fallback flow.
 
+> **Detail-page-only Tier-A fields (description/requirements):** if the listing
+> page lacks `description` or `requirements` but the detail page has them, do NOT
+> ship without them. Write a detail-fetch `setupScript` that `await fetch()`es each
+> item's detail URL and injects `.__ai-description` / `.__ai-requirements` into the
+> listing item (recipe: `setupscript-patterns.md`). Attempt this in THIS step,
+> before PUT — not after QA flags `description=0`. Cite: `LRN-SETUP-2` (madanes.com).
+
 **Login gate:** if the apply requires login → `formStatus: NONE`, mark SKIPPED. Do not attempt to log in.
 **Turnstile/CAPTCHA gate:** if the apply form has Turnstile/CAPTCHA → SKIPPED. Log `LRN-APPLY-1`.
+**Multi-form pages:** if the detail page has several forms (e.g. a CV-upload form
+behind reCAPTCHA AND a plain contact-about-job form with no CAPTCHA), capture the
+CAPTCHA-free one. Reference: clalitsmile.co.il (Formidable Forms, 3 forms on page).
 
 ---
 
@@ -450,9 +466,22 @@ REASON=$(echo $QA_JSON | jq -r '.verdictReason')
 |---|---|
 | 0 / ACTIVE | Run the **externalJobId gate** (below). If it passes → `PATCH /api/sites/$SITE_ID {"status":"ACTIVE"}`. Log outcome. Done. |
 | 2 / SKIP | **Two separate PATCH calls** (never combined — see §0.2 landmine): `PATCH {"adminNote":"$REASON"}` then `PATCH {"status":"SKIPPED"}`. Log. Done. |
-| 3 / REVIEW | **Two separate PATCH calls**: `PATCH {"adminNote":"$REASON"}` then `PATCH {"status":"REVIEW"}`. Log. Done. |
+| 3 / REVIEW | **First check the REVIEW reason — it may be remediable, not terminal** (see below). If genuinely uncertain → **Two separate PATCH calls**: `PATCH {"adminNote":"$REASON"}` then `PATCH {"status":"REVIEW"}`. Log. Done. |
 | 4 / REQUEUE | Append URL to end of work-list with `attempt+1`. If `attempt ≥ 2` → escalate to REVIEW. |
 | 1 / ERROR | Check error; if transient retry once; else REVIEW. |
+
+> **REVIEW is not always terminal — remediate first.** Before logging REVIEW,
+> inspect `verdictReason`. These reasons are **remediable signals**, not verdicts —
+> go fix them (within the §B2a remediation budget) and re-QA, do NOT log REVIEW:
+> - `formStatus: NEEDS_MANUAL` / `NONE` with a visible apply form → go back to Step 5b
+>   and capture the form (this is the most common false-REVIEW; it stranded 3 sites
+>   in the 6.csv batch). Cite: `LRN-FORM-6`.
+> - `description=0` / `requirements=0` but the fields exist on the detail page → add a
+>   detail-fetch `setupScript` (Step 5b note). Cite: `LRN-SETUP-2`.
+>
+> Only log REVIEW when the gap is genuinely un-fixable by you (e.g. data simply isn't
+> exposed anywhere, or only a Tier-B field like `department` is missing while all
+> Tier-A is 100% — that is shippable-as-ACTIVE territory, not REVIEW).
 
 > **Verify the transition stuck.** After setting a terminal status, GET the site and confirm `status` actually changed — a combined `{status, adminNote}` PATCH silently leaves the old status in place.
 
