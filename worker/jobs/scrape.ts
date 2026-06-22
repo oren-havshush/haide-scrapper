@@ -2367,12 +2367,14 @@ async function decideActivationStatus(
     const hasApplyPath =
       hasFormCapture ||
       jobs.some((j) => {
-        const rd = j.rawData as Record<string, unknown> | null ?? {};
-        const fd = (rd as any)._formData;
+        const rd = (j.rawData as Record<string, unknown> | null) ?? {};
+        const fd = rd["_formData"];
+        const fdFields =
+          fd && typeof fd === "object" ? (fd as Record<string, unknown>)["fields"] : undefined;
         return (
           (j.applicationInfo && j.applicationInfo.trim().length > 0) ||
           (j.detailUrl && j.detailUrl.trim().length > 0) ||
-          (fd && typeof fd === "object" && Array.isArray((fd as any).fields) && (fd as any).fields.length > 0)
+          (Array.isArray(fdFields) && fdFields.length > 0)
         );
       });
 

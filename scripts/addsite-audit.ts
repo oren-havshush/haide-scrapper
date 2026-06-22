@@ -25,7 +25,7 @@
  */
 import * as fs from "fs";
 import * as path from "path";
-import { runQa, type QaRecord } from "./addsite-qa.js";
+import { runQa } from "./addsite-qa.js";
 
 const BASE = "https://scrapper.haide-jobs.co.il";
 
