@@ -149,6 +149,38 @@
   a usable apply path to be ACTIVE-worthy.
 - **Generalizes to:** all detail-blocked sites. **Home:** B2.5.
 
+### LRN-APPLY-7 — `formCapture.formSelector` matched the WRONG form on the listing page (live-extract clobbers static fields)
+- **Date / site:** 2026-06-22 · proportsia.co.il (`cmqo82pcr001101qplimsnicc`)
+- **Signal:** static `formCapture.fields` are correct (incl. a `file` CV input),
+  `verify-config` shows all N fields stored, yet the dashboard per-job **Application
+  Form** table is missing the CV field and instead shows junk hidden inputs
+  (`*_for_uco_crm_integration`, `*_for_fixdigital_integration`) with `actionUrl` =
+  the **listing** URL. The site-level "Application Form (Site-level)" panel (reads
+  `_meta.formCapture`) is correct; only the per-job table is wrong.
+- **Root cause:** the per-job table renders `rawData._formData`, which the worker
+  **live-extracts at scrape time** with `extractFormDataOrFallback`. On a
+  listing-only site (no `pageFlow`), that extraction runs against the **listing
+  page**, where `formSelector: form.elementor-form` matched the site's own
+  WP/Elementor newsletter/contact form. Because a form matched, the worker used it
+  and **never fell back** to the static `fields` blob. The real apply form only
+  exists on detail pages, which a single-page scrape never visits — so live
+  extraction can only ever capture the wrong form. (`worker/jobs/scrape.ts`
+  `extractFormData` → `extractFormDataOrFallback`; static blob is used only when the
+  selector matches **nothing**.)
+- **Fix:** make `formSelector` specific enough that it matches **nothing** on the
+  listing page, forcing the static-blob fallback. Appending `:has(input[type="file"])`
+  works for CV-upload forms: `form.elementor-form:has(input[type="file"])`. The
+  listing newsletter form has no file input → no match → worker serializes the
+  captured static fields (incl. CV) into `_formData`. Re-scrape to repopulate
+  `_formData` on existing jobs. No worker/dashboard code change needed — this rides
+  the existing fallback path.
+- **Distinct from LRN-APPLY-5** (newsletter shadow): that is a *capture-time*
+  scorer problem; this is a *scrape-time* live re-extraction that silently overrides
+  a correctly-captured static blob.
+- **Generalizes to:** any listing-only site (no `pageFlow`) whose listing page
+  contains a decoy `<form>` matching your `formSelector`, while the real apply form
+  lives on detail pages. **Home:** Step 5b / `recipes/form-capture.md` §7.
+
 ---
 
 ## D. externalJobId stability

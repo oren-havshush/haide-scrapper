@@ -378,6 +378,15 @@ Signal to capture: there is no captured form yet and you can see a real apply fo
 **Multi-form pages:** if the detail page has several forms (e.g. a CV-upload form
 behind reCAPTCHA AND a plain contact-about-job form with no CAPTCHA), capture the
 CAPTCHA-free one. Reference: clalitsmile.co.il (Formidable Forms, 3 forms on page).
+**LANDMINE — `formSelector` re-extracts at scrape time:** on a **listing-only site
+(no `pageFlow`)** the worker live-extracts the form from the **listing page** and
+only uses your captured static `fields` when `formSelector` matches **nothing**. If
+the listing page has a decoy `<form>` (WP/Elementor newsletter/contact) that your
+selector matches, the captured CV/file fields silently never reach `rawData._formData`
+(the per-job dashboard table). Make `formSelector` match nothing on the listing page
+(e.g. `form.elementor-form:has(input[type="file"])`) to force the static fallback,
+then re-scrape and confirm a sampled job's `_formData` lists the `file` field. Cite:
+`LRN-APPLY-7` (proportsia.co.il); full mechanism + verification in `form-capture.md` §7.
 
 ---
 

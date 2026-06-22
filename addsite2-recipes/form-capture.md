@@ -243,3 +243,51 @@ When invoked standalone (adding a form to an already-ACTIVE site):
 5. Run `verify-config --site-id <id> --expect-form-fields <N>` (exit 0 = survived).
 6. Trigger a re-scrape.
 7. QA: verify `formStatus: CAPTURED` and `formFields ≥ N`.
+
+---
+
+## 7. `formSelector` must NOT match a decoy form on the listing page (live-extract trap)
+
+> **The worker re-extracts the form at scrape time — your captured `fields` are only
+> a fallback.** This trap silently ships the wrong form even though `verify-config`
+> passes. Cite: `LRN-APPLY-7` (proportsia.co.il).
+
+**How the worker builds `_formData`** (`worker/jobs/scrape.ts`):
+- The dashboard's **per-job** "Application Form" table renders `rawData._formData`.
+  (The separate "Application Form (Site-level)" panel reads `_meta.formCapture` and
+  is always your static capture — do not confuse the two.)
+- At scrape time the worker calls `extractFormDataOrFallback`: it runs
+  `document.querySelector(formSelector)` on the **current page** and serializes that
+  live form. It uses your captured static `fields` blob **only when the selector
+  matches nothing**.
+- On a **listing-only site (no `pageFlow`)** the current page is the **listing
+  page** — the real apply form (on detail pages) is never in the DOM during the
+  scrape. So if `formSelector` matches *any* form on the listing page (a WP/Elementor
+  newsletter or contact form is the usual decoy), the worker serializes **that** form
+  and your captured CV/file fields never reach `_formData`.
+
+**Symptom:** static fields look perfect (`verify-config` shows N fields), but the
+per-job table shows junk hidden inputs (e.g. `*_for_uco_crm_integration`,
+`*_for_fixdigital_integration`) and an `actionUrl` pointing at the **listing** URL,
+with the `file` / CV field missing.
+
+**Fix — make the selector match nothing on the listing page, forcing the fallback:**
+```jsonc
+// before — matches the listing's newsletter form:
+"formSelector": "form.elementor-form"
+// after — listing newsletter form has no file input, so nothing matches →
+// worker falls back to the captured static fields (incl. the CV upload):
+"formSelector": "form.elementor-form:has(input[type=\"file\"])"
+```
+Then re-scrape (existing `_formData` is only repopulated on a fresh scrape) and
+confirm a sampled job's `_formData` lists every captured field including the `file`
+input. `:has()` runs in the worker's Chromium, so it is safe to use.
+
+**Verification (always do this for listing-only sites with a static `formCapture`):**
+```bash
+# a sampled job's _formData must contain the file/CV field, not listing junk:
+curl -s "$BASE/api/jobs?siteId=$SITE_ID&limit=1" -H "$AUTH" \
+  | node -e "let d='';process.stdin.on('data',c=>d+=c).on('end',()=>{const fd=JSON.parse(JSON.parse(d).data[0].rawData._formData);console.log(fd.actionUrl);console.log(fd.fields.map(f=>f.name+':'+f.fieldType).join('\n'));})"
+```
+If `actionUrl` is the listing URL or the `file` field is absent → the decoy form
+won; tighten `formSelector` as above. **Home:** §5 step 5, Step 9 QA.
