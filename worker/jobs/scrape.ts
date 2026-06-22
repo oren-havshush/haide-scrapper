@@ -2293,6 +2293,106 @@ function getFormCaptureConfig(
   return { formSelector, actionUrl, method, staticBlob };
 }
 
+// ---------------------------------------------------------------------------
+// D(a) — Activation gate: refuse to auto-ACTIVE when Tier-A is incomplete
+// ---------------------------------------------------------------------------
+
+/**
+ * Thresholds mirroring the QA script's Tier-A requirements.
+ * These are intentionally conservative: we only block ACTIVE when we have
+ * clear evidence of a systematic gap, not on individual outlier jobs.
+ */
+const ACTIVATION_THRESHOLDS = {
+  title: 0.8,
+  description: 0.6,
+  externalJobId: 0.9,
+} as const;
+
+/**
+ * After jobs are persisted, query the most recent N jobs for the site and
+ * decide whether the site qualifies for ACTIVE status.
+ *
+ * Returns `{ status: "ACTIVE" }` when all Tier-A fields meet their fill-rate
+ * thresholds and at least one apply path is present; otherwise
+ * `{ status: "REVIEW", reason: "<human-readable explanation>" }`.
+ *
+ * DB-only — no HTTP, no Playwright, safe to call from inside the worker.
+ */
+async function decideActivationStatus(
+  siteId: string,
+  fieldMappingsRaw: unknown,
+  scrapeRunId: string,
+): Promise<{ status: "ACTIVE" | "REVIEW"; reason: string }> {
+  try {
+    // Sample up to 30 jobs from the current scrape run for a reliable estimate.
+    const jobs = await prisma.job.findMany({
+      where: { siteId, scrapeRunId },
+      select: {
+        title: true,
+        description: true,
+        externalJobId: true,
+        applicationInfo: true,
+        detailUrl: true,
+        rawData: true,
+      },
+      take: 30,
+    });
+
+    if (jobs.length === 0) {
+      // No jobs persisted yet — this shouldn't happen at call-time but guard it.
+      return { status: "REVIEW", reason: "no jobs persisted for this scrape run yet" };
+    }
+
+    const n = jobs.length;
+
+    // Tier-A fill rates
+    const titleHits = jobs.filter((j) => j.title && j.title.trim().length > 0).length;
+    const descHits = jobs.filter((j) => j.description && j.description.trim().length > 0).length;
+    const idHits = jobs.filter((j) => j.externalJobId && j.externalJobId.trim().length > 0).length;
+
+    const titleRate = titleHits / n;
+    const descRate = descHits / n;
+    const idRate = idHits / n;
+
+    const missing: string[] = [];
+    if (titleRate < ACTIVATION_THRESHOLDS.title)
+      missing.push(`title fill ${Math.round(titleRate * 100)}% < ${ACTIVATION_THRESHOLDS.title * 100}%`);
+    if (descRate < ACTIVATION_THRESHOLDS.description)
+      missing.push(`description fill ${Math.round(descRate * 100)}% < ${ACTIVATION_THRESHOLDS.description * 100}%`);
+    if (idRate < ACTIVATION_THRESHOLDS.externalJobId)
+      missing.push(`externalJobId fill ${Math.round(idRate * 100)}% < ${ACTIVATION_THRESHOLDS.externalJobId * 100}%`);
+
+    // Apply-path: site-level formCapture OR any job with applicationInfo OR detailUrl
+    const hasFormCapture = !!getFormCaptureConfig(fieldMappingsRaw);
+    const hasApplyPath =
+      hasFormCapture ||
+      jobs.some((j) => {
+        const rd = j.rawData as Record<string, unknown> | null ?? {};
+        const fd = (rd as any)._formData;
+        return (
+          (j.applicationInfo && j.applicationInfo.trim().length > 0) ||
+          (j.detailUrl && j.detailUrl.trim().length > 0) ||
+          (fd && typeof fd === "object" && Array.isArray((fd as any).fields) && (fd as any).fields.length > 0)
+        );
+      });
+
+    if (!hasApplyPath) missing.push("no apply path (no formCapture, applicationInfo, or detailUrl on any job)");
+
+    if (missing.length > 0) {
+      return {
+        status: "REVIEW",
+        reason: `Tier-A gate: ${missing.join("; ")} — sampled ${n} jobs from current run`,
+      };
+    }
+
+    return { status: "ACTIVE", reason: "Tier-A complete" };
+  } catch (err) {
+    // Gate errors must never block a successful scrape — log and allow ACTIVE.
+    console.error(`[scrape] decideActivationStatus error (allowing ACTIVE): ${(err as Error).message}`);
+    return { status: "ACTIVE", reason: "gate error (allowed through)" };
+  }
+}
+
 /**
  * Live-extract the apply form from the current page; on failure (no form
  * found, selector mismatch, page.evaluate threw), fall back to the static
@@ -2473,7 +2573,7 @@ export async function handleScrapeJob(
   }
 
   // Wrap entire scrape execution in a timeout (NFR2: 2 minutes)
-  const timeout = createTimeoutPromise(scrapeRunId, site.id);
+  const timeout = createTimeoutPromise(scrapeRunId, site.id, site.fieldMappings);
   try {
     const scrapeResult = await Promise.race<ScrapeResult>([
       executeScrape(
@@ -2547,10 +2647,20 @@ export async function handleScrapeJob(
           completedAt: new Date(),
         },
       });
-      await prisma.site.update({
-        where: { id: site.id },
-        data: { status: "ACTIVE", activeAt: new Date() },
-      });
+      {
+        const gate = await decideActivationStatus(site.id, site.fieldMappings, scrapeRunId);
+        await prisma.site.update({
+          where: { id: site.id },
+          data: {
+            status: gate.status,
+            ...(gate.status === "ACTIVE" ? { activeAt: new Date() } : {}),
+            ...(gate.status === "REVIEW" ? { adminNote: `[activation-gate] ${gate.reason}` } : {}),
+          },
+        });
+        if (gate.status === "REVIEW") {
+          console.warn(`[scrape] activation gate REVIEW for ${site.id}: ${gate.reason}`);
+        }
+      }
       return {
         success: true,
         scrapeRunId,
@@ -3035,13 +3145,18 @@ async function executeScrape(
     );
   }
 
+  const gate = await decideActivationStatus(site.id, site.fieldMappings, scrapeRunId);
   await prisma.site.update({
     where: { id: site.id },
     data: {
-      status: "ACTIVE",
-      activeAt: new Date(),
+      status: gate.status,
+      ...(gate.status === "ACTIVE" ? { activeAt: new Date() } : {}),
+      ...(gate.status === "REVIEW" ? { adminNote: `[activation-gate] ${gate.reason}` } : {}),
     },
   });
+  if (gate.status === "REVIEW") {
+    console.warn(`[scrape] activation gate REVIEW for ${site.id}: ${gate.reason}`);
+  }
 
   const result: ScrapeResult = {
     success: true,
@@ -3058,6 +3173,7 @@ async function executeScrape(
     jobCount: result.jobCount,
     validJobs: result.validJobs,
     invalidJobs: result.invalidJobs,
+    activationStatus: gate.status,
   });
 
   // Emit SSE event for scrape completion
@@ -3068,7 +3184,7 @@ async function executeScrape(
 
   await emitWorkerEvent({
     type: "site:status-changed",
-    payload: { siteId: site.id, status: "ACTIVE" },
+    payload: { siteId: site.id, status: gate.status },
   });
 
   return result;
@@ -3081,6 +3197,7 @@ async function executeScrape(
 function createTimeoutPromise(
   scrapeRunId: string,
   siteId: string,
+  fieldMappingsRaw: unknown,
 ): { promise: Promise<ScrapeResult>; cancel: () => void } {
   let timerId: ReturnType<typeof setTimeout>;
   const promise = new Promise<ScrapeResult>((_, reject) => {
@@ -3109,18 +3226,28 @@ function createTimeoutPromise(
               completedAt: new Date(),
             },
           });
-          await prisma.site.update({
-            where: { id: siteId },
-            data: { status: "ACTIVE", activeAt: new Date() },
-          });
-          await emitWorkerEvent({
-            type: "scrape:completed",
-            payload: { siteId, jobCount: savedJobs },
-          });
-          await emitWorkerEvent({
-            type: "site:status-changed",
-            payload: { siteId, status: "ACTIVE" },
-          });
+          {
+            const gate = await decideActivationStatus(siteId, fieldMappingsRaw, scrapeRunId);
+            await prisma.site.update({
+              where: { id: siteId },
+              data: {
+                status: gate.status,
+                ...(gate.status === "ACTIVE" ? { activeAt: new Date() } : {}),
+                ...(gate.status === "REVIEW" ? { adminNote: `[activation-gate] ${gate.reason}` } : {}),
+              },
+            });
+            if (gate.status === "REVIEW") {
+              console.warn(`[scrape] activation gate REVIEW for ${siteId} (timeout-partial): ${gate.reason}`);
+            }
+            await emitWorkerEvent({
+              type: "scrape:completed",
+              payload: { siteId, jobCount: savedJobs },
+            });
+            await emitWorkerEvent({
+              type: "site:status-changed",
+              payload: { siteId, status: gate.status },
+            });
+          }
         } else {
           await failScrapeRun(scrapeRunId, siteId, {
             error: `Scrape execution exceeded ${SCRAPE_TIMEOUT_MS / 60_000}-minute timeout`,
