@@ -189,6 +189,20 @@
 - **Generalizes to:** every site — the gate runs on real id values regardless of how
   the config was built. **Home:** `addsite2.md` §12 / `recipes/setupscript-patterns.md` §3.
 
+### LRN-ID-6 — Non-Latin URL slugs: hash the slug, don't use it raw or decoded
+- **Date / site:** madanes.com (`cmqo82ph6001301qpa01wzqn7`), 2026-06-22
+- **Signal:** id built from a Hebrew URL slug came out as a 200-char
+  `madanes-%d7%a0%d7%a6%d7%99%d7%92...` blob (raw percent-encoded `href` segment).
+  `decodeURIComponent()` instead yields raw Hebrew → fails the `verify-jobids` ASCII
+  check (`nonAscii: N`). Both forms are "technically unique" but unusable on the dashboard.
+- **Fix:** keep the slug only as the **hash input** — emit `'<prefix>-' + haideHash(slug)`
+  (djb2; short, ASCII, still per-URL-unique). Same pattern as qasisrael.co.il
+  (`qas-' + hh(title)`). Result: `madanes-1gfcy2f`.
+- **Rule refinement:** the "detailUrl slug" id option (recipe §3 priority 2) applies
+  **only to Latin/ASCII slugs**; non-Latin slugs go straight to hash synthesis.
+- **Generalizes to:** every Hebrew/RTL or non-Latin slugged site. **Home:**
+  `recipes/setupscript-patterns.md` §3.
+
 ---
 
 ## E. Location & gazetteer

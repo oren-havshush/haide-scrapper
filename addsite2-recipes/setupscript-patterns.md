@@ -94,7 +94,13 @@ for (const item of document.querySelectorAll('.job-item')) {
      const m = title.match(/משרה\s*(\d+)/) || title.match(/\b(\d{3,})\b/);
      span.textContent = m ? 'req-' + m[1] : 'h-' + haideHash(title);  // fall back to hash
      ```
-2. **detailUrl slug** — `detailUrl.split('/').filter(Boolean).pop()` (readable + stable).
+2. **detailUrl slug** — `detailUrl.split('/').filter(Boolean).pop()` (readable + stable)
+   **— but ONLY when the slug is Latin/ASCII.** A **Hebrew (or other non-Latin) slug**
+   is percent-encoded in `href`, so the raw segment becomes a 200-char
+   `%d7%a0%d7%a6...` blob, and `decodeURIComponent()` on it yields raw Hebrew (fails the
+   ASCII gate). In **both** cases the id is unusable. For a non-Latin slug, keep the slug
+   only as the **hash input** and emit `'<prefix>-' + haideHash(slug)` (clean short ASCII,
+   still per-URL-unique). This is what qasisrael.co.il / madanes.com do. (`LRN-ID-6`.)
 3. **Hash synthesis** — last resort, below.
 
 Use the synchronous `haideHash` (djb2) — **not** `crypto.subtle.digest`, which is
