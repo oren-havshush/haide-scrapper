@@ -89,13 +89,61 @@ Cite: `LRN-FORM-3`.
   time, do NOT log REVIEW — go back to Step 5b, capture the form, re-PUT, re-scrape,
   re-QA (within the §B2a remediation budget). A `NEEDS_MANUAL` reason is a remediable
   signal, not a terminal verdict.
-- **Multi-form pages:** when several forms exist (e.g. a CV-upload form behind
-  reCAPTCHA AND a plain `contact-about-job` form with no CAPTCHA), capture the
-  CAPTCHA-free one. Reference: clalitsmile.co.il (Formidable Forms, 3 forms).
+- **Multi-form pages — enumerate ALL, then rank (`LRN-FORM-7`):** a page can carry
+  3+ forms, some behind **secondary buttons/modals**. List every `<form>`, check EACH
+  for Turnstile/reCAPTCHA, and pick by: **(1) captcha-free CV-file-upload → (2)
+  captcha-free contact/lead form → (3) captcha-gated = unusable.** Prefer the form that
+  accepts a CV file over a contact-only form, and don't assume the most prominent
+  apply button is the right one — it may be the reCAPTCHA-gated path. Reference:
+  clalitsmile.co.il (Formidable Forms, 3 forms): the prominent "שליחת קו״ח" CV button
+  is reCAPTCHA-gated; the captcha-free generic-position form
+  (`#form_upload_cv_form_generic_position`, opened by a separate "שלח קו״ח" button)
+  accepts a CV upload and is the right **primary** apply, with `#form_contact-us-about-job`
+  as a fallback. To capture **both** in one `formCapture`, merge their fields into a
+  single static `fields` list and set `formSelector` to match **nothing** on the
+  listing page (forces the static-blob fallback — §7), then verify a sampled job's
+  `_formData` lists the CV `file` field.
 - **Generalizes to:** every site where the apply path isn't email and isn't a
   per-item URL. **Home:** Step 5b + Step 9 verdict routing.
 - References: clalitsmile.co.il (`cmqo82p3v000x01qpmtxsxv25`),
   proportsia.co.il (`cmqo82pcr001101qplimsnicc`).
+
+---
+
+## LRN-FORM-7 — Multi-form page: enumerate ALL forms and rank; the prominent apply button may be the captcha-gated one
+- **Date / site:** 2026-06-22 · clalitsmile.co.il (`cmqo82p3v000x01qpmtxsxv25`)
+- **Signal:** the page has **three** Formidable forms, opened by different buttons:
+  1. `#form_upload_cv_form` — the prominent "שליחת קו״ח" (`show_form_button`) CV upload,
+     but **behind Google reCAPTCHA** (`g-recaptcha-response`) → unusable.
+  2. `#form_contact-us-about-job` — a captcha-free per-job contact/lead form
+     (name/phone/email/area/job-name), no CV upload.
+  3. `#form_upload_cv_form_generic_position` — a captcha-free **CV file upload** (+ a
+     "notes / desired position" text field), opened by a separate "שלח קו״ח" button.
+  An earlier pass captured form #2 because it was the first captcha-free form found,
+  missing the better #3 (real CV upload, also captcha-free).
+- **Fix:** when a page has multiple forms, **enumerate every `<form>` (including those
+  behind secondary buttons/modals), test EACH for Turnstile/reCAPTCHA, then rank:
+  (1) captcha-free CV-file-upload → (2) captcha-free contact/lead form →
+  (3) captcha-gated = unusable.** Do not assume the most prominent "apply" button is
+  the right path. To ship **both** (CV-upload primary + contact fallback) through a
+  single `formCapture`, merge their fields into one static `fields` list and set
+  `formSelector` to match **nothing** on the listing page (forces the static-blob
+  fallback — §7), then verify a sampled job's `_formData` lists the CV `file` field.
+- **Quick enumeration probe (browser/CDP `Runtime.evaluate`):**
+  ```js
+  [...document.querySelectorAll('form')].map(f => ({
+    id: f.id,
+    hasRecaptcha: /recaptcha|g-recaptcha/i.test(f.innerHTML)
+      || !!f.querySelector('[name="g-recaptcha-response"],.g-recaptcha,[data-sitekey]'),
+    hasFile: !!f.querySelector('input[type="file"]'),
+    fields: [...f.querySelectorAll('input,select,textarea')]
+      .filter(e => !['hidden','submit','button','reset','image'].includes(e.type))
+      .map(e => e.name + ':' + (e.type || e.tagName.toLowerCase()))
+  }));
+  ```
+- **Generalizes to:** any multi-form apply page (Formidable/WP/Elementor), especially
+  where a reCAPTCHA guards the obvious CV button but a secondary button does not.
+  **Home:** Step 5b / form-capture.md §0 multi-form bullet.
 
 ---
 

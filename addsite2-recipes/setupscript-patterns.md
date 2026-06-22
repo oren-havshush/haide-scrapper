@@ -466,6 +466,18 @@ item's detail URL, parses the returned HTML, and injects `.__ai-description` /
 > (location, employment-scope, division) into their own fields, and fold the rest of
 > the prose into `description` so **nothing is lost**.
 
+> **⚠️ Discovery first — never guess-and-give-up (`LRN-SETUP-4`).** Before deciding a
+> detail page has "no description", **render it and print the full `innerText`**, then
+> find the container holding the job prose **by its text**, not by a guessed semantic
+> class. clalitsmile's real body lived in `.job_desc`, while `.order_area` /
+> `.order_clinic` held only metadata — searching for `.order_description`, not finding
+> it, and shipping `area + clinic` as the "description" produced a wrong, ~40-char
+> field that still passed the `≥0.6` fill gate. **Never inject metadata
+> (area/category/clinic/department) as `description`.** Sanity check before PUT: the
+> captured description length should be on the order of the page's body text — if it's
+> a tiny fraction, you mapped the wrong element (the QA `correctnessSuspect`
+> "description present but avg N chars while detail body is >X chars" is a BLOCKER).
+
 Two more rules that make this robust across all jobs on a site:
 
 1. **Walk ALL block descendants in document order, not just direct children.** The
@@ -542,3 +554,13 @@ cherry-picked only `במסגרת התפקיד` + `דרישות` and dropped the 
 the full `.jobItemRight` body, route `.jobTags .location`/`.type` into
 `location`/`department`, prepend the `.scope` line, and split description/requirements
 by walking all descendants in document order. Cite: `LRN-SETUP-2`, `LRN-SETUP-3`.
+
+**`LRN-SETUP-4` reference:** clalitsmile.co.il (`cmqo82p3v000x01qpmtxsxv25`) — 43 jobs.
+A pass searched the detail page for `.order_description` / `.order_requirements`
+(which don't exist), concluded "no description", and shipped `.order_area` +
+`.order_clinic` **metadata** as the `description` (~40 chars). The real job body was
+in `.job_desc` (present in static HTML the whole time) and contained both description
+and a "מה נדרש כדי לעבוד איתנו" requirements section. Fix: dump the full `innerText`
+to find the prose container by its text, map `description ← .job_desc` (via
+`structuredText`), and split `requirements` at the requirements heading. See the
+"Discovery first" rule in §11 above.

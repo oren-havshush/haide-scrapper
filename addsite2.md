@@ -295,7 +295,7 @@ curl -s -A "$REAL_UA" "$URL" -o listing.html
 |---|---|
 | `title` | Direct text selector inside item. |
 | `externalJobId` | (1) Native job ID attr (`data-job-id`, `data-id`), **or a req number printed in the title** (`"משרה 231: …"` → regex it out). (2) Slug from `detailUrl`. (3) Hash of title+department+location (stable, disambiguated). **Never index-based.** **CAUTION:** a printed "job number" field (e.g. `numberJob`) can be reused across distinct postings by the same recruiter — verify uniqueness. Prefer the unique record ID (e.g. CMS `_id`) when a printed number collides. If `saved jobs < API count` after scraping, the id field is non-unique. |
-| `description` | Often only on the detail page — map `detailUrl` and let worker fetch it. **If the detail page splits the body into labeled sections (תיאור / דרישות / כישורים / תנאים), the analyzer maps only ONE — merge them all** (setupScript §8). **If the text comes back as one run-on line, preserve block line breaks** via the `structuredText` helper — NEVER `.replace(/\s+/g,' ')` (setupScript §7). **Capture the COMPLETE body — never cherry-pick only the headings you recognise.** A detail-fetch that grabs only `description`+`requirements` silently drops the meta block (employment type, hours, **division/department**) and intro lines that the site shows per job. Route typed meta into its own field, fold the rest into `description` (setupScript §11, `LRN-SETUP-3`). |
+| `description` | Often only on the detail page — map `detailUrl` and let worker fetch it. **Locate the body by dumping the FULL visible text** of a detail page (render it, print `innerText`) and finding the prose container — do NOT guess semantic selectors (`.order_description`) and give up when they're absent; the real body may live in a differently-named block (`.job_desc`). **Never substitute metadata (category/area/clinic/department) for a real description** — a 1–2 line metadata string that trips the QA correctness suspect "description present but avg N chars while detail body is >X chars" is a BLOCKER, not shippable (`LRN-SETUP-4`). **If the detail page splits the body into labeled sections (תיאור / דרישות / כישורים / תנאים), the analyzer maps only ONE — merge them all** (setupScript §8). **If the text comes back as one run-on line, preserve block line breaks** via the `structuredText` helper — NEVER `.replace(/\s+/g,' ')` (setupScript §7). **Capture the COMPLETE body — never cherry-pick only the headings you recognise.** A detail-fetch that grabs only `description`+`requirements` silently drops the meta block (employment type, hours, **division/department**) and intro lines that the site shows per job. Route typed meta into its own field, fold the rest into `description` (setupScript §11, `LRN-SETUP-3`). |
 | `detailUrl` | Anchor `href` inside item; must be stable (not JS-generated blob). |
 | `location` | Direct selector; `setupScript` if embedded in a formatted string or in the title (split on dash); or **hardcode a constant** for a confirmed single-office employer. |
 | `publishDate` | If not in item DOM → skip (don't block ACTIVE on a missing Tier-B field). |
@@ -375,9 +375,17 @@ Signal to capture: there is no captured form yet and you can see a real apply fo
 
 **Login gate:** if the apply requires login → `formStatus: NONE`, mark SKIPPED. Do not attempt to log in.
 **Turnstile/CAPTCHA gate:** if the apply form has Turnstile/CAPTCHA → SKIPPED. Log `LRN-APPLY-1`.
-**Multi-form pages:** if the detail page has several forms (e.g. a CV-upload form
-behind reCAPTCHA AND a plain contact-about-job form with no CAPTCHA), capture the
-CAPTCHA-free one. Reference: clalitsmile.co.il (Formidable Forms, 3 forms on page).
+**Multi-form pages — enumerate ALL forms, then rank:** a page can carry 3+ forms,
+some behind **secondary buttons/modals** (the most prominent "apply" button may open
+the **reCAPTCHA-gated** form while a less obvious button opens a usable one). List
+every `<form>`, check EACH for Turnstile/reCAPTCHA, and pick by this order:
+**(1) captcha-free CV-file-upload form → (2) captcha-free contact/lead form →
+(3) captcha-gated = unusable.** Don't stop at the first captcha-free form — prefer
+the one that accepts a CV file. Reference: clalitsmile.co.il (Formidable Forms, 3
+forms): the prominent "שליחת קו״ח" button is reCAPTCHA-gated, but a separate
+generic-position button exposes a captcha-free CV upload (`LRN-FORM-7`). Capture
+both when useful (CV-upload primary + contact form fallback) via one merged static
+`fields` list + a no-match `formSelector` (see `form-capture.md` §7).
 **LANDMINE — `formSelector` re-extracts at scrape time:** on a **listing-only site
 (no `pageFlow`)** the worker live-extracts the form from the **listing page** and
 only uses your captured static `fields` when `formSelector` matches **nothing**. If
@@ -507,6 +515,11 @@ REASON=$(echo $QA_JSON | jq -r '.verdictReason')
 >   in the 6.csv batch). Cite: `LRN-FORM-6`.
 > - `description=0` / `requirements=0` but the fields exist on the detail page → add a
 >   detail-fetch `setupScript` (Step 5b note). Cite: `LRN-SETUP-2`.
+> - **`correctnessSuspect` "description present but avg N chars while detail page body
+>   is >X chars"** → you mapped a subtitle/metadata block (category/area/clinic), NOT
+>   the job body. Render a detail page, find the real prose container by its text, and
+>   re-map. **Never ship ACTIVE on metadata-as-description** (this passes the `≥0.6`
+>   fill gate but is wrong data). Cite: `LRN-SETUP-4`.
 >
 > Only log REVIEW when the gap is genuinely un-fixable by you (e.g. data simply isn't
 > exposed anywhere, or only a Tier-B field like `department` is missing while all
