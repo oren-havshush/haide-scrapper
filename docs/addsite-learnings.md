@@ -328,6 +328,40 @@
   relying on enrichment.
 - **Home:** Step 4 setupScript notes.
 
+### LRN-WRK-7 — `POST /api/sites` silently drops `companyName` — PATCH standalone + verify
+- **Date / batch:** 5.csv batch, then 6.csv batch (all 10 sites), 2026-06-22
+- **Signal:** dashboard shows sites with no company name; `companyName: null` on every
+  site even though the create payload included `{"companyName": "..."}` (sent alongside
+  `status: "ACTIVE"`).
+- **Root cause:** the create endpoint does **not** persist `companyName` from the POST
+  body (mirrors the §0.2 PATCH "one field honored" landmine). Putting the field in the
+  create body is a no-op.
+- **Fix:** after `POST /api/sites`, issue a **standalone single-field**
+  `PATCH /api/sites/:id {"companyName": "..."}`, then **GET by URL** (the `/:id` GET can
+  return empty for fresh sites) and confirm it stuck. `addsite-batch.ts` create path does
+  this; hand-rolled create scripts MUST replicate it.
+- **Batch gate:** B3.1 — sweep all sites at end of batch and re-PATCH any null companyName.
+- **Generalizes to:** any site creation. **Home:** `addsite2.md` §4 create + §B3.1.
+
+### LRN-WRK-6 — Detail-fetch must capture the COMPLETE body, not cherry-picked headings
+- **Date / site:** madanes.com (`cmqo82ph6001301qpa01wzqn7`), 2026-06-22
+- **Signal:** site shows per-job meta the scrape is missing —
+  `משרה מלאה, ראשון-חמישי 09:00-17:00` (employment type + hours) and
+  `חטיבת פרט` (division). The first detail-fetch setupScript grabbed only the two
+  headings it recognised (`במסגרת התפקיד` + `דרישות`) and silently dropped the
+  `.jobTags` meta block and the intro/lead paragraph.
+- **Fix:** capture the whole job-content container (`.jobItemRight`); route typed
+  meta into fields (`.jobTags .location` → `location`, `.jobTags .type` → `department`,
+  prepend `.jobTags .scope` to `description`); build description/requirements by
+  walking **all block descendants in document order** (`querySelectorAll('h2,h3,h4,p,ul,ol')`,
+  not `.children`) and splitting on the `דרישות` heading by position.
+- **Two traps:** (1) markup nesting varies between jobs on the same site — iterating
+  `container.children` works for one job and folds requirements into description for
+  another; walk descendants instead. (2) dry-run on ≥2 structurally-different jobs or
+  the nesting trap stays invisible.
+- **Generalizes to:** any detail-fetch / detail-page description extraction.
+  **Home:** `recipes/setupscript-patterns.md` §11 (`LRN-SETUP-3`).
+
 ### LRN-WRK-5 — `publishDate` age-bucket flagging (keep-all, not drop)
 - **Date / site:** tafkid-plus.co.il (`תאריך פרסום: DD.MM.YYYY`), diplomat-il (hidden `activationDate`)
 - **Signal:** `publishDate` mapped with parseable dates.

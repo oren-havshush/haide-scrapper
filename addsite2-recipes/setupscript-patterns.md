@@ -447,11 +447,43 @@ extracts from the listing, or you want both fields in one pass). Symptom at QA:
 **Fix — attempt this in Step 5b, BEFORE the first PUT** (do not wait for QA to flag
 `description=0`). Write a listing-scope `setupScript` that `await fetch()`es each
 item's detail URL, parses the returned HTML, and injects `.__ai-description` /
-`.__ai-requirements` into that item.
+`.__ai-requirements` (and any typed meta) into that item.
+
+> **⚠️ CRITICAL — capture the COMPLETE body, do NOT cherry-pick known headings.**
+> The most common detail-fetch bug (`LRN-SETUP-3`, madanes.com): the script grabs
+> only the two headings you recognised (e.g. `במסגרת התפקיד` + `דרישות`) and
+> **silently drops everything else on the page** — the meta block (employment type,
+> hours, scope, **division/department**), the intro/lead paragraph, and any section
+> whose heading you didn't hardcode. Symptom: the site clearly shows
+> `משרה מלאה, ראשון-חמישי 09:00-17:00 / חטיבת פרט` but the scraped job is missing it.
+> **Rule:** capture the *whole* job-content container, route recognisable typed meta
+> (location, employment-scope, division) into their own fields, and fold the rest of
+> the prose into `description` so **nothing is lost**.
+
+Two more rules that make this robust across all jobs on a site:
+
+1. **Walk ALL block descendants in document order, not just direct children.** The
+   same site nests its markup differently between jobs (one job has `<h2>` as a
+   direct child of the container, another wraps it in an Elementor widget). Iterating
+   `container.children` works for the first and silently fails for the second
+   (requirements fold into description). Use
+   `container.querySelectorAll('h2,h3,h4,p,ul,ol')` and skip nested lists.
+2. **Split on the requirements heading by position, not by container.** Flip a flag
+   when you reach the `דרישות` / `Requirements` heading; everything before = description,
+   everything after = requirements. Skip the meta block and the title/share footer.
 
 ```js
-// LISTING page — fetch each detail page and inject its body into the item.
+// LISTING page — fetch each detail page and inject its FULL body into the item.
 // Use bare top-level await (NOT a bare async IIFE — see §0 rule 3).
+function structuredText(node){            // preserve line breaks (§7)
+  if (!node) return '';
+  const c = node.cloneNode(true);
+  c.querySelectorAll('style,script,link,meta').forEach(n => n.remove());
+  c.querySelectorAll('p,div,ul,ol,li,br,h1,h2,h3,h4,h5,h6,tr')
+    .forEach(e => e.insertAdjacentText('afterend', '\n'));
+  return c.textContent.replace(/[ \t]+/g,' ').replace(/[ \t]+\n/g,'\n').replace(/\n{3,}/g,'\n\n').trim();
+}
+const REQ = 'דרישות';                      // requirements heading text for this site
 const items = Array.from(document.querySelectorAll('YOUR_ITEM_SELECTOR'));
 for (const item of items) {
   if (item.querySelector('.__ai-description')) continue;
@@ -460,18 +492,30 @@ for (const item of items) {
   try {
     const html = await fetch(href).then(r => r.text());
     const doc = new DOMParser().parseFromString(html, 'text/html');
-    // adapt these selectors / heading matches to the site:
-    const descEl = doc.querySelector('SECTION_FOR_DESCRIPTION');
-    const reqEl  = doc.querySelector('SECTION_FOR_REQUIREMENTS');
-    const mk = (cls, el) => {
-      const txt = el && (el.innerText || el.textContent || '').trim();
-      if (!txt) return;
-      const span = document.createElement('div');
-      span.className = cls; span.style.display = 'none'; span.textContent = txt;
-      item.appendChild(span);
-    };
-    mk('__ai-description', descEl);
-    mk('__ai-requirements', reqEl);
+    const body = doc.querySelector('JOB_CONTENT_CONTAINER'); // e.g. '.jobItemRight'
+    if (!body) continue;
+    const mk = (cls, val) => { if (!val) return; const s = document.createElement('span');
+      s.className = cls; s.style.display = 'none'; s.textContent = val; item.appendChild(s); };
+
+    // (a) typed meta block → own fields (adapt selectors)
+    const tags = body.querySelector('.jobTags');
+    mk('__ai-location',   tags?.querySelector('.location')?.textContent.trim());
+    mk('__ai-department', tags?.querySelector('.type')?.textContent.trim());   // division
+    const scope = tags?.querySelector('.scope')?.textContent.trim();           // type + hours
+
+    // (b) full body → description + requirements, split by the REQ heading
+    const desc = [], req = []; let inReq = false;
+    if (scope) desc.push(scope);                       // keep employment type/hours
+    for (const el of body.querySelectorAll('h2,h3,h4,p,ul,ol')) {
+      if (el.closest('.jobTags')) continue;            // meta already captured
+      if (el.parentElement?.closest('ul,ol')) continue; // nested list → avoid dup
+      const raw = (el.textContent || '').trim(); if (!raw) continue;
+      if (/^H[2-6]$/.test(el.tagName) && raw.includes(REQ)) { inReq = true; continue; }
+      const t = structuredText(el); if (!t) continue;
+      (inReq ? req : desc).push(t);
+    }
+    mk('__ai-description',  desc.join('\n').trim());
+    mk('__ai-requirements', req.join('\n').trim());
   } catch (e) { /* skip this item on fetch error */ }
 }
 ```
@@ -483,7 +527,12 @@ for (const item of items) {
 - If the detail page splits the body into labeled sections, reuse the §8 merge logic
   on the fetched `doc`.
 - If `fetch()` to the detail page hits a CSP error, add `bypassCSP: true` to the config.
+- **Dry-run on ≥2 structurally-different jobs** before PUT — the nesting trap (rule 1)
+  only shows up when you compare a simple job against a richer one.
 
-**Reference:** madanes.com (`cmqo82ph6001301qpa01wzqn7`) — 7 jobs; description +
-requirements fetched from each detail page's `במסגרת התפקיד` / `דרישות` `<h2>`
-sections and injected into the listing items. Cite: `LRN-SETUP-2`.
+**Reference:** madanes.com (`cmqo82ph6001301qpa01wzqn7`) — 7 jobs. First pass
+cherry-picked only `במסגרת התפקיד` + `דרישות` and dropped the meta block
+(`משרה מלאה, ראשון-חמישי 09:00-17:00`) and division (`חטיבת פרט`); fixed to capture
+the full `.jobItemRight` body, route `.jobTags .location`/`.type` into
+`location`/`department`, prepend the `.scope` line, and split description/requirements
+by walking all descendants in document order. Cite: `LRN-SETUP-2`, `LRN-SETUP-3`.

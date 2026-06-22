@@ -140,6 +140,17 @@ npx tsx scripts/addsite-batch.ts summary --batch-dir $BATCH_DIR
 ```
 Writes `summary.md` in the batch dir. Print the table to the user.
 
+**B3.1 companyName sweep — MANDATORY before declaring the batch done.**
+`POST /api/sites` silently drops `companyName` (§4 landmine, `LRN-WRK-7`), so a whole
+batch can ship nameless even when the work-list had a company column. Before finishing,
+GET every site (by URL) and confirm `companyName` is non-null for every row that had a
+company; PATCH + re-verify any that are null:
+```bash
+# for each site that had a company in the work-list:
+GOT=$(curl -s "$BASE/api/sites?siteUrl=$(jq -rn --arg u "$URL" '$u|@uri')" -H "$AUTH" | jq -r '.data[0].companyName // .data.companyName')
+[ "$GOT" = "$COMPANY" ] || { curl -s -X PATCH "$BASE/api/sites/$ID" -H "$AUTH" -H 'Content-Type: application/json' -d "{\"companyName\":\"$COMPANY\"}" >/dev/null; }
+```
+
 ### B4 Cost visibility
 After each site: note browser sessions opened + scrapes triggered. After batch: report totals.
 
@@ -187,24 +198,33 @@ Also check: trailing-slash variant, http↔https swap, www/no-www prefix.
 
 ## 4. Step 2 — Create site + wait for analyzer
 
-**Always include `companyName` in the create payload** when the work-list carries one
-(CSV `company` column, etc.). Creating with only `siteUrl` + `status` leaves
-`companyName: null` — the gap that shipped the 5.csv batch nameless. The field is a
-plain string on the create body; pass it through verbatim (Hebrew is fine, just keep
-the JSON UTF-8 / BOM-free per §14).
+**`companyName` MUST be set with a standalone PATCH after create — NOT in the create body.**
+**LANDMINE:** `POST /api/sites` **silently drops `companyName`** when it is sent in the
+create payload (especially alongside `status`) — the site comes back `companyName: null`.
+This nulled the 5.csv batch **and** the 6.csv batch (all 10 sites). Putting the field in
+the POST body is **not** sufficient — you must PATCH it separately and **verify it stuck**.
 
 ```bash
-# $COMPANY = company name from the work-list (omit the field entirely if none)
+# 1) Create (companyName here is unreliable — do NOT depend on it persisting)
 SITE=$(curl -s -X POST "$BASE/api/sites" \
   -H "$AUTH" -H "Content-Type: application/json" \
-  -d "{\"siteUrl\":\"$URL\",\"status\":\"ACTIVE\",\"companyName\":\"$COMPANY\"}")
+  -d "{\"siteUrl\":\"$URL\",\"status\":\"ACTIVE\"}")
 SITE_ID=$(echo $SITE | jq -r '.data.id')
+
+# 2) MANDATORY when the work-list carries a company: standalone single-field PATCH (§0.2)
+if [ -n "$COMPANY" ]; then
+  curl -s -X PATCH "$BASE/api/sites/$SITE_ID" -H "$AUTH" -H "Content-Type: application/json" \
+    -d "{\"companyName\":\"$COMPANY\"}" >/dev/null
+  # 3) VERIFY it stuck — GET by URL (the /:id GET can return empty for fresh sites)
+  GOT=$(curl -s "$BASE/api/sites?siteUrl=$(jq -rn --arg u "$URL" '$u|@uri')" -H "$AUTH" | jq -r '.data[0].companyName // .data.companyName')
+  [ "$GOT" = "$COMPANY" ] || echo "WARN: companyName not set for $SITE_ID (got '$GOT')"
+fi
 ```
 
-> If you only learn the company name later, PATCH it standalone:
-> `PATCH /api/sites/$SITE_ID {"companyName":"$COMPANY"}` (one field per PATCH — §0.2 landmine).
-> The `addsite-batch.ts` create path already does this (it PATCHes `companyName` after create);
-> the gap only appears when you create sites by hand, so don't skip the field here.
+> Keep the JSON UTF-8 / BOM-free (§14); Hebrew company names pass through verbatim.
+> The `addsite-batch.ts` create path already does this PATCH-after-create — **if you
+> create sites with a custom/hand-rolled script, you MUST replicate the PATCH + verify**,
+> or the dashboard ships nameless. Cite: `LRN-WRK-7`.
 
 **Immediately wait for ANALYZING to leave** — the server auto-enqueues an ANALYSIS job that will **overwrite your config** if you PUT before it finishes.
 
@@ -275,7 +295,7 @@ curl -s -A "$REAL_UA" "$URL" -o listing.html
 |---|---|
 | `title` | Direct text selector inside item. |
 | `externalJobId` | (1) Native job ID attr (`data-job-id`, `data-id`), **or a req number printed in the title** (`"משרה 231: …"` → regex it out). (2) Slug from `detailUrl`. (3) Hash of title+department+location (stable, disambiguated). **Never index-based.** **CAUTION:** a printed "job number" field (e.g. `numberJob`) can be reused across distinct postings by the same recruiter — verify uniqueness. Prefer the unique record ID (e.g. CMS `_id`) when a printed number collides. If `saved jobs < API count` after scraping, the id field is non-unique. |
-| `description` | Often only on the detail page — map `detailUrl` and let worker fetch it. **If the detail page splits the body into labeled sections (תיאור / דרישות / כישורים / תנאים), the analyzer maps only ONE — merge them all** (setupScript §8). **If the text comes back as one run-on line, preserve block line breaks** via the `structuredText` helper — NEVER `.replace(/\s+/g,' ')` (setupScript §7). |
+| `description` | Often only on the detail page — map `detailUrl` and let worker fetch it. **If the detail page splits the body into labeled sections (תיאור / דרישות / כישורים / תנאים), the analyzer maps only ONE — merge them all** (setupScript §8). **If the text comes back as one run-on line, preserve block line breaks** via the `structuredText` helper — NEVER `.replace(/\s+/g,' ')` (setupScript §7). **Capture the COMPLETE body — never cherry-pick only the headings you recognise.** A detail-fetch that grabs only `description`+`requirements` silently drops the meta block (employment type, hours, **division/department**) and intro lines that the site shows per job. Route typed meta into its own field, fold the rest into `description` (setupScript §11, `LRN-SETUP-3`). |
 | `detailUrl` | Anchor `href` inside item; must be stable (not JS-generated blob). |
 | `location` | Direct selector; `setupScript` if embedded in a formatted string or in the title (split on dash); or **hardcode a constant** for a confirmed single-office employer. |
 | `publishDate` | If not in item DOM → skip (don't block ACTIVE on a missing Tier-B field). |
