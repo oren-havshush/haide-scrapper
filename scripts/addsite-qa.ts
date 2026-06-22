@@ -35,8 +35,12 @@
  *        [--sample 10] [--stealth] [--ua "<userAgent>"] [--out <path>]
  *        [--min-fill 0.6] [--no-probe] [--verdict-exit]
  *
- * Exit codes (default, back-compat): 0 = Tier-A complete; 2 = incomplete; 1 = error.
+ * Exit codes (default, back-compat): 0 = Tier-A complete (ACTIVE); 2 = incomplete; 1 = error.
  * Exit codes (--verdict-exit): 0=ACTIVE, 2=SKIP, 3=REVIEW, 4=REQUEUE; 1=error.
+ *
+ * The core logic is also exported as `runQa(siteId, opts)` for use by
+ * addsite-audit.ts and other callers that need a programmatic result rather
+ * than a CLI exit code.
  */
 import * as fs from "fs";
 import * as path from "path";
@@ -49,15 +53,15 @@ const TIER_A_FIELDS = ["title", "externalJobId", "description"] as const;
 const TIER_B_FIELDS = ["location", "requirements", "publishDate", "department"] as const;
 const ALL_FIELDS = [...TIER_A_FIELDS, ...TIER_B_FIELDS, "detailUrl", "applicationInfo"] as const;
 
-type FormStatus = "CAPTURED" | "NEEDS_MANUAL" | "EMAIL" | "URL" | "NONE";
+export type FormStatus = "CAPTURED" | "NEEDS_MANUAL" | "EMAIL" | "URL" | "NONE";
 
 // v2 failure taxonomy (docs/addsite2-migration.md §4a.2): the verdict is decided
 // by *why* a site falls short, not a flat pass/fail — so a caller knows whether
 // a retry can change the result (REQUEUE), a human should arbitrate (REVIEW), or
 // a 2nd try just pays to fail twice (SKIP).
-type Verdict = "ACTIVE" | "REQUEUE" | "REVIEW" | "SKIP";
+export type Verdict = "ACTIVE" | "REQUEUE" | "REVIEW" | "SKIP";
 
-interface QaRecord {
+export interface QaRecord {
   siteId: string;
   sampled: number;
   fillRates: Record<string, number>;
@@ -68,11 +72,29 @@ interface QaRecord {
   manualFormUrl?: string;
   tierAComplete: boolean;
   tierAMissing: string[];
+  // Correctness suspects (B-guardrails): present-but-wrong signals that
+  // go to REVIEW even when Tier-A passes the fill-rate threshold.
+  correctnessSuspects: string[];
   verdict: Verdict;
   verdictReason: string;
   probedUrl?: string;
   notes: string[];
 }
+
+export interface RunQaOptions {
+  sample?: number;
+  minFill?: number;
+  stealth?: boolean;
+  noProbe?: boolean;
+  ua?: string;
+  detailUrl?: string;
+  outPath?: string;
+  token: string;
+}
+
+// ---------------------------------------------------------------------------
+// Verdict decision
+// ---------------------------------------------------------------------------
 
 /**
  * Map QA observations → §4a.2 verdict. Scope note: QA runs AFTER a scrape, so it
@@ -80,25 +102,29 @@ interface QaRecord {
  * the batch driver's call during Pass B. The one transient QA *can* see is
  * "no jobs sampled yet" (scrape pending/empty), which it maps to REQUEUE.
  */
-function decideVerdict(args: {
+export function decideVerdict(args: {
   sampled: number;
   tierAComplete: boolean;
   tierAMissing: string[];
   formStatus: FormStatus;
   availableButUnmapped: string[];
-  probeInconclusive: boolean; // wanted a detail probe but got no usable result (blocked / no detailUrl)
-  descMappingSuspect: boolean; // page has body text but description fill ~0
+  probeInconclusive: boolean;
+  descMappingSuspect: boolean;
+  correctnessSuspects: string[];
 }): { verdict: Verdict; reason: string } {
   // 1. No data to judge → a re-scrape can still change the result.
   if (args.sampled === 0)
     return { verdict: "REQUEUE", reason: "no jobs sampled — scrape pending/empty; requeue once before judging" };
 
-  // 2. Clean-ish pass.
+  // 2. Clean-ish pass — but check for correctness suspects first.
   if (args.tierAComplete) {
     if (args.formStatus === "NEEDS_MANUAL")
       return { verdict: "REVIEW", reason: "apply form exists on page but isn't captured — run Step 5b / arbitrate" };
     if (args.availableButUnmapped.length)
       return { verdict: "REVIEW", reason: `Tier-B exposed but unmapped: ${args.availableButUnmapped.join(", ")}` };
+    // B-guardrail: presence-passing but data smells wrong
+    if (args.correctnessSuspects.length)
+      return { verdict: "REVIEW", reason: `correctness suspect (present but may be wrong): ${args.correctnessSuspects.join("; ")}` };
     return { verdict: "ACTIVE", reason: "Tier-A complete + usable apply path" };
   }
 
@@ -118,33 +144,10 @@ function decideVerdict(args: {
 }
 
 // ---------------------------------------------------------------------------
-// args
-// ---------------------------------------------------------------------------
-
-function arg(name: string): string | undefined {
-  const pre = `--${name}`;
-  for (let i = 0; i < process.argv.length; i++) {
-    const a = process.argv[i];
-    if (a === pre) return process.argv[i + 1] && !process.argv[i + 1].startsWith("--") ? process.argv[i + 1] : "true";
-    if (a.startsWith(pre + "=")) return a.slice(pre.length + 1);
-  }
-  return undefined;
-}
-function hasFlag(name: string): boolean {
-  return process.argv.includes(`--${name}`);
-}
-
-function token(): string {
-  const t = fs.readFileSync(path.resolve(".claude", "scrap-token"), "utf8").replace(/\s/g, "");
-  if (!t || t.startsWith("REPLACE_ME")) throw new Error(".claude/scrap-token missing/placeholder");
-  return t;
-}
-
-// ---------------------------------------------------------------------------
 // field value extraction (top-level OR rawData)
 // ---------------------------------------------------------------------------
 
-function fieldValue(job: any, field: string): unknown {
+export function fieldValue(job: any, field: string): unknown {
   const raw = job?.rawData || {};
   switch (field) {
     case "description":
@@ -170,7 +173,7 @@ function fieldValue(job: any, field: string): unknown {
   }
 }
 
-function isPresent(v: unknown): boolean {
+export function isPresent(v: unknown): boolean {
   if (v === null || v === undefined) return false;
   if (typeof v === "string") return v.trim().length > 0;
   if (Array.isArray(v)) return v.length > 0;
@@ -178,10 +181,10 @@ function isPresent(v: unknown): boolean {
   return true;
 }
 
-function looksLikeEmail(v: unknown): boolean {
+export function looksLikeEmail(v: unknown): boolean {
   return typeof v === "string" && /mailto:|[\w.+-]+@[\w.-]+\.\w+/.test(v);
 }
-function looksLikeUrl(v: unknown): boolean {
+export function looksLikeUrl(v: unknown): boolean {
   return typeof v === "string" && /^https?:\/\//i.test(v);
 }
 
@@ -193,7 +196,7 @@ function looksLikeUrl(v: unknown): boolean {
  * `applicationInfo` may arrive as an object or a JSON string. Returns the field
  * count when it's a real form (>=2 fields), else 0.
  */
-function applicationFormFields(v: unknown): number {
+export function applicationFormFields(v: unknown): number {
   let obj: any = v;
   if (typeof v === "string") {
     const s = v.trim();
@@ -211,10 +214,137 @@ function applicationFormFields(v: unknown): number {
 }
 
 // ---------------------------------------------------------------------------
+// B-guardrail: correctness heuristics (presence-but-wrong signals)
+// ---------------------------------------------------------------------------
+
+/**
+ * Derive the URL path slug from a detail URL (last non-empty path segment).
+ * e.g. "https://site.co.il/jobs/my-job-title-123/" → "my-job-title-123"
+ */
+function detailUrlSlug(url: string): string {
+  try {
+    const parts = new URL(url).pathname.split("/").filter(Boolean);
+    return parts[parts.length - 1] || "";
+  } catch {
+    return "";
+  }
+}
+
+/**
+ * Slugify a string the way most CMS/WP platforms do: lowercase, replace
+ * spaces/special chars with hyphens, collapse runs.
+ */
+function slugify(s: string): string {
+  return s
+    .toLowerCase()
+    .replace(/[^\w\u0080-\uFFFF]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+}
+
+/**
+ * Compute correctness suspects for a sampled job set + optional probe result.
+ * Returns an array of human-readable strings describing each suspect.
+ *
+ * Checks (all heuristic — any single signal is REVIEW, not SKIP):
+ *
+ * 1. Wrong-source externalJobId: IDs look like URL path slugs or title slugs
+ *    rather than native numeric job-reference numbers (the proportsia miss).
+ *    Signal: >50% of non-empty IDs contain hyphens AND match the detailUrl slug
+ *    or a slugified form of the title. Suppressed when IDs are already numeric
+ *    (that's fine) or prefixed h- (hash synthesis, fine).
+ *
+ * 2. Truncated description: description is present but very short (<120 chars
+ *    average) while the detail probe body is long (>400 chars, already checked
+ *    at probe time). Catches the "only the title/subtitle was mapped" miss.
+ *
+ * 3. Location not on detail page: location is present in the job record but
+ *    the detail probe body text does not contain it. Catches cases where the
+ *    analyzer mapped a generic site name or a field from the wrong element.
+ *    Only flagged when probe succeeded and location is a non-trivial string (>3 chars).
+ */
+export function computeCorrectnessSuspects(
+  jobs: any[],
+  probe: { fieldsOnPage: Record<string, boolean>; detailBodyText?: string } | null,
+): string[] {
+  const suspects: string[] = [];
+  const n = jobs.length;
+  if (n === 0) return suspects;
+
+  // --- 1. Wrong-source externalJobId ---
+  const ids = jobs.map((j) => String(fieldValue(j, "externalJobId") ?? "").trim());
+  const titles = jobs.map((j) => String(fieldValue(j, "title") ?? "").trim());
+  const detailUrls = jobs.map((j) => String(fieldValue(j, "detailUrl") ?? "").trim());
+  const nonEmptyIds = ids.filter(Boolean);
+  if (nonEmptyIds.length > 0) {
+    // IDs that are already numeric or hash-prefixed are always fine.
+    const numericOrHash = nonEmptyIds.filter((id) => /^\d+$/.test(id) || /^h-[0-9a-f]{6,}$/i.test(id));
+    if (numericOrHash.length < nonEmptyIds.length * 0.8) {
+      // Check whether hyphenated IDs match their own URL slug or title slug.
+      let slugMatches = 0;
+      for (let i = 0; i < ids.length; i++) {
+        const id = ids[i];
+        if (!id || !id.includes("-")) continue;
+        const urlSlug = detailUrls[i] ? detailUrlSlug(detailUrls[i]) : "";
+        const titleSlug = titles[i] ? slugify(titles[i]).slice(0, 60) : "";
+        if (
+          (urlSlug && (id === urlSlug || urlSlug.includes(id) || id.includes(urlSlug.slice(0, 15)))) ||
+          (titleSlug && (id === titleSlug || titleSlug.startsWith(id.slice(0, 20))))
+        ) {
+          slugMatches++;
+        }
+      }
+      if (slugMatches > nonEmptyIds.length * 0.5) {
+        suspects.push(
+          `externalJobId looks like URL/title slug (${slugMatches}/${nonEmptyIds.length} match) — ` +
+            `check if a native numeric req-number exists on the listing/detail page`,
+        );
+      }
+    }
+  }
+
+  // --- 2. Truncated description ---
+  const descValues = jobs
+    .map((j) => String(fieldValue(j, "description") ?? "").trim())
+    .filter(Boolean);
+  if (descValues.length > 0) {
+    const avgLen = descValues.reduce((s, d) => s + d.length, 0) / descValues.length;
+    // Detail probe already checked body length > 400 for fieldsOnPage.description.
+    // If probe confirmed body text is long but our mapped descriptions are short:
+    const probeHasBody = probe?.fieldsOnPage?.description === true;
+    if (probeHasBody && avgLen < 120) {
+      suspects.push(
+        `description present but avg ${Math.round(avgLen)} chars while detail page body is >400 chars — ` +
+          `likely only title/subtitle mapped, missing full job body`,
+      );
+    }
+  }
+
+  // --- 3. Location not found on detail page ---
+  if (probe && probe.detailBodyText) {
+    const bodyLower = probe.detailBodyText.toLowerCase();
+    const locValues = jobs
+      .map((j) => String(fieldValue(j, "location") ?? "").trim())
+      .filter((l) => l.length > 3);
+    if (locValues.length > 0) {
+      // Check if majority of locations appear in the probed detail page body.
+      const mismatches = locValues.filter((loc) => !bodyLower.includes(loc.toLowerCase()));
+      if (mismatches.length > locValues.length * 0.7) {
+        suspects.push(
+          `location "${locValues[0]}" (and ${mismatches.length - 1} others) not found in detail page body — ` +
+            `may be mapped from the wrong element or hardcoded incorrectly`,
+        );
+      }
+    }
+  }
+
+  return suspects;
+}
+
+// ---------------------------------------------------------------------------
 // detail-page field-presence probe (heuristic)
 // ---------------------------------------------------------------------------
 
-async function probeDetail(
+export async function probeDetail(
   url: string,
   stealth: boolean,
   ua: string,
@@ -225,6 +355,7 @@ async function probeDetail(
   modalApplyButton: boolean;
   mailto: boolean;
   externalApply: boolean;
+  detailBodyText: string;
 } | null> {
   let chromium: any;
   try {
@@ -282,7 +413,9 @@ async function probeDetail(
         return /^https?:\/\//i.test(href);
       });
       const mailto = !!document.querySelector('a[href^="mailto:"]');
-      return { fieldsOnPage, formCount, maxFormFields, modalApplyButton, mailto, externalApply };
+      // Return a truncated body text for location-sanity check (max 8k chars).
+      const detailBodyText = (document.body?.innerText || "").slice(0, 8000);
+      return { fieldsOnPage, formCount, maxFormFields, modalApplyButton, mailto, externalApply, detailBodyText };
     });
     return out;
   } catch {
@@ -293,22 +426,26 @@ async function probeDetail(
 }
 
 // ---------------------------------------------------------------------------
-// main
+// core QA logic — exported for programmatic use by addsite-audit.ts
 // ---------------------------------------------------------------------------
 
-async function main() {
-  const siteId = arg("site-id");
-  if (!siteId) throw new Error("--site-id is required");
-  const sample = parseInt(arg("sample") || "10", 10);
-  const minFill = parseFloat(arg("min-fill") || "0.6");
-  const stealth = hasFlag("stealth");
-  const noProbe = hasFlag("no-probe");
-  const ua = arg("ua") || UA_DEFAULT;
-  const outPath = arg("out");
-  let detailUrl = arg("detail-url");
+/**
+ * Run quality-gate logic for a single site and return a QaRecord.
+ * Does NOT write to stdout/stderr or call process.exit — callers do that.
+ */
+export async function runQa(siteId: string, opts: RunQaOptions): Promise<QaRecord> {
+  const {
+    sample = 10,
+    minFill = 0.6,
+    stealth = false,
+    noProbe = false,
+    ua = UA_DEFAULT,
+    token,
+  } = opts;
+  let detailUrl = opts.detailUrl;
 
   const HEADERS: Record<string, string> = {
-    Authorization: `Bearer ${token()}`,
+    Authorization: `Bearer ${token}`,
     "Content-Type": "application/json",
   };
   const notes: string[] = [];
@@ -330,9 +467,9 @@ async function main() {
   } catch {
     notes.push("could not read /config endpoint — formCapture detection relied on job rawData only");
   }
-  const formCapture = cfgData.formCapture;
+  const formCapture = cfgData?.fieldMappings?._meta?.formCapture ?? cfgData?.formCapture;
   let hasFormCapture = !!(formCapture && Array.isArray(formCapture.fields) && formCapture.fields.length >= 1);
-  const ovUa = cfgData.browserOverrides?.userAgent || site.browserOverrides?.userAgent;
+  const ovUa = cfgData?.fieldMappings?._meta?.browserOverrides?.userAgent || site.browserOverrides?.userAgent;
 
   // --- sample jobs ---
   const jr = await fetch(`${BASE}/api/jobs?siteId=${encodeURIComponent(siteId)}&pageSize=${sample}`, {
@@ -347,7 +484,8 @@ async function main() {
   let formDataFields = 0;
   for (const j of jobs) {
     const fd = j?.rawData?._formData;
-    if (fd && Array.isArray(fd.fields) && fd.fields.length > formDataFields) formDataFields = fd.fields.length;
+    const parsed = typeof fd === "string" ? (() => { try { return JSON.parse(fd); } catch { return null; } })() : fd;
+    if (parsed && Array.isArray(parsed.fields) && parsed.fields.length > formDataFields) formDataFields = parsed.fields.length;
   }
   if (!hasFormCapture && formDataFields >= 1) hasFormCapture = true;
 
@@ -418,6 +556,12 @@ async function main() {
   // can't prove a shortfall is structural, so don't let it harden into SKIP.
   const probeInconclusive = !noProbe && !probe;
 
+  // --- B-guardrail: correctness suspects ---
+  const correctnessSuspects = computeCorrectnessSuspects(jobs, probe);
+  if (correctnessSuspects.length) {
+    notes.push(...correctnessSuspects.map((s) => `correctness suspect: ${s}`));
+  }
+
   // --- classify apply path / formStatus ---
   let formStatus: FormStatus;
   let manualFormUrl: string | undefined;
@@ -453,6 +597,7 @@ async function main() {
     availableButUnmapped,
     probeInconclusive,
     descMappingSuspect,
+    correctnessSuspects,
   });
 
   const qa: QaRecord = {
@@ -466,30 +611,75 @@ async function main() {
     ...(manualFormUrl ? { manualFormUrl } : {}),
     tierAComplete,
     tierAMissing,
+    correctnessSuspects,
     verdict,
     verdictReason,
     ...(probedUrl ? { probedUrl } : {}),
     notes,
   };
 
-  if (outPath) {
-    fs.mkdirSync(path.dirname(path.resolve(outPath)), { recursive: true });
-    fs.writeFileSync(outPath, JSON.stringify(qa, null, 2), "utf8");
+  if (opts.outPath) {
+    fs.mkdirSync(path.dirname(path.resolve(opts.outPath)), { recursive: true });
+    fs.writeFileSync(opts.outPath, JSON.stringify(qa, null, 2), "utf8");
   }
+
+  return qa;
+}
+
+// ---------------------------------------------------------------------------
+// CLI entry point (thin wrapper — preserves existing behaviour exactly)
+// ---------------------------------------------------------------------------
+
+function cliArg(name: string): string | undefined {
+  const pre = `--${name}`;
+  for (let i = 0; i < process.argv.length; i++) {
+    const a = process.argv[i];
+    if (a === pre) return process.argv[i + 1] && !process.argv[i + 1].startsWith("--") ? process.argv[i + 1] : "true";
+    if (a.startsWith(pre + "=")) return a.slice(pre.length + 1);
+  }
+  return undefined;
+}
+function cliHasFlag(name: string): boolean {
+  return process.argv.includes(`--${name}`);
+}
+
+function readToken(): string {
+  const t = fs.readFileSync(path.resolve(".claude", "scrap-token"), "utf8").replace(/\s/g, "");
+  if (!t || t.startsWith("REPLACE_ME")) throw new Error(".claude/scrap-token missing/placeholder");
+  return t;
+}
+
+async function main() {
+  const siteId = cliArg("site-id");
+  if (!siteId) throw new Error("--site-id is required");
+
+  const qa = await runQa(siteId, {
+    sample: parseInt(cliArg("sample") || "10", 10),
+    minFill: parseFloat(cliArg("min-fill") || "0.6"),
+    stealth: cliHasFlag("stealth"),
+    noProbe: cliHasFlag("no-probe"),
+    ua: cliArg("ua"),
+    detailUrl: cliArg("detail-url"),
+    outPath: cliArg("out"),
+    token: readToken(),
+  });
+
   console.log(`QA ${JSON.stringify(qa)}`);
 
   // human-readable tail to stderr (keeps stdout machine-parseable)
+  const applyRate = qa.fillRates["applicationInfo"] ?? 0;
   console.error(
     [
       ``,
-      `── QA for ${siteId} (sampled ${n}) ──`,
-      `  verdict:    ${verdict}  (${verdictReason})`,
-      `  formStatus: ${formStatus}${manualFormUrl ? `  (run step 5b ${manualFormUrl})` : ""}`,
+      `── QA for ${siteId} (sampled ${qa.sampled}) ──`,
+      `  verdict:    ${qa.verdict}  (${qa.verdictReason})`,
+      `  formStatus: ${qa.formStatus}${qa.manualFormUrl ? `  (run step 5b ${qa.manualFormUrl})` : ""}`,
       `  applyRate:  ${applyRate}`,
-      `  Tier-A:     ${tierAComplete ? "COMPLETE" : "INCOMPLETE -> " + tierAMissing.join(", ")}`,
-      `  Tier-B gaps (page exposes, jobs missing): ${availableButUnmapped.length ? availableButUnmapped.join(", ") : "none"}`,
-      `  fillRates:  ${ALL_FIELDS.map((f) => `${f}=${fillRates[f]}`).join("  ")}`,
-      ...notes.map((x) => `  note: ${x}`),
+      `  Tier-A:     ${qa.tierAComplete ? "COMPLETE" : "INCOMPLETE -> " + qa.tierAMissing.join(", ")}`,
+      `  Tier-B gaps (page exposes, jobs missing): ${qa.availableButUnmapped.length ? qa.availableButUnmapped.join(", ") : "none"}`,
+      ...(qa.correctnessSuspects.length ? [`  correctness suspects: ${qa.correctnessSuspects.join(" | ")}`] : []),
+      `  fillRates:  ${ALL_FIELDS.map((f) => `${f}=${qa.fillRates[f]}`).join("  ")}`,
+      ...qa.notes.map((x) => `  note: ${x}`),
       ``,
     ].join("\n"),
   );
@@ -497,11 +687,11 @@ async function main() {
   // Exit contract:
   //   default (back-compat): 0 = Tier-A complete (ACTIVE), 2 = anything else.
   //   --verdict-exit (v2 pipeline): 0=ACTIVE, 2=SKIP, 3=REVIEW, 4=REQUEUE.
-  if (hasFlag("verdict-exit")) {
-    const code = verdict === "ACTIVE" ? 0 : verdict === "SKIP" ? 2 : verdict === "REVIEW" ? 3 : 4;
+  if (cliHasFlag("verdict-exit")) {
+    const code = qa.verdict === "ACTIVE" ? 0 : qa.verdict === "SKIP" ? 2 : qa.verdict === "REVIEW" ? 3 : 4;
     process.exit(code);
   }
-  process.exit(tierAComplete ? 0 : 2);
+  process.exit(qa.tierAComplete ? 0 : 2);
 }
 
 main().catch((e) => {
