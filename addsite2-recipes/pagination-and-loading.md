@@ -41,6 +41,50 @@ action will look identical in structure but return a tiny subset. Use the action
 that returns the highest count. Cite: `LRN-COV-2` (tigbur.co.il — `tb_get_hot_jobs`
 returned 5 jobs; `tb_get_jobs` returned 576).
 
+**WordPress REST API — the PREFERRED path for ANY WordPress job board.**
+Before fighting a "load more" button, an empty `ul.job_listings`, or per-job detail
+navigation, check the built-in WP REST API. It returns **every** post (no pagination
+button, no AJAX nonce) **with the full description, real ISO publish date, detail
+link, and meta** — in a handful of bulk calls. This single source solves three
+problems at once: load-more coverage, description-on-detail, and throughput.
+
+1. **Find the post type.** WP Job Manager's default is `job_listing`, but the REST
+   `rest_base` is often a different slug (e.g. `job-listings`). Discover it:
+   ```
+   GET /wp-json/wp/v2/types        → look for a job-ish type, read its "rest_base"
+   GET /wp-json/wp/v2/<rest_base>?per_page=1   → confirm 200 + an X-WP-Total header
+   ```
+   Common slugs to try directly: `job-listings`, `job_listing`, `jobs`, `vacancies`,
+   `positions`, `careers`.
+2. **Pull all pages** (`per_page=100`, walk `page=1..N` until `X-WP-Total`/`<100`),
+   requesting only what you need: `&_fields=id,link,date,title,content,meta,<taxonomy>`.
+3. **Map fields** from each record: `id`→externalJobId (stable WP post id),
+   `link`→detailUrl, `date`→publishDate (real ISO — better than relative
+   "פורסם לפני N ימים" on the cards), `title.rendered`→title (HTML-entity-decode it),
+   `content.rendered`→description (run through `structuredText` to keep line breaks;
+   WP often **double-encodes** entities so decode twice — `&bull;`/`&nbsp;`), and
+   `meta._job_location` / a `*_region` taxonomy → location, `meta._application` →
+   the apply email/URL.
+4. **Build the items in `setupScript`** (single-page mode, no `pageFlow`): clear
+   `ul.job_listings`, create one `li.job_listing` per record with the real card
+   classes (`h3.job_listing-title`, `a.job_listing-clickbox[href]`,
+   `.job_listing-location`) plus hidden `.__ai-jobid` / `.__ai-date` /
+   `.__ai-description` / `.__ai-apply` spans, and map those as **listing-scope**
+   fields. ~4 REST calls, ~10 s, full coverage — vs. 240 detail navigations that
+   time out. Reference: tcmcareer.com (240 jobs via `/wp-json/wp/v2/job-listings`;
+   the listing card `ul` is empty until AJAX and only ~20 show behind "load more").
+   Cite: `LRN-COV-4`.
+
+> **THROUGHPUT LANDMINE — per-job detail navigation caps at ~40 jobs / run.**
+> A `pageFlow` that visits each detail page in a real browser costs ~15–20 s/page,
+> so the 15-minute worker timeout cuts off around **40 jobs** (the rest are silently
+> dropped — the run still reports COMPLETED). If a site has 100+ jobs **and** its
+> description lives only on detail pages, do NOT use per-job navigation. Fetch the
+> descriptions in **bulk inside `setupScript`** (WP REST `content.rendered`, a JSON
+> list endpoint, or `await fetch()` of each detail URL with a concurrency pool) and
+> inject `.__ai-description` as a listing-scope field, keeping the scrape single-page.
+> Cite: `LRN-COV-4` (tcmcareer: 40/240 via pageFlow → 240/240 via REST in setupScript).
+
 ---
 
 ## 1. Numbered pagination (query param)

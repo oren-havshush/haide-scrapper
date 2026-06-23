@@ -297,6 +297,32 @@
   fix this can combine with detail visits — re-verify before trusting.)
 - **Generalizes to:** WP admin-ajax listings. **Home:** Step 4 / `recipes/setupscript-patterns.md`.
 
+### LRN-COV-4 — WordPress REST API is the best "all jobs + descriptions" source; per-job detail navigation caps at ~40/run
+- **Date / site:** 2026-06-22 · tcmcareer.com (`cmqo82ozg000v01qpkz7zncwp`) 240/240
+- **Signal:** WP Job Manager site. `ul.job_listings` is **empty** in the served HTML
+  (AJAX-hydrated) and only ~20 jobs show behind a "טען משרות נוספות" load-more button,
+  so the analyzer's CRAWL_CLASSIFY latched onto garbage Elementor headings
+  (`h5.elementor-heading-title`) and a prior run parked the site in REVIEW with
+  "WP Job Manager AJAX-only — jobs need click-triggered AJAX; 250+ jobs exist".
+  Descriptions live only on detail pages.
+- **Two-part fix:**
+  1. **Use the WP REST API, not the load-more button.** `GET /wp-json/wp/v2/types`
+     to find the `rest_base` (here `job-listings`, not `job_listing`), then pull
+     `?per_page=100&page=N&_fields=id,link,date,title,content,meta,<region-taxonomy>`.
+     Each record yields externalJobId (`id`), detailUrl (`link`), publishDate (`date`,
+     real ISO), title (`title.rendered`, entity-decode), description
+     (`content.rendered` → `structuredText`; **double-decode** entities — `&bull;`),
+     location (region taxonomy / `meta._job_location`), apply (`meta._application`).
+     Build `li.job_listing` rows in `setupScript`, map listing-scope. ~4 calls, ~10 s.
+  2. **THROUGHPUT cap:** the first attempt used a `pageFlow` (visit each detail page
+     for the description) and scraped only **40 of 240** — per-job browser navigation
+     costs ~15–20 s/page and the 15-min worker timeout cut it off (run still reported
+     COMPLETED). Never use per-job navigation for 100+ job sites; fetch descriptions
+     in bulk inside `setupScript` (REST `content.rendered`, JSON endpoint, or pooled
+     `fetch()` of detail URLs) and inject `.__ai-description` as listing-scope.
+- **Generalizes to:** every WordPress / WP Job Manager board, and any large site whose
+  description is detail-page-only. **Home:** `recipes/pagination-and-loading.md` §0.
+
 ---
 
 ## G. SPA / ATS frameworks
