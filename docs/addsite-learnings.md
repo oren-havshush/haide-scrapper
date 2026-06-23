@@ -470,6 +470,32 @@
   byte-for-byte on read-back.
 - **Generalizes to:** all Windows config/label writes. **Home:** Step 6 / Windows gotchas.
 
+### LRN-API-3 — PATCH status with inline PowerShell JSON → misleading `500 INTERNAL_ERROR`
+- **Date / site:** 2026-06-23 · forvismazars.com/il/en/join-us (`cmqo82p8c000z01qpdb1dolda`)
+- **Signal:** `PATCH /api/sites/:id` with an **inline** body from PowerShell —
+  `curl.exe ... -d '{"status":"SKIPPED"}'` or `--data-raw '{"status":"SKIPPED"}'` —
+  returns `{"error":{"code":"INTERNAL_ERROR","message":"An unexpected error occurred"}}`
+  for **every** target status (SKIPPED/ACTIVE/FAILED/ANALYZING), even though the
+  transition is valid. Easy to misread as "the API blocks transitions from REVIEW."
+- **Root cause:** PowerShell mangles the embedded double quotes in the inline arg, so
+  the server receives malformed JSON; `await request.json()` throws a `SyntaxError`,
+  which is **not** an `AppError`, so the route's generic catch returns a 500
+  `INTERNAL_ERROR` instead of a 400. Confirmed via prod `web` logs:
+  `Unexpected error: SyntaxError: Expected property name or '}' in JSON at position 1 at JSON.parse`.
+- **Proof it's the body, not the transition:** the **same** site's `adminNote` PATCH
+  succeeded because it was sent via a **file** (`-d "@patch.json"`); switching the
+  status PATCH to a file (`'{"status":"SKIPPED"}' | Out-File -Encoding ascii s.json; curl.exe ... -d "@s.json"`)
+  succeeded instantly. `VALID_STATUS_TRANSITIONS` already allows `REVIEW → SKIPPED`.
+- **Fix (agent-side):** ALWAYS send PATCH/PUT/POST JSON bodies via a **file**
+  (`-d "@file.json"`), never an inline single-quoted `-d`/`--data-raw` string, when
+  curling from PowerShell. Write the file with the file tool or `Out-File -Encoding ascii`.
+  The dashboard Skip button + `addsite-batch.ts` are unaffected (they send valid JSON).
+- **Optional server hardening (not required):** wrap `request.json()` in the site/job
+  PATCH routes to throw a `ValidationError` ("Invalid JSON body") so a bad body returns
+  a clear 400 instead of a confusing 500.
+- **Generalizes to:** every PATCH/PUT/POST in the pipeline issued via PowerShell curl.
+  **Home:** Step 9 PUT / Step 12 verdict PATCH / Windows gotchas (§14).
+
 ---
 
 ## Change log

@@ -595,6 +595,12 @@ If yes → append to `docs/addsite-learnings.md`:
 - Write Hebrew JSON via Node (`fs.writeFileSync`), not PowerShell echo (UTF-16 BOM trap).
 - Curl on Windows: use `curl.exe` explicitly in PowerShell (avoid PowerShell's `Invoke-WebRequest` alias).
 - Heredoc multiline JSON: use a temp file written by Node, not PowerShell here-strings.
+- **ALWAYS send PATCH/PUT/POST JSON bodies via a file** (`curl.exe ... -d "@body.json"`),
+  **never** an inline `-d '{"status":"SKIPPED"}'` / `--data-raw '{...}'`. PowerShell mangles
+  the embedded double quotes → server gets malformed JSON → `request.json()` throws →
+  the route returns a misleading **`500 INTERNAL_ERROR`** (NOT a transition error). This
+  is the trap that made a valid `REVIEW → SKIPPED` PATCH look like "the API blocks the
+  transition." Write the file with the file tool or `Out-File -Encoding ascii`. Cite: `LRN-API-3`.
 
 ---
 
