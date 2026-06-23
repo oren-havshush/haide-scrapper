@@ -479,10 +479,28 @@ const BARE_PREFIX_DENYLIST = new Set<string>([
 const passesBarePrefix = (name: string) =>
   name.length >= BARE_PREFIX_MIN_LEN && !BARE_PREFIX_DENYLIST.has(name);
 
-const CITY_ALT = altOf(IL_CITIES);
-const REGION_ALT = altOf(IL_REGIONS);
-const CITY_ALT_LONG = altOf(IL_CITIES.filter(passesBarePrefix));
-const REGION_ALT_LONG = altOf(IL_REGIONS.filter(passesBarePrefix));
+// Place names spelled identically to very common Hebrew job-ad words that cause
+// false-positive location reads even WITH a cue/label nearby — so, unlike
+// BARE_PREFIX_DENYLIST (bare-"ב<name>" only), these are dropped from EVERY
+// gazetteer matcher. The classic case: "מלאה" (= "full") is a micro-locality,
+// but appears constantly as "משרה מלאה" (full-time) / "שליטה מלאה" (full
+// command); with a 📍/✔ pictograph cue within 30 chars it wrongly resolved to
+// the locality. Such tiny places are virtually never used as a job location, so
+// dropping them only removes false positives. Labeled "מיקום: …" extraction is
+// unaffected (it doesn't use these lists).
+const GAZETTEER_DENYLIST = new Set<string>([
+  "מלאה", // "משרה מלאה" = full-time, "שליטה מלאה" = full command — not the locality
+]);
+const notDenied = (name: string) => !GAZETTEER_DENYLIST.has(name);
+
+const CITY_ALT = altOf(IL_CITIES.filter(notDenied));
+const REGION_ALT = altOf(IL_REGIONS.filter(notDenied));
+const CITY_ALT_LONG = altOf(
+  IL_CITIES.filter((n) => notDenied(n) && passesBarePrefix(n)),
+);
+const REGION_ALT_LONG = altOf(
+  IL_REGIONS.filter((n) => notDenied(n) && passesBarePrefix(n)),
+);
 
 // A location CUE: a pin/office emoji or a location noun
 // ("מיקום", "כתובת", "סניף", "פארק", "משרדי(נו)", "ממוקם", "עיר").
