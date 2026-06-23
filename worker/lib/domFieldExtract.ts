@@ -45,6 +45,32 @@ export const domFieldExtract = function (
     .querySelectorAll("style, script, noscript, link, template, svg, iframe")
     .forEach((n) => n.remove());
 
+  // Cloudflare "email protection" obfuscates addresses as
+  // `<a class="__cf_email__" data-cfemail="HEX">[email protected]</a>` (the hex
+  // also appears in a `/cdn-cgi/l/email-protection#HEX` href). Without decoding,
+  // every cf-protected apply email / description leaks the literal
+  // "[email protected]" placeholder. Decode in place so downstream text sees the
+  // real address. First hex byte is the XOR key; XOR each subsequent byte.
+  const cfDecode = function (hex: string): string {
+    try {
+      const key = parseInt(hex.substr(0, 2), 16);
+      let out = "";
+      for (let i = 2; i < hex.length; i += 2) {
+        out += String.fromCharCode(parseInt(hex.substr(i, 2), 16) ^ key);
+      }
+      return out;
+    } catch {
+      return "";
+    }
+  };
+  clone.querySelectorAll("[data-cfemail], .__cf_email__").forEach((n) => {
+    const hex =
+      n.getAttribute("data-cfemail") ||
+      ((n.getAttribute("href") || "").split("#")[1] ?? "");
+    const decoded = /^[0-9a-fA-F]+$/.test(hex) ? cfDecode(hex) : "";
+    if (decoded) n.replaceWith(decoded);
+  });
+
   // textContent concatenates adjacent text nodes with NO separator. That's
   // fine for English (words already have spaces) but breaks Hebrew / CJK
   // / Arabic where word boundaries depend on whitespace that browsers

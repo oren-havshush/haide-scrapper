@@ -363,6 +363,62 @@
 
 ## H. Worker behavior & config contract
 
+### LRN-WRK-8 — Cloudflare "email protection" leaks `[email protected]` — worker now auto-decodes
+- **Date / site:** 2026-06-23 · totali.com/en/Jobs/ (`cmqo82ous000t01qpt7duk823`)
+- **Signal:** an email-apply site renders the apply address through Cloudflare's
+  email-obfuscation widget — `<a class="__cf_email__" data-cfemail="HEX">[email protected]</a>`
+  (the same `HEX` also rides a `/cdn-cgi/l/email-protection#HEX` href). Any field that
+  reads that text (`description`, `applicationInfo`, the normalizer's
+  `extractApplicationInfoFallback`) captured the literal placeholder
+  **`[email protected]`** instead of the real address. The on-page text only resolves
+  if Cloudflare's JS happens to run; under the scraper it frequently does not.
+- **Root cause:** there was **zero** cf-email handling anywhere in the worker — text
+  extraction took the placeholder verbatim.
+- **Fix (worker-side, global):** `worker/lib/domFieldExtract.ts` now decodes every
+  `[data-cfemail]` / `.__cf_email__` node **in the clone, before text extraction**:
+  first hex byte is the XOR key, XOR each subsequent byte → the real address, then
+  `node.replaceWith(decoded)`. Because every field flows through `domFieldExtract`,
+  this fixes description AND applicationInfo (and the description→applicationInfo
+  fallback) for **all** sites at once — no per-site setupScript needed anymore.
+  No behavior change for non-Cloudflare sites (selector matches nothing).
+- **Self-contained constraint:** the decode helper lives INSIDE `domFieldExtract`
+  (the fn is `.toString()`-serialized into `page.evaluate`); keep it ref-free.
+- **Pre-fix workaround (still valid, now redundant):** a `cfDecode()` inside the
+  site's `setupScript` that reads `data-cfemail` and injects a clean field. totali's
+  config still does this; harmless overlap with the worker decode.
+- **Generalizes to:** any WordPress/Cloudflare jobs site that email-protects the
+  apply address. **Home:** Step 5a email-apply / `domFieldExtract`.
+
+### LRN-WRK-9 — Old ACTIVE config with empty `pageFlow` ⇒ descriptions silently never fetched
+- **Date / site:** 2026-06-23 · totali.com/en/Jobs/ (`cmqo82ous000t01qpt7duk823`, re-onboard)
+- **Signal:** an *already-ACTIVE* site (onboarded before detail-enrichment was wired
+  up) returns 18 jobs with **empty description/location/applicationInfo**, even though
+  a `description` selector is mapped. `_debugDescription` shows the selector matched
+  nothing because it was applied to the **listing page only**.
+- **Root cause:** the worker visits detail pages **only when `pageFlow.length >= 2`**
+  (`classifyFieldsByPage` + the detail-collection loop in `scrape.ts`). The legacy
+  config had `pageFlow: []`, so the description selector — which only resolves on the
+  detail page — ran against the listing and produced "".
+- **Fix:** give the site a real two-step flow and route fields with `capturedOnUrl`:
+  `pageFlow:[{url:LISTING,action:"navigate"},{url:"<detail-glob>*",action:"<detail-link-selector>"}]`.
+  Listing-scope fields (`title`, `detailUrl`, `externalJobId`) set
+  `capturedOnUrl: <listingUrl>`; detail-scope fields (`description`, `location`,
+  `applicationInfo`) set `capturedOnUrl: <a real detail URL>`. Fields with **no**
+  `capturedOnUrl` default to detail-scope and break if their selector isn't on the
+  listing — so `title` MUST be tagged listing-scope or it comes back empty on detail.
+- **externalJobId from the title's trailing `(NNNNNN)`:** setupScript appends a
+  per-item `.__ai-jobid` span on the listing (`title.match(/\((\d{3,})\)\s*$/)`),
+  mapped listing-scope. Changing the id scheme is safe — every scrape does
+  `prisma.job.deleteMany({siteId})` then re-creates (no orphans).
+- **description without losing line breaks:** add a CLASS to the real job-body widget
+  (`body.classList.add('__ai-jobbody')`) and map `description → .__ai-jobbody` so
+  `domFieldExtract`'s block→`\n` logic runs on the real `<p>` tree. Do NOT inject a
+  copy div with `textContent = innerText` (collapses newlines). Per LRN-SETUP-1,
+  append the clean single-value spans (`.__ai-location`, `.__ai-applyinfo`) to
+  `document.body`, NOT inside `.__ai-jobbody`, or they corrupt the description text.
+- **Generalizes to:** any pre-enrichment ACTIVE site, or any new listing-only site
+  whose description lives on detail pages. **Home:** Step 5b / pageFlow setup.
+
 ### LRN-WRK-1 — Worker honors only a fixed set of field-mapping attributes
 - **Signal:** API accepts `regex/transform/extractRegex/postProcess/extract` but
   the worker **ignores** them — you get the whole text node dumped in the field.
