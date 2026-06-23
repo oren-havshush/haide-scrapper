@@ -352,8 +352,25 @@ export function resolveMetaMinPublishDate(
   return null;
 }
 
+// A printed job-reference code wrapped in parentheses or brackets, e.g.
+// "(JB-3138)", "[AB-1234]", "(REQ_99)". This is the common "the req number is
+// printed right in the title/body" pattern and is intentionally generic: any
+// 1–4 letter prefix + optional separator + 2–8 digits. We require the prefix
+// letters (so a bare "(2024)" year or "(50)" is NOT mistaken for an ID) and the
+// surrounding brackets (so a stray "AB12" mid-sentence is ignored). Exported so
+// both the description fallback and the title scan can reuse it.
+export function extractBracketedJobCode(text: string): string | null {
+  const m = /[(\[]\s*([A-Za-z]{1,4}[-_]?\d{2,8})\s*[)\]]/.exec(text);
+  return m ? m[1].toUpperCase().replace(/_/g, "-") : null;
+}
+
 // Standalone patterns that don't require a label.
 function extractExternalJobIdFallback(text: string): string | null {
+  // Bracketed printed code, e.g. "(JB-3138)" / "[AB-1234]" — most reliable
+  // because the brackets disambiguate it from prose numbers.
+  const bracketed = extractBracketedJobCode(text);
+  if (bracketed) return bracketed;
+
   // (#ID), [ID], or REQ-1234 / JR-1234 / R-12345 standalone, anywhere.
   const m =
     /(?:[(\[#]|\bID\s+)\s*((?:REQ|JR|R|JOB|POS)[-_]?\d{2,8})\b/i.exec(text) ||
@@ -677,6 +694,22 @@ export function normalizeJobRecord(
     if (recovered.jobType && !additionalFields["jobType"]) {
       additionalFields["jobType"] = recovered.jobType;
       rawOut["_enrichedFromDescription_jobType"] = recovered.jobType;
+    }
+  }
+
+  // Title-scan fallback for externalJobId: many listings print the req number
+  // right in the title, e.g. "Senior Data Analyst - (JB-3086)". The description
+  // fallback above only scans description+requirements, so a code that lives
+  // only in the title would be missed. We scan the title for a bracketed printed
+  // code (letters+digits in () or []) ONLY when no ID was found anywhere else —
+  // this never overrides a dedicated selector or a labeled/description match,
+  // and the bracket requirement keeps title prose numbers (e.g. "5+ years",
+  // "B2C") from being mistaken for an ID.
+  if (!externalJobId || externalJobId.trim().length === 0) {
+    const titleCode = extractBracketedJobCode(title);
+    if (titleCode) {
+      externalJobId = titleCode;
+      rawOut["_enrichedFromTitle_externalJobId"] = titleCode;
     }
   }
 

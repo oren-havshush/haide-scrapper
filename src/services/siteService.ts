@@ -276,6 +276,7 @@ export async function saveSiteConfig(
     applyLoginReason?: string;
     minPublishDate?: string;
     minPublishDays?: number;
+    locationFallback?: string;
   }
 ) {
   const site = await prisma.site.findUnique({ where: { id: siteId } });
@@ -300,6 +301,7 @@ export async function saveSiteConfig(
       minPublishDate: config.minPublishDate || null,
       minPublishDays:
         typeof config.minPublishDays === "number" ? config.minPublishDays : null,
+      locationFallback: config.locationFallback || null,
       savedAt: new Date().toISOString(),
     },
   };

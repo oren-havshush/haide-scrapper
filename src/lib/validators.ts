@@ -174,4 +174,11 @@ export const updateSiteConfigSchema = z.object({
   // minPublishDate (absolute) wins over minPublishDays (relative) wins over the
   // SCRAPE_MIN_PUBLISH_DATE env fallback. New onboards set this to 90.
   minPublishDays: z.number().int().min(1).max(3650).optional(),
+  // Site-level default location applied per job ONLY when extraction (selector
+  // + labeled + gazetteer) produced no location, before defaulting to
+  // "Unknown". Use for sites where the company HQ is a sensible default (e.g. a
+  // staffing firm whose jobs print no location of their own). Stored under
+  // fieldMappings._meta.locationFallback; worker reads it via
+  // getLocationFallback() in scrape.ts.
+  locationFallback: z.string().max(150).optional(),
 });

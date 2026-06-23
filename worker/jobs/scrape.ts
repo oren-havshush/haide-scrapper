@@ -2121,6 +2121,23 @@ function getApplyRequiresLogin(fieldMappingsRaw: unknown): boolean {
   return meta?.["applyRequiresLogin"] === true;
 }
 
+// ---------------------------------------------------------------------------
+// Helper: read a site-level default location from fieldMappings._meta.
+// locationFallback. Applied per job ONLY when extraction (selector + labeled +
+// gazetteer) produced no location, before defaulting to "Unknown". Use for
+// sites where the company HQ is a sensible default for jobs that print no
+// location of their own (e.g. a staffing firm). Returns null when unset/blank.
+// ---------------------------------------------------------------------------
+
+function getLocationFallback(fieldMappingsRaw: unknown): string | null {
+  if (!fieldMappingsRaw || typeof fieldMappingsRaw !== "object") return null;
+  const raw = fieldMappingsRaw as Record<string, unknown>;
+  const meta = raw["_meta"] as Record<string, unknown> | undefined;
+  const val = meta?.["locationFallback"];
+  if (typeof val === "string" && val.trim().length > 0) return val.trim();
+  return null;
+}
+
 /**
  * Resolve the effective publish-date floor (YYYY-MM-DD) for this scrape.
  *
@@ -3086,6 +3103,10 @@ async function executeScrape(
     locationOverrideRows.map((r) => [r.jobKey, r.location]),
   );
 
+  // Site-level default location (e.g. company HQ) for jobs that print none of
+  // their own. Applied below only after extraction comes up empty.
+  const locationFallback = getLocationFallback(site.fieldMappings);
+
   // Save jobs in chunks so progress is preserved even if a timeout occurs.
   // Delete old jobs first, then insert in batches of CHUNK_SIZE, updating the
   // ScrapeRun progress after each chunk.
@@ -3101,12 +3122,18 @@ async function executeScrape(
         const jobKey = normalized.externalJobId || normalized.url || null;
         const overriddenLocation =
           (jobKey && locationOverrides.get(jobKey)) || null;
+        // Precedence: manual dashboard override → extracted location →
+        // site-level fallback (HQ) → "Unknown". The extracted value can be an
+        // empty string (not null), so test it with trim() rather than ??.
+        const extractedLocation = normalized.location?.trim() || null;
+        const resolvedLocation =
+          overriddenLocation ?? extractedLocation ?? locationFallback ?? "Unknown";
         await tx.job.create({
           data: {
             title: normalized.title || "Untitled",
             description: normalized.description || null,
             requirements: normalized.requirements || null,
-            location: overriddenLocation ?? normalized.location ?? "Unknown",
+            location: resolvedLocation,
             department: normalized.department || null,
             externalJobId: normalized.externalJobId || null,
             publishDate: normalized.publishDate || null,
