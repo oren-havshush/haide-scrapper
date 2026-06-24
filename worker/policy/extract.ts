@@ -67,8 +67,24 @@ export function extractPolicyText(
   // Strip remaining HTML tags
   working = stripHtmlTags(working);
 
+  return cleanExtractedText(working, maxChars);
+}
+
+/**
+ * Clean already-plain text (e.g. extracted from a PDF or Word document) into
+ * the same shape returned by `extractPolicyText`. Applies whitespace
+ * normalization, noise-pattern stripping, line deduplication, capping, and
+ * language detection — but no HTML stripping, since the input is not HTML.
+ *
+ * @param text       Plain text extracted from a document.
+ * @param maxChars   Max output length (default MAX_CLEANED_TEXT_CHARS).
+ */
+export function cleanExtractedText(
+  text: string,
+  maxChars = MAX_CLEANED_TEXT_CHARS,
+): { cleanedText: string; storedText: string; detectedLanguage: string } {
   // Normalize whitespace
-  working = normalizeWhitespace(working);
+  let working = normalizeWhitespace(text);
 
   // Strip noise patterns
   for (const re of NOISE_PATTERNS) {

@@ -59,6 +59,46 @@ export const POLICY_URL_PATHS: string[] = [
   "/disclaimer",
 ];
 
+/**
+ * Common locations where a policy is published as a downloadable document
+ * (PDF / Word) rather than an HTML page. Probed directly with HTTP HEAD in
+ * addition to the HTML POLICY_URL_PATHS above.
+ */
+export const POLICY_DOC_PATHS: string[] = [
+  "/terms.pdf",
+  "/privacy.pdf",
+  "/takanon.pdf",
+  "/legal.pdf",
+  "/assets/terms.pdf",
+  "/assets/privacy.pdf",
+  "/assets/takanon.pdf",
+  "/files/terms.pdf",
+  "/files/privacy.pdf",
+  "/docs/terms.pdf",
+  "/uploads/terms.pdf",
+];
+
+/** Document file extensions we can extract policy text from. */
+export type PolicyDocType = "pdf" | "docx" | "doc";
+
+/**
+ * Return the policy document type for a URL whose path ends in a supported
+ * document extension, or null for ordinary (HTML) URLs. Query strings and
+ * fragments are ignored so `/terms.pdf?v=2#top` is still detected.
+ */
+export function getPolicyDocumentType(url: string): PolicyDocType | null {
+  let pathname: string;
+  try {
+    pathname = new URL(url).pathname.toLowerCase();
+  } catch {
+    pathname = url.toLowerCase().split(/[?#]/)[0];
+  }
+  if (pathname.endsWith(".pdf")) return "pdf";
+  if (pathname.endsWith(".docx")) return "docx";
+  if (pathname.endsWith(".doc")) return "doc";
+  return null;
+}
+
 // ---------------------------------------------------------------------------
 // Restrictive terms for evidence matching and prompt guidance
 // ---------------------------------------------------------------------------

@@ -25,6 +25,8 @@ import type { Browser } from "playwright";
 import { fetchRobots } from "../policy/robots";
 import { discoverPolicyUrls, fetchPolicyPage } from "../policy/discover";
 import { extractPolicyText } from "../policy/extract";
+import { extractDocumentText } from "../policy/extractDocument";
+import { getPolicyDocumentType } from "../policy/keywords";
 import { classifyPolicy } from "../policy/classify";
 import { emitWorkerEvent } from "../lib/emitEvent";
 
@@ -98,15 +100,37 @@ async function runPolicyReview(
     const reviewedUrls: string[] = [];
 
     for (const candidate of discovered) {
-      const { html, finalUrl, error } = await fetchPolicyPage(candidate.url, page);
-      if (error || !html) {
-        console.warn("[policy] Failed to fetch policy page:", { url: candidate.url, error });
-        continue;
+      const documentType = getPolicyDocumentType(candidate.url);
+
+      let cleanedText: string;
+      let finalUrl = candidate.url;
+
+      if (documentType) {
+        // PDF / Word policy: fetch the file into memory and extract its text
+        // (no Playwright navigation — the browser can't read binary docs).
+        const doc = await extractDocumentText(candidate.url, documentType);
+        if (doc.error || !doc.cleanedText) {
+          console.warn("[policy] Failed to extract policy document:", {
+            url: candidate.url,
+            docType: documentType,
+            error: doc.error,
+          });
+          continue;
+        }
+        cleanedText = doc.cleanedText;
+      } else {
+        // Ordinary HTML policy page.
+        const { html, finalUrl: fetchedUrl, error } = await fetchPolicyPage(candidate.url, page);
+        if (error || !html) {
+          console.warn("[policy] Failed to fetch policy page:", { url: candidate.url, error });
+          continue;
+        }
+        finalUrl = fetchedUrl;
+        cleanedText = extractPolicyText(html).cleanedText;
       }
 
-      const { cleanedText } = extractPolicyText(html);
       if (cleanedText.trim().length < 100) {
-        console.warn("[policy] Policy page text too short, skipping:", { url: candidate.url });
+        console.warn("[policy] Policy text too short, skipping:", { url: candidate.url });
         continue;
       }
 
@@ -260,10 +284,15 @@ async function recordFailure(siteId: string, errorMessage: string, reviewSource:
 
 function inferDocType(url: string): string {
   const lower = url.toLowerCase();
-  if (lower.includes("privacy")) return "privacy";
-  if (lower.includes("term") || lower.includes("takanon")) return "terms";
-  if (lower.includes("legal")) return "legal";
-  return "unknown";
+  let base = "unknown";
+  if (lower.includes("privacy")) base = "privacy";
+  else if (lower.includes("term") || lower.includes("takanon")) base = "terms";
+  else if (lower.includes("legal")) base = "legal";
+
+  // Append the file format when the policy is a downloadable document so the
+  // audit row distinguishes e.g. "terms_pdf" from an HTML "terms" page.
+  const format = getPolicyDocumentType(url);
+  return format ? `${base}_${format}` : base;
 }
 
 async function withTimeout<T>(

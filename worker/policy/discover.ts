@@ -13,7 +13,15 @@
  */
 
 import type { Page } from "playwright";
-import { isPolicyLinkText, isPolicyUrlPath, POLICY_URL_PATHS, EN_POLICY_LINK_TEXT, HE_POLICY_LINK_TEXT } from "./keywords";
+import {
+  isPolicyLinkText,
+  isPolicyUrlPath,
+  getPolicyDocumentType,
+  POLICY_URL_PATHS,
+  POLICY_DOC_PATHS,
+  EN_POLICY_LINK_TEXT,
+  HE_POLICY_LINK_TEXT,
+} from "./keywords";
 
 const FETCH_TIMEOUT_MS = 10_000;
 const COMMON_PATTERN_TIMEOUT_MS = 5_000;
@@ -83,8 +91,10 @@ async function probeCommonPatterns(
   origin: string,
   add: (u: DiscoveredUrl) => void,
 ): Promise<void> {
+  // Probe both HTML policy paths and document (PDF/Word) policy paths.
+  const allPaths = [...POLICY_URL_PATHS, ...POLICY_DOC_PATHS];
   // Run HEAD probes concurrently (capped)
-  const checks = POLICY_URL_PATHS.map(async (path) => {
+  const checks = allPaths.map(async (path) => {
     const url = `${origin}${path}`;
     try {
       const controller = new AbortController();
@@ -158,6 +168,10 @@ async function extractPageLinks(
     // Boost for footer/bottom-of-page context (heuristic: link is inside footer/small)
     // We can't easily detect this without DOM position, but path-only matches in nav get a small boost
     score += textScore(text);
+
+    // A policy link pointing at a downloadable document (PDF/Word) is a strong
+    // signal — many sites publish their only terms/privacy doc this way.
+    if (getPolicyDocumentType(absUrl)) score += 2;
 
     add({ url: absUrl, source: "page_link", linkText: text, score });
   }
