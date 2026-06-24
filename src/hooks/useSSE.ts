@@ -73,6 +73,12 @@ export function useSSE(options?: UseSSEOptions) {
             onFailureDetected();
           }
           break;
+
+        case "policy:checked":
+          queryClient.invalidateQueries({ queryKey: ["sites"] });
+          queryClient.invalidateQueries({ queryKey: ["sites", "policy-counts"] });
+          queryClient.invalidateQueries({ queryKey: ["dashboard", "overview"] });
+          break;
       }
     };
 

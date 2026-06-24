@@ -11,6 +11,7 @@ interface UseSitesParams {
   page?: number;
   pageSize?: number;
   status?: string;
+  policyStatus?: string;
   companyNameSearch?: string;
   urlSearch?: string;
   sortBy?: string;
@@ -22,6 +23,7 @@ export function useSites(params: UseSitesParams = {}) {
     page = 1,
     pageSize = 50,
     status,
+    policyStatus,
     companyNameSearch,
     urlSearch,
     sortBy = "createdAt",
@@ -31,13 +33,14 @@ export function useSites(params: UseSitesParams = {}) {
   searchParams.set("page", String(page));
   searchParams.set("pageSize", String(pageSize));
   if (status) searchParams.set("status", status);
+  if (policyStatus) searchParams.set("policyStatus", policyStatus);
   if (companyNameSearch) searchParams.set("companyNameSearch", companyNameSearch);
   if (urlSearch) searchParams.set("urlSearch", urlSearch);
   if (sortBy) searchParams.set("sortBy", sortBy);
   if (sortOrder) searchParams.set("sortOrder", sortOrder);
 
   return useQuery({
-    queryKey: ["sites", { page, pageSize, status, companyNameSearch, urlSearch, sortBy, sortOrder }],
+    queryKey: ["sites", { page, pageSize, status, policyStatus, companyNameSearch, urlSearch, sortBy, sortOrder }],
     queryFn: () => apiFetch(`/api/sites?${searchParams.toString()}`),
   });
 }
@@ -119,6 +122,44 @@ export function useDeleteSite() {
       }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["sites"] });
+    },
+  });
+}
+
+export function usePolicyStatusCounts() {
+  return useQuery({
+    queryKey: ["sites", "policy-counts"],
+    queryFn: () => apiFetch("/api/sites/policy-counts"),
+  });
+}
+
+export function useTriggerPolicyReview() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (siteId: string) =>
+      apiFetch(`/api/sites/${siteId}/policy-review`, { method: "POST" }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["sites"] });
+      queryClient.invalidateQueries({ queryKey: ["sites", "policy-counts"] });
+      queryClient.invalidateQueries({ queryKey: ["dashboard"] });
+    },
+  });
+}
+
+export function useScanPolicyUrl() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (url: string) =>
+      apiFetch("/api/policy-review/scan", {
+        method: "POST",
+        body: JSON.stringify({ url }),
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["sites"] });
+      queryClient.invalidateQueries({ queryKey: ["sites", "policy-counts"] });
+      queryClient.invalidateQueries({ queryKey: ["dashboard"] });
     },
   });
 }

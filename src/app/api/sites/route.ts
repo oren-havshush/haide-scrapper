@@ -22,6 +22,7 @@ export async function GET(request: NextRequest) {
       sortOrder: searchParams.get("sortOrder") ?? undefined,
     });
     const status = searchParams.get("status") ?? undefined;
+    const policyStatus = searchParams.get("policyStatus") ?? undefined;
     const { siteUrl } = siteUrlFilterSchema.parse({
       siteUrl: searchParams.get("siteUrl") ?? undefined,
     });
@@ -34,6 +35,7 @@ export async function GET(request: NextRequest) {
       ...params,
       ...sortParams,
       status,
+      policyStatus,
       siteUrl,
       companyNameSearch: companyNameSearch || undefined,
       urlSearch: urlSearch || undefined,

@@ -21,6 +21,7 @@ interface SiteActionsProps {
   onTestScrape?: (siteId: string) => void;
   onClearJobs?: (siteId: string) => void;
   onReview?: (siteUrl: string) => void;
+  onPolicyRecheck?: (siteId: string) => void;
   isSkipping?: boolean;
   isFailing?: boolean;
   isReanalyzing?: boolean;
@@ -40,6 +41,7 @@ export function SiteActions({
   onTestScrape,
   onClearJobs,
   onReview,
+  onPolicyRecheck,
   isSkipping,
   isFailing,
   isReanalyzing,
@@ -173,6 +175,11 @@ export function SiteActions({
           {onClearJobs && (status === "ACTIVE" || status === "REVIEW" || status === "FAILED") && (
             <DropdownMenuItem onClick={() => onClearJobs(siteId)}>
               Clear Jobs
+            </DropdownMenuItem>
+          )}
+          {onPolicyRecheck && (
+            <DropdownMenuItem onClick={() => onPolicyRecheck(siteId)}>
+              Re-check policy
             </DropdownMenuItem>
           )}
           <DropdownMenuItem

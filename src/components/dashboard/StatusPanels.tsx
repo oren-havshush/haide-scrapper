@@ -1,9 +1,14 @@
 "use client";
 
+import { useState } from "react";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { StatusBadge } from "@/components/shared/StatusBadge";
+import { PolicyStatusBadge } from "@/components/shared/PolicyStatusBadge";
+import { Button } from "@/components/ui/button";
+import { toast } from "sonner";
 import type { DashboardOverviewData } from "@/hooks/useDashboard";
+import { useScanPolicyUrl } from "@/hooks/useSites";
 
 type SiteStatusValue = "ANALYZING" | "REVIEW" | "ACTIVE" | "FAILED" | "SKIPPED";
 
@@ -178,6 +183,96 @@ export function StatusPanels({ data, isLoading }: StatusPanelsProps) {
           )}
         </CardContent>
       </Card>
+
+      {/* Policy Review Coverage Panel */}
+      <Card style={{ backgroundColor: "#18181b" }} className="col-span-2">
+        <CardHeader>
+          <CardTitle className="text-sm font-medium" style={{ color: "#a1a1aa" }}>
+            Policy Review Coverage
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {isLoading ? (
+            <div className="space-y-2">
+              <Skeleton className="h-5 w-full" />
+              <Skeleton className="h-5 w-full" />
+              <Skeleton className="h-5 w-full" />
+            </div>
+          ) : (
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-1.5">
+                {[
+                  { label: "Total sites", value: data?.policyCoverage.total ?? 0, color: "#fafafa" },
+                  { label: "Checked", value: data?.policyCoverage.checked ?? 0, color: "#22c55e" },
+                  { label: "Not checked yet", value: data?.policyCoverage.unchecked ?? 0, color: "#6b7280" },
+                ].map(({ label, value, color }) => (
+                  <div key={label} className="flex items-center justify-between">
+                    <span className="text-sm" style={{ color: "#a1a1aa" }}>{label}</span>
+                    <span className="text-sm font-medium" style={{ color }}>{value}</span>
+                  </div>
+                ))}
+                <div className="flex items-center justify-between pt-1.5 border-t border-zinc-700 gap-2">
+                  <PolicyStatusBadge status="RESTRICTED" />
+                  <span className="text-sm font-medium" style={{ color: "#ef4444" }}>
+                    {data?.policyCoverage.restricted ?? 0}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between gap-2">
+                  <PolicyStatusBadge status="REQUIRES_WRITTEN_PERMISSION" />
+                  <span className="text-sm font-medium" style={{ color: "#f97316" }}>
+                    {data?.policyCoverage.requiresWrittenPermission ?? 0}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between gap-2">
+                  <PolicyStatusBadge status="UNCLEAR_NEEDS_REVIEW" />
+                  <span className="text-sm font-medium" style={{ color: "#f59e0b" }}>
+                    {data?.policyCoverage.unclearNeedsReview ?? 0}
+                  </span>
+                </div>
+              </div>
+              <div>
+                <p className="text-xs mb-2" style={{ color: "#a1a1aa" }}>Check a URL</p>
+                <CheckUrlInput />
+              </div>
+            </div>
+          )}
+        </CardContent>
+      </Card>
     </div>
+  );
+}
+
+function CheckUrlInput() {
+  const [url, setUrl] = useState("");
+  const scan = useScanPolicyUrl();
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    const trimmed = url.trim();
+    if (!trimmed) return;
+    scan.mutate(trimmed, {
+      onSuccess: () => {
+        toast.success("Policy review queued");
+        setUrl("");
+      },
+      onError: (err: Error) => toast.error(err.message),
+    });
+  };
+
+  return (
+    <form onSubmit={handleSubmit} className="flex gap-2">
+      <input
+        type="url"
+        value={url}
+        onChange={(e) => setUrl(e.target.value)}
+        placeholder="https://example.com/careers"
+        className="flex-1 rounded-md border px-3 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-ring/50"
+        style={{ backgroundColor: "#0a0a0b", borderColor: "#27272a", color: "#fafafa" }}
+        disabled={scan.isPending}
+      />
+      <Button type="submit" size="sm" className="h-7 text-xs px-3" disabled={scan.isPending || !url.trim()}>
+        {scan.isPending ? "..." : "Check"}
+      </Button>
+    </form>
   );
 }

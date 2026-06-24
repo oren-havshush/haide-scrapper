@@ -57,6 +57,7 @@ export async function createSite(siteUrl: string) {
 export async function listSites(
   params: PaginationParams & {
     status?: string;
+    policyStatus?: string;
     siteUrl?: string;
     companyNameSearch?: string;
     urlSearch?: string;
@@ -68,6 +69,7 @@ export async function listSites(
     page,
     pageSize,
     status,
+    policyStatus,
     siteUrl,
     companyNameSearch,
     urlSearch,
@@ -77,6 +79,9 @@ export async function listSites(
   const where: Record<string, unknown> = {};
   if (status) {
     where.status = status as SiteStatus;
+  }
+  if (policyStatus) {
+    where.scrapingPolicyStatus = policyStatus;
   }
   // urlSearch (partial, case-insensitive) wins over the exact-match siteUrl
   // filter when both are supplied. The exact-match path is only used by the

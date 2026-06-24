@@ -10,6 +10,16 @@ export interface ScrapeHealth {
   totalSites: number;
 }
 
+export interface PolicyCoverage {
+  total: number;
+  checked: number;
+  unchecked: number;
+  restricted: number;
+  requiresWrittenPermission: number;
+  unclearNeedsReview: number;
+  failed: number;
+}
+
 export interface DashboardOverviewData {
   scrapeHealth: ScrapeHealth;
   statusCounts: {
@@ -29,6 +39,7 @@ export interface DashboardOverviewData {
     FAILED: number;
     SKIPPED: number;
   };
+  policyCoverage: PolicyCoverage;
 }
 
 export interface FailedSiteLatestRun {

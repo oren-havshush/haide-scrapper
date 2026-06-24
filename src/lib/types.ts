@@ -50,13 +50,15 @@ export type SSEEventType =
   | "site:status-changed"
   | "analysis:completed"
   | "scrape:completed"
-  | "scrape:failed";
+  | "scrape:failed"
+  | "policy:checked";
 
 export interface SSEEventMap {
   "site:status-changed": { siteId: string; status: string };
   "analysis:completed": { siteId: string; confidence: number };
   "scrape:completed": { siteId: string; jobCount: number };
   "scrape:failed": { siteId: string; error: string; category: string | null };
+  "policy:checked": { siteId: string; status: string; pagesChecked?: number };
 }
 
 export type SSEEvent = {

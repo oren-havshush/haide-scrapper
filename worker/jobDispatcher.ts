@@ -3,6 +3,7 @@ import type { WorkerJob } from "../src/generated/prisma/client";
 import { Prisma } from "../src/generated/prisma/client";
 import { handleAnalysisJob } from "./jobs/analyze";
 import { handleScrapeJob } from "./jobs/scrape";
+import { handlePolicyReviewJob } from "./jobs/policyReview";
 import { emitWorkerEvent } from "./lib/emitEvent";
 
 export async function processJob(job: WorkerJob) {
@@ -38,6 +39,9 @@ export async function processJob(job: WorkerJob) {
         break;
       case "SCRAPE":
         result = await handleScrapeJob(job, site);
+        break;
+      case "POLICY_REVIEW":
+        result = await handlePolicyReviewJob(job, site);
         break;
       default:
         throw new Error(`Unknown job type: ${job.type}`);

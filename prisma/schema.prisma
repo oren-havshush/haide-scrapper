@@ -46,6 +46,17 @@ enum WorkerJobStatus {
 enum WorkerJobType {
   ANALYSIS
   SCRAPE
+  POLICY_REVIEW
+}
+
+enum ScrapingPolicyStatus {
+  NOT_CHECKED
+  POLICY_NOT_FOUND
+  NO_EXPLICIT_RESTRICTION
+  RESTRICTED
+  REQUIRES_WRITTEN_PERMISSION
+  UNCLEAR_NEEDS_REVIEW
+  CHECK_FAILED
 }
 
 model Site {
@@ -70,6 +81,10 @@ model Site {
   analysisResults      AnalysisResult[]
   workerJobs           WorkerJob[]
   jobLocationOverrides JobLocationOverride[]
+  policyReviews        ScrapingPolicyReview[]
+
+  scrapingPolicyStatus    ScrapingPolicyStatus @default(NOT_CHECKED)
+  scrapingPolicyCheckedAt DateTime?
 }
 
 model Job {
@@ -162,4 +177,36 @@ model WorkerJob {
 
   @@index([siteId])
   @@index([status, type])
+}
+
+model ScrapingPolicyReview {
+  id                        String               @id @default(cuid())
+  siteId                    String
+  site                      Site                 @relation(fields: [siteId], references: [id], onDelete: Cascade)
+  status                    ScrapingPolicyStatus
+  isScrapingRestricted      Boolean?
+  requiresWrittenPermission Boolean?
+  confidence                Int?
+  language                  String?
+  shortReason               String?
+  matchedTerms              String[]
+  evidenceSnippets          Json?
+  reviewedUrls              String[]
+  discoveredUrls            String[]
+  reviewedDocTypes          String[]
+  cleanedText               String?
+  llmResultJson             Json?
+  pagesChecked              Int                  @default(0)
+  searchFallbackUsed        Boolean              @default(false)
+  reviewSource              String?
+  robotsChecked             Boolean              @default(false)
+  robotsDisallowsAll        Boolean?
+  robotsRelevantRules       String[]
+  errorMessage              String?
+  nextReviewAt              DateTime?
+  model                     String?
+  createdAt                 DateTime             @default(now())
+
+  @@index([siteId])
+  @@index([status])
 }

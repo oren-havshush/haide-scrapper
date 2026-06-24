@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { getStatusCounts } from "./siteService";
+import { getPolicyCoverage, type PolicyCoverage } from "./policyReviewService";
 
 export interface ScrapeHealth {
   successRate: number;
@@ -14,6 +15,7 @@ export interface DashboardOverview {
   reviewQueueDepth: number;
   totalJobs: number;
   jobCountsByStatus: Record<string, number>;
+  policyCoverage: PolicyCoverage;
 }
 
 const SITE_STATUSES = ["ANALYZING", "REVIEW", "ACTIVE", "FAILED", "SKIPPED"] as const;
@@ -38,11 +40,12 @@ export interface FailedSitesResult {
 
 export async function getDashboardOverview(): Promise<DashboardOverview> {
   // Run all queries in parallel for performance
-  const [statusCounts, scrapeHealth, totalJobs, jobCountsByStatus] = await Promise.all([
+  const [statusCounts, scrapeHealth, totalJobs, jobCountsByStatus, policyCoverage] = await Promise.all([
     getStatusCounts(),
     getScrapeHealth(),
     prisma.job.count(),
     getJobCountsByStatus(),
+    getPolicyCoverage(),
   ]);
 
   return {
@@ -51,6 +54,7 @@ export async function getDashboardOverview(): Promise<DashboardOverview> {
     reviewQueueDepth: statusCounts.REVIEW ?? 0,
     totalJobs,
     jobCountsByStatus,
+    policyCoverage,
   };
 }
 

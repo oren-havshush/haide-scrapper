@@ -6,6 +6,7 @@ import {
   TableHeader, TableRow,
 } from "@/components/ui/table";
 import { StatusBadge } from "@/components/shared/StatusBadge";
+import { PolicyStatusBadge, type PolicyStatusValue } from "@/components/shared/PolicyStatusBadge";
 import { ConfidenceBar } from "@/components/shared/ConfidenceBar";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
@@ -20,6 +21,7 @@ import {
   useDeleteSite,
   useUpdateSiteNote,
   useUpdateSiteCompanyName,
+  useTriggerPolicyReview,
 } from "@/hooks/useSites";
 import { useTriggerScrape, useClearJobs } from "@/hooks/useScrapeRuns";
 
@@ -41,6 +43,8 @@ interface Site {
   adminNote: string | null;
   createdAt: string;
   latestScrapeRun: LatestScrapeRun | null;
+  scrapingPolicyStatus: PolicyStatusValue;
+  scrapingPolicyCheckedAt: string | null;
 }
 
 type SortableColumn = "createdAt" | "confidenceScore";
@@ -152,6 +156,7 @@ export function SitesTable({
   const deleteSiteMutation = useDeleteSite();
   const triggerScrape = useTriggerScrape();
   const clearJobs = useClearJobs();
+  const triggerPolicyReview = useTriggerPolicyReview();
 
   const noteTargetSite = noteTargetId
     ? sites.find((s) => s.id === noteTargetId) ?? null
@@ -230,6 +235,13 @@ export function SitesTable({
 
   const handleReview = (siteUrl: string) => {
     window.open(siteUrl, "_blank", "noopener,noreferrer");
+  };
+
+  const handlePolicyRecheck = (siteId: string) => {
+    triggerPolicyReview.mutate(siteId, {
+      onSuccess: () => toast.success("Policy review queued"),
+      onError: (err: Error) => toast.error(err.message),
+    });
   };
 
   const handleSaveNote = (note: string | null) => {
@@ -319,6 +331,7 @@ export function SitesTable({
               Date Added <SortIndicator column="createdAt" sortBy={sortBy} sortOrder={sortOrder} />
             </TableHead>
             <TableHead className="w-[220px]">Note</TableHead>
+            <TableHead className="w-[220px]">Policy Review</TableHead>
             <TableHead className="w-[200px]">Actions</TableHead>
           </TableRow>
         </TableHeader>
@@ -383,6 +396,16 @@ export function SitesTable({
                   </button>
                 </TableCell>
                 <TableCell>
+                  <div className="flex flex-col gap-0.5">
+                    <PolicyStatusBadge status={site.scrapingPolicyStatus ?? "NOT_CHECKED"} />
+                    {site.scrapingPolicyCheckedAt && (
+                      <span className="text-[11px]" style={{ color: "#71717a" }}>
+                        {new Date(site.scrapingPolicyCheckedAt).toLocaleDateString([], { month: "short", day: "numeric" })}
+                      </span>
+                    )}
+                  </div>
+                </TableCell>
+                <TableCell>
                   <SiteActions
                     siteId={site.id}
                     siteUrl={site.siteUrl}
@@ -395,6 +418,7 @@ export function SitesTable({
                     onTestScrape={handleTestScrape}
                     onClearJobs={handleClearJobs}
                     onReview={handleReview}
+                    onPolicyRecheck={handlePolicyRecheck}
                     isSkipping={updateStatus.isPending}
                     isFailing={updateStatus.isPending}
                     isReanalyzing={updateStatus.isPending}

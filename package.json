@@ -15,6 +15,7 @@
     "db:seed": "tsx prisma/seed.ts",
     "doctor": "node scripts/doctor.mjs",
     "enrich": "tsx scripts/enrich-csv.ts",
+    "policy:backfill": "tsx scripts/backfill-policy-review.ts",
     "sync:addsite2": "node scripts/sync-addsite2.mjs",
     "check:addsite2": "node scripts/sync-addsite2.mjs --check",
     "postinstall": "prisma generate"
