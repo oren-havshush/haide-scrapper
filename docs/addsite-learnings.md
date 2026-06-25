@@ -370,10 +370,10 @@
   **re-triage that board URL** (fingerprints GREEN), and onboard the **board URL** as the
   `siteUrl` (not the wrapper page). Set `companyName` to the real employer; annotate any
   existing wrapper-page record with an `adminNote` pointing at the board-URL site.
-- **Code gap (optional follow-up):** `addsite-batch.ts` `triage`/`fingerprint` already
-  detect the vendor from the iframe markup, but **don't extract/emit the iframe `src`**
-  or advise switching `siteUrl` — so the lane can still read GREEN against the wrong
-  (wrapper) URL. Emitting `embeddedBoardUrl` + a "re-triage this" hint would automate it.
+- **Automated (2026-06-25):** `addsite-batch.ts` `triage`/`fingerprint` now scan the
+  wrapper HTML for a cross-origin ATS `<iframe>` (`findEmbeddedBoardUrl`) and emit an
+  **`embeddedBoardUrl`** field + a `→ re-triage <url>` hint, forcing `lane: "GREEN"`.
+  The agent just re-triages `embeddedBoardUrl` and onboards it — no manual iframe probe needed.
 - **Generalizes to:** every ATS embedded via iframe on a company careers page. **Home:**
   `addsite2.md` §2.1 / `recipes/spa-frameworks.md#comeet`.
 

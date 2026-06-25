@@ -1467,6 +1467,7 @@ interface Fingerprint {
   recipe: string | null;
   skeleton: ConfigSkeleton | null;
   signals: string[];
+  embeddedBoardUrl?: string;
 }
 
 function fingerprintByHost(host: string): { vendor: string; recipe: string } | null {
@@ -1482,6 +1483,45 @@ function fingerprintByHost(host: string): { vendor: string; recipe: string } | n
   if (h.includes("smartrecruiters.com"))
     return { vendor: "smartrecruiters", recipe: "recipes/spa-frameworks.md#smartrecruiters" };
   if (h.includes("ashbyhq.com")) return { vendor: "ashby", recipe: "recipes/spa-frameworks.md#ashby" };
+  return null;
+}
+
+// Known ATS hosts that a company careers page commonly embeds via <iframe>.
+const ATS_IFRAME_HOSTS: { re: RegExp; vendor: string; recipe: string }[] = [
+  { re: /(^|\.)myworkdayjobs\.com$/i, vendor: "workday", recipe: "recipes/spa-frameworks.md#workday" },
+  { re: /(^|\.)greenhouse\.io$/i, vendor: "greenhouse", recipe: "recipes/spa-frameworks.md#greenhouse" },
+  { re: /(^|\.)lever\.co$/i, vendor: "lever", recipe: "recipes/spa-frameworks.md#lever" },
+  { re: /(^|\.)comeet\.(com|co)$/i, vendor: "comeet", recipe: "recipes/spa-frameworks.md#comeet" },
+  { re: /(^|\.)icims\.com$/i, vendor: "icims", recipe: "recipes/spa-frameworks.md#icims" },
+  { re: /(^|\.)smartrecruiters\.com$/i, vendor: "smartrecruiters", recipe: "recipes/spa-frameworks.md#smartrecruiters" },
+  { re: /(^|\.)ashbyhq\.com$/i, vendor: "ashby", recipe: "recipes/spa-frameworks.md#ashby" },
+];
+
+// Detect a jobs board embedded via a cross-origin <iframe> on a wrapper careers
+// page. The worker can't read into a cross-origin iframe, so the wrapper page
+// looks empty and gets falsely SKIPPED — surface the board URL so the onboarder
+// re-triages and onboards THAT (not the wrapper). See LRN-SPA-4 / addsite2 §2.1.
+function findEmbeddedBoardUrl(
+  html: string,
+  pageHost: string,
+): { url: string; vendor: string; recipe: string } | null {
+  if (!html) return null;
+  const iframeSrcRe = /<iframe\b[^>]*\bsrc=["']([^"']+)["']/gi;
+  let m: RegExpExecArray | null;
+  while ((m = iframeSrcRe.exec(html))) {
+    let src = m[1];
+    if (src.startsWith("//")) src = "https:" + src;
+    let iframeHost = "";
+    try {
+      iframeHost = new URL(src).hostname.toLowerCase();
+    } catch {
+      continue;
+    }
+    if (iframeHost === pageHost.toLowerCase()) continue; // same-origin: not an embedded board
+    for (const a of ATS_IFRAME_HOSTS) {
+      if (a.re.test(iframeHost)) return { url: src, vendor: a.vendor, recipe: a.recipe };
+    }
+  }
   return null;
 }
 
@@ -1524,6 +1564,7 @@ async function cmdFingerprint(argv: string[]): Promise<void> {
   let vendor = "unknown";
   let recipe: string | null = null;
   let lane: "GREEN" | "YELLOW" = "YELLOW";
+  let embedded: { url: string; vendor: string; recipe: string } | null = null;
   const chromium = await getChromium();
   if (chromium) {
     const nav = await tryNav(chromium, url, {
@@ -1531,6 +1572,7 @@ async function cmdFingerprint(argv: string[]): Promise<void> {
       extraHTTPHeaders: HE_HEADERS,
     } as any);
     const html = nav.html || "";
+    embedded = findEmbeddedBoardUrl(html, host);
     if (/greenhouse\.io\/embed|grnhse_app|boards\.greenhouse/i.test(html)) {
       vendor = "greenhouse";
       recipe = "recipes/spa-frameworks.md#greenhouse";
@@ -1565,14 +1607,34 @@ async function cmdFingerprint(argv: string[]): Promise<void> {
     signals.push("playwright unavailable — host-only fingerprint");
   }
 
+  // Embedded ATS board wins: surface the board URL to onboard instead of the wrapper.
+  if (embedded) {
+    if (vendor === "unknown") vendor = embedded.vendor;
+    if (!recipe) recipe = embedded.recipe;
+    lane = "GREEN";
+    signals.push(`embedded ${embedded.vendor} board in <iframe> (${embedded.url})`);
+  }
+
   const skeleton = resolveSkeletonForVendor(vendor, cache);
   if (skeleton && cache.patterns[vendor]) {
     signals.push(`pattern cache hit (successCount=${cache.patterns[vendor].successCount})`);
   }
 
-  const fp: Fingerprint = { url, host, vendor, lane, recipe, skeleton, signals };
+  const fp: Fingerprint = {
+    url,
+    host,
+    vendor,
+    lane,
+    recipe,
+    skeleton,
+    signals,
+    ...(embedded ? { embeddedBoardUrl: embedded.url } : {}),
+  };
   console.log(JSON.stringify(fp, null, 2));
-  console.error(`[fingerprint] ${lane}: ${vendor}${recipe ? ` → ${recipe}` : ""}${skeleton ? " [skeleton available]" : ""}`);
+  console.error(
+    `[fingerprint] ${lane}: ${vendor}${recipe ? ` → ${recipe}` : ""}${skeleton ? " [skeleton available]" : ""}` +
+      `${embedded ? ` (embedded — re-triage ${embedded.url})` : ""}`,
+  );
 }
 
 // --- triage: Pass A classifier → lane GREEN/YELLOW/GRAY/RED ----------------
@@ -1631,6 +1693,14 @@ async function cmdTriage(argv: string[]): Promise<void> {
       recipe = "recipes/spa-frameworks.md#comeet";
     }
   }
+
+  // 2b. Embedded ATS board in a cross-origin <iframe>? (LRN-SPA-4 / §2.1)
+  //     The wrapper page looks empty to the worker; onboard the board URL instead.
+  const embedded = !byHost ? findEmbeddedBoardUrl(listingHtml || "", host) : null;
+  if (embedded) {
+    if (vendor === "unknown") vendor = embedded.vendor;
+    if (!recipe) recipe = embedded.recipe;
+  }
   const skeleton = resolveSkeletonForVendor(vendor, cache);
 
   // 3. Quick listing-structure probe: largest cluster of similarly-classed
@@ -1668,7 +1738,12 @@ async function cmdTriage(argv: string[]): Promise<void> {
   // 4. Decide the lane.
   let lane: "GREEN" | "YELLOW" | "GRAY";
   let reason: string;
-  if (vendor !== "unknown") {
+  if (embedded) {
+    lane = "GREEN";
+    reason =
+      `embedded ${embedded.vendor} board in <iframe> → onboard embeddedBoardUrl ` +
+      `(the board URL), NOT this wrapper page; re-triage it for the skeleton`;
+  } else if (vendor !== "unknown") {
     lane = "GREEN";
     reason = `known framework: ${vendor}`;
   } else if (topCluster >= 3) {
@@ -1690,12 +1765,13 @@ async function cmdTriage(argv: string[]): Promise<void> {
     recipe,
     skeleton: skeleton ?? null,
     topCluster,
+    ...(embedded ? { embeddedBoardUrl: embedded.url } : {}),
     ...(needsUaOverride ? { browserOverrides: { userAgent: REAL_UA, extraHeaders: HE_HEADERS } } : {}),
   };
   console.log(JSON.stringify(out, null, 2));
   console.error(
     `[triage] ${lane}: ${reason}${needsUaOverride ? " (UA override required)" : ""}` +
-      `${recipe ? ` → ${recipe}` : ""}`,
+      `${embedded ? ` → re-triage ${embedded.url}` : recipe ? ` → ${recipe}` : ""}`,
   );
 }
 

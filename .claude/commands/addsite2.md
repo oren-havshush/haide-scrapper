@@ -181,7 +181,12 @@ A `RED`/`GRAY` verdict (or a page whose HTML has no jobs) is frequently a **jobs
 embedded via a cross-origin `<iframe>`** — the worker fetches the wrapper page, sees only
 an iframe it can't read into, and the site gets **falsely SKIPPED**. Before you SKIP or
 route to REVIEW, probe the wrapper page for an ATS iframe and onboard the iframe's URL
-instead:
+instead.
+
+**`triage` now does this for you:** when it finds a cross-origin ATS iframe it sets
+`lane: "GREEN"` and emits an **`embeddedBoardUrl`** field — re-run triage on that URL and
+onboard it (skip the manual probe below). The manual probe is only a fallback if you're not
+using `triage` (e.g. eyeballing a page in the browser):
 
 ```js
 // in the browser / a Playwright eval on the wrapper page:
