@@ -56,6 +56,12 @@ extension/.wxt/
 # /addsite skill scratch directory — per-onboarding artifacts written by the skill
 .scratch/
 
+# /addsite2 per-site scratch helpers written at the repo root during onboarding
+# (config-writer scripts and temp JSON/text payloads — never meant to be committed)
+/write-*-config.js
+/tmp-*.json
+/tmp-*.txt
+
 # Per-site scratch sub-buckets under sites/<name>/.scratch/ — see docs/sites-layout.md
 sites/**/.scratch/
 
