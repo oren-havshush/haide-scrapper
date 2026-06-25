@@ -175,6 +175,30 @@ Read the JSON output:
 
 > If `triage.needsUaOverride === true`, all subsequent browser steps must pass the UA. Carry it into `browserOverrides.userAgent` in the final config.
 
+### 2.1 Embedded-ATS gate — check BEFORE logging RED/GRAY/SKIP (`LRN-SPA-4`)
+
+A `RED`/`GRAY` verdict (or a page whose HTML has no jobs) is frequently a **jobs board
+embedded via a cross-origin `<iframe>`** — the worker fetches the wrapper page, sees only
+an iframe it can't read into, and the site gets **falsely SKIPPED**. Before you SKIP or
+route to REVIEW, probe the wrapper page for an ATS iframe and onboard the iframe's URL
+instead:
+
+```js
+// in the browser / a Playwright eval on the wrapper page:
+[...document.querySelectorAll('iframe')].map(f => f.src)
+// look for: comeet.com|comeet.co, greenhouse.io/embed, smartrecruiters.com,
+//           jobs.lever.co, ashbyhq.com, icims.com, myworkdayjobs.com
+```
+
+If an ATS iframe is found:
+1. **Re-run triage on the iframe `src`** (the board URL) — it will fingerprint GREEN.
+2. Onboard that **board URL** as the `siteUrl` (not the wrapper page).
+3. Set `companyName` to the real employer; leave an `adminNote` on the wrapper-page
+   record (if one exists) pointing at the board-URL site.
+
+Only after this probe comes back empty should a `GRAY`/`RED` page be SKIPPED/REVIEWed.
+Reference: bsel.co.il (Comeet board embedded; onboarded `betshemeshengines`, 35 jobs).
+
 ---
 
 ## 3. Step 1 — Duplicate check

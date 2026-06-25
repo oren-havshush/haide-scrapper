@@ -103,25 +103,108 @@ detailUrl:    a.posting-title, h5 > a [attr: href]
 
 ## Comeet
 
-**Host patterns:** `comeet.com/jobs/<company>`, embedded via `positionItem` class
-**Skeleton in `site-patterns.json`:** yes
+**Host patterns:** `comeet.com/jobs/<company>/<company-uid>` (and `comeet.co`), often
+**embedded via an `<iframe>`** on a company careers page.
+**Skeleton in `site-patterns.json`:** yes (refreshed 2026-06-25 — verified on betshemeshengines, 35 jobs)
 
-### Selectors
+> **The board markup does NOT use `data-qa='position*'` classes** — the old skeleton's
+> `.position-name` / `.position-location` selectors matched nothing. Use the selectors
+> below. Verify on a dry-run/scrape; positions are server-rendered in the initial HTML
+> and Angular hydrates client-side (render reliably at `domcontentloaded`).
+
+### Selectors (verified)
 ```
-itemSelector: [data-qa='position'], .positionItem
-title:        [data-qa='position-name'], .position-name
-location:     .position-location, [data-qa='position-location']
-department:   .position-department, [data-qa='position-department']
-detailUrl:    a [attr: href]
+itemSelector: li:has(> a.positionItem)      ← wrap the <a> in its <li> so detailUrl resolves
+title:        .positionLink
+location:     .positionDetails li            ← first li; often the company name, not a city
+detailUrl:    a.positionItem [attr: href]
 ```
 
-### Known pitfalls
-- **XHR-loaded:** positions load asynchronously. Add `waitForSelector: "[data-qa='position']"` or use networkidle wait.
-- **formCapture:** Comeet uses its own apply modal. Because Comeet's form is identical across all positions for a company, capture it once and store as a **static `formCapture` template** (not per-job):
-  ```json
-  { "fields": [{"name":"firstName","type":"text"}, {"name":"lastName","type":"text"}, {"name":"email","type":"email"}, {"name":"resume","type":"file"}] }
-  ```
-  See `LRN-SPA-3` in `docs/addsite-learnings.md`. Do NOT attempt a live form probe.
+`itemSelector` is the wrapping `<li>` (not the `<a>` itself): the worker's field
+selectors query *descendants* of the item, so an `<a>` item can't yield its own `href`.
+`li:has(> a.positionItem)` isolates exactly the position rows.
+
+### Three fields need a `setupScript` (not plain CSS)
+
+1. **`externalJobId` = the LAST path segment of the item `href`** (the Comeet position
+   UID, e.g. `9C.354`, `F3.961`). **The separator varies per item** (`/--/`, `/---/`,
+   `/-----/`, `/None/`, …) because it's the slugified title — so **do NOT regex a fixed
+   `/--/`**; split on `/` and take the last non-empty segment. These UIDs are unique,
+   stable, and ASCII (pass `verify-jobids`).
+2. **`department` = the nearest preceding `.positionsGroupTitle` heading.** The board
+   groups positions under `<h2 class="positionsGroupTitle">` (MRO, אגף ייצור, …) followed
+   by a `ul.two-column-grid` of items. Walk `.positionsGroupTitle, a.positionItem` in
+   **document order**, carrying the current heading, and inject it per item.
+3. **`description` = merge the labeled detail-page blocks.** Each detail page splits the
+   body into `[data-qa='requirementFieldContent']` blocks (Description + Requirements),
+   each preceded by an `[data-qa='requirementFieldTitle']` h3. Map description via a
+   **2-step `pageFlow`** (listing → detail) and a detail-scope `setupScript` that merges
+   all blocks with `structuredText` (setupscript-patterns.md §7–8). Tag listing fields
+   `capturedOnUrl: <listingUrl>` and `description` `capturedOnUrl: <a real detail URL>`.
+
+```js
+// setupScript — combines all three (listing-scope ids+dept, detail-scope description)
+function structuredText(el){ if(!el) return ''; const c=el.cloneNode(true);
+  c.querySelectorAll('style,script,link,meta').forEach(n=>n.remove());
+  c.querySelectorAll('p,div,ul,ol,li,br,h1,h2,h3,h4,h5,h6,tr').forEach(e=>e.insertAdjacentText('afterend','\n'));
+  return c.textContent.replace(/[ \t]+/g,' ').replace(/[ \t]+\n/g,'\n').replace(/\n{3,}/g,'\n\n').trim(); }
+// LISTING: externalJobId from last path segment
+for (const a of document.querySelectorAll('a.positionItem')) {
+  const li=a.closest('li'); if(!li||li.querySelector('.__ai-jobid')) continue;
+  const href=a.getAttribute('href')||''; const clean=href.split(/[?#]/)[0].replace(/\/+$/,'');
+  const seg=clean.split('/').filter(Boolean).pop()||href;
+  const s=document.createElement('span'); s.className='__ai-jobid'; s.style.display='none'; s.textContent=seg; li.appendChild(s);
+}
+// LISTING: department from the preceding group heading
+{ const nodes=[...document.querySelectorAll('.positionsGroupTitle, a.positionItem')]; let dept='';
+  for (const n of nodes){ if(n.classList.contains('positionsGroupTitle')){dept=n.textContent.trim();continue;}
+    const li=n.closest('li'); if(!li||!dept||li.querySelector('.__ai-department')) continue;
+    const s=document.createElement('span'); s.className='__ai-department'; s.style.display='none'; s.textContent=dept; li.appendChild(s); } }
+// DETAIL: merge Description + Requirements
+if (!document.querySelector('.__ai-description')) {
+  const secs=document.querySelectorAll('[data-qa="requirementFieldContent"]'); const parts=[];
+  for (const sec of secs){ const h=sec.parentElement&&sec.parentElement.querySelector('[data-qa="requirementFieldTitle"], h3');
+    const label=h?h.textContent.trim():''; const body=structuredText(sec); if(!body) continue;
+    parts.push((/description/i.test(label)||!label)?body:(label+':\n'+body)); }
+  if (parts.length){ const d=document.createElement('div'); d.className='__ai-description'; d.style.display='none';
+    d.textContent=parts.join('\n\n'); document.body.appendChild(d); } }
+```
+
+`pageFlow`:
+```json
+[{ "url": "<board-url>", "action": "navigate", "waitFor": ".positionItem" },
+ { "url": "<board-url>/--/*", "action": "a.positionItem", "waitFor": "[data-qa='requirementFieldContent']" }]
+```
+
+### Embedded via iframe — onboard the BOARD URL, not the wrapper page
+Comeet is frequently embedded in a company careers page via
+`<iframe src="https://www.comeet.com/jobs/<company>/<uid>">`. The wrapper page's raw HTML
+has **no jobs** (cross-origin iframe — the worker can't read into it), so it gets
+**falsely SKIPPED**. Find the iframe `src` (it's in the wrapper HTML / `document.querySelectorAll('iframe')`)
+and onboard **that comeet board URL** as the `siteUrl`. Set `companyName` to the real
+employer. (LRN-SPA-4: betshemeshengines, embedded on bsel.co.il.)
+
+### formCapture — static template (cross-origin apply iframe)
+The apply form opens in a cross-origin iframe (`comeet.co/jobs/<uid>/<pos>/apply`) that
+can't be probed live, and is identical across all positions. Ship a **static
+`formCapture` template** with a `formSelector` that matches **nothing** on the page (so
+the worker uses the static fields, not a live re-extract). Use the **full field schema**
+the API requires (`name, label, fieldType, required, tagName`) — `{name,type}` alone is
+**rejected** by `updateSiteConfigSchema`:
+```json
+{ "formSelector": "form.__comeet-apply-static", "actionUrl": "https://www.comeet.co/jobs/<uid>/<pos>/apply", "method": "POST",
+  "fields": [
+    {"name":"firstName","label":"First Name","fieldType":"text","required":true,"tagName":"INPUT"},
+    {"name":"lastName","label":"Last Name","fieldType":"text","required":true,"tagName":"INPUT"},
+    {"name":"email","label":"Email","fieldType":"email","required":true,"tagName":"INPUT"},
+    {"name":"phone","label":"Phone","fieldType":"tel","required":true,"tagName":"INPUT"},
+    {"name":"resume","label":"Resume/CV","fieldType":"file","required":true,"tagName":"INPUT"}
+  ] }
+```
+`detailUrl` alone already satisfies the worker's apply-path gate (the Comeet detail page
+hosts the working apply button), but capturing the static form flips QA `formStatus` to
+`CAPTURED` and gives the dashboard real apply fields. See `LRN-SPA-2`, `LRN-SPA-5`. Do
+NOT attempt a live form probe.
 
 ---
 

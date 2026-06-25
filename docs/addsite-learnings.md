@@ -359,6 +359,49 @@
   fields. Ship apply form as static `formCapture`.
 - **Generalizes to:** Elementor Pro popup listings. **Home:** Step 4 Elementor recipe.
 
+### LRN-SPA-4 — Embedded cross-origin ATS iframe ⇒ false SKIP; onboard the board URL
+- **Date / site:** 2026-06-25 · bsel.co.il/he/careers/ → Comeet `betshemeshengines` (`cmqti7q4f000801no2o18183k`) 35/35
+- **Signal:** a careers page is auto-SKIPPED (or triaged GRAY/RED) because its raw HTML
+  carries **no job rows** — the listings live inside a **cross-origin `<iframe>`**
+  (`comeet.com`, `greenhouse.io/embed`, `smartrecruiters.com`, `jobs.lever.co`,
+  `ashbyhq.com`, `icims.com`, `myworkdayjobs.com`) that the worker can't read into.
+  The wrapper page's `document.querySelectorAll('iframe')` exposes the real board URL.
+- **Fix:** before logging RED/GRAY/SKIP, probe the wrapper for an ATS iframe `src`,
+  **re-triage that board URL** (fingerprints GREEN), and onboard the **board URL** as the
+  `siteUrl` (not the wrapper page). Set `companyName` to the real employer; annotate any
+  existing wrapper-page record with an `adminNote` pointing at the board-URL site.
+- **Code gap (optional follow-up):** `addsite-batch.ts` `triage`/`fingerprint` already
+  detect the vendor from the iframe markup, but **don't extract/emit the iframe `src`**
+  or advise switching `siteUrl` — so the lane can still read GREEN against the wrong
+  (wrapper) URL. Emitting `embeddedBoardUrl` + a "re-triage this" hint would automate it.
+- **Generalizes to:** every ATS embedded via iframe on a company careers page. **Home:**
+  `addsite2.md` §2.1 / `recipes/spa-frameworks.md#comeet`.
+
+### LRN-SPA-5 — Comeet board specifics (selectors, varying URL separator, grouped department, form schema)
+- **Date / site:** 2026-06-25 · betshemeshengines (Comeet/Spark Hire) 35/35
+- **Signals & fixes (all verified):**
+  - **Markup is `.positionItem` / `.positionLink` / `.positionsGroupTitle`, NOT
+    `data-qa='position*'`** — the old `site-patterns.json` skeleton selectors matched
+    nothing. `itemSelector: li:has(> a.positionItem)` (wrap the `<a>` so `detailUrl`
+    resolves); `title: .positionLink`; `location: .positionDetails li` (first li, often
+    the company name — gazetteer extracts the city).
+  - **`externalJobId` = LAST path segment of the item `href`** (position UID `9C.354`).
+    **The separator varies** (`/--/`, `/---/`, `/-----/`, `/None/`) because it's the
+    slugified title — split on `/` and take the last segment; do NOT regex a fixed `/--/`
+    (that fell back to the full URL for most items on the first pass).
+  - **`department` = nearest preceding `.positionsGroupTitle`** — walk
+    `.positionsGroupTitle, a.positionItem` in document order, carry the heading, inject
+    per item.
+  - **`description` = merge `[data-qa='requirementFieldContent']` blocks**
+    (Description + Requirements) on the DETAIL page via a 2-step `pageFlow` +
+    `structuredText` (setupscript §7–8).
+  - **Static `formCapture` must use the full schema** (`name,label,fieldType,required,
+    tagName`) — the recipe's old `{name,type}` shape is **rejected by
+    `updateSiteConfigSchema`**. Apply form is a cross-origin iframe
+    (`comeet.co/.../apply`); `formSelector` must match nothing → static fallback.
+- **Generalizes to:** all Comeet/Spark Hire boards. **Home:** `recipes/spa-frameworks.md#comeet`
+  + `scripts/site-patterns.json` comeet skeleton.
+
 ---
 
 ## H. Worker behavior & config contract

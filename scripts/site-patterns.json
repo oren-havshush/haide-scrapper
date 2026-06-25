@@ -75,24 +75,30 @@
     },
     "comeet": {
       "vendor": "comeet",
-      "lastUpdated": "2026-06-14",
-      "successCount": 0,
-      "notes": "Comeet boards load via XHR; may need networkidle wait. formCapture: use static template (LRN-SPA-3).",
+      "lastUpdated": "2026-06-25",
+      "successCount": 1,
+      "notes": "Comeet/Spark Hire. The board markup uses .positionItem / .positionLink / .positionsGroupTitle (NOT data-qa='position*' — those don't exist; older skeleton was wrong). itemSelector wraps the <a> in its <li> so detailUrl resolves: li:has(> a.positionItem). title=.positionLink, location=first .positionDetails li (often the company name; gazetteer extracts the city). Three fields NEED a setupScript: (1) externalJobId = LAST path segment of the item href (the position UID like 9C.354) — the separator varies (/--/, /---/, /None/), so split on '/' and take the last segment, do NOT regex a fixed separator; (2) department = nearest preceding .positionsGroupTitle heading (walk .positionsGroupTitle + a.positionItem in document order, carry the current heading); (3) description = merge the labeled [data-qa='requirementFieldContent'] blocks (Description + Requirements) on the DETAIL page via a 2-step pageFlow + structuredText. Apply form is a cross-origin iframe (comeet.co/.../apply) — ship the static formCapture template (LRN-SPA-2/5). EMBED: when comeet appears inside another site via <iframe>, onboard the iframe's comeet board URL, not the wrapper page (LRN-SPA-4). See recipes/spa-frameworks.md#comeet.",
       "skeleton": {
-        "itemSelector": "[data-qa='position'], .positionItem",
+        "itemSelector": "li:has(> a.positionItem)",
         "fieldMappings": {
           "title": {
-            "selector": "[data-qa='position-name'], .position-name"
+            "selector": ".positionLink"
           },
           "location": {
-            "selector": ".position-location, [data-qa='position-location']"
-          },
-          "department": {
-            "selector": ".position-department, [data-qa='position-department']"
+            "selector": ".positionDetails li"
           },
           "detailUrl": {
-            "selector": "a",
+            "selector": "a.positionItem",
             "attr": "href"
+          },
+          "externalJobId": {
+            "selector": ".__ai-jobid"
+          },
+          "department": {
+            "selector": ".__ai-department"
+          },
+          "description": {
+            "selector": ".__ai-description"
           }
         }
       }
