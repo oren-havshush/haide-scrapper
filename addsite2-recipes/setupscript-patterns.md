@@ -466,6 +466,28 @@ item's detail URL, parses the returned HTML, and injects `.__ai-description` /
 > (location, employment-scope, division) into their own fields, and fold the rest of
 > the prose into `description` so **nothing is lost**.
 
+> **⚠️ Strip related/recommended-jobs blocks BEFORE reading the body (`LRN-SETUP-5`).**
+> The "capture the COMPLETE body" rule above means the *whole job content* — NOT the
+> "related jobs" / "more positions" widget that Drupal/WordPress job sites append at
+> the bottom of every detail page (Hebrew: **`משרות נוספות:`**; English: "Related
+> jobs"). If you fold the full container into `description` without removing it, every
+> job's description gets polluted with the titles of 3 other openings (and they all
+> look near-identical). **Remove the related-jobs view, then read the text:**
+> ```js
+> // After parsing the detail doc, before reading the body:
+> main.querySelectorAll('[class*="block-views-blockjobs-by-category"], .related-jobs, .more-jobs')
+>   .forEach(el => el.remove());
+> // Belt-and-suspenders fallback — cut at the marker heading if the block survived:
+> let bodyText = structuredText(main);
+> const moreIdx = bodyText.indexOf('משרות נוספות');   // adapt marker per site/locale
+> if (moreIdx > 0) bodyText = bodyText.slice(0, moreIdx).trim();
+> ```
+> The class-based removal is preferred (locale-agnostic); the text cut is the fallback
+> for sites whose marker you can see but whose wrapper class you can't pin down.
+> Reference: weizmann.ac.il (`cmqsblcsy000p01nunllx3ol0`) — Drupal "jobs by category"
+> block (`block-views-blockjobs-by-category-block-2`) bled 3 unrelated student roles
+> into every description until stripped.
+
 > **⚠️ Discovery first — never guess-and-give-up (`LRN-SETUP-4`).** Before deciding a
 > detail page has "no description", **render it and print the full `innerText`**, then
 > find the container holding the job prose **by its text**, not by a guessed semantic

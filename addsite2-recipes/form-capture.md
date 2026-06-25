@@ -240,6 +240,46 @@ Save the output as `formCapture` in your config:
 }
 ```
 
+### Capture choice fields WITH their options — radio groups too, not just `<select>` (`LRN-FORM-8`)
+
+The §2 script captures `<select>` options for free, but **`type="radio"` groups are
+easy to miss** — each radio is a separate `<input>` sharing one `name`, and the
+visible question text lives in a sibling label/legend, not on the input. If you skip
+them, the dashboard shows the apply form **missing the whole question** (e.g. a yes/no
+"do you have relatives at the company?"). Two rules:
+
+1. **Collapse a radio group into ONE field** keyed by its shared `name`, with each
+   button as an option `{value,label}`. The field `label` is the **question text**
+   (the group's legend/preceding label), not "כן"/"לא".
+2. **Keep conditional follow-up fields** (a text box that only matters when the user
+   picks "yes" — e.g. `relative_details` / "פרטי הקרוב/ה"). Capture it as a normal
+   text field; the auto-apply layer decides when to fill it.
+
+```js
+// Group radios by name; everything else stays 1 field = 1 input.
+const groups = {};
+for (const el of form.querySelectorAll('input,select,textarea')) {
+  const type = el.type || el.tagName.toLowerCase();
+  if (['submit','button','image','reset','hidden'].includes(type)) continue;
+  if (type === 'radio') {
+    (groups[el.name] ??= { name: el.name, fieldType: 'radio', tagName: 'input',
+      required: el.required, label: questionLabelFor(el), options: [] })
+      .options.push({ value: el.value, label: labelFor(el) });  // labelFor → "כן"/"לא"
+  } else { /* push a normal field; add options:[] for <select> */ }
+}
+```
+
+Resulting field shape (radio group + its follow-up):
+```jsonc
+{ "name": "relatives", "fieldType": "radio", "tagName": "input", "required": false,
+  "label": "האם יש לך קרובי משפחה העובדים או לומדים במכון ויצמן",
+  "options": [ { "value": "yes", "label": "כן" }, { "value": "no", "label": "לא" } ] },
+{ "name": "relative_details", "fieldType": "text", "tagName": "input",
+  "required": false, "label": "פרטי הקרוב/ה (שם ותפקיד)" }
+```
+Reference: weizmann.ac.il (`cmqsblcsy000p01nunllx3ol0`) — the Drupal apply form's
+relatives radio (+ its conditional details text) was absent until captured this way.
+
 ---
 
 ## 3. Newsletter-form shadow (common pitfall)
@@ -273,6 +313,18 @@ When the automated capture fails (form requires interaction you can't script, e.
 1. Open the detail page in a real browser.
 2. Click "Apply" — inspect the form.
 3. Note: action URL, method, and the **name attributes** of each visible input.
+   - For **`<select>` and radio groups**, also record every option as
+     `{value,label}` and use the **question text** as the field `label` — see the
+     `LRN-FORM-8` radio-group rule in §2. Don't forget **conditional follow-up**
+     inputs (a text box tied to a "yes" answer).
+   - Fast way to dump real `name`s + options via browser/CDP `Runtime.evaluate`:
+     ```js
+     [...document.querySelector('form').querySelectorAll('input,select,textarea')]
+       .map(el => ({ name: el.name, type: el.type || el.tagName.toLowerCase(),
+         value: el.type === 'radio' ? el.value : undefined,
+         options: el.tagName === 'SELECT'
+           ? [...el.options].map(o => ({ value: o.value, label: o.text })) : undefined }));
+     ```
 4. Build the `formCapture` object manually from what you observe.
 5. Validate: set `formCapture` in the config, trigger a scrape, and verify the form fields appear in `rawData._formData` on sampled jobs.
 
