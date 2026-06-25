@@ -3137,6 +3137,7 @@ async function executeScrape(
             department: normalized.department || null,
             externalJobId: normalized.externalJobId || null,
             publishDate: normalized.publishDate || null,
+            deadline: normalized.deadline || null,
             ageBucket: computeAgeBucket(normalized.publishDate),
             applicationInfo: normalized.applicationInfo || null,
             detailUrl: normalized.url || null,

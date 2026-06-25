@@ -17,6 +17,7 @@ const STANDARD_FIELDS = new Set([
   "department",
   "externalJobId",
   "publishDate",
+  "deadline",
   "applicationInfo",
 ]);
 
@@ -29,6 +30,7 @@ export interface NormalizedJobRecord {
   department: string;
   externalJobId: string;
   publishDate: string;
+  deadline: string;
   applicationInfo: string;
   url: string;
   additionalFields: Record<string, string>;
@@ -646,6 +648,7 @@ export function normalizeJobRecord(
   let department = normalizeField(rawFields["department"]);
   let externalJobId = normalizeField(rawFields["externalJobId"]);
   let publishDate = normalizeField(rawFields["publishDate"]);
+  const deadline = normalizeField(rawFields["deadline"]);
   // applicationInfo is populated either by:
   //   - an explicit "applicationInfo" field mapping (rare), or
   //   - the worker's form-capture pipeline, which writes a JSON blob to
@@ -757,6 +760,7 @@ export function normalizeJobRecord(
     department,
     externalJobId,
     publishDate,
+    deadline,
     applicationInfo,
     url,
     additionalFields,

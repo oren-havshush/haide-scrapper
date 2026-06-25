@@ -96,6 +96,7 @@ model Job {
   department       String?
   externalJobId    String?
   publishDate      String?
+  deadline         String?
   ageBucket        String?
   applicationInfo  String?
   detailUrl        String?

@@ -1,0 +1,54 @@
+{
+  "itemSelector": "div.job-item",
+  "fieldMappings": {
+    "title": {
+      "selector": "h3",
+      "confidence": 0.95,
+      "source": "manual"
+    },
+    "description": {
+      "selector": ".__ai-description",
+      "confidence": 0.9,
+      "source": "manual"
+    },
+    "externalJobId": {
+      "selector": ".__ai-externalJobId",
+      "confidence": 0.95,
+      "source": "manual"
+    },
+    "location": {
+      "selector": ".__ai-location",
+      "confidence": 0.8,
+      "source": "manual"
+    },
+    "deadline": {
+      "selector": ".__ai-deadline",
+      "confidence": 0.85,
+      "source": "manual"
+    }
+  },
+  "setupScript": "const items = document.querySelectorAll('div.job-item');\nfor (const item of items) {\n  if (item.querySelector('.__ai-externalJobId')) continue;\n\n  // externalJobId from TenderPageId hidden input\n  const tid = item.querySelector('input[name=\"TenderPageId\"]');\n  if (tid && tid.value) {\n    const s = document.createElement('span');\n    s.className = '__ai-externalJobId';\n    s.textContent = 'mey7-' + tid.value;\n    item.appendChild(s);\n  }\n\n  // Location (single office: Beer Sheva)\n  if (!item.querySelector('.__ai-location')) {\n    const loc = document.createElement('span');\n    loc.className = '__ai-location';\n    loc.textContent = 'באר שבע';\n    item.appendChild(loc);\n  }\n\n  // Full description: short summary + full requirements block\n  if (!item.querySelector('.__ai-description')) {\n    const summary = item.querySelector('.job-item__text');\n    const reqBlock = item.querySelector('.requirements-block');\n    let text = '';\n    if (summary) text += summary.innerText.trim();\n    if (reqBlock) text += '\\n\\n' + reqBlock.innerText.trim();\n    if (text) {\n      const d = document.createElement('span');\n      d.className = '__ai-description';\n      d.textContent = text.substring(0, 3000);\n      item.appendChild(d);\n    }\n  }\n\n  // Application deadline from <time> element inside the button\n  if (!item.querySelector('.__ai-deadline')) {\n    const timeEl = item.querySelector('button.job-button time[datetime]');\n    if (timeEl) {\n      const dt = timeEl.getAttribute('datetime');\n      const dl = document.createElement('span');\n      dl.className = '__ai-deadline';\n      dl.textContent = dt;\n      item.appendChild(dl);\n    }\n  }\n}",
+  "formCapture": {
+    "capturedOnUrl": "https://www.mey7.co.il/jobs/tenders/",
+    "formSelector": "form.form",
+    "method": "POST",
+    "actionUrl": "https://www.mey7.co.il/jobs/tenders/",
+    "fields": [
+      {
+        "name": "inLink",
+        "fieldType": "text",
+        "label": "קישור LinkedIn",
+        "required": false,
+        "tagName": "input"
+      },
+      {
+        "name": "ContactJobCVFile",
+        "fieldType": "file",
+        "label": "קורות חיים",
+        "required": false,
+        "tagName": "input"
+      }
+    ]
+  },
+  "pageFlow": []
+}

@@ -24,6 +24,7 @@ interface Job {
   department: string | null;
   externalJobId: string | null;
   publishDate: string | null;
+  deadline: string | null;
   ageBucket: string | null;
   applicationInfo: string | null;
   rawData: Record<string, string> | null;
@@ -45,7 +46,7 @@ interface JobsTableProps {
 const PAGE_SIZE = 50;
 const STANDARD_KEYS = new Set([
   "title", "description", "requirements", "location",
-  "department", "externalJobId", "publishDate", "applicationInfo",
+  "department", "externalJobId", "publishDate", "deadline", "applicationInfo",
 ]);
 
 const AGE_BADGE_CONFIG: Record<string, { label: string; className: string }> = {
@@ -184,6 +185,7 @@ function ExpandedDetail({ job }: { job: Job }) {
       <DetailSection label="Requirements / Skills" value={job.requirements} />
       <DetailSection label="Department" value={job.department} />
       <DetailSection label="Publish Date" value={job.publishDate} />
+      <DetailSection label="Application Deadline" value={job.deadline} />
       <DetailSection label="Application Info" value={job.applicationInfo} />
 
       {hrefEntries.length > 0 && (
