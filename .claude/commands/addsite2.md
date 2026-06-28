@@ -204,6 +204,33 @@ If an ATS iframe is found:
 Only after this probe comes back empty should a `GRAY`/`RED` page be SKIPPED/REVIEWed.
 Reference: bsel.co.il (Comeet board embedded; onboarded `betshemeshengines`, 35 jobs).
 
+### 2.2 WordPress job CPT gate — check BEFORE accepting GRAY (`LRN-WP-1`)
+
+A `GRAY` verdict on a WordPress site is frequently a **false negative**. Many Israeli
+company sites use a WordPress custom post type (`job` / `position` / `career`) with a
+clean listing page and individual detail pages at `/job/<slug>`. These are trivially
+scrapable (server-rendered HTML, semantic selectors, no anti-bot) but the `topCluster`
+heuristic can miss them when the listing has few items (≤ 3 jobs).
+
+**`triage` now auto-detects this:** when it sees WordPress markers (`wp-content`,
+`wp-json`, generator meta) **plus** job CPT signals (`/job/` link hrefs, `single-job`
+/ `job-template` / `type-job` body classes), it emits `vendor: "wordpress-job-cpt"`
+and classifies GREEN. If triage still reports GRAY on a WordPress-looking page, do a
+manual check before accepting:
+
+```js
+// in the browser on the listing page:
+[...document.querySelectorAll('a')].filter(a => /\/job\/|\/position\/|\/career\//.test(a.href)).map(a => a.href)
+```
+
+If links point to individual job pages (e.g. `/job/analytical-chemist-al3`) → treat as
+**YELLOW** (novel but scrapable), not GRAY. The listing `itemSelector` is typically
+`li.item`, `article.job`, or similar, and detail pages have structured content in
+`.box-content`, `.entry-content`, or the theme's content wrapper.
+
+Reference: labs-eco.com (WordPress `job` CPT, 3 jobs, falsely GRAY'd due to small
+cluster size; straightforwardly scrapable with `li.item` + `/job/<slug>` detail pages).
+
 ---
 
 ## 3. Step 1 — Duplicate check

@@ -1594,10 +1594,20 @@ async function cmdFingerprint(argv: string[]): Promise<void> {
       lane = "YELLOW";
       signals.push("Elementor detected");
     } else if (/wp-content|wp-json|name="generator" content="WordPress/i.test(html)) {
-      vendor = "wordpress";
-      recipe = null;
-      lane = "YELLOW";
-      signals.push("WordPress detected");
+      const hasJobCpt =
+        /\bhref=["'][^"']*\/job\/[^"']+["']/i.test(html) ||
+        /\bsingle-job\b|\bjob-template\b|\bpost-type-archive-job\b|\btype-job\b/i.test(html);
+      if (hasJobCpt) {
+        vendor = "wordpress-job-cpt";
+        recipe = null;
+        lane = "GREEN";
+        signals.push("WordPress with job custom post type (links or body classes)");
+      } else {
+        vendor = "wordpress";
+        recipe = null;
+        lane = "YELLOW";
+        signals.push("WordPress detected");
+      }
     } else if (!nav.ok) {
       signals.push(`page nav not clean (status=${nav.status ?? "?"} challenged=${nav.challenged ?? false})`);
     } else {
@@ -1691,6 +1701,12 @@ async function cmdTriage(argv: string[]): Promise<void> {
     } else if (/positionItem|data-qa="position/i.test(listingHtml)) {
       vendor = "comeet";
       recipe = "recipes/spa-frameworks.md#comeet";
+    } else if (
+      /wp-content|wp-json|name="generator" content="WordPress/i.test(listingHtml) &&
+      (/\bhref=["'][^"']*\/job\/[^"']+["']/i.test(listingHtml) ||
+        /\bsingle-job\b|\bjob-template\b|\bpost-type-archive-job\b|\btype-job\b/i.test(listingHtml))
+    ) {
+      vendor = "wordpress-job-cpt";
     }
   }
 

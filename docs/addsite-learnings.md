@@ -597,6 +597,24 @@
 
 ---
 
+## LRN-WP-1
+- Date: 2026-06-28
+- Site: labs-eco.com
+- Signal: WordPress site with a `job` custom post type (clean listing at `/careers`,
+  detail pages at `/job/<slug>`) was triaged as GRAY ("no obvious listing structure")
+  because the site had only 3 jobs — the `topCluster` heuristic barely detects
+  clusters that small, and WordPress was not recognized as a GREEN-lane vendor.
+- Fix: Added `wordpress-job-cpt` vendor detection to both `fingerprint` and `triage`
+  commands in `addsite-batch.ts`. Checks for WordPress markers (`wp-content`, `wp-json`,
+  generator meta) combined with job CPT signals (`/job/` link hrefs, `single-job` /
+  `job-template` / `type-job` body classes). When matched → GREEN lane.
+- Generalises to: any WordPress site using a custom post type for jobs/careers/positions.
+  Common pattern on Israeli company sites; the jobs are server-rendered HTML with
+  semantic selectors — trivially scrapable.
+- **Home:** Triage §2.2 in addsite2.md.
+
+---
+
 ## Change log
 
 - **2026-06-14** — Created the log; seeded with the incidents extracted from the
