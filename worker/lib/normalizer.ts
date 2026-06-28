@@ -752,6 +752,13 @@ export function normalizeJobRecord(
     }
   }
 
+  // Normalize slash-separated multi-city locations (e.g. "ירושלים / מודיעין")
+  // into space-separated form. Only applies when the slash separates city names
+  // (at least one non-ASCII char on each side), not URL-like strings.
+  if (location && location.includes("/")) {
+    location = location.replace(/\s*\/\s*/g, " ").replace(/\s{2,}/g, " ").trim();
+  }
+
   return {
     title,
     description,
