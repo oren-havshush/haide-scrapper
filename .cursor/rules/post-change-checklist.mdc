@@ -5,16 +5,21 @@ alwaysApply: true
 
 # Post-change checklist
 
-After completing any substantive change, ALWAYS end your response by prompting the user for each applicable action below. Do not silently skip steps or assume the user will remember.
+After completing a substantive change, prompt the user for follow-up steps **only when there are actual local file changes to commit or deploy**. Do NOT prompt when the work was done entirely via API calls (e.g. PUT config, trigger scrape) with no local file modifications.
 
 ## When to prompt
 
 | Change made | Required follow-up |
 |---|---|
-| Any code / config / doc edit | **Commit** — ask if they want to commit (or commit yourself if asked) |
+| Local code / config / doc file edited or created | **Commit** — ask if they want to commit (or commit yourself if asked) |
 | `addsite2.md` or `addsite2-recipes/*.md` edited | **Sync** — run `pnpm sync:addsite2` before committing so `.claude/commands/addsite2.md` stays identical |
 | Commit on `main` (server/worker/config changes) | **Deploy** — run the deploy script per the `deploy.mdc` rule |
 | DB schema / migration added | **Migrate on prod** — remind to run `prisma migrate deploy` on the server |
+
+## When NOT to prompt
+
+- Changes made purely via remote API (PUT config, PATCH status, trigger scrape, etc.) — these are already live, nothing to commit or deploy.
+- Read-only exploration or investigation with no file edits.
 
 ## Wording
 
