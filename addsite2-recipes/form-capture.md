@@ -391,3 +391,105 @@ curl -s "$BASE/api/jobs?siteId=$SITE_ID&limit=1" -H "$AUTH" \
 ```
 If `actionUrl` is the listing URL or the `file` field is absent → the decoy form
 won; tighten `formSelector` as above. **Home:** §5 step 5, Step 9 QA.
+
+---
+
+## 8. Wix lightbox apply forms (button opens a popup; form not in listing DOM)
+
+> Load when the apply button is a Wix Stylable button:
+> `<a role="button" data-popupid="..." aria-haspopup="dialog">` with **no `href`**
+> (label e.g. `הגישו מועמדות`). Cite: `LRN-APPLY-8`.
+
+The real application form lives in a Wix **lightbox/popup** that mounts only on click —
+it is **absent from the listing DOM** at scrape time. The worker never opens it, so you
+must capture it manually and store a **static `formCapture`**.
+
+**Capture steps (browser):**
+1. Navigate to the listing page; `browser_snapshot` and find the apply button ref
+   (name = the button label, e.g. `הגישו מועמדות`).
+2. `browser_click` that ref — a **real pointer click**. A programmatic `el.click()`
+   via `Runtime.evaluate` does **NOT** fire Wix's handler (you'll only see the footer
+   contact form). This is the #1 trap.
+3. Wait ~2.5s, then enumerate forms/fields via `Runtime.evaluate`. The apply form is
+   usually the one with `input[type=file]` and a long field list; note its **form id**
+   (`#comp-...`), and each field's `name/type/label/required` (+ `<select>` options —
+   the Position dropdown often lists every role; capture those).
+4. Check for reCAPTCHA (`[data-sitekey]`, `iframe[src*=recaptcha]`). Captcha-free Wix
+   forms (CV upload, contact fields) are auto-apply-friendly; capture them.
+
+**Store it (the §7 fallback pattern):** set `formCapture.formSelector` to the
+**lightbox form id** (e.g. `#comp-kvgjjpej`). That id matches **nothing** on the
+listing page → the worker's live extract fails → it serializes your static `fields`
+blob into every job's `_formData`. Use the full field schema
+(`name,label,fieldType,required,tagName[,options]`) — the `{name,type}` shape is
+rejected by `updateSiteConfigSchema`. All jobs typically share one popup
+(`data-popupid` identical across items), so it's a single site-level form; keep the
+careers `mailto:` as `applicationInfo` too. Re-scrape, then verify a sampled job's
+`_formData` lists the `file`/CV field (§7 verification snippet).
+
+---
+
+## 9. RedMatch / TopMatch apply pages — NO `<form>` element (bare inputs by CSS class)
+
+> Load when the apply path is a **TopMatch/RedMatch** page — URL pattern
+> `careers.topmatch.co.il/<tenant>/redmatch-apply/redmatch.apply.html?compPositionID=<id>`,
+> page title `apply - {position name}`. Cite: `LRN-APPLY-9`.
+
+TopMatch (RedMatch) is a **shared multi-tenant ATS**: every tenant lives at
+`careers.topmatch.co.il/<tenant>/`, the listing is fed by the same `CandidateAPI`
+(`/CandidateAPI/api/position/Search/<guid>`), and each job's apply page is
+`redmatch-apply/redmatch.apply.html?compPositionID=<id>`. These sites are normally
+onboarded **listing-only** (`pageFlow: []`, items injected by a `setupScript` XHR), so
+jobs only carry the apply **URL** in `applicationInfo`, never the form schema.
+
+**The trap:** the apply page renders a full candidate form, but it has **no `<form>`
+element** — `document.querySelectorAll('form').length === 0`. Fields are **bare inputs
+identified only by CSS class**, with **empty `name` attributes**:
+
+| CSS class / id | Field | name to store |
+|---|---|---|
+| `input.first-name` | שם פרטי | `first-name` |
+| `input.last-name` | שם משפחה | `last-name` |
+| `input.Email` | אימייל | `Email` |
+| `input.ID` | מס' תעודת זהות | `ID` |
+| `input.cell-phone` | טלפון נייד | `cell-phone` |
+| `select.country` | ארץ מגורים (full country list) | `country` |
+| `select.cityBase` | עיר מגורים (JS-populated, 1200+) | `cityBase` |
+| `input.inputfile.CV#uploadeFile` | קורות חיים (**file upload**) | `uploadeFile` |
+| `select.sourcesDDL` | סוג המקור | `sourcesDDL` |
+| `input.field-to-fill#DisclaimerApply1` | privacy checkbox | `DisclaimerApply1` |
+
+So the worker's auto-capture (`extractFormData` → `document.querySelector("form")`)
+returns **null even if a `pageFlow` visited the apply page**, and there are no `name`
+attributes to map. You **must** build a static `formCapture` manually.
+
+**Capture steps (browser):**
+1. Navigate to a sample apply URL (`...redmatch.apply.html?compPositionID=<id>`).
+2. Enumerate inputs by class (there's no `<form>` to scope to):
+   ```js
+   [...document.querySelectorAll('input.form-control, select.form-control, input.inputfile')]
+     .filter(el => el.className && !el.className.includes('NLSkip'))
+     .map(el => ({
+       name: el.className.split(/\s+/).find(c => !['form-control','selectpicker','field-to-fill'].includes(c)) || el.id,
+       cls: el.className.trim(), type: el.type || el.tagName.toLowerCase(),
+       options: el.tagName === 'SELECT' ? [...el.options].map(o => ({value:o.value,label:o.text.trim()})) : undefined,
+     }));
+   ```
+3. Capture `<select>` **options** for `country` and `sourcesDDL` (stable, useful for
+   auto-apply). The **city** `<select>` is JS-populated on country change (1200+ entries)
+   — store just the placeholder `[{value:"-1",label:"בחר עיר"}]`.
+
+**Store it (the §7 fallback pattern):** set `formCapture.formSelector` to a **bare-input
+class that never appears on the listing page** — e.g. `input.inputfile.CV`. It matches
+nothing on the listing → the worker falls back to your static `fields` blob and writes
+it into every job's `_formData`. (Same fallback as §7/§8, but here it fires because there
+is **no `<form>` at all**, not because of a decoy form.) Use the full field schema
+(`name,label,fieldType,required,tagName[,options]`); keep the per-item apply URL in
+`applicationInfo`. PUT + re-scrape, then verify a sampled job's `_formData` lists the
+`uploadeFile` / `file` field (§7 verification snippet).
+
+> **Fix once, reuse for every TopMatch tenant.** The `formCapture` shape above is
+> identical across tenants (only the listing `setupScript` / position IDs differ).
+> Reference: `careers.topmatch.co.il/tadiran` (`cmqykv29i003i01nzvw1z5jpw`, 27 jobs,
+> 14 fields). Note: `careers.topmatch.co.il/diplomat-il` is the same platform and was
+> once logged "no apply path (NONE)" — that was wrong; apply §9 to fix it.

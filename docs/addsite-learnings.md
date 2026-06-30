@@ -181,6 +181,63 @@
   contains a decoy `<form>` matching your `formSelector`, while the real apply form
   lives on detail pages. **Home:** Step 5b / `recipes/form-capture.md` §7.
 
+### LRN-APPLY-8 — Wix lightbox apply form (button opens a popup, form not in listing DOM)
+- **Date / site:** 2026-06-29 · campkimama.org (`cmqynnjle004901nz99j7vrhl`) 9/9
+- **Signal:** the apply button is a Wix Stylable button — `<a role="button"
+  data-popupid="..." aria-haspopup="dialog">` with **no `href`** (label e.g.
+  `הגישו מועמדות`). The real application form lives in a Wix **lightbox/popup** that
+  mounts only on click; it is **absent from the listing DOM** at scrape time
+  (querying for the form id returns nothing until the popup opens).
+- **Capture-time gotchas:**
+  - A programmatic `el.click()` (via `Runtime.evaluate`) does **NOT** open the popup —
+    Wix's handler needs a **real pointer click** (`browser_click` on a snapshot ref).
+    Open it, then read the form fields.
+  - The form can be rich and **captcha-free** (Kimama: name/contact/address, DOB,
+    a **Position `<select>`** listing every role, free-text, and **2 file/CV uploads**)
+    — genuinely auto-apply-friendly, unlike the Niloos reCAPTCHA form (LRN-SPA-7).
+  - All jobs usually share **one** popup (`data-popupid` is identical across items);
+    the applicant picks the role from the Position dropdown. It's a site-level form.
+- **Fix (worker contract):** store it as a **static `formCapture`** whose `formSelector`
+  is the **lightbox form id** (e.g. `#comp-kvgjjpej`). That id matches **nothing** on
+  the listing page → the worker's live extract fails → it serializes the static
+  `fields` blob into every job's `_formData` (the §7 fallback path). The worker never
+  opens the popup. Verify a sampled job's `_formData` lists the `file` field.
+- **Generalizes to:** any Wix site whose apply button opens a lightbox/popup form
+  (`aria-haspopup="dialog"` + `data-popupid`). **Home:** Step 5b /
+  `recipes/form-capture.md` §8.
+
+### LRN-APPLY-9 — RedMatch / TopMatch apply page has NO `<form>` (bare inputs by CSS class) — and it's a shared multi-tenant platform
+- **Date / site:** 2026-06-30 · careers.topmatch.co.il/tadiran (`cmqykv29i003i01nzvw1z5jpw`)
+- **Signal:** site onboarded listing-only (`pageFlow: []`, API-injected items via
+  `CandidateAPI`), so jobs carried only an apply **URL** in `applicationInfo`, never
+  the form schema. The apply page (`redmatch-apply/redmatch.apply.html?compPositionID=<id>`)
+  renders a full candidate form (שם פרטי/משפחה, אימייל, ת"ז, טלפון, ארץ/עיר selects,
+  **קורות חיים file upload**, source dropdowns, privacy checkbox) — but `document.querySelectorAll('form').length === 0`.
+  The fields are **bare `<input class="form-control first-name">` / `select.cityBase` /
+  `input.inputfile.CV#uploadeFile`** with **empty `name` attributes**, not wrapped in
+  a `<form>`. So the worker's auto-capture (`extractFormData` → `document.querySelector("form")`)
+  returns null even if a `pageFlow` visited the apply page, and there are no `name`s to map.
+- **Fix:** capture a **static `formCapture`** manually:
+  - Derive each field's `name` from its CSS class (`first-name`, `last-name`, `Email`,
+    `ID`, `cell-phone`, `country`, `cityBase`, `uploadeFile`, `sourcesDDL`, etc.) —
+    the empty `name` attribute is unusable.
+  - Set `formSelector` to a **bare-input class that never appears on the listing page**
+    (e.g. `input.inputfile.CV`). It matches nothing on the listing → worker uses the
+    static `fields` blob (same §7 fallback mechanism as LRN-APPLY-7/8, but here it's
+    because there is **no `<form>` at all**, not a decoy form).
+  - Capture `<select>` options (country, source-type) for auto-apply; the city `<select>`
+    is JS-populated (1200+ options) so store just the placeholder.
+  - Then PUT + re-scrape; verify a sampled job's `_formData` lists the `file` field.
+- **Shared platform — fix once, applies to all tenants:** TopMatch/RedMatch is a
+  multi-tenant ATS at `careers.topmatch.co.il/<tenant>/` (all share the same
+  `CandidateAPI` + `redmatch.apply.html`). The **same static `formCapture` shape works
+  for every tenant** (only the listing `setupScript` / position IDs differ).
+  `careers.topmatch.co.il/diplomat-il` is the same platform and was previously logged
+  "no apply path (NONE)" — that verdict was **wrong**; it has this exact capturable form.
+- **Generalizes to:** any apply page that renders form fields as bare inputs with no
+  enclosing `<form>` (worker auto-capture finds 0 forms), and any TopMatch/RedMatch
+  tenant. **Home:** Step 5b / `recipes/form-capture.md` §9.
+
 ---
 
 ## D. externalJobId stability
@@ -402,6 +459,39 @@
 - **Generalizes to:** all Comeet/Spark Hire boards. **Home:** `recipes/spa-frameworks.md#comeet`
   + `scripts/site-patterns.json` comeet skeleton.
 
+### LRN-SPA-6 — Wix repeater: a job's fields are sibling `comp-*__item-<suffix>` sharing one suffix
+- **Date / site:** 2026-06-29 · campkimama.org (`cmqynnjle004901nz99j7vrhl`) 9/9
+- **Signal:** a Wix **repeater** renders each job as a set of sibling components that
+  all carry the **same `__item-<suffix>`** on different `comp-` prefixes — e.g.
+  title `comp-m9sbzwuu5__item-<s>`, description `comp-m9sbzwuv__item-<s>`,
+  **requirements `comp-m9zsa5ow__item-<s>`**, apply button `comp-m9sbzwuv6__item-<s>`,
+  row container `comp-m9sbzwut__item-<s>`. The analyzer commonly maps only
+  title+description and **silently misses requirements** (a whole separate comp).
+- **Fix:** anchor the setupScript on one comp's items, derive the `<suffix>`
+  (`id.replace('comp-<descPrefix>__item-','')`), then `getElementById('comp-<otherPrefix>__item-'+suffix)`
+  to pull each remaining field (requirements, etc.). To find the prefixes, dump all
+  ids matching `[id*="__item-<suffix>"]` for one job and read the tag/text. Distinct
+  from the existing **Wix richText** recipe (setupscript §10), which is for free-form
+  `richTextElement` blocks, not a repeater.
+- **Generalizes to:** every Wix repeater jobs board. **Home:**
+  `recipes/setupscript-patterns.md` §10 / `recipes/spa-frameworks.md#wix`.
+
+### LRN-SPA-7 — Niloos / Hunter ATS minisite = Nuxt SPA + reCAPTCHA apply ⇒ link/email only
+- **Date / site:** 2026-06-29 · imj.org.il (`cmqymqkbn004101nzck442rnv`); Niloos vacancies
+  at `minisite.niloos.ai/vacancy/<id>` (alias `minisite.hunter-edge.me`)
+- **Signal:** per-job apply links point at `minisite.niloos.ai/vacancy/<id>`. That page
+  is a **Nuxt SPA** (static HTML has **zero** `<form>`/`<input>`; markers `__nuxt`,
+  `_nuxt/entry.*.js`) backed by `jobsite-api.hunterhrms.com/api` (`/getVacancy`,
+  `/jobs`, `/submit`) and it **loads Google reCAPTCHA**. The apply form only renders
+  client-side and submission requires a reCAPTCHA token.
+- **Fix:** do **not** try to capture the form fields (JS-rendered + captcha-gated =
+  not auto-submittable; same class as LRN-APPLY-3). Keep the Niloos **apply link** as
+  the per-job `applicationInfo` (formStatus URL), or fall back to the site's careers
+  **email** where present. If the brief is email-apply-only, gate the setupScript to
+  emit only `mailto:` jobs and drop the Niloos ones (see imj setupScript).
+- **Generalizes to:** every Niloos/Hunter (`hunterhrms` / `hunter-edge`) minisite.
+  **Home:** `recipes/spa-frameworks.md#niloos`.
+
 ---
 
 ## H. Worker behavior & config contract
@@ -545,6 +635,24 @@
   cards → selector `[data-field='activationDate']`, source `LISTING`.
 - **Home:** Step 4 publishDate patterns + Step 6 (minPublishDate section).
 
+### LRN-WRK-10 — `deadline` field exists; there is NO worker "drop-expired" — do it in setupScript
+- **Date / site:** 2026-06-29 · imj.org.il (`cmqymqkbn004101nzck442rnv`)
+- **Signal:** some jobs print an application cutoff (e.g.
+  `ניתן להגיש מועמדות עד לתאריך D.M.YYYY`). Two needs: (1) surface it, (2) stop
+  scraping jobs whose cutoff already passed.
+- **Field:** there is a **first-class `deadline`** field — DB column `Job.deadline`,
+  normalizer key `deadline`, dashboard label "Application Deadline" (distinct from
+  `publishDate`/`ageBucket`). Map it like any other field; parse the date in
+  setupScript and inject `.__ai-deadline` as ISO `YYYY-MM-DD`.
+- **Drop-expired has NO worker support:** `minPublishDate`/`minPublishDays` are inert
+  and `ageBucket` only *labels* (LRN-WRK-5) — neither looks at `deadline`. So to drop
+  past-deadline jobs, **do it in the setupScript**: parse the cutoff and `continue`
+  (don't emit the item) when `deadlineISO < todayISO`. The next scrape's
+  `deleteMany`+recreate removes the now-dropped jobs from the dashboard. A *global*
+  drop-expired feature would be a worker change + deploy (not done).
+- **Generalizes to:** any site printing an apply deadline. **Home:** Step 4 field
+  table (`deadline`) / `recipes/setupscript-patterns.md`.
+
 ---
 
 ## I. Dedup & API quirks
@@ -612,6 +720,51 @@
   Common pattern on Israeli company sites; the jobs are server-rendered HTML with
   semantic selectors — trivially scrapable.
 - **Home:** Triage §2.2 in addsite2.md.
+
+---
+
+### LRN-SPA-8 — Civi.co.il embedded jobs board: false AWSM scrape + listing-only content truncation
+- **Date:** 2026-06-29
+- **Site:** kfir-elevators.com / כפיר מעליות (`cmqylnf9t003q01nzjxamzlwj` → `cmqz4xfcn004o01nzebbuhdfj`)
+- **Signal 1 — wrong data source:** The careers page at `kfir-elevators.com/משרות-פנויות-2/` was
+  onboarded as the `siteUrl`. The page carries both (a) leftover WP Job Openings (AWSM plugin) demo
+  posts and (b) a cross-origin `<iframe src="https://app.civi.co.il/promos/id=TWALK2UYXF&src=5920">`.
+  The worker cannot read into a cross-origin iframe, so it fell back to the AWSM posts — 5 demo jobs
+  whose content field contains **Hebrew lorem-ipsum placeholder text**. These passed the title/fill-rate
+  gate (fill=1.00), but descriptions were gibberish, job IDs were WP post IDs (not the real
+  `je-public-id`), and the apply form was a statically-captured AWSM page URL, not per-job.
+- **Signal 2 — listing-only content truncation:** Even when the civi board URL is onboarded
+  directly (as `siteUrl`), the listing page carries only short job previews (`.descr`). The full
+  description (`#je-descr`) and requirements (`#je-details`) exist only on per-job detail pages at
+  `https://app.civi.co.il/promo/id=<JOB_ID>&src=<SRC>`. With `pageFlow=[]` (listing-only), the
+  worker never visits those pages, so descriptions come out empty.
+- **Fix:**
+  1. **Always onboard the civi board URL directly** (`app.civi.co.il/promos/id=<TOKEN>&src=<SRC>`),
+     not the wrapper company page. The board URL is visible in the wrapper page's iframe `src`.
+     Set `companyName` on the new site; SKIP the wrapper-page site with an adminNote.
+  2. **In the setupScript, `await fetch()` each job's detail page** (same-origin — no CORS issue)
+     and inject `#je-descr` text as `.__ai-description`, `#je-details` text as `.__ai-requirements`,
+     and a per-job apply blob as `.__ai-applicationInfo`. This way `pageFlow=[]` (listing-only)
+     still produces full descriptions and per-job apply.
+  3. **externalJobId = the first arg of `openPromo(event, JOB_ID, SRC_ID)`** extracted from the
+     `.thumb-content` `onclick` attribute. These are the public-facing job numbers (`je-public-id`),
+     unique and stable.
+  4. **Location = hardcode the company HQ** via `.__ai-location` injection in the setupScript.
+     Civi boards carry no per-job location field; the company address in the site footer is the
+     right default. Use `locationFallback` as a second option only if you want the gazetteer to
+     fill when the injected span is absent.
+- **Detail-page URL pattern:** `https://app.civi.co.il/promo/id=<JOB_ID>&src=<SRC_ID>`
+  (constructable from the listing — no AJAX handshake needed).
+- **Apply form:** The detail page carries a per-job HTML form (`form.Form`) with fields
+  `Form_submitted` (hidden), `name`, `phone`, `email`, `cv` (file). The form `action` is the
+  detail-page URL itself (`/promo/id=<JOB_ID>&src=<SRC>`). Static `formCapture` with
+  `formSelector: "form.Form"` and an `actionUrl` placeholder is fine as a site-level fallback;
+  the per-job `.__ai-applicationInfo` JSON blob (injected in the setupScript, mapped to the
+  `applicationInfo` field) carries the exact per-job URL and is what the dashboard uses.
+- **Generalizes to:** any company site that embeds a civi.co.il jobs board in an iframe.
+  Also generalizes to any listing-only ATS board where full content lives only on detail pages —
+  same-origin `await fetch()` enrichment in the setupScript avoids a full `pageFlow` round-trip.
+- **Recipe:** `addsite2-recipes/spa-frameworks.md` `#civi`.
 
 ---
 

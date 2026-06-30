@@ -353,9 +353,10 @@ curl -s -A "$REAL_UA" "$URL" -o listing.html
 | `externalJobId` | (1) Native job ID attr (`data-job-id`, `data-id`), **or a req number printed in the title** (`"משרה 231: …"` → regex it out). (2) Slug from `detailUrl`. (3) Hash of title+department+location (stable, disambiguated). **Never index-based.** **CAUTION:** a printed "job number" field (e.g. `numberJob`) can be reused across distinct postings by the same recruiter — verify uniqueness. Prefer the unique record ID (e.g. CMS `_id`) when a printed number collides. If `saved jobs < API count` after scraping, the id field is non-unique. |
 | `description` | Often only on the detail page — map `detailUrl` and let worker fetch it. **Locate the body by dumping the FULL visible text** of a detail page (render it, print `innerText`) and finding the prose container — do NOT guess semantic selectors (`.order_description`) and give up when they're absent; the real body may live in a differently-named block (`.job_desc`). **Never substitute metadata (category/area/clinic/department) for a real description** — a 1–2 line metadata string that trips the QA correctness suspect "description present but avg N chars while detail body is >X chars" is a BLOCKER, not shippable (`LRN-SETUP-4`). **If the detail page splits the body into labeled sections (תיאור / דרישות / כישורים / תנאים), the analyzer maps only ONE — merge them all** (setupScript §8). **If the text comes back as one run-on line, preserve block line breaks** via the `structuredText` helper — NEVER `.replace(/\s+/g,' ')` (setupScript §7). **Capture the COMPLETE body — never cherry-pick only the headings you recognise.** A detail-fetch that grabs only `description`+`requirements` silently drops the meta block (employment type, hours, **division/department**) and intro lines that the site shows per job. Route typed meta into its own field, fold the rest into `description` (setupScript §11, `LRN-SETUP-3`). |
 | `detailUrl` | Anchor `href` inside item; must be stable (not JS-generated blob). |
-| `location` | Direct selector; `setupScript` if embedded in a formatted string or in the title (split on dash); or **hardcode a constant** for a confirmed single-office employer. |
+| `location` | Direct selector; `setupScript` if embedded in a formatted string or in the title (split on dash); or **hardcode a constant** (inject `.__ai-location`) for a confirmed single-office / nationwide employer — this **overrides the gazetteer** (`locationFallback` only fills when extraction is empty, so it can't fix a wrong gazetteer guess) (`LRN-LOC-1`). |
 | `publishDate` | If not in item DOM → skip (don't block ACTIVE on a missing Tier-B field). |
-| `requirements` | Detail-page field; usually merge into `description` (setupScript §8) preserving line breaks (§7). |
+| `deadline` | First-class field (dashboard "Application Deadline"). If the job prints an apply cutoff (e.g. `ניתן להגיש מועמדות עד לתאריך D.M.YYYY`), parse → ISO and map it. To **drop past-deadline jobs**, do it in setupScript (no worker drop-expired exists) — setupScript §12, `LRN-WRK-10`. |
+| `requirements` | Detail-page field; usually merge into `description` (setupScript §8) preserving line breaks (§7). On a **Wix repeater** it's a separate `comp-*__item-<suffix>` the analyzer misses — recover via the shared suffix (`LRN-SPA-6`). |
 
 **Coverage gate — MANDATORY:**
 Establish the true total before submitting. Never silently ship only page 1.
@@ -451,6 +452,15 @@ selector matches, the captured CV/file fields silently never reach `rawData._for
 (e.g. `form.elementor-form:has(input[type="file"])`) to force the static fallback,
 then re-scrape and confirm a sampled job's `_formData` lists the `file` field. Cite:
 `LRN-APPLY-7` (proportsia.co.il); full mechanism + verification in `form-capture.md` §7.
+**LANDMINE — apply page with NO `<form>` element (TopMatch/RedMatch):** on
+`careers.topmatch.co.il/<tenant>/redmatch-apply/redmatch.apply.html` the apply fields
+are **bare inputs with empty `name`s, not wrapped in a `<form>`** — worker auto-capture
+finds 0 forms even on the apply page. Build a static `formCapture`, deriving each field
+`name` from its CSS class (`first-name`/`Email`/`uploadeFile`/`cityBase`…) and setting
+`formSelector` to a bare-input class that never appears on the listing (e.g.
+`input.inputfile.CV`) to force the static fallback. It's a shared multi-tenant platform —
+the same `formCapture` shape works for every TopMatch tenant. Cite: `LRN-APPLY-9`;
+full field table in `form-capture.md` §9.
 
 ---
 
@@ -670,7 +680,9 @@ Pre-reading all recipes defeats the lean-core cost goal.
 | `triage.vendor` is a known ATS (Workday/Greenhouse/Lever/Comeet/iCIMS/SmartRecruiters/Ashby) | `addsite2-recipes/spa-frameworks.md` |
 | `detail-reach` exit 2/3, or `browserOverrides.userAgent` needed | `addsite2-recipes/waf-bypasses.md` |
 | Field value not extractable by CSS selector; description is one-line or missing labeled sections (דרישות/כישורים); id/location in title | `addsite2-recipes/setupscript-patterns.md` |
-| `formStatus: NEEDS_MANUAL` or apply form capture needed | `addsite2-recipes/form-capture.md` |
+| `formStatus: NEEDS_MANUAL` or apply form capture needed; **Wix apply button opens a lightbox** (`aria-haspopup="dialog"` + `data-popupid`, no href); **TopMatch/RedMatch apply page** (`careers.topmatch.co.il/<tenant>/redmatch-apply/redmatch.apply.html`, no `<form>` element) | `addsite2-recipes/form-capture.md` (§8 Wix lightbox `LRN-APPLY-8`; §9 TopMatch/RedMatch `LRN-APPLY-9`) |
+| **Wix repeater** jobs board (`comp-*__item-<suffix>` rows), or a **Niloos/Hunter minisite** (`minisite.niloos.ai`, reCAPTCHA SPA) | `addsite2-recipes/spa-frameworks.md` (#wix / #niloos) |
+| Job prints an **apply deadline**; need to drop past-deadline jobs | `addsite2-recipes/setupscript-patterns.md` (§12, `LRN-WRK-10`) |
 | `extracted < total` (coverage gap), lazy loading, or "load more" detected | `addsite2-recipes/pagination-and-loading.md` |
 
 ---
