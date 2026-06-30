@@ -192,7 +192,8 @@ using `triage` (e.g. eyeballing a page in the browser):
 // in the browser / a Playwright eval on the wrapper page:
 [...document.querySelectorAll('iframe')].map(f => f.src)
 // look for: comeet.com|comeet.co, greenhouse.io/embed, smartrecruiters.com,
-//           jobs.lever.co, ashbyhq.com, icims.com, myworkdayjobs.com
+//           jobs.lever.co, ashbyhq.com, icims.com, myworkdayjobs.com,
+//           app.civi.co.il/promos (Civi board — LRN-SPA-8)
 ```
 
 If an ATS iframe is found:
@@ -329,7 +330,7 @@ ITEM_SEL=$(echo $TRIAGE | jq -r '.skeleton.itemSelector')
 Then **validate** the skeleton with a dry-run (§8) before PUT. The skeleton is a starting point — you MUST confirm it actually matches the site's current DOM.
 
 If the site's vendor has a recipe file, read it on signal:
-- Workday/Greenhouse/Lever/Comeet/iCIMS/SmartRecruiters/Ashby → read `addsite2-recipes/spa-frameworks.md`
+- Workday/Greenhouse/Lever/Comeet/iCIMS/SmartRecruiters/Ashby/Civi → read `addsite2-recipes/spa-frameworks.md`
 
 ### 6.2 YELLOW lane (novel site — full discovery)
 
@@ -677,7 +678,7 @@ Pre-reading all recipes defeats the lean-core cost goal.
 
 | Signal | Recipe file |
 |---|---|
-| `triage.vendor` is a known ATS (Workday/Greenhouse/Lever/Comeet/iCIMS/SmartRecruiters/Ashby) | `addsite2-recipes/spa-frameworks.md` |
+| `triage.vendor` is a known ATS (Workday/Greenhouse/Lever/Comeet/iCIMS/SmartRecruiters/Ashby/Civi) | `addsite2-recipes/spa-frameworks.md` (Civi → `#civi`, `LRN-SPA-8`) |
 | `detail-reach` exit 2/3, or `browserOverrides.userAgent` needed | `addsite2-recipes/waf-bypasses.md` |
 | Field value not extractable by CSS selector; description is one-line or missing labeled sections (דרישות/כישורים); id/location in title | `addsite2-recipes/setupscript-patterns.md` |
 | `formStatus: NEEDS_MANUAL` or apply form capture needed; **Wix apply button opens a lightbox** (`aria-haspopup="dialog"` + `data-popupid`, no href); **TopMatch/RedMatch apply page** (`careers.topmatch.co.il/<tenant>/redmatch-apply/redmatch.apply.html`, no `<form>` element) | `addsite2-recipes/form-capture.md` (§8 Wix lightbox `LRN-APPLY-8`; §9 TopMatch/RedMatch `LRN-APPLY-9`) |

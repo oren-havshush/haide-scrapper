@@ -1483,6 +1483,9 @@ function fingerprintByHost(host: string): { vendor: string; recipe: string } | n
   if (h.includes("smartrecruiters.com"))
     return { vendor: "smartrecruiters", recipe: "recipes/spa-frameworks.md#smartrecruiters" };
   if (h.includes("ashbyhq.com")) return { vendor: "ashby", recipe: "recipes/spa-frameworks.md#ashby" };
+  // Civi board host (app.civi.co.il/promos/...). Onboarding the board URL directly
+  // fingerprints GREEN → #civi recipe (listing-only setupScript, no skeleton). LRN-SPA-8.
+  if (h.endsWith("civi.co.il")) return { vendor: "civi", recipe: "recipes/spa-frameworks.md#civi" };
   return null;
 }
 
@@ -1495,6 +1498,9 @@ const ATS_IFRAME_HOSTS: { re: RegExp; vendor: string; recipe: string }[] = [
   { re: /(^|\.)icims\.com$/i, vendor: "icims", recipe: "recipes/spa-frameworks.md#icims" },
   { re: /(^|\.)smartrecruiters\.com$/i, vendor: "smartrecruiters", recipe: "recipes/spa-frameworks.md#smartrecruiters" },
   { re: /(^|\.)ashbyhq\.com$/i, vendor: "ashby", recipe: "recipes/spa-frameworks.md#ashby" },
+  // Civi boards are commonly embedded in a company careers page via a cross-origin
+  // <iframe src="https://app.civi.co.il/promos/id=...&src=...">. LRN-SPA-8.
+  { re: /(^|\.)civi\.co\.il$/i, vendor: "civi", recipe: "recipes/spa-frameworks.md#civi" },
 ];
 
 // Detect a jobs board embedded via a cross-origin <iframe> on a wrapper careers
