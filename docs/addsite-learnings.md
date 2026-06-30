@@ -768,6 +768,59 @@
 
 ---
 
+### LRN-WRK-11 — Apply-form UI text contaminates description when container is too wide
+- **Date / sites:** unioncareer.co.il / לקס מוטורס (`cmqyizf3s003301nzvot8l7ut`), 2026-06-30
+- **Signal:** description ends with garbage like `צירוף קובץ\nקובץ קו"ח\n\nx\n\nהגעתי דרך חבר\nהמידע האישי…`
+  — the literal text content of the apply form's file-upload widget and checkbox, followed by the
+  legal/privacy boilerplate and the "share on social" footer.
+- **Root cause:** the setupScript fetched detail-page content using
+  `.single-job-content-container`, which wraps **both** the job body (`.single-job-content`)
+  and the apply sidebar (`.single-job-form-box`). Calling `.innerText` on the wrapper
+  pulled the form widget labels directly into the description string.
+- **Fix:** target the smallest element that contains **only the job prose**, not the
+  surrounding layout wrapper. On this platform: `.single-job-content`. More general rule:
+  when `innerText` of your chosen container includes words like `שלח`, `קורות חיים`,
+  `קובץ`, `אימייל`, `הגשת מועמדות`, suspect you have the wrong element.
+- **Detection:** `descHasForm` flag — check `/(שלח|קורות חיים|קובץ|הגשת מועמדות|צירוף)/.test(description)`.
+  The `verify-jobids` script doesn't catch this; the QA `computeCorrectnessSuspects`
+  "description present but avg N chars" heuristic may partially catch it.
+- **Generalizes to:** any site where the job body and apply form share a parent container.
+  Always grep the scraped description for known form-widget strings before shipping ACTIVE.
+
+---
+
+### LRN-SPA-9 — unioncareer.co.il: WordPress multi-company department portal
+- **Date / site:** unioncareer.co.il / לקס מוטורס (`cmqyizf3s003301nzvot8l7ut`), 2026-06-30
+- **Platform:** WordPress + custom `jobs` post type. Each group company has a dedicated
+  department URL: `unioncareer.co.il/departments/<slug>/`. Job detail pages are at
+  `unioncareer.co.il/jobs/<slug>/`.
+- **Key selectors:**
+  - Item: **`section.jobs-section ul.jobs-list li.jobs-item`** — must include the
+    `section.jobs-section` ancestor scope. Bare `li.jobs-item` matches items from ALL
+    company sections on the page and overcounts.
+  - Job ID: `a.jobs-item-a[data-jobid]` — clean numeric string, e.g. `"3033"`. Use
+    directly as `externalJobId`; no prefix needed (each department URL is its own site).
+  - Title: `.job-item-title`
+  - Department/category: `.job-prof-name`
+  - Region (listing card): `.job-work-area` — gives a broad region (`מרכז`, `צפון`), NOT city.
+- **Location:** the real city is in the detail page under a **`מיקום:`** paragraph
+  (`<p><b><u>מיקום:</u></b><br>פתח תקווה</p>`) inside `.single-job-content`.
+  Inject `.__ai-location` in the detail-fetch setupScript; do NOT map `.job-work-area`
+  as `location` (it's too coarse to be useful).
+- **Description container:** `.single-job-content` — NOT `.single-job-content-container`
+  (that outer wrapper includes the apply sidebar; see `LRN-WRK-11`).
+- **Apply form:** Contact Form 7 (`form.wpcf7-form`). Static `formCapture` fields:
+  `full-name`, `the-phone`, `the-email`, `the-file` (file, required) **plus**
+  `here-by-friend` (checkbox, "הגעתי דרך חבר") and `friend-name` (text, "נא לציין את שם החבר").
+  Hidden: `job-number`, `post-url`. The CF7 form ID differs per department but the WP REST
+  endpoint pattern is: `unioncareer.co.il/wp-json/contact-form-7/v1/contact-forms/<ID>/feedback`.
+- **Company name:** must be PATCH-ed separately after site creation — the platform hostname
+  is shared across all group companies so auto-detection gives the platform name, not the brand.
+- **Generalizes to:** any WordPress site that uses a single domain for multiple employer
+  brands and scopes each brand to a `/departments/<slug>/` page.
+
+---
+
 ## Change log
 
 - **2026-06-14** — Created the log; seeded with the incidents extracted from the
