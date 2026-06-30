@@ -268,6 +268,159 @@ detailUrl:    a [attr: href]
 
 ---
 
+## Wix (repeater jobs boards) {#wix}
+
+Wix careers pages come in two shapes. For free-form `richTextElement` blocks, use
+`setupscript-patterns.md` §10. For a **repeater** (each job = a set of sibling
+components), use this pattern. Cite: `LRN-SPA-6`.
+
+### Fingerprint
+- `wixui-*` classes, `comp-*` ids, `data-testid` Wix attrs; jobs are rows in a repeater.
+- Each job's fields share **one `__item-<suffix>`** across different `comp-` prefixes:
+  title `comp-AAA__item-<s>`, description `comp-BBB__item-<s>`, **requirements
+  `comp-CCC__item-<s>`**, apply button `comp-DDD__item-<s>`, row `comp-EEE__item-<s>`.
+
+### Build
+- Anchor on one comp's items, derive `<suffix>` (`id.replace('comp-BBB__item-','')`),
+  then `getElementById('comp-<prefix>__item-'+suffix)` for every other field.
+- **Don't trust the analyzer's field set** — it commonly maps only title+description
+  and misses requirements (a separate comp). Dump all ids matching
+  `[id*="__item-<suffix>"]` for one job to discover the prefixes.
+- Stable `externalJobId`: the suffix is per-row stable → `'<prefix>-'+suffix`.
+- Apply button is usually a lightbox popup → see `form-capture.md` §8 (`LRN-APPLY-8`).
+- Wix never reaches `networkidle`; rely on `domcontentloaded` + the worker's grace.
+
+## Niloos / Hunter ATS minisite {#niloos}
+
+Israeli employers often link out to a Niloos vacancy at
+`minisite.niloos.ai/vacancy/<id>` (alias `minisite.hunter-edge.me`). Cite: `LRN-SPA-7`.
+
+### Fingerprint
+- `_nuxt/entry.*.js`, `__nuxt` markers (Nuxt SPA); backend `jobsite-api.hunterhrms.com/api`
+  (`/getVacancy`, `/jobs`, `/submit`); loads Google **reCAPTCHA**.
+- Static HTML has **zero** `<form>`/`<input>` — the apply form renders client-side.
+
+### Handling
+- **Do not** capture the apply form — it's JS-rendered AND captcha-gated, so it can't
+  be auto-submitted (same class as `LRN-APPLY-3`).
+- Keep the per-job Niloos **apply link** as `applicationInfo` (formStatus URL), or use
+  the employer's careers **email** if the brief is email-apply-only. The Niloos page
+  itself is not the `siteUrl` — onboard the employer's own listing page.
+
+## Civi.co.il jobs board {#civi}
+
+Israeli ATS platform. Boards are hosted at `app.civi.co.il/promos/id=<TOKEN>&src=<SRC>` and are
+commonly **embedded in a company careers page via a cross-origin `<iframe>`**. Cite: `LRN-SPA-8`.
+
+### Fingerprint
+- Wrapper page has `<iframe src="https://app.civi.co.il/promos/id=<TOKEN>&src=<SRC>">` — visible in
+  static HTML; the iframe itself renders `.proflist .thumb` job cards.
+- Each card: `div.thumb-content` with `onclick="openPromo(event,<JOB_ID>,<SRC_ID>,1)"`, a `.title`,
+  and a `.descr` (short preview only — not the full description).
+- Detail page: `https://app.civi.co.il/promo/id=<JOB_ID>&src=<SRC_ID>` — same origin as the board.
+  Contains `#je-title`, `#je-public-id` (the human-facing job number), `#je-descr` (תיאור המשרה),
+  `#je-details` (דרישות התפקיד), and a `form.Form` apply form.
+
+### Onboarding rule
+**Always onboard the board URL directly** (`app.civi.co.il/promos/id=<TOKEN>&src=<SRC>`) — not the
+wrapper company page. The worker cannot read a cross-origin iframe from the wrapper page. SKIP the
+wrapper-page site with an adminNote pointing to the board site.
+
+> **Watch out for leftover WP Job Openings (AWSM) posts** on the wrapper page: WordPress sites that
+> also had the AWSM plugin installed may have demo/placeholder jobs in the raw HTML. The worker will
+> scrape those instead of the iframe content, producing jobs with Hebrew lorem-ipsum descriptions.
+> Always check the description text and `je-public-id` field to confirm you're reading the real board.
+
+### Selectors
+```
+itemSelector:   .proflist .thumb
+title:          .__ai-title       ← injected from detail page in setupScript
+description:    .__ai-description ← injected from #je-descr in detail page
+requirements:   .__ai-requirements ← injected from #je-details in detail page
+location:       .__ai-location    ← hardcoded HQ city injected in setupScript
+externalJobId:  .__ai-jobid       ← first arg of openPromo() onclick
+applicationInfo: .__ai-applicationInfo ← per-job JSON blob injected in setupScript
+detailUrl:      a.__ai-detailurl [attr: href]
+```
+
+### setupScript (full — listing-only, no pageFlow needed)
+
+The board and its detail pages are same-origin, so `await fetch()` works without CORS issues.
+The script fetches each detail page, injects full description + requirements + per-job apply,
+and is idempotent (guarded by `.__ai-jobid` presence check).
+
+```js
+const items = [...document.querySelectorAll('.proflist .thumb')];
+const txt = (el) => el ? (el.innerText || el.textContent || '').trim() : '';
+const mk = (cls, val) => { const s = document.createElement('span'); s.className = cls; s.textContent = val; return s; };
+const applyFields = [
+  {name:'Form_submitted',label:'',tagName:'INPUT',required:false,fieldType:'hidden'},
+  {name:'name',label:'שם מלא',tagName:'INPUT',required:true,fieldType:'text'},
+  {name:'phone',label:'טלפון',tagName:'INPUT',required:true,fieldType:'tel'},
+  {name:'email',label:'דוא"ל',tagName:'INPUT',required:true,fieldType:'email'},
+  {name:'cv',label:'קורות חיים',tagName:'INPUT',required:true,fieldType:'file'}
+];
+await Promise.all(items.map(async (item) => {
+  if (item.querySelector('.__ai-jobid')) return;
+  const tc = item.querySelector('.thumb-content');
+  if (!tc) return;
+  const m = (tc.getAttribute('onclick') || '').match(/openPromo\(event,(\d+),(\d+)/);
+  if (!m) return;
+  const jobId = m[1], srcId = m[2];
+  const detailUrl = 'https://app.civi.co.il/promo/id=' + jobId + '&src=' + srcId;
+  let title = txt(tc.querySelector('.title'));
+  let descr = '', req = '';
+  try {
+    const r = await fetch(detailUrl);
+    const doc = new DOMParser().parseFromString(await r.text(), 'text/html');
+    descr = txt(doc.querySelector('#je-descr'));
+    req   = txt(doc.querySelector('#je-details'));
+    const t = txt(doc.querySelector('#je-title'));
+    if (t) title = t;
+  } catch (e) {}
+  item.appendChild(mk('__ai-jobid', jobId));
+  item.appendChild(mk('__ai-title', title));
+  item.appendChild(mk('__ai-location', 'HARDCODE_CITY_HERE'));  // ← replace with real HQ city
+  if (descr) item.appendChild(mk('__ai-description', descr));
+  if (req)   item.appendChild(mk('__ai-requirements', req));
+  item.appendChild(mk('__ai-applicationInfo',
+    JSON.stringify({actionUrl: detailUrl, method: 'POST', fields: applyFields})));
+  const a = document.createElement('a');
+  a.className = '__ai-detailurl';
+  a.href = detailUrl;
+  item.appendChild(a);
+}));
+```
+
+Replace `HARDCODE_CITY_HERE` with the company's HQ city (e.g. `כפר סבא`). Civi boards carry no
+per-job location field — the HQ is the correct default for single-office employers.
+
+### formCapture
+Capture the static form from any detail page as a site-level fallback. The per-job
+`.__ai-applicationInfo` blob (injected above) carries the exact per-job URL, which takes
+precedence in the dashboard. Use `formSelector: "form.Form"` with a sample `actionUrl`
+(`/promo/id=<any_job_id>&src=<SRC>`):
+
+```json
+{
+  "formSelector": "form.Form",
+  "actionUrl": "https://app.civi.co.il/promo/id=<SAMPLE_JOB_ID>&src=<SRC_ID>",
+  "method": "POST",
+  "fields": [
+    {"name":"Form_submitted","label":"","fieldType":"hidden","required":false,"tagName":"INPUT"},
+    {"name":"name","label":"שם מלא","fieldType":"text","required":true,"tagName":"INPUT"},
+    {"name":"phone","label":"טלפון","fieldType":"tel","required":true,"tagName":"INPUT"},
+    {"name":"email","label":"דוא\"ל","fieldType":"email","required":true,"tagName":"INPUT"},
+    {"name":"cv","label":"קורות חיים","fieldType":"file","required":true,"tagName":"INPUT"}
+  ]
+}
+```
+
+### pageFlow
+`[]` — no pageFlow needed. All enrichment happens inside the setupScript via same-origin fetch.
+
+---
+
 ## Adding a new ATS pattern
 
 When you successfully onboard a site on an ATS not listed here:

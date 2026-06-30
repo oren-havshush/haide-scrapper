@@ -586,3 +586,40 @@ and a "מה נדרש כדי לעבוד איתנו" requirements section. Fix: du
 to find the prose container by its text, map `description ← .job_desc` (via
 `structuredText`), and split `requirements` at the requirements heading. See the
 "Discovery first" rule in §11 above.
+
+---
+
+## 12. Application deadline — parse it, and drop past-deadline jobs (no worker support)
+
+**Signal:** the description prints an apply cutoff, e.g.
+`ניתן להגיש מועמדות עד לתאריך D.M.YYYY`. Cite: `LRN-WRK-10`.
+
+**There is a first-class `deadline` field** (DB `Job.deadline`, normalizer key
+`deadline`, dashboard "Application Deadline" — separate from `publishDate`). Parse the
+date in setupScript, normalize to ISO, and inject `.__ai-deadline`; map a `deadline`
+field. Only some jobs print it — that's fine (others get no deadline).
+
+**Drop-expired is NOT a worker feature** (`minPublishDate`/`minPublishDays` are inert;
+`ageBucket` only labels — neither reads `deadline`). To stop scraping expired jobs, do
+it in the setupScript: `continue` (don't emit the item) when the parsed deadline is
+before today. The next scrape's `deleteMany`+recreate clears the dropped ones.
+
+```js
+const _now = new Date();
+const todayISO = _now.getFullYear() + '-' +
+  String(_now.getMonth() + 1).padStart(2, '0') + '-' +
+  String(_now.getDate()).padStart(2, '0');
+
+let deadlineISO = '';
+const dm = description.match(/עד\s*לתאריך\s*(\d{1,2})\.(\d{1,2})\.(\d{4})/);
+if (dm) {
+  const dd = String(parseInt(dm[1], 10)).padStart(2, '0');
+  const mm = String(parseInt(dm[2], 10)).padStart(2, '0');
+  deadlineISO = dm[3] + '-' + mm + '-' + dd;            // D.M.YYYY → ISO
+}
+if (deadlineISO && deadlineISO < todayISO) continue;    // drop expired
+if (deadlineISO) item.appendChild(mk('__ai-deadline', deadlineISO));
+```
+
+**Reference:** imj.org.il (`cmqymqkbn004101nzck442rnv`) — parsed
+`ניתן להגיש מועמדות עד לתאריך`, mapped `deadline`, dropped past-deadline jobs.
