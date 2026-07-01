@@ -111,7 +111,7 @@ export async function listSites(
         scrapeRuns: {
           orderBy: { createdAt: "desc" },
           take: 1,
-          select: { id: true, status: true, jobCount: true, createdAt: true, completedAt: true },
+          select: { id: true, status: true, jobCount: true, createdAt: true, completedAt: true, warnings: true },
         },
       },
     }),
@@ -195,6 +195,14 @@ export async function updateSiteStatus(siteId: string, newStatus: SiteStatus) {
     status: newStatus,
     [timestampField]: new Date(),
   };
+
+  // A deliberate re-analyze clears the config lock so the fresh analysis is
+  // allowed to write its result (otherwise the analyzer-race guard in
+  // worker/jobs/analyze.ts would skip the write and the re-analyze would be a
+  // no-op). Fixes LRN-RACE-3.
+  if (newStatus === "ANALYZING") {
+    updateData.configLocked = false;
+  }
 
   // Moving a site to FAILED wipes its scraped jobs automatically.
   let updatedSite;
@@ -315,9 +323,13 @@ export async function saveSiteConfig(
 
   // Build update data for config save.
   // When editing an ACTIVE site, send it back to REVIEW until re-approved.
+  // Lock the config so the async analyzer can't clobber this write
+  // (analyzer-race guard, LRN-RACE-1/2). Cleared on a deliberate re-analyze
+  // (updateSiteStatus -> ANALYZING).
   const updateData: Record<string, unknown> = {
     fieldMappings: fieldMappingsWithMeta,
     pageFlow: config.pageFlow,
+    configLocked: true,
   };
   if (transitionToReview) {
     updateData.status = "REVIEW";

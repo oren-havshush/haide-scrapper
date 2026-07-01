@@ -105,22 +105,35 @@ export async function handleAnalysisJob(
         },
       });
 
-      // Moving a site to FAILED wipes its scraped jobs (mirror siteService path).
-      await prisma.$transaction([
-        prisma.job.deleteMany({ where: { siteId: site.id } }),
-        prisma.site.update({
-          where: { id: site.id },
-          data: {
-            status: "FAILED",
-            failedAt: new Date(),
-            confidenceScore: 0.0,
-          },
-        }),
-      ]);
-      await emitWorkerEvent({
-        type: "site:status-changed",
-        payload: { siteId: site.id, status: "FAILED" },
+      // Respect a locked config: a built/PUT config must not be clobbered by a
+      // transient analyzer nav failure (which would delete jobs + mark FAILED).
+      // The zero-confidence AnalysisResult rows above are kept for diagnostics.
+      const lockedOnNavFail = await prisma.site.findUnique({
+        where: { id: site.id },
+        select: { configLocked: true },
       });
+      if (lockedOnNavFail?.configLocked) {
+        console.warn(
+          `[worker] Navigation failed but site ${site.id} is configLocked — NOT marking FAILED or deleting jobs (built config preserved).`,
+        );
+      } else {
+        // Moving a site to FAILED wipes its scraped jobs (mirror siteService path).
+        await prisma.$transaction([
+          prisma.job.deleteMany({ where: { siteId: site.id } }),
+          prisma.site.update({
+            where: { id: site.id },
+            data: {
+              status: "FAILED",
+              failedAt: new Date(),
+              confidenceScore: 0.0,
+            },
+          }),
+        ]);
+        await emitWorkerEvent({
+          type: "site:status-changed",
+          payload: { siteId: site.id, status: "FAILED" },
+        });
+      }
 
       return {
         pageTitle: "Navigation failed",
@@ -333,27 +346,50 @@ export async function handleAnalysisJob(
       });
     }
 
-    // Both cases route to REVIEW -- the confidence score stored on the Site
-    // record allows the review queue to sort/filter by confidence level
-    await prisma.site.update({
+    // Analyzer-race guard (LRN-RACE-1/2): if the operator/Skill has already PUT
+    // a config (configLocked = true), the analyzer must NOT overwrite
+    // fieldMappings/confidence or force the site back to REVIEW. We re-read the
+    // flag fresh because `site` was loaded when the job was dispatched, possibly
+    // before the PUT landed. AnalysisResult rows above are still stored for
+    // diagnostics either way.
+    const lockedOnComplete = await prisma.site.findUnique({
       where: { id: site.id },
-      data: {
-        status: "REVIEW",
-        reviewAt: new Date(),
-        confidenceScore: combinedResult.overallConfidence,
-        fieldMappings: combinedResult.fieldMappings,
-      },
+      select: { configLocked: true },
     });
 
-    // Emit SSE events for analysis completion and status change
-    await emitWorkerEvent({
-      type: "analysis:completed",
-      payload: { siteId: site.id, confidence: combinedResult.overallConfidence },
-    });
-    await emitWorkerEvent({
-      type: "site:status-changed",
-      payload: { siteId: site.id, status: "REVIEW" },
-    });
+    if (lockedOnComplete?.configLocked) {
+      console.warn(
+        `[worker] Site ${site.id} is configLocked — analyzer NOT overwriting fieldMappings/status (built config preserved).`,
+      );
+      // Analysis still "completed" (results stored); no status change emitted
+      // because the site's status is intentionally left untouched.
+      await emitWorkerEvent({
+        type: "analysis:completed",
+        payload: { siteId: site.id, confidence: combinedResult.overallConfidence },
+      });
+    } else {
+      // Both cases route to REVIEW -- the confidence score stored on the Site
+      // record allows the review queue to sort/filter by confidence level
+      await prisma.site.update({
+        where: { id: site.id },
+        data: {
+          status: "REVIEW",
+          reviewAt: new Date(),
+          confidenceScore: combinedResult.overallConfidence,
+          fieldMappings: combinedResult.fieldMappings,
+        },
+      });
+
+      // Emit SSE events for analysis completion and status change
+      await emitWorkerEvent({
+        type: "analysis:completed",
+        payload: { siteId: site.id, confidence: combinedResult.overallConfidence },
+      });
+      await emitWorkerEvent({
+        type: "site:status-changed",
+        payload: { siteId: site.id, status: "REVIEW" },
+      });
+    }
 
     return {
       pageTitle,

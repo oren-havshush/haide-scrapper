@@ -65,6 +65,7 @@ model Site {
   companyName     String?
   status          SiteStatus  @default(ANALYZING)
   confidenceScore Float?
+  configLocked    Boolean     @default(false)
   fieldMappings   Json?
   pageFlow        Json?
   adminNote       String?
@@ -124,6 +125,7 @@ model ScrapeRun {
   invalidJobs     Int?
   error           String?
   failureCategory String?
+  warnings        Json?
   createdAt       DateTime        @default(now())
   completedAt     DateTime?
 

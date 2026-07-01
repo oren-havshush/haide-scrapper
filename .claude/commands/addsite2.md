@@ -383,15 +383,30 @@ Signal: field value is embedded inside formatted text, inside a sibling, or dyna
 
 ---
 
-## 7. Step 5 — Dry-run
+## 7. Step 5 — Dry-run (local, non-mutating)
+
+Preview the proposed config **locally** with the shared Playwright dry-run. It
+renders the page and prints how many items your `itemSelector` matches plus a
+field sample — and mutates nothing (no site, no worker job, no config write):
 
 ```bash
-# POST a dry-run with the proposed config (no mutation):
-DRY=$(curl -s -X POST "$BASE/api/sites/$SITE_ID/analyze" \
-  -H "$AUTH" -H "Content-Type: application/json" \
-  -d "$CONFIG_PAYLOAD")
-echo $DRY | jq '{count: (.data | length), sample: (.data[0:2])}'
+npx tsx sites/_shared/dryrun.ts '{
+  "url": "'"$URL"'",
+  "itemSel": "<itemSelector>",
+  "listingFields": { "title": {"selector":"..."}, "externalJobId": {"selector":"..."} },
+  "scroll": true,
+  "detailUrl": "<optional sample detail URL>",
+  "detailFields": { "description": {"selector":"..."} }
+}'
+# Prints  LISTING: { count, samples[] }   (+ DETAIL: {...} when detailUrl is set)
 ```
+
+> **Do NOT use `POST /api/sites/:id/analyze` as a dry-run.** It ignores the
+> request body, enqueues a full **mutating** ANALYSIS job (the analyzer
+> re-derives `fieldMappings` and can overwrite your config — the analyzer race,
+> `LRN-RACE-1/2`), and returns a `WorkerJob` record, not jobs. Config preview is
+> local (above); the real ship gates run **after** a scrape (`verify-config`,
+> `addsite-qa`, `verify-jobids`).
 
 > **Minimum job count = 2.** A site is only skipped on volume when it yields
 > **fewer than 2 jobs** (0 or 1). 2+ valid jobs is shippable — never SKIP a site

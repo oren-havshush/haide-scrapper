@@ -31,6 +31,7 @@ interface LatestScrapeRun {
   jobCount: number;
   createdAt: string;
   completedAt: string | null;
+  warnings: string[] | null;
 }
 
 interface Site {
@@ -120,12 +121,22 @@ function ScrapeStatusIndicator({ scrapeRun }: { scrapeRun: LatestScrapeRun | nul
     const completedTime = scrapeRun.completedAt
       ? new Date(scrapeRun.completedAt).toLocaleString([], { month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" })
       : "";
+    const warnings = Array.isArray(scrapeRun.warnings) ? scrapeRun.warnings : [];
     return (
       <span
         className="inline-flex items-center text-xs ml-2"
         style={{ color: "#22c55e" }}
       >
         {scrapeRun.jobCount} jobs{completedTime ? ` (${completedTime})` : ""}
+        {warnings.length > 0 && (
+          <span
+            className="ml-1 cursor-help"
+            style={{ color: "#f59e0b" }}
+            title={warnings.join("\n")}
+          >
+            {"\u26A0"} {warnings.length}
+          </span>
+        )}
       </span>
     );
   }

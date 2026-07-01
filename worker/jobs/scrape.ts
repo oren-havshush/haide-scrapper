@@ -81,6 +81,10 @@ const DETAIL_PAGE_TIMEOUT_MS = 15_000; // 15 seconds per detail page
 const NAVIGATION_TIMEOUT_MS = 30_000; // 30 seconds for page navigation
 const MAX_EXTRACTED_ITEMS = 2000;
 
+// Completion-quality thresholds (ScrapeRun.warnings — non-blocking signals only).
+const NEAR_TIMEOUT_MS = 840_000; // warn when a COMPLETED run ran within ~1 min of the 15-min cap
+const COUNT_DROP_WARN_RATIO = 0.3; // warn when the saved job count drops >30% vs the previous completed run
+
 /** Best-effort `networkidle` after `domcontentloaded` (non-blocking on timeout). */
 const NETWORKIDLE_GRACE_MS = 8_000;
 
@@ -2420,10 +2424,32 @@ async function decideActivationStatus(
  * placeholder) surface on the dashboard, and it also keeps the
  * Application Form panel alive when a live form temporarily breaks.
  */
+/** Number of fields recorded in the captured static form blob (0 if none). */
+function staticBlobFieldCount(cfg: FormCaptureConfig): number {
+  if (!cfg.staticBlob) return 0;
+  try {
+    const parsed = JSON.parse(cfg.staticBlob) as { fields?: unknown };
+    return Array.isArray(parsed.fields) ? parsed.fields.length : 0;
+  } catch {
+    return 0;
+  }
+}
+
 async function extractFormDataOrFallback(
   page: Page,
   cfg: FormCaptureConfig,
+  preferStatic = false,
 ): Promise<string | null> {
+  // When the current page is NOT a dedicated apply/detail page (e.g. a
+  // listing-only site, or a single-step pageFlow that stays on the listing),
+  // a live <form> match is very often the WRONG form — the site's own
+  // newsletter/search/contact form — silently overriding a correctly-captured
+  // static blob (LRN-APPLY-7). In that case prefer the verified static blob,
+  // but only when it actually carries a real form (>=2 fields); otherwise fall
+  // through to the normal live-first behavior.
+  if (preferStatic && staticBlobFieldCount(cfg) >= 2) {
+    return cfg.staticBlob;
+  }
   try {
     const live = await extractFormData(page, cfg);
     if (live) return live;
@@ -2524,6 +2550,64 @@ async function extractFormData(
   }, formCaptureConfig);
 
   return result;
+}
+
+// ---------------------------------------------------------------------------
+// Completion-quality warnings
+// ---------------------------------------------------------------------------
+
+/**
+ * Count raw records whose detail-page navigation failed (dead links skipped at
+ * scrape time). These are tagged on the raw record by the pageFlow extractor.
+ */
+function countDeadDetailPages(rawFieldsList: Record<string, string>[]): number {
+  let n = 0;
+  for (const r of rawFieldsList) {
+    const s = r["_detailNavStatus"];
+    if (s === "http_error" || s === "timeout" || s === "skipped_no_url") n++;
+  }
+  return n;
+}
+
+/**
+ * Build non-blocking completion-quality warnings for a finished scrape. These
+ * never change the run's success/status — they only surface silent regressions
+ * (a large job-count drop vs the prior run, a run that finished dangerously
+ * close to the timeout, or dead detail pages that were skipped).
+ */
+function buildScrapeWarnings(args: {
+  savedCount: number;
+  previousJobCount: number | null;
+  deadDetailPages: number;
+  elapsedMs: number;
+}): string[] {
+  const { savedCount, previousJobCount, deadDetailPages, elapsedMs } = args;
+  const warnings: string[] = [];
+
+  if (
+    previousJobCount != null &&
+    previousJobCount > 0 &&
+    savedCount < previousJobCount * (1 - COUNT_DROP_WARN_RATIO)
+  ) {
+    const dropPct = Math.round((1 - savedCount / previousJobCount) * 100);
+    warnings.push(
+      `job_count_drop: ${savedCount} saved vs previous ${previousJobCount} (-${dropPct}%)`,
+    );
+  }
+
+  if (elapsedMs >= NEAR_TIMEOUT_MS) {
+    warnings.push(
+      `near_timeout: run took ${Math.round(elapsedMs / 1000)}s (cap ${Math.round(SCRAPE_TIMEOUT_MS / 1000)}s)`,
+    );
+  }
+
+  if (deadDetailPages > 0) {
+    warnings.push(
+      `dead_detail_pages: ${deadDetailPages} detail page(s) skipped (http_error/timeout)`,
+    );
+  }
+
+  return warnings;
 }
 
 // ---------------------------------------------------------------------------
@@ -2729,6 +2813,8 @@ async function executeScrape(
   loadMoreSelector: string | null = null,
   browserOverrides: BrowserOverrides | null = null,
 ): Promise<ScrapeResult> {
+  const scrapeStartedAt = Date.now();
+
   // Launch browser
   const browser = await launchBrowser();
   setBrowser(browser);
@@ -2772,9 +2858,14 @@ async function executeScrape(
       rawFieldsList.length > 0 &&
       !rawFieldsList.some((r) => r["_formData"])
     ) {
+      // A single-step pageFlow leaves us on the listing page (no detail/apply
+      // navigation), so a live form here has the same decoy risk as a
+      // listing-only site — prefer the static blob. A multi-step pageFlow may
+      // legitimately be on a real apply/detail page, so keep live-first there.
       const formData = await extractFormDataOrFallback(
         page,
         formCaptureConfig,
+        pageFlow.length <= 1,
       );
       if (formData) {
         for (const raw of rawFieldsList) {
@@ -2971,11 +3062,14 @@ async function executeScrape(
     context.selectorsMatched = rawFieldsList.length > 0;
     context.itemsFound = rawFieldsList.length;
 
-    // Extract form data once from the single page and attach to all records
+    // Extract form data once from the single page and attach to all records.
+    // This is a listing-only site (no pageFlow), so a live <form> on the listing
+    // is likely a decoy — prefer the verified static blob (LRN-APPLY-7).
     if (formCaptureConfig && rawFieldsList.length > 0) {
       const formData = await extractFormDataOrFallback(
         page,
         formCaptureConfig,
+        true,
       );
       if (formData) {
         for (const raw of rawFieldsList) {
@@ -3186,6 +3280,34 @@ async function executeScrape(
   });
   if (gate.status === "REVIEW") {
     console.warn(`[scrape] activation gate REVIEW for ${site.id}: ${gate.reason}`);
+  }
+
+  // Completion-quality check (non-blocking): surface silent regressions without
+  // changing the run's success/status. Compares against the previous COMPLETED
+  // run for this site, flags near-timeout finishes, and counts skipped dead
+  // detail pages. Persisted as ScrapeRun.warnings for the dashboard.
+  try {
+    const previousRun = await prisma.scrapeRun.findFirst({
+      where: { siteId: site.id, id: { not: scrapeRunId }, status: "COMPLETED" },
+      orderBy: { createdAt: "desc" },
+      select: { jobCount: true },
+    });
+    const scrapeWarnings = buildScrapeWarnings({
+      savedCount,
+      previousJobCount: previousRun?.jobCount ?? null,
+      deadDetailPages: countDeadDetailPages(rawFieldsList),
+      elapsedMs: Date.now() - scrapeStartedAt,
+    });
+    if (scrapeWarnings.length > 0) {
+      await prisma.scrapeRun.update({
+        where: { id: scrapeRunId },
+        data: { warnings: scrapeWarnings },
+      });
+      console.warn(`[scrape] completion warnings for ${site.id}:`, scrapeWarnings);
+    }
+  } catch (err) {
+    // Warnings are best-effort telemetry — never fail a good scrape over them.
+    console.warn("[scrape] Failed to compute/persist completion warnings:", err);
   }
 
   const result: ScrapeResult = {
