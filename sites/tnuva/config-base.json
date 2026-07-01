@@ -1,0 +1,93 @@
+{
+  "itemSelector": ".post-block.jobItem.card",
+  "fieldMappings": {
+    "title": {
+      "selector": ".job-title",
+      "confidence": 100,
+      "source": "MANUAL",
+      "capturedOnUrl": "https://www.tnuva.co.il/jobs/"
+    },
+    "externalJobId": {
+      "selector": ".__ai-externalJobId",
+      "confidence": 100,
+      "source": "MANUAL",
+      "capturedOnUrl": "https://www.tnuva.co.il/jobs/"
+    },
+    "location": {
+      "selector": ".__ai-location",
+      "confidence": 100,
+      "source": "MANUAL",
+      "capturedOnUrl": "https://www.tnuva.co.il/jobs/"
+    },
+    "detailUrl": {
+      "selector": ".job-title",
+      "extractAttr": "href",
+      "confidence": 100,
+      "source": "MANUAL",
+      "capturedOnUrl": "https://www.tnuva.co.il/jobs/"
+    },
+    "description": {
+      "selector": ".__ai-description",
+      "confidence": 100,
+      "source": "MANUAL",
+      "capturedOnUrl": "https://www.tnuva.co.il/jobs/"
+    }
+  },
+  "pageFlow": [],
+  "formCapture": {
+    "formSelector": "form[action*='gf_12']",
+    "actionUrl": "https://www.tnuva.co.il/wp-admin/admin-ajax.php",
+    "method": "POST",
+    "fields": [
+      {
+        "name": "input_10",
+        "label": "שם פרטי",
+        "tagName": "INPUT",
+        "required": true,
+        "fieldType": "text"
+      },
+      {
+        "name": "input_11",
+        "label": "שם משפחה",
+        "tagName": "INPUT",
+        "required": true,
+        "fieldType": "text"
+      },
+      {
+        "name": "input_8",
+        "label": "מייל",
+        "tagName": "INPUT",
+        "required": true,
+        "fieldType": "email"
+      },
+      {
+        "name": "input_13",
+        "label": "מס' תעודת זהות",
+        "tagName": "INPUT",
+        "required": true,
+        "fieldType": "text"
+      },
+      {
+        "name": "input_7",
+        "label": "מס' טלפון נייד",
+        "tagName": "INPUT",
+        "required": true,
+        "fieldType": "tel"
+      },
+      {
+        "name": "input_5",
+        "label": "צירוף קובץ קו״ח",
+        "tagName": "INPUT",
+        "required": true,
+        "fieldType": "file"
+      },
+      {
+        "name": "input_16.1",
+        "label": "תקנון מועמדים",
+        "tagName": "INPUT",
+        "required": true,
+        "fieldType": "checkbox"
+      }
+    ]
+  }
+}

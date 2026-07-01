@@ -552,6 +552,38 @@
 - **Generalizes to:** any pre-enrichment ACTIVE site, or any new listing-only site
   whose description lives on detail pages. **Home:** Step 5b / pageFlow setup.
 
+### LRN-WRK-12 — Single-page path runs `setupScript` BEFORE `autoScrollUntilStable` — enrichment scripts must self-scroll
+- **Date / site:** 2026-07-01 · tnuva.co.il/jobs/ (`cmqyh9j7k002n01nzpb7145ri`) shipped 20 of 99 jobs
+- **Signal:** an infinite-scroll listing has a **per-card enrichment `setupScript`**
+  (injects `.__ai-*` spans, fetches detail pages) but the scrape only returns the
+  first screenful of jobs (~20), even though the worker "supports infinite scroll".
+- **Root cause:** in the **single-page path** (`extractRawFieldsFromListingPage`),
+  the worker runs `setupScript` **first**, THEN its own `autoScrollUntilStable`, and
+  only re-runs the script afterwards when `loadMoreSelector` is set:
+  ```
+  if (setupScript) runSetupScript(...)          // enriches only the ~20 visible cards
+  await autoScrollUntilStable(...)              // loads the rest — too late, unenriched
+  await clickLoadMoreUntilStable(...)
+  if (setupScript && loadMoreSelector) runSetupScript(...)   // re-run gated on loadMoreSelector
+  ```
+  So the built-in autoScroll can't save an enrichment script: the extra cards it
+  loads never get their `.__ai-*` spans. (Note the **multi-page/`pageFlow` path is
+  the opposite** — it scrolls at ~L1373 *before* setupScript at ~L1379 — which is
+  why this only bites single-page listing-only configs.)
+- **Fix:** make the enrichment `setupScript` **scroll to the bottom itself, first**,
+  before enriching — a `while (grew) { window.scrollTo(0, scrollHeight); await sleep }`
+  loop with a no-growth break and item cap, then run the per-card enrichment over the
+  now-complete DOM. (Tnuva: 20→99 jobs after adding the self-scroll preamble.)
+- **Also caught here (secondary):** the analyzer had defaulted `externalJobId` to the
+  URL slug (`tnuva-<decoded-slug>`); the real printed job number (`.jobIdNum` / "משרה
+  מס' 198417") sat on the detail page we were **already fetching** — grab the canonical
+  number in the same pass. And scope description to the content block
+  (`.job-content section.free-content`), NOT the whole `.job-content`, which included the
+  "משרות נוספות שאולי יעניינו אותך" related-jobs section.
+- **Generalizes to:** every single-page, listing-only site that combines infinite
+  scroll with an enrichment setupScript. **Home:** Step 4 setupScript rules /
+  `recipes/pagination-and-loading.md` §3.
+
 ### LRN-WRK-1 — Worker honors only a fixed set of field-mapping attributes
 - **Signal:** API accepts `regex/transform/extractRegex/postProcess/extract` but
   the worker **ignores** them — you get the whole text node dumped in the field.

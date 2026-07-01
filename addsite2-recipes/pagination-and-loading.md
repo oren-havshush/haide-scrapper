@@ -199,6 +199,18 @@ for (let i = 0; i < 30; i++) { // max 30 scroll cycles
 
 If the page uses a virtual/windowed list (items are removed from DOM as you scroll past them) → switch to Strategy A from §1 (find and call the underlying API directly).
 
+> **LANDMINE — an enrichment `setupScript` on an infinite-scroll listing MUST
+> self-scroll first; the worker's built-in autoScroll can't save it.** In the
+> **single-page path** the worker runs `setupScript` **before** its own
+> `autoScrollUntilStable`, and only re-runs the script afterwards when
+> `loadMoreSelector` is set. So a per-card enrichment script (injecting `.__ai-*`
+> spans / fetching detail pages) only ever sees the ~20 initially-rendered cards —
+> the cards autoScroll loads later stay unenriched and silently drop out. Put a
+> scroll-to-bottom loop (like the snippet above) at the **top** of the enrichment
+> script, then enrich the now-complete DOM. The multi-page (`pageFlow`) path is the
+> opposite (it scrolls before setupScript), so this bites single-page, listing-only
+> configs. Cite: `LRN-WRK-12` (tnuva.co.il — 20/99 → 99/99).
+
 ---
 
 ## 4. Workday pagination

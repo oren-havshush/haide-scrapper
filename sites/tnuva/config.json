@@ -1,0 +1,94 @@
+{
+  "itemSelector": ".post-block.jobItem.card",
+  "fieldMappings": {
+    "title": {
+      "selector": ".job-title",
+      "confidence": 100,
+      "source": "MANUAL",
+      "capturedOnUrl": "https://www.tnuva.co.il/jobs/"
+    },
+    "externalJobId": {
+      "selector": ".__ai-externalJobId",
+      "confidence": 100,
+      "source": "MANUAL",
+      "capturedOnUrl": "https://www.tnuva.co.il/jobs/"
+    },
+    "location": {
+      "selector": ".__ai-location",
+      "confidence": 100,
+      "source": "MANUAL",
+      "capturedOnUrl": "https://www.tnuva.co.il/jobs/"
+    },
+    "detailUrl": {
+      "selector": ".job-title",
+      "extractAttr": "href",
+      "confidence": 100,
+      "source": "MANUAL",
+      "capturedOnUrl": "https://www.tnuva.co.il/jobs/"
+    },
+    "description": {
+      "selector": ".__ai-description",
+      "confidence": 100,
+      "source": "MANUAL",
+      "capturedOnUrl": "https://www.tnuva.co.il/jobs/"
+    }
+  },
+  "pageFlow": [],
+  "formCapture": {
+    "formSelector": "form[action*='gf_12']",
+    "actionUrl": "https://www.tnuva.co.il/wp-admin/admin-ajax.php",
+    "method": "POST",
+    "fields": [
+      {
+        "name": "input_10",
+        "label": "שם פרטי",
+        "tagName": "INPUT",
+        "required": true,
+        "fieldType": "text"
+      },
+      {
+        "name": "input_11",
+        "label": "שם משפחה",
+        "tagName": "INPUT",
+        "required": true,
+        "fieldType": "text"
+      },
+      {
+        "name": "input_8",
+        "label": "מייל",
+        "tagName": "INPUT",
+        "required": true,
+        "fieldType": "email"
+      },
+      {
+        "name": "input_13",
+        "label": "מס' תעודת זהות",
+        "tagName": "INPUT",
+        "required": true,
+        "fieldType": "text"
+      },
+      {
+        "name": "input_7",
+        "label": "מס' טלפון נייד",
+        "tagName": "INPUT",
+        "required": true,
+        "fieldType": "tel"
+      },
+      {
+        "name": "input_5",
+        "label": "צירוף קובץ קו״ח",
+        "tagName": "INPUT",
+        "required": true,
+        "fieldType": "file"
+      },
+      {
+        "name": "input_16.1",
+        "label": "תקנון מועמדים",
+        "tagName": "INPUT",
+        "required": true,
+        "fieldType": "checkbox"
+      }
+    ]
+  },
+  "setupScript": "// Tnuva jobs listing: scroll to load all cards, then enrich each card.\r\nconst sleep = (ms) => new Promise((r) => setTimeout(r, ms));\r\nlet prev = 0;\r\nlet noGrowth = 0;\r\nfor (let i = 0; i < 40 && noGrowth < 3; i++) {\r\n  window.scrollTo(0, document.body.scrollHeight);\r\n  await sleep(800);\r\n  const n = document.querySelectorAll('.post-block.jobItem.card').length;\r\n  if (n <= prev) noGrowth++;\r\n  else noGrowth = 0;\r\n  prev = n;\r\n  if (prev >= 200) break;\r\n}\r\nwindow.scrollTo(0, 0);\r\n\r\nconst locFromTitle = (t) => {\r\n  const m = (t || '').match(/\\sב([\\u0590-\\u05FF][\\u0590-\\u05FF\\s\\-\\\"'״]*)\\s*$/);\r\n  return m ? m[1].trim() : '';\r\n};\r\n\r\nconst mk = (cls, val) => {\r\n  const s = document.createElement('span');\r\n  s.className = cls;\r\n  s.textContent = val;\r\n  return s;\r\n};\r\n\r\nawait Promise.all(\r\n  [...document.querySelectorAll('.post-block.jobItem.card')].map(async (item) => {\r\n    if (item.querySelector('.__ai-externalJobId')) return;\r\n    const link = item.querySelector('.job-title');\r\n    if (!link) return;\r\n    const url = link.href || '';\r\n    const slug = url.split('/').filter(Boolean).pop() || '';\r\n    const decoded = decodeURIComponent(slug);\r\n    const title = (link.textContent || '').trim();\r\n    const cardLoc = (item.querySelector('.location')?.textContent || '').trim();\r\n    const loc = locFromTitle(title) || cardLoc;\r\n    if (loc) item.appendChild(mk('__ai-location', loc));\r\n\r\n    try {\r\n      const resp = await fetch(url);\r\n      const html = await resp.text();\r\n      const doc = new DOMParser().parseFromString(html, 'text/html');\r\n      const jobId = doc.querySelector('.jobIdNum')?.textContent?.trim() || '';\r\n      item.appendChild(mk('__ai-externalJobId', jobId || 'tnuva-' + decoded));\r\n      const free = doc.querySelector('.job-content section.free-content');\r\n      if (free) {\r\n        const text = (free.innerText || free.textContent || '').trim();\r\n        if (text) item.appendChild(mk('__ai-description', text));\r\n      }\r\n    } catch (e) {}\r\n  }),\r\n);\r\n"
+}
