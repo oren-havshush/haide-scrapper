@@ -17,9 +17,6 @@ type Site = {
   latestScrapeRun: { status?: string; jobCount?: number } | null;
 };
 
-const TOKEN = "b4c323139be81fcd7b27ad1b16e6d372e941e011f1bd45b950823ad65bcf76b1";
-const BASE = "https://scrapper.haide-jobs.co.il";
-
 function readJSON<T>(p: string): T {
   return JSON.parse(fs.readFileSync(p, "utf8")) as T;
 }
