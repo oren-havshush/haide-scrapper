@@ -1,0 +1,75 @@
+{
+  "itemSelector": ".c-box-career",
+  "pageFlow": [],
+  "fieldMappings": {
+    "title": {
+      "selector": ".c-box-career__title",
+      "confidence": 0.95,
+      "source": "manual"
+    },
+    "location": {
+      "selector": ".__ai-loc",
+      "confidence": 0.9,
+      "source": "manual"
+    },
+    "description": {
+      "selector": ".__ai-description",
+      "confidence": 0.9,
+      "source": "manual"
+    },
+    "externalJobId": {
+      "selector": ".__ai-eid",
+      "confidence": 0.9,
+      "source": "manual"
+    },
+    "applicationInfo": {
+      "selector": ".__ai-apply",
+      "confidence": 0.9,
+      "source": "manual"
+    }
+  },
+  "formCapture": {
+    "formSelector": ".c-box-career form.wpcf7-form",
+    "actionUrl": "https://www.minrav.co.il/wp-json/contact-form-7/v1/contact-forms/223/feedback",
+    "method": "POST",
+    "fields": [
+      {
+        "name": "your-name",
+        "label": "שם מלא",
+        "fieldType": "text",
+        "required": true,
+        "tagName": "input"
+      },
+      {
+        "name": "your-email",
+        "label": "דוא״ל",
+        "fieldType": "email",
+        "required": true,
+        "tagName": "input"
+      },
+      {
+        "name": "your-phone",
+        "label": "טלפון",
+        "fieldType": "text",
+        "required": true,
+        "tagName": "input"
+      },
+      {
+        "name": "linkedinurl",
+        "label": "לינק לעמוד לינקדאין",
+        "fieldType": "url",
+        "required": false,
+        "tagName": "input"
+      },
+      {
+        "name": "file-827",
+        "label": "הוספת קו״ח (PDF)",
+        "fieldType": "file",
+        "required": false,
+        "tagName": "input"
+      }
+    ]
+  },
+  "loadMoreSelector": ".b-careers__actions button",
+  "setupScript": "// minrav.co.il /careers/ — setupScript\n// Injects per-item hidden spans the worker's selectors read:\n//   .__ai-loc          canonical city name (per \"CSV files/city.csv\")\n//   .__ai-eid          stable externalJobId (hash of title only)\n//   .__ai-description  full job body with line breaks preserved\n//   .__ai-apply        recruiting-email apply path (kept as fallback next to formCapture)\n// Runs on the listing page; re-run after \"load more\" (idempotent via the .__ai-loc guard).\n\nfunction haideHash(s){var h=5381,i=s.length;while(i){h=(h*33)^s.charCodeAt(--i);}return (h>>>0).toString(36);}\n\n// Canonical spellings taken from \"CSV files/city.csv\". The site writes\n// \"תל-אביב\" (hyphen) and prefixes the HQ label, neither of which matches the file.\nvar LOC_ALIAS = {\n  'תל-אביב': 'תל אביב-יפו',\n  'תל אביב': 'תל אביב-יפו',\n  'מטה החברה, תל-אביב': 'תל אביב-יפו',\n  'מטה החברה + שטח (משולב)': 'תל אביב-יפו'\n};\n\nfunction cleanLocation(raw){\n  var s = (raw || '').replace(/^\\s*מיקום:\\s*/, '').trim();\n  if (LOC_ALIAS[s]) return LOC_ALIAS[s];\n  if (s.indexOf(',') > -1) {                       // \"מטה החברה, תל-אביב\" -> keep the city segment\n    var parts = s.split(',').map(function(p){ return p.trim(); }).filter(Boolean);\n    var cities = parts.filter(function(p){ return !/^(מטה|משרדי|הנהלה)\\b/.test(p); });\n    if (cities.length) s = cities[cities.length - 1];\n  }\n  return LOC_ALIAS[s] || s;\n}\n\nfunction structuredText(el){\n  if (!el) return '';\n  var c = el.cloneNode(true);\n  c.querySelectorAll('form,.c-form,dialog button,.c-box-career__content-close').forEach(function(e){ e.remove(); });\n  c.querySelectorAll('p,div,ul,ol,li,br,h1,h2,h3,h4,h5,h6,tr').forEach(function(e){ e.insertAdjacentText('afterend', '\\n'); });\n  return c.textContent.replace(/[ \\t]+\\n/g, '\\n').replace(/\\n{3,}/g, '\\n\\n').trim();\n}\n\nfor (const item of document.querySelectorAll('.c-box-career')) {\n  if (item.querySelector('.__ai-loc')) continue;\n\n  const locSpan = document.createElement('span');\n  locSpan.className = '__ai-loc'; locSpan.style.display = 'none';\n  locSpan.textContent = cleanLocation(item.querySelector('.c-box-career__location')?.textContent);\n  item.appendChild(locSpan);\n\n  // Hash the title alone: keeps the dedup key stable when a location string is corrected.\n  const title = item.querySelector('.c-box-career__title')?.textContent?.trim() || '';\n  const idSpan = document.createElement('span');\n  idSpan.className = '__ai-eid'; idSpan.style.display = 'none';\n  idSpan.textContent = 'h-' + haideHash(title.toLowerCase().replace(/\\s+/g, ' ').trim());\n  item.appendChild(idSpan);\n\n  const descSpan = document.createElement('span');\n  descSpan.className = '__ai-description'; descSpan.style.display = 'none';\n  descSpan.textContent = structuredText(item.querySelector('.c-box-career__content-body'));\n  item.appendChild(descSpan);\n\n  // The per-job CF7 form is reCAPTCHA v3-gated, so the careers email stays as a usable fallback.\n  const applySpan = document.createElement('span');\n  applySpan.className = '__ai-apply'; applySpan.style.display = 'none';\n  applySpan.textContent = 'mailto:cv@minrav.co.il';\n  item.appendChild(applySpan);\n}\n"
+}

@@ -1,0 +1,146 @@
+[
+  {
+    "title": "אחראי/ת ארגון ושיטות",
+    "location": "תל אביב-יפו",
+    "externalJobId": "h-sf4k3o",
+    "applicationInfo": "mailto:cv@minrav.co.il",
+    "description": "תיאור המשרה\n• אחריות להוצאה לפועל של תהליכים אסטרטגיים לרבות: תוכניות עבודה, נהלי חברה ובניית תהליכים\n• ביצוע ניתוחים ותצפיות על תהליכים קיימים ובנייה מחדש של תהליכים\n• כתיבת נהלים, מסמכי אפיון ותרשימי זרימה\n• ליווי תהליכי אפיון, פיתוח והטמעה בקרב צוותים שונים בארגון.\n• הטמעת תהליכים חדשים בארגון וטכנולוגיות חדשות.\n• עבודה מול ממשקים מרובים – הנהלה, מחלקות רוחביות, חברות הבת וספקים חיצוניים\n• מדידה והצגת ביצועים באמצעות דוחות ודשבורדים\n\nדרישות התפקיד\n• תואר ראשון בהנדסת תעשייה וניהול – חובה\n• 2-4 שנות ניסיון בניהול פרויקטים – חובה\n• יכולת אנליטית גבוהה וראייה מערכתית\n• שליטה גבוהה ב-Office ובפרט Excel ו-PowerPoint\n• היכרות עם מתודולוגיות ניהול פרויקטים\n\nסביבת עבודה\n• משרה מלאה\n• עבודה מהמשרדים בתל אביב + הגעה לאתרי הבנייה לפי צורך\n• נדרשת זמינות גבוהה ויכולת עבודה עצמאית מול גורמים רבים\n• יכולת למידה מהירה של מערכות חדשות וטכנולוגיות מתקדמות",
+    "_formData": {
+      "actionUrl": "https://www.minrav.co.il/wp-json/contact-form-7/v1/contact-forms/223/feedback",
+      "method": "POST",
+      "fields": [
+        {
+          "name": "your-name",
+          "label": "שם מלא",
+          "tagName": "input",
+          "required": true,
+          "fieldType": "text"
+        },
+        {
+          "name": "your-email",
+          "label": "דוא״ל",
+          "tagName": "input",
+          "required": true,
+          "fieldType": "email"
+        },
+        {
+          "name": "your-phone",
+          "label": "טלפון",
+          "tagName": "input",
+          "required": true,
+          "fieldType": "text"
+        },
+        {
+          "name": "linkedinurl",
+          "label": "לינק לעמוד לינקדאין",
+          "tagName": "input",
+          "required": false,
+          "fieldType": "url"
+        },
+        {
+          "name": "file-827",
+          "label": "הוספת קו״ח (PDF)",
+          "tagName": "input",
+          "required": false,
+          "fieldType": "file"
+        }
+      ]
+    }
+  },
+  {
+    "title": "עורך/ת דין – מחלקת חוזים והתקשרויות",
+    "location": "תל אביב-יפו",
+    "externalJobId": "h-wlwq45",
+    "applicationInfo": "mailto:cv@minrav.co.il",
+    "description": "תיאור התפקיד\n• הכנה, ניהול מו\"מ וליווי שוטף של הסכמים מול קבלני משנה, נותני שירותים וספקים\n• ניהול ומעקב אחר הסכמי ההתקשרות, לרבות בקרה אחר הליך אישור וחתימה על ההסכמים\n• התנהלות שוטפת מול מנהלי פרויקטי ביצוע, מהנדסי ביצוע, סמנכ\"לים ומנכ\"לים של החטיבות השונות בחברה\n• מתן מענה מקצועי בסוגיות משפטיות לכלל חטיבות החברה\n\nדרישות המשרה\n• ניסיון של 2–3 שנים כעורך/ת דין בתחום חוזים מסחריים / נדל\"ן (הכרות עם הסכמי קבלן וליווי פרויקטי ביצוע – יתרון משמעותי)\n• סדר וארגון – יכולת שליטה בריבוי משימות ועמידה בלו\"ז\n• יוצא/ת משרד מוביל או חברה בתחום\n• יכולת עבודה בצוות וניהול ממשקים מול רמות בכירות בחברה\n• יכולת עבודה עצמאית, חשיבה משפטית ומערכתית, יחסי אנוש מצוינים\n• ידע בפריוריטי – יתרון",
+    "_formData": {
+      "actionUrl": "https://www.minrav.co.il/wp-json/contact-form-7/v1/contact-forms/223/feedback",
+      "method": "POST",
+      "fields": [
+        {
+          "name": "your-name",
+          "label": "שם מלא",
+          "tagName": "input",
+          "required": true,
+          "fieldType": "text"
+        },
+        {
+          "name": "your-email",
+          "label": "דוא״ל",
+          "tagName": "input",
+          "required": true,
+          "fieldType": "email"
+        },
+        {
+          "name": "your-phone",
+          "label": "טלפון",
+          "tagName": "input",
+          "required": true,
+          "fieldType": "text"
+        },
+        {
+          "name": "linkedinurl",
+          "label": "לינק לעמוד לינקדאין",
+          "tagName": "input",
+          "required": false,
+          "fieldType": "url"
+        },
+        {
+          "name": "file-827",
+          "label": "הוספת קו״ח (PDF)",
+          "tagName": "input",
+          "required": false,
+          "fieldType": "file"
+        }
+      ]
+    }
+  },
+  {
+    "title": "רכז/ת התקשרויות, רמת החייל , מטה",
+    "location": "תל אביב-יפו",
+    "externalJobId": "h-qoxa7",
+    "applicationInfo": "mailto:cv@minrav.co.il",
+    "description": "תיאור התפקיד\n• אחריות כוללת לניהול תהליכי האדמיניסטרציה של התקשרויות חוזיות עם קבלני משנה, נותני שירותים וספקים.\n• ניהול ומעקב אחר חוזי התקשרות לרבות החתמתם והזנתם למערכת Priority.\n• עבודה שוטפת מול גורמי מטה, מנהלי פרויקטים בשטח וקבלני משנה, לרבות תיאום וממשק עם גורמים פנים וחוץ ארגוניים.\n\nדרישות\n• היכרות עם מערכת Priority- יתרון.\n• יכולת קריאת כתב כמויות- יתרון משמעותי.\n• ניסיון בתפקיד דומה בחברה קבלנית- יתרון משמעותי.\n• שליטה מלאה ביישומי Office.\n• יכולת עבודה תחת עומס רב והגדרת סדרי עדיפויות.\n• יחסי אנוש מצוינים ותודעת שירות גבוהה.",
+    "_formData": {
+      "actionUrl": "https://www.minrav.co.il/wp-json/contact-form-7/v1/contact-forms/223/feedback",
+      "method": "POST",
+      "fields": [
+        {
+          "name": "your-name",
+          "label": "שם מלא",
+          "tagName": "input",
+          "required": true,
+          "fieldType": "text"
+        },
+        {
+          "name": "your-email",
+          "label": "דוא״ל",
+          "tagName": "input",
+          "required": true,
+          "fieldType": "email"
+        },
+        {
+          "name": "your-phone",
+          "label": "טלפון",
+          "tagName": "input",
+          "required": true,
+          "fieldType": "text"
+        },
+        {
+          "name": "linkedinurl",
+          "label": "לינק לעמוד לינקדאין",
+          "tagName": "input",
+          "required": false,
+          "fieldType": "url"
+        },
+        {
+          "name": "file-827",
+          "label": "הוספת קו״ח (PDF)",
+          "tagName": "input",
+          "required": false,
+          "fieldType": "file"
+        }
+      ]
+    }
+  }
+]
