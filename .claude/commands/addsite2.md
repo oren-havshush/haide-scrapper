@@ -447,13 +447,31 @@ Signal to capture: there is no captured form yet and you can see a real apply fo
 > before PUT — not after QA flags `description=0`. Cite: `LRN-SETUP-2` (madanes.com).
 
 **Login gate:** if the apply requires login → `formStatus: NONE`, mark SKIPPED. Do not attempt to log in.
-**Turnstile/CAPTCHA gate:** if the apply form has Turnstile/CAPTCHA → SKIPPED. Log `LRN-APPLY-1`.
+**Turnstile/CAPTCHA gate — classify the captcha BEFORE skipping (`LRN-APPLY-10`):**
+"has a captcha" is NOT one verdict. Two distinct cases:
+- **Blocking challenge** (Cloudflare Turnstile, reCAPTCHA **v2** checkbox/challenge):
+  fires *before* the form is reachable, fields never render → `formStatus: NONE`,
+  SKIPPED. Log `LRN-APPLY-1` / `LRN-APPLY-3`.
+- **Invisible / score-based** (reCAPTCHA **v3**): the form renders in full and every
+  field is readable — the captcha gates **submission**, not **capture**. → **Capture the
+  form normally.** Keep the careers email / apply URL in `applicationInfo` as a parallel
+  fallback, and note in `adminNote` that the token is browser-generated (~2 min TTL), so
+  a server-side POST of the static fields alone will fail.
+
+  v3 markers: `recaptcha/api.js?render=<sitekey>` (a `render=` param, not a rendered
+  widget), a hidden `g-recaptcha-response` / `_wpcf7_recaptcha_response` input, or
+  `window.grecaptcha` defined with **no** visible checkbox/challenge iframe.
+
+  Do NOT ship email-only on a v3 form — that discards a real CV-upload path. Cite:
+  `LRN-APPLY-10` (minrav.co.il, WordPress + Contact Form 7).
+
 **Multi-form pages — enumerate ALL forms, then rank:** a page can carry 3+ forms,
 some behind **secondary buttons/modals** (the most prominent "apply" button may open
-the **reCAPTCHA-gated** form while a less obvious button opens a usable one). List
-every `<form>`, check EACH for Turnstile/reCAPTCHA, and pick by this order:
+a **blocking-captcha-gated** form while a less obvious button opens a usable one). List
+every `<form>`, classify EACH captcha per the gate above, and pick by this order:
 **(1) captcha-free CV-file-upload form → (2) captcha-free contact/lead form →
-(3) captcha-gated = unusable.** Don't stop at the first captcha-free form — prefer
+(3) v3-only form (capturable — see above) → (4) blocking-challenge form = unusable.**
+Don't stop at the first captcha-free form — prefer
 the one that accepts a CV file. Reference: clalitsmile.co.il (Formidable Forms, 3
 forms): the prominent "שליחת קו״ח" button is reCAPTCHA-gated, but a separate
 generic-position button exposes a captcha-free CV upload (`LRN-FORM-7`). Capture

@@ -238,6 +238,30 @@
   enclosing `<form>` (worker auto-capture finds 0 forms), and any TopMatch/RedMatch
   tenant. **Home:** Step 5b / `recipes/form-capture.md` §9.
 
+### LRN-APPLY-10 — Invisible (v3) reCAPTCHA does NOT make a form uncapturable
+- **Date / site:** 2026-08-03 · minrav.co.il/careers/ (`cmsbxxv9b000601p0hbhkk5r9`)
+- **Signal:** onboarding saw Google reCAPTCHA on a per-job Contact Form 7 apply form,
+  applied the "Turnstile/CAPTCHA gate → SKIPPED" rule (§8 / LRN-APPLY-3), and shipped
+  `formStatus: EMAIL` with `formCapture: null` — discarding a real CV-upload form that
+  the site presents as its primary apply path. The user found the form by hand
+  (`div.c-form-primary`) and rejected the verdict.
+- **Root cause — two different failure modes were collapsed into one rule:**
+  - **Blocking challenge** (Turnstile, reCAPTCHA v2): fires *before* the form is
+    reachable; the fields never render → genuinely uncapturable. LRN-APPLY-3 stands.
+  - **Invisible / score-based** (reCAPTCHA **v3**): the form renders in full and every
+    field is readable. The captcha gates **submission**, not **capture**.
+- **Fix:** identify which kind before skipping. v3 markers — `recaptcha/api.js?render=<sitekey>`
+  (a `render=` param rather than a rendered widget), a hidden `g-recaptcha-response` /
+  `_wpcf7_recaptcha_response` input, `window.grecaptcha` defined with no visible
+  checkbox or challenge iframe. When it is v3 → **capture the form normally**, keep the
+  careers email or apply URL in `applicationInfo` as a parallel fallback, and record the
+  token caveat in `adminNote`: CF7's token is browser-generated with a ~2 min TTL, so a
+  server-side POST of the static fields alone will fail — the submitter has to render
+  the page for a fresh token.
+- **Generalizes to:** every reCAPTCHA-v3-protected apply form — very common on Israeli
+  WordPress + Contact Form 7 / Elementor sites. **Home:** `addsite2.md` §8 captcha gate /
+  `recipes/form-capture.md` §0.
+
 ---
 
 ## D. externalJobId stability
@@ -292,6 +316,23 @@
 - **Generalizes to:** every Hebrew/RTL or non-Latin slugged site. **Home:**
   `recipes/setupscript-patterns.md` §3.
 
+### LRN-ID-7 — Never hash a field you may later normalize (location churn)
+- **Date / site:** 2026-08-03 · minrav.co.il/careers/ (`cmsbxxv9b000601p0hbhkk5r9`)
+- **Signal:** the id was `h-<hash(title + '|' + location)>`. A later data-quality fix
+  corrected the location (`מטה החברה, תל-אביב` → `תל אביב-יפו`, see LRN-LOC-4) and
+  silently re-keyed all 5 affected jobs. Cleaning a field should not churn the dedup key.
+- **Fix:** hash only the most stable unique field. Titles were globally unique here
+  (11/11 distinct), so `h-<hash(title)>` is both unique and immune to location or
+  formatting corrections. Add a disambiguator (LRN-ID-1) **only** when titles genuinely
+  repeat — and pick one unlikely to be normalized later (department / branch / req
+  number over a free-text location string).
+- **Note — re-keying leaves no orphan jobs, but does orphan overrides:** every scrape
+  runs `prisma.job.deleteMany({ where: { siteId } })` and re-inserts
+  (`worker/jobs/scrape.ts:3208`), so the job set is replaced wholesale. But
+  `JobLocationOverride` is keyed by `externalJobId` (`prisma/schema.prisma:144`), so a
+  re-key detaches any manual dashboard location override.
+- **Generalizes to:** every hash-synthesized id. **Home:** `recipes/setupscript-patterns.md` §3.
+
 ---
 
 ## E. Location & gazetteer
@@ -324,6 +365,36 @@
 - **Fix:** setupScript regex → inject `[data-extracted-location]` span → map a
   normal CSS selector at it.
 - **Generalizes to:** any in-prose field. **Home:** Step 4 setupScript fallback.
+
+### LRN-LOC-4 — `CSV files/city.csv` is the canonical spelling — the worker gazetteer disagrees with it
+- **Date / site:** 2026-08-03 · minrav.co.il/careers/ (`cmsbxxv9b000601p0hbhkk5r9`)
+- **Signal:** the site printed `מיקום: מטה החברה, תל-אביב` — two separate defects: an HQ
+  label that isn't a place, and the spelling `תל-אביב`, which exists in **neither**
+  reference list. Deriving a "canonical" spelling from the worker gazetteer would have
+  produced `תל אביב` — a value the product's own city list does not contain.
+- **The two lists are NOT the same** (measured 2026-08-03):
+
+  | list | entries |
+  | --- | --- |
+  | `worker/data/il-places.ts` (`IL_CITIES` + `IL_REGIONS`) | 1385 |
+  | `CSV files/city.csv` (product city list) | 1365 |
+  | in gazetteer but **absent** from `city.csv` | **29** |
+
+  The divergences are mostly dual spellings: `תל אביב` (the CSV has only `תל אביב-יפו`),
+  `פתח-תקווה`, `קרית שמונה`, `קרית אריה`, `הרצלייה`.
+- **Why it bites silently:** the gazetteer runs **only when `location` extracts empty**
+  (`worker/lib/normalizer.ts:737-753`), so on any site where location is left unmapped the
+  worker can auto-fill a spelling the product list lacks, fragmenting the city filter. No
+  gate catches it — `verify-config`, `addsite-qa` and `verify-jobids` all ignore location
+  *values*.
+- **Fix:** treat `CSV files/city.csv` as the source of truth. After each scrape of an IL
+  site, pull the distinct `location` values and assert each appears **verbatim** in
+  `city.csv`; correct mismatches in `setupScript` via an alias map plus a comma-split that
+  drops non-place qualifiers (`מטה החברה`, `משרדי`, `הנהלה`). Note that a
+  wrong-but-non-empty location is never auto-corrected — neither the gazetteer nor
+  `locationFallback` can repair it (LRN-LOC-1).
+- **Generalizes to:** every Hebrew site. **Home:** Step 4 location /
+  `recipes/setupscript-patterns.md` §6.
 
 ---
 
@@ -753,6 +824,24 @@
   semantic selectors — trivially scrapable.
 - **Home:** Triage §2.2 in addsite2.md.
 
+### LRN-WP-2 — WordPress REST returns the whole archive, not the open roles
+- **Date / site:** 2026-08-03 · minrav.co.il/careers/ (`cmsbxxv9b000601p0hbhkk5r9`)
+- **Signal:** `recipes/pagination-and-loading.md` calls the WP REST API "the **PREFERRED**
+  path for ANY WordPress job board". Here `/wp-json/wp/v2/careers?per_page=100` returned
+  **33** posts (`x-wp-total: 33`) while the careers page rendered — and itself declared —
+  **11** ("11 משרות"). The extra 22 are closed/archived postings still stored as CPT
+  entries, and **no REST field separates them**: all carry `status: "publish"` and an
+  empty `acf: []`. Following the recipe would have shipped 22 dead jobs at fill=1.00,
+  passing every gate.
+- **Fix:** use WP REST as a **cross-check**, not the source of truth, unless a status /
+  meta / taxonomy field provably marks open roles. Reconcile against the site's own
+  declared count or the rendered DOM before picking a source. Here the DOM (11 items
+  behind a load-more button) was authoritative.
+- **Still useful for:** confirming coverage, and as an id source — REST exposes real post
+  ids, which beat hash synthesis when the listing carries no native id (see LRN-ID-7).
+- **Generalizes to:** any WP job board whose CPT retains closed postings — i.e. most of
+  them. **Home:** `recipes/pagination-and-loading.md` §0.
+
 ---
 
 ### LRN-SPA-8 — Civi.co.il embedded jobs board: false AWSM scrape + listing-only content truncation
@@ -859,3 +948,10 @@
   `addsite` skill during the addsite2 audit (see `docs/addsite2-migration.md`).
   These entries remain inlined in `addsite` for now; the citation pass (replace
   narrative with `see LRN-…`) happens in addsite2 Phase 0/2.
+- **2026-08-03** — Added `LRN-APPLY-10`, `LRN-ID-7`, `LRN-LOC-4`, `LRN-WP-2` from the
+  minrav.co.il re-fix (a reCAPTCHA-v3 apply form was wrongly skipped as uncapturable;
+  location normalized to the `CSV files/city.csv` spelling). Also corrected two pieces of
+  guidance that would have caused a repeat: the §8 captcha gate in `addsite2.md` now
+  classifies blocking-challenge vs invisible-v3 captchas instead of skipping both, and
+  `recipes/form-capture.md` §4 no longer claims the worker serializes a `<form>` mapped
+  to `applicationInfo` (it does not — `domFieldExtract.ts` returns plain text).

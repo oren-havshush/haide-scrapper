@@ -298,11 +298,28 @@ Cite: `LRN-APPLY-2`.
 
 ## 4. Per-job `applicationInfo` (structured form on detail page)
 
-Some sites (e.g. `yes.co.il`) embed the full apply form on each job detail page as a unique form — NOT a shared site-level `formCapture`. In this case, do NOT set `formCapture` on the site config.
+Some sites (e.g. `yes.co.il`) embed the full apply form on each job detail page as a unique form — NOT a shared site-level `formCapture`.
 
-Instead, map `applicationInfo` in `fieldMappings` to the `<form>` element, and the worker will serialize the form structure per-job as `rawData.applicationInfo`.
+> **LANDMINE — the worker does NOT serialize a `<form>` mapped to `applicationInfo`.**
+> An earlier version of this section claimed that mapping `applicationInfo` at the
+> `<form>` element makes the worker "serialize the form structure per-job as
+> `rawData.applicationInfo`". **It does not.** `worker/lib/domFieldExtract.ts` has no
+> `<form>`/`<input>` special case at all — it clones the element, strips tags, and
+> returns `textContent`. `<input>` elements have no text content, so you get the
+> surrounding label/button text (or an empty string), never a field schema. Mapping a
+> form there also *suppresses* the real blob: `worker/lib/normalizer.ts:658-660` resolves
+> `applicationInfo = explicitAppInfo || rawFields["_formData"]`, so a non-empty text
+> extraction wins over the captured form. Verified 2026-08-03 (`LRN-APPLY-10` sibling
+> finding). **Home:** `docs/addsite-learnings.md`.
 
-Signal: `addsite-qa` reports `formStatus: CAPTURED` and `formFields > 0` — meaning jobs already carry the form in `applicationInfo`. No further action needed.
+**What to do instead:** capture the form into `formCapture` as usual (§2/§5). The worker
+attaches the serialized schema to every job as `rawData._formData` — that is what the
+dashboard's per-job field table reads. Leave `applicationInfo` for a human-readable apply
+path (a `mailto:` or an apply URL); it happily coexists with `_formData`.
+
+Signal that no further action is needed: `addsite-qa` reports `formStatus: CAPTURED` and
+`formFields > 0`. Verify by confirming a sampled job's `rawData._formData` lists the
+expected fields — not by looking at `applicationInfo`.
 
 ---
 
