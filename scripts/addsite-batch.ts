@@ -913,12 +913,17 @@ async function getStoredFieldMappings(
   siteId: string,
   headers: Record<string, string>,
 ): Promise<StoredFieldMappings | undefined> {
+  // Use the per-site config endpoint, NOT `/api/sites?id=<id>`: the list route has
+  // no `id` filter, so that param is silently ignored and page 1 (50 of N sites)
+  // comes back instead. The old code then fell back to `data[0]` when the target
+  // wasn't on page 1 — silently verifying a DIFFERENT site's config and reporting
+  // a bogus CLOBBERED/OK verdict. Caught on elbitsystemscareer.com (2026-08-03),
+  // which validated against minrav.co.il's config.
   const r = (await apiGet(
-    `/api/sites?id=${encodeURIComponent(siteId)}`,
+    `/api/sites/${encodeURIComponent(siteId)}/config`,
     headers,
-  )) as { data?: Array<{ id: string; fieldMappings?: StoredFieldMappings }> };
-  const site = r?.data?.find((s) => s.id === siteId) ?? r?.data?.[0];
-  return site?.fieldMappings;
+  )) as { data?: { fieldMappings?: StoredFieldMappings } };
+  return r?.data?.fieldMappings;
 }
 
 async function cmdVerifyConfig(argv: string[]): Promise<void> {
