@@ -251,7 +251,6 @@ async function main() {
   });
 
   // --- fleet aggregate ---
-  const withJobs = reports.filter((r) => r.jobCount > 0);
   const totalJobs = reports.reduce((s, r) => s + r.jobCount, 0);
   const sum = (f: (r: SiteReport) => number) => reports.reduce((s, r) => s + f(r), 0);
   const pct = (n: number, d: number) => (d ? `${((n / d) * 100).toFixed(1)}%` : "—");

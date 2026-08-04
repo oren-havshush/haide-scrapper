@@ -172,7 +172,7 @@ export function normalizeLocations(raw: string | null | undefined): string[] {
   if (!original || original === "Unknown") return [];
   if (CANONICAL.has(original)) return [original];
 
-  let s = squash(original).replace(LABEL, "").trim();
+  const s = squash(original).replace(LABEL, "").trim();
   if (!s) return [original];
   if (ABROAD.test(s)) return [s];
 
