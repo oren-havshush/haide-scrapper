@@ -7,6 +7,7 @@
 // ---------------------------------------------------------------------------
 
 import { IL_CITIES, IL_REGIONS } from "../data/il-places";
+import { structureDescription } from "./descriptionStructure";
 
 /** Standard job schema fields that map directly to Job model columns */
 const STANDARD_FIELDS = new Set([
@@ -638,12 +639,17 @@ export function normalizeJobRecord(
     rawOut["_cssRejected_description"] = "true";
     description = "";
   }
+  // Rebuild line structure when the text arrived as one run-on line. No-op for
+  // text that already has line breaks; see descriptionStructure.ts for why this
+  // is central rather than per-site.
+  description = structureDescription(description);
 
   let requirements = normalizeMultilineField(rawFields["requirements"]);
   if (looksLikeCss(requirements)) {
     rawOut["_cssRejected_requirements"] = "true";
     requirements = "";
   }
+  requirements = structureDescription(requirements);
   let location = normalizeField(rawFields["location"]);
   let department = normalizeField(rawFields["department"]);
   let externalJobId = normalizeField(rawFields["externalJobId"]);
