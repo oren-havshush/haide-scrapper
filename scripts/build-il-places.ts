@@ -41,7 +41,15 @@ const SEED_CITIES = [
 ];
 
 function normalizeRow(raw: string): string {
-  return raw.replace(/^\uFEFF/, "").replace(/[\r\n]+$/, "").trim();
+  let s = raw.replace(/^\uFEFF/, "").replace(/[\r\n]+$/, "").trim();
+  // Unescape a CSV-quoted field. 18 rows contain a gershayim, which CSV encodes
+  // by doubling it and wrapping the field: \u05E0\u05EA\u05D1"\u05D2 is written "\u05E0\u05EA\u05D1""\u05D2". Splitting
+  // on newlines alone kept the raw form, so those places were stored corrupt
+  // (`"\u05E0\u05EA\u05D1""\u05D2"`) in IL_CITIES and could never match anything.
+  if (s.length >= 2 && s.startsWith('"') && s.endsWith('"')) {
+    s = s.slice(1, -1).replace(/""/g, '"');
+  }
+  return s.trim();
 }
 
 function main(): void {
@@ -80,6 +88,13 @@ function main(): void {
     b.length - a.length || a.localeCompare(b, "he");
   const cityList = Array.from(cities).sort(byLenDesc);
   const regionList = Array.from(regions).sort(byLenDesc);
+  // Exact CSV rows, verbatim and seed-free. IL_CITIES/IL_REGIONS are matching
+  // aids (they add spelling variants, and regions drop the "אזור " prefix), so
+  // they must NOT be used to decide whether a stored value is canonical.
+  const canonicalList = rows
+    .map(normalizeRow)
+    .filter((r) => r && !/^city$/i.test(r))
+    .sort(byLenDesc);
 
   const fmt = (arr: string[]) =>
     arr.map((s) => `  ${JSON.stringify(s)},`).join("\n");
@@ -98,6 +113,14 @@ ${fmt(regionList)}
 
 export const IL_CITIES: readonly string[] = [
 ${fmt(cityList)}
+];
+
+// Exact rows of "CSV files/city.csv", verbatim — the canonical vocabulary a
+// stored Job.location must belong to. Unlike IL_CITIES/IL_REGIONS above this
+// carries NO spelling variants and keeps the "אזור " prefix, so it is the only
+// correct list to validate or normalise against.
+export const IL_CANONICAL: readonly string[] = [
+${fmt(canonicalList)}
 ];
 `;
 
