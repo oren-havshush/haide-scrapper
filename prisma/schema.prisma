@@ -93,7 +93,14 @@ model Job {
   title            String
   description      String?
   requirements     String?
+  /// Primary location — kept as the single display value so existing readers
+  /// (including the public site, which queries this database directly) keep
+  /// working unchanged. Always equal to locations[0] when locations is set.
   location         String
+  /// Every location the job names, canonicalised against "CSV files/city.csv".
+  /// ~15% of jobs list more than one ("חולון ובת-ים, ת\"א, מודיעין"), which a
+  /// single string cannot represent. Empty only for jobs that state no location.
+  locations        String[] @default([])
   department       String?
   externalJobId    String?
   publishDate      String?
@@ -142,7 +149,11 @@ model JobLocationOverride {
   siteId    String
   site      Site     @relation(fields: [siteId], references: [id], onDelete: Cascade)
   jobKey    String
+  /// Primary override value (mirrors Job.location).
   location  String
+  /// Full override list. Without this a manual multi-location edit would be
+  /// silently collapsed back to one value on the next scrape.
+  locations String[] @default([])
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 

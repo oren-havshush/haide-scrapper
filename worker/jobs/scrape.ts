@@ -8,6 +8,7 @@ import {
   computeAgeBucket,
 } from "../lib/normalizer";
 import type { NormalizedJobRecord } from "../lib/normalizer";
+import { normalizeLocations } from "../lib/locationNormalize";
 import { validateJobRecord } from "../lib/validator";
 import type { ValidationResult } from "../lib/validator";
 import type { Browser, Page } from "playwright";
@@ -3191,10 +3192,17 @@ async function executeScrape(
   // the deleteMany/re-create cycle. keyed by jobKey = externalJobId ?? detailUrl.
   const locationOverrideRows = await prisma.jobLocationOverride.findMany({
     where: { siteId: site.id },
-    select: { jobKey: true, location: true },
+    select: { jobKey: true, location: true, locations: true },
   });
   const locationOverrides = new Map<string, string>(
     locationOverrideRows.map((r) => [r.jobKey, r.location]),
+  );
+  // A manual edit may name several places; keep the full list so it isn't
+  // collapsed to the primary value on the next scrape.
+  const locationOverrideLists = new Map<string, string[]>(
+    locationOverrideRows
+      .filter((r) => r.locations.length > 0)
+      .map((r) => [r.jobKey, r.locations]),
   );
 
   // Site-level default location (e.g. company HQ) for jobs that print none of
@@ -3220,14 +3228,23 @@ async function executeScrape(
         // site-level fallback (HQ) → "Unknown". The extracted value can be an
         // empty string (not null), so test it with trim() rather than ??.
         const extractedLocation = normalized.location?.trim() || null;
-        const resolvedLocation =
+        const rawLocation =
           overriddenLocation ?? extractedLocation ?? locationFallback ?? "Unknown";
+        // Canonicalise against "CSV files/city.csv" and split multi-place values.
+        // Returns [] only for empty/"Unknown"; otherwise always non-empty (falling
+        // back to the raw string), so a scraped value is never silently dropped.
+        const overrideList = jobKey ? locationOverrideLists.get(jobKey) : undefined;
+        const canonicalLocations = overrideList ?? normalizeLocations(rawLocation);
+        // `location` stays the single primary value — the public site reads this
+        // column directly, so its shape must not change.
+        const resolvedLocation = canonicalLocations[0] ?? rawLocation;
         await tx.job.create({
           data: {
             title: normalized.title || "Untitled",
             description: normalized.description || null,
             requirements: normalized.requirements || null,
             location: resolvedLocation,
+            locations: canonicalLocations,
             department: normalized.department || null,
             externalJobId: normalized.externalJobId || null,
             publishDate: normalized.publishDate || null,

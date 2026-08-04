@@ -28,16 +28,23 @@ export async function updateJobLocation(jobId: string, location: string) {
   }
 
   const trimmed = location.trim();
+  // A manual edit may name several places, comma-separated. Store the full list
+  // alongside the primary value so the next scrape doesn't collapse it.
+  const list = trimmed
+    .split(/\s*,\s*/)
+    .map((s) => s.trim())
+    .filter(Boolean);
+  const primary = list[0] ?? trimmed;
 
   await prisma.$transaction([
     prisma.jobLocationOverride.upsert({
       where: { siteId_jobKey: { siteId: job.siteId, jobKey } },
-      create: { siteId: job.siteId, jobKey, location: trimmed },
-      update: { location: trimmed },
+      create: { siteId: job.siteId, jobKey, location: primary, locations: list },
+      update: { location: primary, locations: list },
     }),
     prisma.job.update({
       where: { id: jobId },
-      data: { location: trimmed },
+      data: { location: primary, locations: list },
     }),
   ]);
 
