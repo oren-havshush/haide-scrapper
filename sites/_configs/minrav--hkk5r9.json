@@ -1,0 +1,94 @@
+{
+  "_exportedAt": "2026-08-06T15:54:02.032Z",
+  "_note": "Mirror of the live config. The DB is authoritative; the worker never reads this file. setupScript lives alongside in <slug>.setup.js.",
+  "id": "cmsbxxv9b000601p0hbhkk5r9",
+  "siteUrl": "https://www.minrav.co.il/careers/",
+  "companyName": "מנרב",
+  "status": "ACTIVE",
+  "setupScriptFile": "minrav--hkk5r9.setup.js",
+  "pageFlow": [],
+  "fieldMappings": {
+    "_meta": {
+      "savedAt": "2026-08-03T09:38:21.969Z",
+      "pagination": null,
+      "formCapture": {
+        "fields": [
+          {
+            "name": "your-name",
+            "label": "שם מלא",
+            "tagName": "input",
+            "required": true,
+            "fieldType": "text"
+          },
+          {
+            "name": "your-email",
+            "label": "דוא״ל",
+            "tagName": "input",
+            "required": true,
+            "fieldType": "email"
+          },
+          {
+            "name": "your-phone",
+            "label": "טלפון",
+            "tagName": "input",
+            "required": true,
+            "fieldType": "text"
+          },
+          {
+            "name": "linkedinurl",
+            "label": "לינק לעמוד לינקדאין",
+            "tagName": "input",
+            "required": false,
+            "fieldType": "url"
+          },
+          {
+            "name": "file-827",
+            "label": "הוספת קו״ח (PDF)",
+            "tagName": "input",
+            "required": false,
+            "fieldType": "file"
+          }
+        ],
+        "method": "POST",
+        "actionUrl": "https://www.minrav.co.il/wp-json/contact-form-7/v1/contact-forms/223/feedback",
+        "formSelector": ".c-box-career form.wpcf7-form"
+      },
+      "itemSelector": ".c-box-career",
+      "minPublishDate": null,
+      "minPublishDays": null,
+      "revealSelector": null,
+      "listingSelector": null,
+      "applyLoginReason": null,
+      "browserOverrides": null,
+      "loadMoreSelector": ".b-careers__actions button",
+      "locationFallback": null,
+      "originalMappings": null,
+      "applyRequiresLogin": false
+    },
+    "title": {
+      "source": "manual",
+      "selector": ".c-box-career__title",
+      "confidence": 0.95
+    },
+    "location": {
+      "source": "manual",
+      "selector": ".__ai-loc",
+      "confidence": 0.9
+    },
+    "description": {
+      "source": "manual",
+      "selector": ".__ai-description",
+      "confidence": 0.9
+    },
+    "externalJobId": {
+      "source": "manual",
+      "selector": ".__ai-eid",
+      "confidence": 0.9
+    },
+    "applicationInfo": {
+      "source": "manual",
+      "selector": ".__ai-apply",
+      "confidence": 0.9
+    }
+  }
+}

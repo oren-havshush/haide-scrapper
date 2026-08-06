@@ -1,0 +1,60 @@
+{
+  "_exportedAt": "2026-08-06T15:54:02.360Z",
+  "_note": "Mirror of the live config. The DB is authoritative; the worker never reads this file. setupScript lives alongside in <slug>.setup.js.",
+  "id": "cmqyfkra2002401nzmgc5pw15",
+  "siteUrl": "https://waterfall-security.com/careers/",
+  "companyName": "Waterfall Security",
+  "status": "ACTIVE",
+  "setupScriptFile": "waterfall-security--c5pw15.setup.js",
+  "pageFlow": [],
+  "fieldMappings": {
+    "_meta": {
+      "savedAt": "2026-06-28T23:45:56.193Z",
+      "pagination": null,
+      "formCapture": null,
+      "itemSelector": "ul.comeet-positions-list > li",
+      "minPublishDate": null,
+      "minPublishDays": null,
+      "revealSelector": null,
+      "listingSelector": null,
+      "applyLoginReason": null,
+      "browserOverrides": {
+        "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36"
+      },
+      "loadMoreSelector": null,
+      "locationFallback": null,
+      "originalMappings": null,
+      "applyRequiresLogin": false
+    },
+    "title": {
+      "source": "auto",
+      "selector": ".comeet-position-name",
+      "confidence": 0.95
+    },
+    "location": {
+      "source": "auto",
+      "selector": ".__ai-location",
+      "confidence": 0.8
+    },
+    "detailUrl": {
+      "source": "auto",
+      "selector": ".__ai-detailUrl",
+      "confidence": 0.9
+    },
+    "description": {
+      "source": "auto",
+      "selector": ".__ai-description",
+      "confidence": 0.8
+    },
+    "externalJobId": {
+      "source": "auto",
+      "selector": ".__ai-externalJobId",
+      "confidence": 0.9
+    },
+    "applicationInfo": {
+      "source": "auto",
+      "selector": ".__ai-applicationInfo",
+      "confidence": 0.9
+    }
+  }
+}

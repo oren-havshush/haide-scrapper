@@ -1,0 +1,79 @@
+{
+  "_exportedAt": "2026-08-06T15:54:05.804Z",
+  "_note": "Mirror of the live config. The DB is authoritative; the worker never reads this file. setupScript lives alongside in <slug>.setup.js.",
+  "id": "cmp02uvpp000g01k5z70oo30k",
+  "siteUrl": "https://www.ashtrom.co.il/career",
+  "companyName": "אשטרום",
+  "status": "ACTIVE",
+  "setupScriptFile": null,
+  "pageFlow": [
+    {
+      "url": "https://www.ashtrom.co.il/career",
+      "action": "navigate"
+    },
+    {
+      "url": "https://www.ashtrom.co.il/career/*",
+      "action": "navigate"
+    }
+  ],
+  "fieldMappings": {
+    "_meta": {
+      "savedAt": "2026-05-10T21:09:16.233Z",
+      "pagination": {
+        "type": "click",
+        "maxPages": 10,
+        "settleMs": 1200,
+        "nextSelector": "button[aria-label*=\"next\" i]"
+      },
+      "formCapture": null,
+      "itemSelector": "a[class*=\"JobCard-StyledLinkWrapp\"]",
+      "revealSelector": null,
+      "listingSelector": "[class*=\"JobsDisplay-JobCards\"]",
+      "originalMappings": null
+    },
+    "title": {
+      "source": "MANUAL",
+      "selector": "h3",
+      "confidence": 100,
+      "capturedOnUrl": "https://www.ashtrom.co.il/career"
+    },
+    "company": {
+      "source": "MANUAL",
+      "selector": "[class*=\"JobCard-TitleBlock\"] span",
+      "confidence": 100,
+      "capturedOnUrl": "https://www.ashtrom.co.il/career"
+    },
+    "location": {
+      "source": "MANUAL",
+      "selector": "[class*=\"LocationSymbol\"] + span",
+      "confidence": 100,
+      "capturedOnUrl": "https://www.ashtrom.co.il/career"
+    },
+    "detailUrl": {
+      "source": "MANUAL",
+      "selector": "a[href*=\"/career/\"]",
+      "confidence": 100,
+      "extractAttr": "href",
+      "capturedOnUrl": "https://www.ashtrom.co.il/career"
+    },
+    "description": {
+      "source": "MANUAL",
+      "selector": "[class*=\"TopContent-StyledContent\"]",
+      "confidence": 100,
+      "capturedOnUrl": "https://www.ashtrom.co.il/career/4509"
+    },
+    "externalJobId": {
+      "source": "MANUAL",
+      "selector": "a[href*=\"/career/\"]",
+      "confidence": 100,
+      "extractAttr": "href",
+      "capturedOnUrl": "https://www.ashtrom.co.il/career"
+    },
+    "employmentType": {
+      "source": "MANUAL",
+      "selector": "[class*=\"CaseSymbol\"] + span",
+      "confidence": 100,
+      "capturedOnUrl": "https://www.ashtrom.co.il/career"
+    }
+  }
+}

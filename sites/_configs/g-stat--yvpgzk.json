@@ -1,0 +1,109 @@
+{
+  "_exportedAt": "2026-08-06T15:54:02.973Z",
+  "_note": "Mirror of the live config. The DB is authoritative; the worker never reads this file. setupScript lives alongside in <slug>.setup.js.",
+  "id": "cmqqp2amo000v01nwcmyvpgzk",
+  "siteUrl": "https://g-stat.com/careers/",
+  "companyName": "G STAT",
+  "status": "ACTIVE",
+  "setupScriptFile": "g-stat--yvpgzk.setup.js",
+  "pageFlow": [],
+  "fieldMappings": {
+    "_meta": {
+      "savedAt": "2026-06-23T15:44:03.425Z",
+      "pagination": null,
+      "formCapture": {
+        "fields": [
+          {
+            "name": "action",
+            "label": "",
+            "tagName": "input",
+            "required": false,
+            "fieldType": "hidden"
+          },
+          {
+            "name": "yb-name",
+            "label": "Full Name",
+            "tagName": "input",
+            "required": true,
+            "fieldType": "text"
+          },
+          {
+            "name": "yb-email",
+            "label": "Email",
+            "tagName": "input",
+            "required": true,
+            "fieldType": "email"
+          },
+          {
+            "name": "yb-phone",
+            "label": "Phone",
+            "tagName": "input",
+            "required": true,
+            "fieldType": "tel"
+          },
+          {
+            "name": "job",
+            "label": "",
+            "tagName": "input",
+            "required": false,
+            "fieldType": "hidden"
+          },
+          {
+            "name": "job-number",
+            "label": "",
+            "tagName": "input",
+            "required": false,
+            "fieldType": "hidden"
+          },
+          {
+            "name": "file",
+            "label": "CV",
+            "tagName": "input",
+            "required": true,
+            "fieldType": "file"
+          }
+        ],
+        "method": "post",
+        "actionUrl": "https://g-stat.com/wp-admin/admin-ajax.php",
+        "formSelector": "form.jobs-form"
+      },
+      "itemSelector": ".job-data",
+      "minPublishDate": null,
+      "minPublishDays": null,
+      "revealSelector": null,
+      "listingSelector": null,
+      "applyLoginReason": null,
+      "browserOverrides": null,
+      "loadMoreSelector": null,
+      "locationFallback": "פתח תקווה",
+      "originalMappings": null,
+      "applyRequiresLogin": false
+    },
+    "title": {
+      "source": "auto",
+      "selector": ".__ai-title",
+      "confidence": 0.9
+    },
+    "detailUrl": {
+      "source": "auto",
+      "selector": "a.__ai-detailurl",
+      "confidence": 0.9,
+      "extractAttr": "href"
+    },
+    "description": {
+      "source": "auto",
+      "selector": ".job-inner-col.text-col",
+      "confidence": 0.8
+    },
+    "requirements": {
+      "source": "auto",
+      "selector": ".requirements_text",
+      "confidence": 0.7
+    },
+    "externalJobId": {
+      "source": "auto",
+      "selector": ".__ai-jobid",
+      "confidence": 0.9
+    }
+  }
+}

@@ -1,0 +1,265 @@
+{
+  "_exportedAt": "2026-08-06T15:54:05.201Z",
+  "_note": "Mirror of the live config. The DB is authoritative; the worker never reads this file. setupScript lives alongside in <slug>.setup.js.",
+  "id": "cmpnt68rb002301mv6h7d28yg",
+  "siteUrl": "https://careers.iec.co.il/?referid=&freeText=&page=1",
+  "companyName": "חברת החשמל",
+  "status": "ACTIVE",
+  "setupScriptFile": "iec--7d28yg.setup.js",
+  "pageFlow": [],
+  "fieldMappings": {
+    "_meta": {
+      "savedAt": "2026-08-06T09:36:54.169Z",
+      "pagination": null,
+      "formCapture": {
+        "fields": [
+          {
+            "name": "order_id",
+            "label": "order id",
+            "tagName": "input",
+            "required": false,
+            "fieldType": "hidden"
+          },
+          {
+            "name": "form_func",
+            "label": "form func",
+            "tagName": "input",
+            "required": false,
+            "fieldType": "hidden"
+          },
+          {
+            "name": "referid",
+            "label": "referid",
+            "tagName": "input",
+            "required": false,
+            "fieldType": "hidden"
+          },
+          {
+            "name": "cvFile",
+            "label": "cv File",
+            "tagName": "input",
+            "required": false,
+            "fieldType": "hidden"
+          },
+          {
+            "name": "is_hot",
+            "label": "is hot",
+            "tagName": "input",
+            "required": false,
+            "fieldType": "hidden"
+          },
+          {
+            "name": "user[fname]",
+            "label": "שם פרטי *",
+            "tagName": "input",
+            "required": false,
+            "fieldType": "text"
+          },
+          {
+            "name": "user[lname]",
+            "label": "שם משפחה *",
+            "tagName": "input",
+            "required": false,
+            "fieldType": "text"
+          },
+          {
+            "name": "user[id_num]",
+            "label": "מספר זהות *",
+            "tagName": "input",
+            "required": false,
+            "fieldType": "tel"
+          },
+          {
+            "name": "user[phone]",
+            "label": "מספר טלפון *",
+            "tagName": "input",
+            "required": false,
+            "fieldType": "tel"
+          },
+          {
+            "name": "user[email]",
+            "label": "אימייל *",
+            "tagName": "input",
+            "required": false,
+            "fieldType": "email"
+          },
+          {
+            "name": "user[gender]",
+            "label": "user[gender]",
+            "tagName": "select",
+            "required": false,
+            "fieldType": "select"
+          },
+          {
+            "name": "user_cv[]",
+            "label": "צירוף קוח",
+            "tagName": "input",
+            "required": false,
+            "fieldType": "file"
+          },
+          {
+            "name": "user[relations]",
+            "label": "כן",
+            "tagName": "input",
+            "required": false,
+            "fieldType": "radio"
+          },
+          {
+            "name": "user[relations]",
+            "label": "לא",
+            "tagName": "input",
+            "required": false,
+            "fieldType": "radio"
+          },
+          {
+            "name": "user[relation]",
+            "label": "user[relation]",
+            "tagName": "input",
+            "required": false,
+            "fieldType": "text"
+          },
+          {
+            "name": "",
+            "label": "נשים",
+            "tagName": "input",
+            "required": false,
+            "fieldType": "checkbox"
+          },
+          {
+            "name": "",
+            "label": "א.נשים עם מוגבלויות",
+            "tagName": "input",
+            "required": false,
+            "fieldType": "checkbox"
+          },
+          {
+            "name": "",
+            "label": "ישראלים יוצאי אתיופיה",
+            "tagName": "input",
+            "required": false,
+            "fieldType": "checkbox"
+          },
+          {
+            "name": "",
+            "label": "העדה הדרוזית",
+            "tagName": "input",
+            "required": false,
+            "fieldType": "checkbox"
+          },
+          {
+            "name": "",
+            "label": "העדה הצ'רקסית",
+            "tagName": "input",
+            "required": false,
+            "fieldType": "checkbox"
+          },
+          {
+            "name": "",
+            "label": "האוכלוסייה הערבית",
+            "tagName": "input",
+            "required": false,
+            "fieldType": "checkbox"
+          },
+          {
+            "name": "",
+            "label": "המגזר החרדי",
+            "tagName": "input",
+            "required": false,
+            "fieldType": "checkbox"
+          },
+          {
+            "name": "user[preference][]",
+            "label": "user[preference][]",
+            "tagName": "select",
+            "required": false,
+            "fieldType": "select"
+          },
+          {
+            "name": "user[friend_name]",
+            "label": "שם החבר.ה",
+            "tagName": "input",
+            "required": false,
+            "fieldType": "text"
+          },
+          {
+            "name": "user[friend_phone]",
+            "label": "מספר טלפון",
+            "tagName": "input",
+            "required": false,
+            "fieldType": "tel"
+          },
+          {
+            "name": "self_accept_disclaimer",
+            "label": "אני מאשר.ת את מדיניות הפרטיות ומסכים.ה שקובץ קורות החיים והפרטים האישיים שלי ישמרו באתר.\nכמו כן, ידו",
+            "tagName": "input",
+            "required": false,
+            "fieldType": "checkbox"
+          }
+        ],
+        "method": "GET",
+        "actionUrl": "https://careers.iec.co.il/?referid=&freeText=&page=1",
+        "formSelector": "#send_user_cv"
+      },
+      "itemSelector": ".job_link_and_share_wrap.job_item",
+      "minPublishDate": null,
+      "minPublishDays": null,
+      "revealSelector": null,
+      "listingSelector": ".wrap_careers",
+      "applyLoginReason": null,
+      "browserOverrides": null,
+      "loadMoreSelector": null,
+      "locationFallback": null,
+      "originalMappings": null,
+      "applyRequiresLogin": false
+    },
+    "title": {
+      "source": "MANUAL",
+      "selector": "button.archive-job_item-title",
+      "confidence": 100,
+      "capturedOnUrl": "https://careers.iec.co.il/?referid=&freeText=&page=1"
+    },
+    "deadline": {
+      "source": "MANUAL",
+      "selector": "[data-x-deadline]",
+      "confidence": 100,
+      "capturedOnUrl": "https://careers.iec.co.il/?referid=&freeText=&page=1"
+    },
+    "location": {
+      "source": "MANUAL",
+      "selector": "[data-x-location]",
+      "confidence": 100,
+      "capturedOnUrl": "https://careers.iec.co.il/?referid=&freeText=&page=1"
+    },
+    "detailUrl": {
+      "source": "MANUAL",
+      "selector": "button.icon-share_link",
+      "confidence": 100,
+      "extractAttr": "data-copy",
+      "capturedOnUrl": "https://careers.iec.co.il/?referid=&freeText=&page=1"
+    },
+    "department": {
+      "source": "MANUAL",
+      "selector": "[data-x-department]",
+      "confidence": 100,
+      "capturedOnUrl": "https://careers.iec.co.il/?referid=&freeText=&page=1"
+    },
+    "description": {
+      "source": "MANUAL",
+      "selector": "[data-x-description]",
+      "confidence": 100,
+      "capturedOnUrl": "https://careers.iec.co.il/?referid=&freeText=&page=1"
+    },
+    "requirements": {
+      "source": "MANUAL",
+      "selector": "[data-x-requirements]",
+      "confidence": 100,
+      "capturedOnUrl": "https://careers.iec.co.il/?referid=&freeText=&page=1"
+    },
+    "externalJobId": {
+      "source": "MANUAL",
+      "selector": "[data-x-jobid]",
+      "confidence": 100,
+      "capturedOnUrl": "https://careers.iec.co.il/?referid=&freeText=&page=1"
+    }
+  }
+}

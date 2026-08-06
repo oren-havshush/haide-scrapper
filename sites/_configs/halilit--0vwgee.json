@@ -1,0 +1,55 @@
+{
+  "_exportedAt": "2026-08-06T15:54:04.784Z",
+  "_note": "Mirror of the live config. The DB is authoritative; the worker never reads this file. setupScript lives alongside in <slug>.setup.js.",
+  "id": "cmq68mpnq001501m9p50vwgee",
+  "siteUrl": "https://www.halilit.com/pages/50489-halilit-drushim",
+  "companyName": "חלילית",
+  "status": "ACTIVE",
+  "setupScriptFile": "halilit--0vwgee.setup.js",
+  "pageFlow": [],
+  "fieldMappings": {
+    "_meta": {
+      "savedAt": "2026-06-09T08:58:59.107Z",
+      "pagination": null,
+      "formCapture": null,
+      "itemSelector": "#page_show_content table",
+      "revealSelector": null,
+      "listingSelector": null,
+      "applyLoginReason": null,
+      "browserOverrides": null,
+      "loadMoreSelector": null,
+      "originalMappings": null,
+      "applyRequiresLogin": false
+    },
+    "title": {
+      "source": "MANUAL",
+      "selector": "td h2",
+      "confidence": 100,
+      "capturedOnUrl": "https://www.halilit.com/pages/50489-halilit-drushim"
+    },
+    "location": {
+      "source": "MANUAL",
+      "selector": "[data-ex-loc]",
+      "confidence": 100,
+      "capturedOnUrl": "https://www.halilit.com/pages/50489-halilit-drushim"
+    },
+    "description": {
+      "source": "MANUAL",
+      "selector": "td:nth-child(2)",
+      "confidence": 100,
+      "capturedOnUrl": "https://www.halilit.com/pages/50489-halilit-drushim"
+    },
+    "externalJobId": {
+      "source": "MANUAL",
+      "selector": "[data-ex-id]",
+      "confidence": 100,
+      "capturedOnUrl": "https://www.halilit.com/pages/50489-halilit-drushim"
+    },
+    "applicationInfo": {
+      "source": "MANUAL",
+      "selector": "a[href^=\"mailto:\"]",
+      "confidence": 100,
+      "capturedOnUrl": "https://www.halilit.com/pages/50489-halilit-drushim"
+    }
+  }
+}

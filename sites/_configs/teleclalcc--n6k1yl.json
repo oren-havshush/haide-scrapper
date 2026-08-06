@@ -1,0 +1,144 @@
+{
+  "_exportedAt": "2026-08-06T15:54:05.432Z",
+  "_note": "Mirror of the live config. The DB is authoritative; the worker never reads this file. setupScript lives alongside in <slug>.setup.js.",
+  "id": "cmp9pqqrf001901ls9cn6k1yl",
+  "siteUrl": "https://www.teleclalcc.co.il/jobs/",
+  "companyName": "טלכלל",
+  "status": "ACTIVE",
+  "setupScriptFile": "teleclalcc--n6k1yl.setup.js",
+  "pageFlow": [],
+  "fieldMappings": {
+    "_meta": {
+      "savedAt": "2026-06-10T18:56:31.029Z",
+      "pagination": null,
+      "formCapture": {
+        "fields": [
+          {
+            "name": "post_id",
+            "label": "post id",
+            "tagName": "input",
+            "required": false,
+            "fieldType": "hidden"
+          },
+          {
+            "name": "form_id",
+            "label": "form id",
+            "tagName": "input",
+            "required": false,
+            "fieldType": "hidden"
+          },
+          {
+            "name": "referer_title",
+            "label": "referer title",
+            "tagName": "input",
+            "required": false,
+            "fieldType": "hidden"
+          },
+          {
+            "name": "form_fields[name]",
+            "label": "שם",
+            "tagName": "input",
+            "required": true,
+            "fieldType": "text"
+          },
+          {
+            "name": "form_fields[email]",
+            "label": "טלפון",
+            "tagName": "input",
+            "required": true,
+            "fieldType": "tel"
+          },
+          {
+            "name": "form_fields[field_cde9f64]",
+            "label": "אימייל",
+            "tagName": "input",
+            "required": true,
+            "fieldType": "email"
+          },
+          {
+            "name": "form_fields[message]",
+            "label": "הודעה",
+            "tagName": "textarea",
+            "required": false,
+            "fieldType": "textarea"
+          },
+          {
+            "name": "form_fields[field_9d2007b]",
+            "label": "קובץ מצורף",
+            "tagName": "input",
+            "required": false,
+            "fieldType": "file"
+          },
+          {
+            "name": "form_fields[job_number]",
+            "label": "form fields[job number]",
+            "tagName": "input",
+            "required": false,
+            "fieldType": "hidden"
+          },
+          {
+            "name": "form_fields[field_be062c3]",
+            "label": "form fields[field be062c3]",
+            "tagName": "input",
+            "required": false,
+            "fieldType": "text"
+          },
+          {
+            "name": "full-name-maspik-hp",
+            "label": "Leave this field empty",
+            "tagName": "input",
+            "required": false,
+            "fieldType": "text"
+          }
+        ],
+        "method": "POST",
+        "actionUrl": "https://www.teleclalcc.co.il/jobs/",
+        "formSelector": "div.elementor-container.elementor-column-gap-default > div.elementor-column.elementor-col-50:nth-of-type(2) > div.elementor-widget-wrap.elementor-element-populated > div.animation-none-tablet.animation-none-mobile > div.elementor-widget-container > form.elementor-form"
+      },
+      "itemSelector": "article.elementor-post.jobs",
+      "revealSelector": null,
+      "listingSelector": ".elementor-posts-container.elementor-posts",
+      "applyLoginReason": null,
+      "browserOverrides": null,
+      "loadMoreSelector": null,
+      "originalMappings": null,
+      "applyRequiresLogin": false
+    },
+    "title": {
+      "source": "MANUAL",
+      "selector": ".elementor-element-3ea7ddfb .elementor-heading-title",
+      "confidence": 100,
+      "capturedOnUrl": "https://www.teleclalcc.co.il/jobs/"
+    },
+    "location": {
+      "source": "MANUAL",
+      "selector": ".elementor-element-281d57dc .elementor-heading-title",
+      "confidence": 100,
+      "capturedOnUrl": "https://www.teleclalcc.co.il/jobs/"
+    },
+    "department": {
+      "source": "MANUAL",
+      "selector": ".elementor-element-1379431c .elementor-heading-title",
+      "confidence": 100,
+      "capturedOnUrl": "https://www.teleclalcc.co.il/jobs/"
+    },
+    "description": {
+      "source": "MANUAL",
+      "selector": ".elementor-element-62dfb0d .elementor-widget-container",
+      "confidence": 100,
+      "capturedOnUrl": "https://www.teleclalcc.co.il/jobs/"
+    },
+    "externalJobId": {
+      "source": "MANUAL",
+      "selector": "[data-extracted-jobid]",
+      "confidence": 100,
+      "capturedOnUrl": "https://www.teleclalcc.co.il/jobs/"
+    },
+    "applicationFormSchema": {
+      "source": "MANUAL",
+      "selector": "[data-extracted-form]",
+      "confidence": 100,
+      "capturedOnUrl": "https://www.teleclalcc.co.il/jobs/"
+    }
+  }
+}

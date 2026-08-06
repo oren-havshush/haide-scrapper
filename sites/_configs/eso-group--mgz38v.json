@@ -1,0 +1,83 @@
+{
+  "_exportedAt": "2026-08-06T15:54:04.519Z",
+  "_note": "Mirror of the live config. The DB is authoritative; the worker never reads this file. setupScript lives alongside in <slug>.setup.js.",
+  "id": "cmq6nxu33000g01lizjmgz38v",
+  "siteUrl": "https://eso-group.co.il/%d7%a7%d7%a8%d7%99%d7%99%d7%a8%d7%94",
+  "companyName": "ESO Group",
+  "status": "ACTIVE",
+  "setupScriptFile": "eso-group--mgz38v.setup.js",
+  "pageFlow": [],
+  "fieldMappings": {
+    "_meta": {
+      "savedAt": "2026-06-09T18:21:25.626Z",
+      "pagination": null,
+      "formCapture": {
+        "fields": [
+          {
+            "name": "form_fields[name]",
+            "label": "שם",
+            "tagName": "INPUT",
+            "required": true,
+            "fieldType": "text"
+          },
+          {
+            "name": "form_fields[phone]",
+            "label": "טלפון",
+            "tagName": "INPUT",
+            "required": false,
+            "fieldType": "tel"
+          },
+          {
+            "name": "form_fields[email]",
+            "label": "אימייל",
+            "tagName": "INPUT",
+            "required": true,
+            "fieldType": "email"
+          },
+          {
+            "name": "form_fields[resume]",
+            "label": "הוספת קובץ קו\"ח",
+            "tagName": "INPUT",
+            "required": false,
+            "fieldType": "file"
+          }
+        ],
+        "method": "post",
+        "actionUrl": "https://eso-group.co.il/wp-admin/admin-ajax.php",
+        "formSelector": "form.elementor-form"
+      },
+      "itemSelector": "article.ecs-post-loop",
+      "revealSelector": null,
+      "listingSelector": null,
+      "applyLoginReason": null,
+      "browserOverrides": null,
+      "loadMoreSelector": null,
+      "originalMappings": null,
+      "applyRequiresLogin": false
+    },
+    "title": {
+      "source": "MANUAL",
+      "selector": ".elementor-widget-theme-post-title",
+      "confidence": 100,
+      "capturedOnUrl": "https://eso-group.co.il/קריירה/"
+    },
+    "location": {
+      "source": "MANUAL",
+      "selector": "[data-eso-location]",
+      "confidence": 100,
+      "capturedOnUrl": "https://eso-group.co.il/קריירה/"
+    },
+    "description": {
+      "source": "MANUAL",
+      "selector": ".elementor-widget-theme-post-content",
+      "confidence": 100,
+      "capturedOnUrl": "https://eso-group.co.il/קריירה/"
+    },
+    "externalJobId": {
+      "source": "MANUAL",
+      "selector": "[data-eso-jobid]",
+      "confidence": 100,
+      "capturedOnUrl": "https://eso-group.co.il/קריירה/"
+    }
+  }
+}

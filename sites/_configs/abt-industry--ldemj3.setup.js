@@ -1,0 +1,1 @@
+document.querySelectorAll('.p-team-item').forEach(function(el){if(el.querySelector('.haide-location'))return;var s=document.createElement('span');s.className='haide-location';s.textContent='תל אביב';s.style.display='none';el.appendChild(s);});

@@ -1,0 +1,70 @@
+{
+  "_exportedAt": "2026-08-06T15:54:02.595Z",
+  "_note": "Mirror of the live config. The DB is authoritative; the worker never reads this file. setupScript lives alongside in <slug>.setup.js.",
+  "id": "cmqybvy59001301nzsf2uvz1w",
+  "siteUrl": "https://gcare.co.il/%D7%93%D7%A8%D7%95%D7%A9%D7%99%D7%9D/",
+  "companyName": "נאות המושבה - גולדנקייר",
+  "status": "ACTIVE",
+  "setupScriptFile": "gcare--2uvz1w.setup.js",
+  "pageFlow": [],
+  "fieldMappings": {
+    "_meta": {
+      "savedAt": "2026-06-28T21:57:56.950Z",
+      "pagination": null,
+      "formCapture": {
+        "fields": [
+          {
+            "name": "form_fields[name]",
+            "label": "שם מלא",
+            "tagName": "INPUT",
+            "required": true,
+            "fieldType": "text"
+          },
+          {
+            "name": "form_fields[phone]",
+            "label": "טלפון",
+            "tagName": "INPUT",
+            "required": true,
+            "fieldType": "tel"
+          },
+          {
+            "name": "form_fields[email]",
+            "label": "דוא\"ל",
+            "tagName": "INPUT",
+            "required": true,
+            "fieldType": "email"
+          }
+        ],
+        "method": "POST",
+        "actionUrl": "https://gcare.co.il/%D7%93%D7%A8%D7%95%D7%A9%D7%99%D7%9D/",
+        "formSelector": "form.elementor-form[name=\"מתעניינים \"]"
+      },
+      "itemSelector": "div.elementor-accordion-item",
+      "minPublishDate": null,
+      "minPublishDays": null,
+      "revealSelector": null,
+      "listingSelector": null,
+      "applyLoginReason": null,
+      "browserOverrides": null,
+      "loadMoreSelector": null,
+      "locationFallback": null,
+      "originalMappings": null,
+      "applyRequiresLogin": false
+    },
+    "title": {
+      "source": "auto",
+      "selector": "a.elementor-accordion-title",
+      "confidence": 0.9
+    },
+    "description": {
+      "source": "auto",
+      "selector": "div.elementor-tab-content",
+      "confidence": 0.8
+    },
+    "externalJobId": {
+      "source": "auto",
+      "selector": ".__ai-externalJobId",
+      "confidence": 0.9
+    }
+  }
+}

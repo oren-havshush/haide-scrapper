@@ -1,0 +1,100 @@
+{
+  "_exportedAt": "2026-08-06T15:54:03.995Z",
+  "_note": "Mirror of the live config. The DB is authoritative; the worker never reads this file. setupScript lives alongside in <slug>.setup.js.",
+  "id": "cmq9ikvcu002q01lck5y39afy",
+  "siteUrl": "https://riscogroup.com/en/careers/",
+  "companyName": "RISCO Group",
+  "status": "ACTIVE",
+  "setupScriptFile": null,
+  "pageFlow": [
+    {
+      "url": "https://riscogroup.com/en/careers/",
+      "action": "navigate"
+    },
+    {
+      "url": "https://riscogroup.com/en/rscm_career/*",
+      "action": "navigate"
+    }
+  ],
+  "fieldMappings": {
+    "_meta": {
+      "savedAt": "2026-06-11T13:10:17.776Z",
+      "pagination": null,
+      "formCapture": {
+        "fields": [
+          {
+            "name": "applicant_name",
+            "label": "Name",
+            "tagName": "input",
+            "required": true,
+            "fieldType": "text"
+          },
+          {
+            "name": "applicant_email",
+            "label": "Email",
+            "tagName": "input",
+            "required": true,
+            "fieldType": "email"
+          },
+          {
+            "name": "applicant_files",
+            "label": "CV (file)",
+            "tagName": "input",
+            "required": true,
+            "fieldType": "file"
+          }
+        ],
+        "method": "POST",
+        "actionUrl": "https://riscogroup.com/en/careers/",
+        "formSelector": "form.js-job-application-form"
+      },
+      "itemSelector": ".rscm-careers-loop__item",
+      "minPublishDate": null,
+      "revealSelector": null,
+      "listingSelector": null,
+      "applyLoginReason": null,
+      "browserOverrides": null,
+      "loadMoreSelector": null,
+      "originalMappings": null,
+      "applyRequiresLogin": false
+    },
+    "title": {
+      "source": "MANUAL",
+      "selector": ".rscm-careers-loop__title",
+      "confidence": 100,
+      "capturedOnUrl": "https://riscogroup.com/en/careers/"
+    },
+    "location": {
+      "source": "MANUAL",
+      "selector": ".rscm-careers-loop__location",
+      "confidence": 100,
+      "capturedOnUrl": "https://riscogroup.com/en/careers/"
+    },
+    "detailUrl": {
+      "source": "MANUAL",
+      "selector": "a.rscm-careers-loop__link",
+      "confidence": 100,
+      "extractAttr": "href",
+      "capturedOnUrl": "https://riscogroup.com/en/careers/"
+    },
+    "department": {
+      "source": "MANUAL",
+      "selector": ".rscm-careers-loop__badge",
+      "confidence": 90,
+      "capturedOnUrl": "https://riscogroup.com/en/careers/"
+    },
+    "description": {
+      "source": "MANUAL",
+      "selector": ".rscm-career-single__content",
+      "confidence": 100,
+      "capturedOnUrl": "https://riscogroup.com/en/rscm_career/pre-post-sales/"
+    },
+    "externalJobId": {
+      "source": "MANUAL",
+      "selector": "a.rscm-careers-loop__link",
+      "confidence": 95,
+      "extractAttr": "href",
+      "capturedOnUrl": "https://riscogroup.com/en/careers/"
+    }
+  }
+}

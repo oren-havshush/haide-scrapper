@@ -1,0 +1,387 @@
+{
+  "_exportedAt": "2026-08-06T15:54:02.174Z",
+  "_note": "Mirror of the live config. The DB is authoritative; the worker never reads this file. setupScript lives alongside in <slug>.setup.js.",
+  "id": "cmqykv29i003i01nzvw1z5jpw",
+  "siteUrl": "https://careers.topmatch.co.il/tadiran/index.html",
+  "companyName": "TADIRAN GROUP",
+  "status": "ACTIVE",
+  "setupScriptFile": "topmatch--1z5jpw.setup.js",
+  "pageFlow": [],
+  "fieldMappings": {
+    "_meta": {
+      "savedAt": "2026-06-30T12:12:47.267Z",
+      "pagination": null,
+      "formCapture": {
+        "fields": [
+          {
+            "name": "first-name",
+            "label": "שם פרטי",
+            "tagName": "input",
+            "required": true,
+            "fieldType": "text"
+          },
+          {
+            "name": "last-name",
+            "label": "שם משפחה",
+            "tagName": "input",
+            "required": true,
+            "fieldType": "text"
+          },
+          {
+            "name": "Email",
+            "label": "אימייל",
+            "tagName": "input",
+            "required": true,
+            "fieldType": "text"
+          },
+          {
+            "name": "ID",
+            "label": "מס' תעודת זהות",
+            "tagName": "input",
+            "required": true,
+            "fieldType": "text"
+          },
+          {
+            "name": "password",
+            "label": "הזן סיסמא להיתחברות עתידית",
+            "tagName": "input",
+            "required": false,
+            "fieldType": "text"
+          },
+          {
+            "name": "confirm-password",
+            "label": "אימות סיסמא",
+            "tagName": "input",
+            "required": false,
+            "fieldType": "text"
+          },
+          {
+            "name": "cell-phone",
+            "label": "טלפון נייד",
+            "tagName": "input",
+            "required": true,
+            "fieldType": "text"
+          },
+          {
+            "name": "country",
+            "label": "ארץ מגורים",
+            "options": [
+              {
+                "label": "בחר ארץ",
+                "value": "-1"
+              },
+              {
+                "label": "קנדה",
+                "value": "1"
+              },
+              {
+                "label": "ישראל",
+                "value": "2"
+              },
+              {
+                "label": "ארצות הברית",
+                "value": "3"
+              },
+              {
+                "label": "ארגנטינה",
+                "value": "4"
+              },
+              {
+                "label": "אוסטרליה",
+                "value": "6"
+              },
+              {
+                "label": "אוסטריה",
+                "value": "7"
+              },
+              {
+                "label": "בלגיה",
+                "value": "9"
+              },
+              {
+                "label": "ברזיל",
+                "value": "12"
+              },
+              {
+                "label": "בולגריה",
+                "value": "13"
+              },
+              {
+                "label": "קפריסין",
+                "value": "18"
+              },
+              {
+                "label": "דנמרק",
+                "value": "20"
+              },
+              {
+                "label": "פינלנד",
+                "value": "25"
+              },
+              {
+                "label": "צרפת",
+                "value": "26"
+              },
+              {
+                "label": "גרמניה",
+                "value": "27"
+              },
+              {
+                "label": "יוון",
+                "value": "28"
+              },
+              {
+                "label": "הונגריה",
+                "value": "29"
+              },
+              {
+                "label": "איסלנד",
+                "value": "30"
+              },
+              {
+                "label": "אירלנד",
+                "value": "31"
+              },
+              {
+                "label": "איטליה",
+                "value": "33"
+              },
+              {
+                "label": "יפן",
+                "value": "35"
+              },
+              {
+                "label": "לוקסמבורג",
+                "value": "39"
+              },
+              {
+                "label": "מקסיקו",
+                "value": "42"
+              },
+              {
+                "label": "הולנד",
+                "value": "44"
+              },
+              {
+                "label": "ניגריה",
+                "value": "45"
+              },
+              {
+                "label": "נורבגיה",
+                "value": "46"
+              },
+              {
+                "label": "פולין",
+                "value": "48"
+              },
+              {
+                "label": "פורטוגל",
+                "value": "49"
+              },
+              {
+                "label": "רומניה",
+                "value": "51"
+              },
+              {
+                "label": "רוסיה",
+                "value": "52"
+              },
+              {
+                "label": "דרום אפריקה",
+                "value": "56"
+              },
+              {
+                "label": "ספרד",
+                "value": "57"
+              },
+              {
+                "label": "שבדיה",
+                "value": "58"
+              },
+              {
+                "label": "שוויץ",
+                "value": "59"
+              },
+              {
+                "label": "טורקיה",
+                "value": "60"
+              },
+              {
+                "label": "אוקראינה",
+                "value": "61"
+              },
+              {
+                "label": "יוגוסלביה",
+                "value": "66"
+              },
+              {
+                "label": "פנמה",
+                "value": "69"
+              },
+              {
+                "label": "הודו",
+                "value": "72"
+              },
+              {
+                "label": "תאילנד",
+                "value": "79"
+              },
+              {
+                "label": "קניה",
+                "value": "89"
+              },
+              {
+                "label": "בריטניה",
+                "value": "101"
+              },
+              {
+                "label": "סינגפור",
+                "value": "103"
+              },
+              {
+                "label": "דרום אמריקה",
+                "value": "104"
+              },
+              {
+                "label": "אחר",
+                "value": "999"
+              }
+            ],
+            "tagName": "select",
+            "required": true,
+            "fieldType": "select"
+          },
+          {
+            "name": "cityBase",
+            "label": "עיר מגורים",
+            "options": [
+              {
+                "label": "בחר עיר",
+                "value": "-1"
+              }
+            ],
+            "tagName": "select",
+            "required": true,
+            "fieldType": "select"
+          },
+          {
+            "name": "uploadeFile",
+            "label": "קורות חיים",
+            "tagName": "input",
+            "required": true,
+            "fieldType": "file"
+          },
+          {
+            "name": "sourcesDDL",
+            "label": "סוג המקור",
+            "options": [
+              {
+                "label": "בחר סוג מקור",
+                "value": "-1"
+              },
+              {
+                "label": "אחר",
+                "value": "18"
+              },
+              {
+                "label": "אתרי אינטרנט",
+                "value": "4"
+              },
+              {
+                "label": "חבר מביא חבר",
+                "value": "3"
+              },
+              {
+                "label": "ניוד פנימי",
+                "value": "43"
+              },
+              {
+                "label": "רשתות חברתיות",
+                "value": "11"
+              }
+            ],
+            "tagName": "select",
+            "required": false,
+            "fieldType": "select"
+          },
+          {
+            "name": "sourceNameDDL",
+            "label": "שם המקור",
+            "options": [
+              {
+                "label": "בחר שם מקור",
+                "value": "-1"
+              }
+            ],
+            "tagName": "select",
+            "required": false,
+            "fieldType": "select"
+          },
+          {
+            "name": "sourceNameText",
+            "label": "שם המקור",
+            "tagName": "input",
+            "required": false,
+            "fieldType": "text"
+          },
+          {
+            "name": "DisclaimerApply1",
+            "label": "אני מאשר/ת כי קראתי והבנתי את מדיניות הפרטיות ואת תנאי השימוש של חברת תדיראן",
+            "tagName": "input",
+            "required": true,
+            "fieldType": "checkbox"
+          }
+        ],
+        "method": "POST",
+        "actionUrl": "https://careers.topmatch.co.il/tadiran/redmatch-apply/redmatch.apply.html",
+        "formSelector": "input.inputfile.CV"
+      },
+      "itemSelector": "#__haide-jobs a.job-item",
+      "minPublishDate": null,
+      "minPublishDays": null,
+      "revealSelector": null,
+      "listingSelector": null,
+      "applyLoginReason": null,
+      "browserOverrides": null,
+      "loadMoreSelector": null,
+      "locationFallback": null,
+      "originalMappings": null,
+      "applyRequiresLogin": false
+    },
+    "title": {
+      "source": "auto",
+      "selector": ".__ai-title",
+      "confidence": 0.9
+    },
+    "location": {
+      "source": "auto",
+      "selector": ".__ai-location",
+      "confidence": 0.85
+    },
+    "department": {
+      "source": "auto",
+      "selector": ".__ai-department",
+      "confidence": 0.8
+    },
+    "description": {
+      "source": "auto",
+      "selector": ".__ai-description",
+      "confidence": 0.9
+    },
+    "publishDate": {
+      "source": "auto",
+      "selector": ".__ai-publishDate",
+      "confidence": 0.8
+    },
+    "externalJobId": {
+      "source": "auto",
+      "selector": ".__ai-externalJobId",
+      "confidence": 0.95
+    },
+    "applicationInfo": {
+      "source": "auto",
+      "selector": ".__ai-applicationInfo",
+      "confidence": 0.9
+    }
+  }
+}

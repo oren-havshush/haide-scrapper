@@ -1,0 +1,83 @@
+{
+  "_exportedAt": "2026-08-06T15:54:04.132Z",
+  "_note": "Mirror of the live config. The DB is authoritative; the worker never reads this file. setupScript lives alongside in <slug>.setup.js.",
+  "id": "cmq9geiw1001y01lcrzksvcq8",
+  "siteUrl": "https://l-b.co.il/%D7%97%D7%99%D7%A4%D7%95%D7%A9-%D7%A2%D7%91%D7%95%D7%93%D7%94/",
+  "companyName": "לין ביכלר ראשי",
+  "status": "ACTIVE",
+  "setupScriptFile": null,
+  "pageFlow": [],
+  "fieldMappings": {
+    "_meta": {
+      "savedAt": "2026-06-11T12:10:44.046Z",
+      "pagination": {
+        "step": 1,
+        "type": "url",
+        "param": "paged",
+        "start": 1,
+        "maxPages": 35,
+        "settleMs": 1500
+      },
+      "formCapture": {
+        "fields": [
+          {
+            "name": "cv",
+            "label": "העלאת קורות חיים (PDF/DOC/DOCX)",
+            "tagName": "input",
+            "required": true,
+            "fieldType": "file"
+          }
+        ],
+        "method": "POST",
+        "actionUrl": "https://l-b.co.il/%D7%A9%D7%9C%D7%99%D7%97%D7%AA-%D7%A7%D7%95%D7%A8%D7%95%D7%AA-%D7%97%D7%99%D7%99%D7%9D",
+        "formSelector": "#jobApplicationModal"
+      },
+      "itemSelector": "div.job-item.p-4",
+      "minPublishDate": null,
+      "revealSelector": null,
+      "listingSelector": null,
+      "applyLoginReason": null,
+      "browserOverrides": null,
+      "loadMoreSelector": null,
+      "originalMappings": null,
+      "applyRequiresLogin": false
+    },
+    "title": {
+      "source": "MANUAL",
+      "selector": "h6.job-title",
+      "confidence": 100,
+      "capturedOnUrl": "https://l-b.co.il/%D7%97%D7%99%D7%A4%D7%95%D7%A9-%D7%A2%D7%91%D7%95%D7%93%D7%94/"
+    },
+    "location": {
+      "source": "MANUAL",
+      "selector": ".meta_area .meta",
+      "confidence": 95,
+      "capturedOnUrl": "https://l-b.co.il/%D7%97%D7%99%D7%A4%D7%95%D7%A9-%D7%A2%D7%91%D7%95%D7%93%D7%94/"
+    },
+    "detailUrl": {
+      "source": "MANUAL",
+      "selector": "a[href*=\"/job/\"]",
+      "confidence": 100,
+      "extractAttr": "href",
+      "capturedOnUrl": "https://l-b.co.il/%D7%97%D7%99%D7%A4%D7%95%D7%A9-%D7%A2%D7%91%D7%95%D7%93%D7%94/"
+    },
+    "description": {
+      "source": "MANUAL",
+      "selector": ".job-description",
+      "confidence": 100,
+      "capturedOnUrl": "https://l-b.co.il/%D7%97%D7%99%D7%A4%D7%95%D7%A9-%D7%A2%D7%91%D7%95%D7%93%D7%94/"
+    },
+    "externalJobId": {
+      "source": "MANUAL",
+      "selector": ".meta-job-id",
+      "confidence": 100,
+      "capturedOnUrl": "https://l-b.co.il/%D7%97%D7%99%D7%A4%D7%95%D7%A9-%D7%A2%D7%91%D7%95%D7%93%D7%94/"
+    },
+    "employmentType": {
+      "source": "MANUAL",
+      "selector": ".meta_type",
+      "confidence": 90,
+      "capturedOnUrl": "https://l-b.co.il/%D7%97%D7%99%D7%A4%D7%95%D7%A9-%D7%A2%D7%91%D7%95%D7%93%D7%94/"
+    }
+  }
+}

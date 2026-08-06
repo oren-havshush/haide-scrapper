@@ -1,0 +1,110 @@
+{
+  "_exportedAt": "2026-08-06T15:54:05.082Z",
+  "_note": "Mirror of the live config. The DB is authoritative; the worker never reads this file. setupScript lives alongside in <slug>.setup.js.",
+  "id": "cmpv1hzrc000h01prsdj5qpe6",
+  "siteUrl": "https://yekev.co.il/%D7%93%D7%A8%D7%95%D7%A9%D7%99%D7%9D",
+  "companyName": "יקב סוכנות לביטוח",
+  "status": "ACTIVE",
+  "setupScriptFile": null,
+  "pageFlow": [],
+  "fieldMappings": {
+    "_meta": {
+      "savedAt": "2026-06-01T10:33:53.428Z",
+      "pagination": null,
+      "formCapture": {
+        "fields": [
+          {
+            "name": "id",
+            "label": "תעודת זהות",
+            "tagName": "input",
+            "required": true,
+            "fieldType": "text"
+          },
+          {
+            "name": "FirstName",
+            "label": "שם פרטי",
+            "tagName": "input",
+            "required": true,
+            "fieldType": "text"
+          },
+          {
+            "name": "LastName",
+            "label": "שם משפחה",
+            "tagName": "input",
+            "required": true,
+            "fieldType": "text"
+          },
+          {
+            "name": "phone",
+            "label": "טלפון נייד",
+            "tagName": "input",
+            "required": true,
+            "fieldType": "tel"
+          },
+          {
+            "name": "mail",
+            "label": "דוא\"ל",
+            "tagName": "input",
+            "required": true,
+            "fieldType": "email"
+          },
+          {
+            "name": "file",
+            "label": "קורות חיים",
+            "tagName": "input",
+            "required": true,
+            "fieldType": "file"
+          },
+          {
+            "name": "",
+            "label": "אישור תקנון ותנאי שימוש",
+            "tagName": "input",
+            "required": true,
+            "fieldType": "checkbox"
+          }
+        ],
+        "method": "POST",
+        "actionUrl": "(unknown - React modal, no form action)",
+        "formSelector": "(modal CV form, no <form> wrapper - captured headlessly)"
+      },
+      "itemSelector": ".Jobs_JobContainer__gYMsV",
+      "revealSelector": null,
+      "listingSelector": null,
+      "browserOverrides": null,
+      "loadMoreSelector": null,
+      "originalMappings": null
+    },
+    "title": {
+      "source": "MANUAL",
+      "selector": ".Jobs_Title__H_bKI h1",
+      "confidence": 100,
+      "capturedOnUrl": "https://yekev.co.il/%D7%93%D7%A8%D7%95%D7%A9%D7%99%D7%9D"
+    },
+    "detailUrl": {
+      "source": "MANUAL",
+      "selector": "a.Jobs_ShareOnWhatsapp__3xo4b",
+      "confidence": 100,
+      "extractAttr": "href",
+      "capturedOnUrl": "https://yekev.co.il/%D7%93%D7%A8%D7%95%D7%A9%D7%99%D7%9D"
+    },
+    "description": {
+      "source": "MANUAL",
+      "selector": ".Jobs_Description__1DxuM .Jobs_BodyText__2StNr",
+      "confidence": 100,
+      "capturedOnUrl": "https://yekev.co.il/%D7%93%D7%A8%D7%95%D7%A9%D7%99%D7%9D"
+    },
+    "requirements": {
+      "source": "MANUAL",
+      "selector": ".Jobs_Requirements__14o_- .Jobs_BodyText__2StNr",
+      "confidence": 100,
+      "capturedOnUrl": "https://yekev.co.il/%D7%93%D7%A8%D7%95%D7%A9%D7%99%D7%9D"
+    },
+    "externalJobId": {
+      "source": "MANUAL",
+      "selector": "a.Jobs_ShareOnWhatsapp__3xo4b",
+      "confidence": 100,
+      "extractAttr": "href",
+      "capturedOnUrl": "https://yekev.co.il/%D7%93%D7%A8%D7%95%D7%A9%D7%99%D7%9D"
+    }
+  }
+}

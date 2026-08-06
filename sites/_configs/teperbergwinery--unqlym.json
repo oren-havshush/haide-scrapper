@@ -1,0 +1,91 @@
+{
+  "_exportedAt": "2026-08-06T15:54:02.484Z",
+  "_note": "Mirror of the live config. The DB is authoritative; the worker never reads this file. setupScript lives alongside in <slug>.setup.js.",
+  "id": "cmqye2z6b001p01nzttunqlym",
+  "siteUrl": "https://teperbergwinery.co.il/open-positions/",
+  "companyName": "יקב טפרברג",
+  "status": "ACTIVE",
+  "setupScriptFile": "teperbergwinery--unqlym.setup.js",
+  "pageFlow": [],
+  "fieldMappings": {
+    "_meta": {
+      "savedAt": "2026-06-28T23:09:01.631Z",
+      "pagination": null,
+      "formCapture": {
+        "fields": [
+          {
+            "name": "your-name",
+            "label": "שם מלא",
+            "tagName": "INPUT",
+            "required": true,
+            "fieldType": "text"
+          },
+          {
+            "name": "your-phone",
+            "label": "נייד",
+            "tagName": "INPUT",
+            "required": true,
+            "fieldType": "tel"
+          },
+          {
+            "name": "your-email",
+            "label": "דוא\"ל",
+            "tagName": "INPUT",
+            "required": true,
+            "fieldType": "email"
+          },
+          {
+            "name": "your-linkedin",
+            "label": "לינקדאין",
+            "tagName": "INPUT",
+            "required": false,
+            "fieldType": "text"
+          },
+          {
+            "name": "your-cv",
+            "label": "קו\"ח",
+            "tagName": "INPUT",
+            "required": false,
+            "fieldType": "file"
+          },
+          {
+            "name": "your-letter",
+            "label": "מכתב מוטיבציה",
+            "tagName": "INPUT",
+            "required": false,
+            "fieldType": "file"
+          }
+        ],
+        "method": "POST",
+        "actionUrl": "https://teperbergwinery.co.il/wp-json/contact-form-7/v1/contact-forms/6878/feedback",
+        "formSelector": "div.job-form form.wpcf7-form"
+      },
+      "itemSelector": "div.row.job-box",
+      "minPublishDate": null,
+      "minPublishDays": null,
+      "revealSelector": null,
+      "listingSelector": null,
+      "applyLoginReason": null,
+      "browserOverrides": null,
+      "loadMoreSelector": null,
+      "locationFallback": null,
+      "originalMappings": null,
+      "applyRequiresLogin": false
+    },
+    "title": {
+      "source": "auto",
+      "selector": ".__ai-title",
+      "confidence": 0.95
+    },
+    "description": {
+      "source": "auto",
+      "selector": ".job-desc",
+      "confidence": 0.9
+    },
+    "externalJobId": {
+      "source": "auto",
+      "selector": ".__ai-externalJobId",
+      "confidence": 0.95
+    }
+  }
+}

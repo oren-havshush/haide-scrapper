@@ -1,0 +1,118 @@
+{
+  "_exportedAt": "2026-08-06T15:54:04.186Z",
+  "_note": "Mirror of the live config. The DB is authoritative; the worker never reads this file. setupScript lives alongside in <slug>.setup.js.",
+  "id": "cmq8egutf000e01mfo9ioqkzw",
+  "siteUrl": "https://tafkid-plus.co.il/",
+  "companyName": null,
+  "status": "ACTIVE",
+  "setupScriptFile": "tafkid-plus--ioqkzw.setup.js",
+  "pageFlow": [],
+  "fieldMappings": {
+    "_meta": {
+      "savedAt": "2026-06-10T19:30:15.228Z",
+      "pagination": null,
+      "formCapture": {
+        "fields": [
+          {
+            "name": "first_name",
+            "label": "שם פרטי",
+            "tagName": "input",
+            "required": true,
+            "fieldType": "text"
+          },
+          {
+            "name": "last_name",
+            "label": "שם משפחה",
+            "tagName": "input",
+            "required": true,
+            "fieldType": "text"
+          },
+          {
+            "name": "tel",
+            "label": "מספר טלפון",
+            "tagName": "input",
+            "required": true,
+            "fieldType": "tel"
+          },
+          {
+            "name": "email",
+            "label": "כתובת דוא\"ל",
+            "tagName": "input",
+            "required": true,
+            "fieldType": "email"
+          },
+          {
+            "name": "cv_file",
+            "label": "העלה קובץ קורות חיים ( Word / Pdf )",
+            "tagName": "input",
+            "required": true,
+            "fieldType": "file"
+          },
+          {
+            "name": "in_profile",
+            "label": "פרופיל לינקדאין",
+            "tagName": "input",
+            "required": false,
+            "fieldType": "text"
+          },
+          {
+            "name": "share_more_jobs",
+            "label": "share more jobs",
+            "tagName": "input",
+            "required": true,
+            "fieldType": "checkbox"
+          }
+        ],
+        "method": "POST",
+        "actionUrl": "https://tafkid-plus.co.il/",
+        "formSelector": "div.wrap_order_item > div.order_item.elementor-section > div.order_content.job_description > div.big > div.site_form_floor.form_job > form.site_form.site_form_style"
+      },
+      "itemSelector": ".wrap_order_item",
+      "minPublishDate": "2026-01-01",
+      "revealSelector": null,
+      "listingSelector": null,
+      "applyLoginReason": null,
+      "browserOverrides": null,
+      "loadMoreSelector": null,
+      "originalMappings": null,
+      "applyRequiresLogin": false
+    },
+    "title": {
+      "source": "MANUAL",
+      "selector": ".text_big",
+      "confidence": 100,
+      "capturedOnUrl": "https://tafkid-plus.co.il/"
+    },
+    "location": {
+      "source": "MANUAL",
+      "selector": "[data-haide-loc]",
+      "confidence": 100,
+      "capturedOnUrl": "https://tafkid-plus.co.il/"
+    },
+    "department": {
+      "source": "MANUAL",
+      "selector": "[data-haide-dept]",
+      "confidence": 100,
+      "capturedOnUrl": "https://tafkid-plus.co.il/"
+    },
+    "description": {
+      "source": "MANUAL",
+      "selector": ".order_notes .text_description",
+      "confidence": 100,
+      "capturedOnUrl": "https://tafkid-plus.co.il/"
+    },
+    "publishDate": {
+      "source": "MANUAL",
+      "selector": "[data-haide-date]",
+      "confidence": 100,
+      "capturedOnUrl": "https://tafkid-plus.co.il/"
+    },
+    "externalJobId": {
+      "source": "MANUAL",
+      "selector": "input[name=\"jobId\"]",
+      "confidence": 100,
+      "extractAttr": "value",
+      "capturedOnUrl": "https://tafkid-plus.co.il/"
+    }
+  }
+}

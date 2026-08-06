@@ -1,0 +1,52 @@
+{
+  "_exportedAt": "2026-08-06T15:54:05.456Z",
+  "_note": "Mirror of the live config. The DB is authoritative; the worker never reads this file. setupScript lives alongside in <slug>.setup.js.",
+  "id": "cmp9p34hw001501lsdle2pnpm",
+  "siteUrl": "https://kedmi770.co.il/%D7%93%D7%A8%D7%95%D7%A9%D7%99%D7%9D-%D7%9E%D7%97%D7%A4%D7%A9%D7%99%D7%9D-%D7%A2%D7%95%D7%91%D7%93%D7%99%D7%9D/",
+  "companyName": "קדמי ביטוח",
+  "status": "ACTIVE",
+  "setupScriptFile": "kedmi770--e2pnpm.setup.js",
+  "pageFlow": [],
+  "fieldMappings": {
+    "_meta": {
+      "savedAt": "2026-05-17T11:36:27.803Z",
+      "pagination": null,
+      "formCapture": null,
+      "itemSelector": "#haide-jobs-root [data-haide-job]",
+      "revealSelector": null,
+      "listingSelector": null,
+      "originalMappings": null
+    },
+    "title": {
+      "source": "MANUAL",
+      "selector": "h3",
+      "confidence": 100,
+      "capturedOnUrl": "https://kedmi770.co.il/%D7%93%D7%A8%D7%95%D7%A9%D7%99%D7%9D-%D7%9E%D7%97%D7%A4%D7%A9%D7%99%D7%9D-%D7%A2%D7%95%D7%91%D7%93%D7%99%D7%9D/"
+    },
+    "description": {
+      "source": "MANUAL",
+      "selector": "p",
+      "confidence": 100,
+      "capturedOnUrl": "https://kedmi770.co.il/%D7%93%D7%A8%D7%95%D7%A9%D7%99%D7%9D-%D7%9E%D7%97%D7%A4%D7%A9%D7%99%D7%9D-%D7%A2%D7%95%D7%91%D7%93%D7%99%D7%9D/"
+    },
+    "requirements": {
+      "source": "MANUAL",
+      "selector": "ul",
+      "confidence": 100,
+      "capturedOnUrl": "https://kedmi770.co.il/%D7%93%D7%A8%D7%95%D7%A9%D7%99%D7%9D-%D7%9E%D7%97%D7%A4%D7%A9%D7%99%D7%9D-%D7%A2%D7%95%D7%91%D7%93%D7%99%D7%9D/"
+    },
+    "externalJobId": {
+      "source": "MANUAL",
+      "selector": "[data-haide-job-id]",
+      "confidence": 100,
+      "capturedOnUrl": "https://kedmi770.co.il/%D7%93%D7%A8%D7%95%D7%A9%D7%99%D7%9D-%D7%9E%D7%97%D7%A4%D7%A9%D7%99%D7%9D-%D7%A2%D7%95%D7%91%D7%93%D7%99%D7%9D/"
+    },
+    "applicationInfo": {
+      "source": "MANUAL",
+      "selector": "a[href^=\"mailto:\"]",
+      "confidence": 100,
+      "extractAttr": "href",
+      "capturedOnUrl": "https://kedmi770.co.il/%D7%93%D7%A8%D7%95%D7%A9%D7%99%D7%9D-%D7%9E%D7%97%D7%A4%D7%A9%D7%99%D7%9D-%D7%A2%D7%95%D7%91%D7%93%D7%99%D7%9D/"
+    }
+  }
+}

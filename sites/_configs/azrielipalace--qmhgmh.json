@@ -1,0 +1,54 @@
+{
+  "_exportedAt": "2026-08-06T15:54:05.278Z",
+  "_note": "Mirror of the live config. The DB is authoritative; the worker never reads this file. setupScript lives alongside in <slug>.setup.js.",
+  "id": "cmpmeucf8001901mvm4qmhgmh",
+  "siteUrl": "https://azrielipalace.co.il/career/",
+  "companyName": "עזריאלי",
+  "status": "ACTIVE",
+  "setupScriptFile": "azrielipalace--qmhgmh.setup.js",
+  "pageFlow": [],
+  "fieldMappings": {
+    "_meta": {
+      "savedAt": "2026-05-26T09:12:05.328Z",
+      "pagination": null,
+      "formCapture": null,
+      "itemSelector": "details.e-n-accordion-item",
+      "revealSelector": null,
+      "listingSelector": null,
+      "loadMoreSelector": null,
+      "originalMappings": null
+    },
+    "title": {
+      "source": "MANUAL",
+      "selector": ".e-n-accordion-item-title-text",
+      "confidence": 100,
+      "capturedOnUrl": "https://azrielipalace.co.il/career/"
+    },
+    "location": {
+      "source": "MANUAL",
+      "selector": "[data-extracted-location]",
+      "confidence": 100,
+      "capturedOnUrl": "https://azrielipalace.co.il/career/"
+    },
+    "description": {
+      "source": "MANUAL",
+      "selector": ".e-con-inner",
+      "confidence": 100,
+      "capturedOnUrl": "https://azrielipalace.co.il/career/"
+    },
+    "externalJobId": {
+      "source": "MANUAL",
+      "selector": "summary",
+      "confidence": 100,
+      "extractAttr": "aria-controls",
+      "capturedOnUrl": "https://azrielipalace.co.il/career/"
+    },
+    "applicationInfo": {
+      "source": "MANUAL",
+      "selector": "a[href^=\"mailto:\"]",
+      "confidence": 100,
+      "extractAttr": "href",
+      "capturedOnUrl": "https://azrielipalace.co.il/career/"
+    }
+  }
+}

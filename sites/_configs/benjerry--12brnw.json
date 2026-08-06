@@ -1,0 +1,47 @@
+{
+  "_exportedAt": "2026-08-06T15:54:03.745Z",
+  "_note": "Mirror of the live config. The DB is authoritative; the worker never reads this file. setupScript lives alongside in <slug>.setup.js.",
+  "id": "cmqe6ce8q004401lcpn12brnw",
+  "siteUrl": "https://www.benjerry.co.il/jobs/",
+  "companyName": "בן & ג’ריס",
+  "status": "ACTIVE",
+  "setupScriptFile": "benjerry--12brnw.setup.js",
+  "pageFlow": [],
+  "fieldMappings": {
+    "_meta": {
+      "savedAt": "2026-06-17T11:22:16.941Z",
+      "pagination": null,
+      "formCapture": null,
+      "itemSelector": ".single_item",
+      "minPublishDate": null,
+      "minPublishDays": 90,
+      "revealSelector": null,
+      "listingSelector": null,
+      "applyLoginReason": null,
+      "browserOverrides": null,
+      "loadMoreSelector": null,
+      "originalMappings": null,
+      "applyRequiresLogin": false
+    },
+    "title": {
+      "type": "text",
+      "selector": ".haide-title"
+    },
+    "location": {
+      "type": "text",
+      "selector": ".haide-loc"
+    },
+    "description": {
+      "type": "text",
+      "selector": "p:not(:empty)"
+    },
+    "externalJobId": {
+      "type": "text",
+      "selector": ".haide-jobid"
+    },
+    "applicationInfo": {
+      "type": "text",
+      "selector": ".haide-apply"
+    }
+  }
+}

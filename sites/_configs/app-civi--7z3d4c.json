@@ -1,0 +1,87 @@
+{
+  "_exportedAt": "2026-08-06T15:54:04.949Z",
+  "_note": "Mirror of the live config. The DB is authoritative; the worker never reads this file. setupScript lives alongside in <slug>.setup.js.",
+  "id": "cmq52e170000c01qn937z3d4c",
+  "siteUrl": "https://app.civi.co.il/?promos&lang=he&id=5N5DYKF7RR&src=17409&p=1&r=20&o=date_opened%2Cd&f=&l=",
+  "companyName": "כפר המכביה",
+  "status": "ACTIVE",
+  "setupScriptFile": "app-civi--7z3d4c.setup.js",
+  "pageFlow": [],
+  "fieldMappings": {
+    "_meta": {
+      "savedAt": "2026-06-08T10:30:00.786Z",
+      "pagination": null,
+      "formCapture": {
+        "fields": [
+          {
+            "name": "name",
+            "label": "name",
+            "tagName": "input",
+            "required": false,
+            "fieldType": "text"
+          },
+          {
+            "name": "phone",
+            "label": "phone",
+            "tagName": "input",
+            "required": false,
+            "fieldType": "tel"
+          },
+          {
+            "name": "email",
+            "label": "email",
+            "tagName": "input",
+            "required": false,
+            "fieldType": "email"
+          },
+          {
+            "name": "cv",
+            "label": "cv",
+            "tagName": "input",
+            "required": false,
+            "fieldType": "file"
+          }
+        ],
+        "method": "POST",
+        "actionUrl": "https://app.civi.co.il/promo/id=590969&src=17409",
+        "formSelector": "#form > form.Form"
+      },
+      "itemSelector": ".thumb",
+      "revealSelector": null,
+      "listingSelector": null,
+      "browserOverrides": null,
+      "loadMoreSelector": null,
+      "originalMappings": null
+    },
+    "title": {
+      "source": "MANUAL",
+      "selector": ".title",
+      "confidence": 100,
+      "capturedOnUrl": "https://app.civi.co.il/?promos&lang=he&id=5N5DYKF7RR&src=17409&p=1&r=20&o=date_opened%2Cd&f=&l="
+    },
+    "location": {
+      "source": "MANUAL",
+      "selector": "[data-extracted-location]",
+      "confidence": 100,
+      "capturedOnUrl": "https://app.civi.co.il/?promos&lang=he&id=5N5DYKF7RR&src=17409&p=1&r=20&o=date_opened%2Cd&f=&l="
+    },
+    "detailUrl": {
+      "source": "MANUAL",
+      "selector": "[data-extracted-detailurl]",
+      "confidence": 100,
+      "capturedOnUrl": "https://app.civi.co.il/?promos&lang=he&id=5N5DYKF7RR&src=17409&p=1&r=20&o=date_opened%2Cd&f=&l="
+    },
+    "description": {
+      "source": "MANUAL",
+      "selector": ".descr",
+      "confidence": 100,
+      "capturedOnUrl": "https://app.civi.co.il/?promos&lang=he&id=5N5DYKF7RR&src=17409&p=1&r=20&o=date_opened%2Cd&f=&l="
+    },
+    "externalJobId": {
+      "source": "MANUAL",
+      "selector": "[data-extracted-jobid]",
+      "confidence": 100,
+      "capturedOnUrl": "https://app.civi.co.il/?promos&lang=he&id=5N5DYKF7RR&src=17409&p=1&r=20&o=date_opened%2Cd&f=&l="
+    }
+  }
+}

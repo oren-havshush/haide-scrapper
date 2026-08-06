@@ -1,0 +1,112 @@
+{
+  "_exportedAt": "2026-08-06T15:54:03.693Z",
+  "_note": "Mirror of the live config. The DB is authoritative; the worker never reads this file. setupScript lives alongside in <slug>.setup.js.",
+  "id": "cmqe6suox004e01lc6x676m0e",
+  "siteUrl": "https://www.iaa.gov.il/about/jobs/",
+  "companyName": "רשות שדות התעופה",
+  "status": "ACTIVE",
+  "setupScriptFile": "iaa--676m0e.setup.js",
+  "pageFlow": [],
+  "fieldMappings": {
+    "_meta": {
+      "savedAt": "2026-06-15T15:02:08.433Z",
+      "pagination": null,
+      "formCapture": {
+        "fields": [
+          {
+            "name": "FirstName",
+            "label": "שם פרטי",
+            "tagName": "input",
+            "required": false,
+            "fieldType": "text"
+          },
+          {
+            "name": "LastName",
+            "label": "שם משפחה",
+            "tagName": "input",
+            "required": false,
+            "fieldType": "text"
+          },
+          {
+            "name": "Email",
+            "label": "דואר אלקטרוני",
+            "tagName": "input",
+            "required": false,
+            "fieldType": "email"
+          },
+          {
+            "name": "PhoneNumber.Prefix",
+            "label": "קידומת",
+            "tagName": "select",
+            "required": false,
+            "fieldType": "select"
+          },
+          {
+            "name": "PhoneNumber.Postfix",
+            "label": "טלפון",
+            "tagName": "input",
+            "required": false,
+            "fieldType": "tel"
+          },
+          {
+            "name": "File",
+            "label": "קורות חיים",
+            "tagName": "input",
+            "required": false,
+            "fieldType": "file"
+          },
+          {
+            "name": "Remarks",
+            "label": "הערות",
+            "tagName": "textarea",
+            "required": false,
+            "fieldType": "textarea"
+          }
+        ],
+        "method": "post",
+        "actionUrl": "https://www.iaa.gov.il/about/jobs/",
+        "formSelector": "#jobsapplication-form"
+      },
+      "itemSelector": "li.collapse--item",
+      "minPublishDate": null,
+      "revealSelector": null,
+      "listingSelector": null,
+      "applyLoginReason": null,
+      "browserOverrides": null,
+      "loadMoreSelector": null,
+      "originalMappings": null,
+      "applyRequiresLogin": false
+    },
+    "title": {
+      "source": "MANUAL",
+      "selector": "button.collapse--question",
+      "confidence": 100,
+      "capturedOnUrl": "https://www.iaa.gov.il/about/jobs/"
+    },
+    "location": {
+      "source": "MANUAL",
+      "selector": ".__ai-location",
+      "confidence": 100,
+      "capturedOnUrl": "https://www.iaa.gov.il/about/jobs/"
+    },
+    "description": {
+      "source": "MANUAL",
+      "selector": ".collapse--content .main--content",
+      "confidence": 100,
+      "capturedOnUrl": "https://www.iaa.gov.il/about/jobs/"
+    },
+    "externalJobId": {
+      "source": "MANUAL",
+      "selector": ".__ai-eid",
+      "confidence": 100,
+      "capturedOnUrl": "https://www.iaa.gov.il/about/jobs/"
+    },
+    "applicationInfo": {
+      "source": "MANUAL",
+      "selector": "a[href*=\"jid=\"]",
+      "confidence": 100,
+      "extractAttr": "href",
+      "capturedOnUrl": "https://www.iaa.gov.il/about/jobs/"
+    }
+  }
+}

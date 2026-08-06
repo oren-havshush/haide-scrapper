@@ -1,0 +1,109 @@
+{
+  "_exportedAt": "2026-08-06T15:54:04.706Z",
+  "_note": "Mirror of the live config. The DB is authoritative; the worker never reads this file. setupScript lives alongside in <slug>.setup.js.",
+  "id": "cmq6gxm6y001p01m9k3k3pwyv",
+  "siteUrl": "https://www.msh.co.il/migdal-capital-markets/careers",
+  "companyName": "מגדל שוקי הון",
+  "status": "ACTIVE",
+  "setupScriptFile": "msh--k3pwyv.setup.js",
+  "pageFlow": [],
+  "fieldMappings": {
+    "_meta": {
+      "savedAt": "2026-06-09T11:26:01.592Z",
+      "pagination": null,
+      "formCapture": {
+        "fields": [
+          {
+            "name": "your-name",
+            "label": "שם מלא*",
+            "tagName": "input",
+            "required": false,
+            "fieldType": "text"
+          },
+          {
+            "name": "your-phone",
+            "label": "מספר טלפון*",
+            "tagName": "input",
+            "required": false,
+            "fieldType": "tel"
+          },
+          {
+            "name": "your-email",
+            "label": "דוא''ל*",
+            "tagName": "input",
+            "required": false,
+            "fieldType": "email"
+          },
+          {
+            "name": "cv-file",
+            "label": "צרף קובץ קורות חיים*",
+            "tagName": "input",
+            "required": false,
+            "fieldType": "file"
+          },
+          {
+            "name": "your-message",
+            "label": "פניה אישית",
+            "tagName": "textarea",
+            "required": false,
+            "fieldType": "textarea"
+          },
+          {
+            "name": "checkbox-903[]",
+            "label": "הינני מאשר כי המידע שמסרתי ואמסור לחברה יישמר לצורך ניהול ובחינת מועמדותי והעסקתי בחברה, בהתאם\n  \n  ",
+            "tagName": "input",
+            "required": false,
+            "fieldType": "checkbox"
+          },
+          {
+            "name": "checkbox-904[]",
+            "label": "הינני לקוח\n        כשיר",
+            "tagName": "input",
+            "required": false,
+            "fieldType": "checkbox"
+          }
+        ],
+        "method": "POST",
+        "actionUrl": "https://www.msh.co.il/migdal-capital-markets/careers/#wpcf7-f9420-o1",
+        "formSelector": "#carrer-apply-contact-form"
+      },
+      "itemSelector": ".panel.panel-default",
+      "revealSelector": null,
+      "listingSelector": null,
+      "applyLoginReason": null,
+      "browserOverrides": {
+        "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+        "extraHeaders": {
+          "accept-language": "he-IL,he;q=0.9,en-US;q=0.8,en;q=0.7"
+        }
+      },
+      "loadMoreSelector": null,
+      "originalMappings": null,
+      "applyRequiresLogin": false
+    },
+    "title": {
+      "source": "MANUAL",
+      "selector": ".panel-title__el",
+      "confidence": 100,
+      "capturedOnUrl": "https://www.msh.co.il/migdal-capital-markets/careers/"
+    },
+    "location": {
+      "source": "MANUAL",
+      "selector": "[data-loc]",
+      "confidence": 100,
+      "capturedOnUrl": "https://www.msh.co.il/migdal-capital-markets/careers/"
+    },
+    "description": {
+      "source": "MANUAL",
+      "selector": ".panel-body__col",
+      "confidence": 100,
+      "capturedOnUrl": "https://www.msh.co.il/migdal-capital-markets/careers/"
+    },
+    "externalJobId": {
+      "source": "MANUAL",
+      "selector": "[data-ex-id]",
+      "confidence": 100,
+      "capturedOnUrl": "https://www.msh.co.il/migdal-capital-markets/careers/"
+    }
+  }
+}

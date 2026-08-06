@@ -1,0 +1,95 @@
+{
+  "_exportedAt": "2026-08-06T15:54:02.629Z",
+  "_note": "Mirror of the live config. The DB is authoritative; the worker never reads this file. setupScript lives alongside in <slug>.setup.js.",
+  "id": "cmqy9n88g000n01nznj6vg3i1",
+  "siteUrl": "https://careers.freesbe.com/jobs",
+  "companyName": "LEASE4U",
+  "status": "ACTIVE",
+  "setupScriptFile": "freesbe--6vg3i1.setup.js",
+  "pageFlow": [],
+  "fieldMappings": {
+    "_meta": {
+      "savedAt": "2026-06-28T21:35:55.557Z",
+      "pagination": null,
+      "formCapture": {
+        "fields": [
+          {
+            "name": "firstName",
+            "label": "שם פרטי",
+            "tagName": "INPUT",
+            "required": false,
+            "fieldType": "text"
+          },
+          {
+            "name": "lastName",
+            "label": "שם משפחה",
+            "tagName": "INPUT",
+            "required": true,
+            "fieldType": "text"
+          },
+          {
+            "name": "email",
+            "label": "אימייל",
+            "tagName": "INPUT",
+            "required": true,
+            "fieldType": "email"
+          },
+          {
+            "name": "phone",
+            "label": "טלפון",
+            "tagName": "INPUT",
+            "required": true,
+            "fieldType": "tel"
+          },
+          {
+            "name": "resume",
+            "label": "קורות חיים",
+            "tagName": "INPUT",
+            "required": false,
+            "fieldType": "file"
+          }
+        ],
+        "method": "POST",
+        "actionUrl": "https://careers.freesbe.com/jobs/8535",
+        "formSelector": "form.space-y-4"
+      },
+      "itemSelector": "div.flex-col.gap-6 > div.cursor-pointer",
+      "minPublishDate": null,
+      "minPublishDays": null,
+      "revealSelector": null,
+      "listingSelector": null,
+      "applyLoginReason": null,
+      "browserOverrides": null,
+      "loadMoreSelector": null,
+      "locationFallback": null,
+      "originalMappings": null,
+      "applyRequiresLogin": false
+    },
+    "title": {
+      "source": "auto",
+      "selector": "h3",
+      "confidence": 0.9
+    },
+    "location": {
+      "source": "auto",
+      "selector": "div.justify-end > span",
+      "confidence": 0.8
+    },
+    "detailUrl": {
+      "source": "auto",
+      "selector": "a.__ai-detail-url",
+      "confidence": 0.9,
+      "extractAttr": "href"
+    },
+    "description": {
+      "source": "auto",
+      "selector": ".__ai-description",
+      "confidence": 0.8
+    },
+    "externalJobId": {
+      "source": "auto",
+      "selector": ".__ai-externalJobId",
+      "confidence": 0.9
+    }
+  }
+}

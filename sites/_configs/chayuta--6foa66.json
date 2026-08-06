@@ -1,0 +1,43 @@
+{
+  "_exportedAt": "2026-08-06T15:54:06.072Z",
+  "_note": "Mirror of the live config. The DB is authoritative; the worker never reads this file. setupScript lives alongside in <slug>.setup.js.",
+  "id": "cmowfdwt0000601mr7e6foa66",
+  "siteUrl": "https://chayuta.com/career/#position",
+  "companyName": "חיותא",
+  "status": "ACTIVE",
+  "setupScriptFile": null,
+  "pageFlow": [
+    {
+      "url": "https://chayuta.com/career/#position",
+      "action": "navigate"
+    }
+  ],
+  "fieldMappings": {
+    "_meta": {
+      "savedAt": "2026-05-11T20:20:42.371Z",
+      "pagination": null,
+      "formCapture": null,
+      "itemSelector": "li.position__panels-item.svelte-ptob3x",
+      "revealSelector": null,
+      "listingSelector": "#position",
+      "originalMappings": null
+    },
+    "title": {
+      "source": "MANUAL",
+      "selector": "h3",
+      "confidence": 0
+    },
+    "description": {
+      "source": "MANUAL",
+      "selector": "div.career-content",
+      "confidence": 0
+    },
+    "applicationInfo": {
+      "source": "MANUAL",
+      "selector": "a[href^=\"mailto:\"]",
+      "confidence": 100,
+      "extractAttr": "href",
+      "capturedOnUrl": "https://chayuta.com/career/"
+    }
+  }
+}

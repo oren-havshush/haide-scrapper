@@ -1,0 +1,89 @@
+{
+  "_exportedAt": "2026-08-06T15:54:03.213Z",
+  "_note": "Mirror of the live config. The DB is authoritative; the worker never reads this file. setupScript lives alongside in <slug>.setup.js.",
+  "id": "cmqo82oc6000l01qp7zxpwqf1",
+  "siteUrl": "https://chitadelivery.co.il/jobs/",
+  "companyName": "צ'יטה שליחויות",
+  "status": "ACTIVE",
+  "setupScriptFile": "chitadelivery--xpwqf1.setup.js",
+  "pageFlow": [],
+  "fieldMappings": {
+    "_meta": {
+      "savedAt": "2026-06-21T20:50:43.997Z",
+      "pagination": null,
+      "formCapture": {
+        "fields": [
+          {
+            "name": "form_fields[name]",
+            "label": "שם מלא",
+            "tagName": "INPUT",
+            "required": true,
+            "fieldType": "text"
+          },
+          {
+            "name": "form_fields[email]",
+            "label": "טלפון",
+            "tagName": "INPUT",
+            "required": true,
+            "fieldType": "tel"
+          },
+          {
+            "name": "form_fields[email]",
+            "label": "אימייל",
+            "tagName": "INPUT",
+            "required": false,
+            "fieldType": "email"
+          },
+          {
+            "name": "form_fields[name]",
+            "label": "קורות חיים",
+            "tagName": "INPUT",
+            "required": false,
+            "fieldType": "file"
+          },
+          {
+            "name": "form_fields[message]",
+            "label": "הודעה",
+            "tagName": "TEXTAREA",
+            "required": false,
+            "fieldType": "textarea"
+          }
+        ],
+        "method": "POST",
+        "actionUrl": "https://chitadelivery.co.il/jobs/",
+        "formSelector": "form.elementor-form"
+      },
+      "itemSelector": "article.elementor-post",
+      "minPublishDate": null,
+      "minPublishDays": null,
+      "revealSelector": null,
+      "listingSelector": null,
+      "applyLoginReason": null,
+      "browserOverrides": {},
+      "loadMoreSelector": null,
+      "originalMappings": null,
+      "applyRequiresLogin": false
+    },
+    "title": {
+      "source": "auto",
+      "selector": ".elementor-post__title",
+      "confidence": 0.9
+    },
+    "detailUrl": {
+      "source": "auto",
+      "selector": ".elementor-post__title a",
+      "confidence": 0.9,
+      "extractAttr": "href"
+    },
+    "description": {
+      "source": "auto",
+      "selector": ".elementor-post__excerpt p",
+      "confidence": 0.8
+    },
+    "externalJobId": {
+      "source": "auto",
+      "selector": ".__ai-job-id",
+      "confidence": 0.9
+    }
+  }
+}

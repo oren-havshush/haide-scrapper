@@ -1,0 +1,146 @@
+{
+  "_exportedAt": "2026-08-06T15:54:04.975Z",
+  "_note": "Mirror of the live config. The DB is authoritative; the worker never reads this file. setupScript lives alongside in <slug>.setup.js.",
+  "id": "cmpy9pfci000801qnhz2cema3",
+  "siteUrl": "https://gtech.co.il/%d7%9e%d7%a9%d7%a8%d7%95%d7%aa/",
+  "companyName": "Gtech",
+  "status": "ACTIVE",
+  "setupScriptFile": "gtech--2cema3.setup.js",
+  "pageFlow": [
+    {
+      "url": "https://gtech.co.il/%d7%9e%d7%a9%d7%a8%d7%95%d7%aa/",
+      "action": "navigate"
+    },
+    {
+      "url": "https://gtech.co.il/*",
+      "action": "navigate"
+    }
+  ],
+  "fieldMappings": {
+    "_meta": {
+      "savedAt": "2026-06-03T16:19:53.319Z",
+      "pagination": null,
+      "formCapture": {
+        "fields": [
+          {
+            "name": "post_id",
+            "label": "post id",
+            "tagName": "input",
+            "required": false,
+            "fieldType": "hidden"
+          },
+          {
+            "name": "form_id",
+            "label": "form id",
+            "tagName": "input",
+            "required": false,
+            "fieldType": "hidden"
+          },
+          {
+            "name": "referer_title",
+            "label": "referer title",
+            "tagName": "input",
+            "required": false,
+            "fieldType": "hidden"
+          },
+          {
+            "name": "queried_id",
+            "label": "queried id",
+            "tagName": "input",
+            "required": false,
+            "fieldType": "hidden"
+          },
+          {
+            "name": "form_fields[page_name]",
+            "label": "form fields[page name]",
+            "tagName": "input",
+            "required": false,
+            "fieldType": "hidden"
+          },
+          {
+            "name": "form_fields[name]",
+            "label": "שם",
+            "tagName": "input",
+            "required": true,
+            "fieldType": "text"
+          },
+          {
+            "name": "form_fields[field_40b6b70]",
+            "label": "טלפון",
+            "tagName": "input",
+            "required": true,
+            "fieldType": "tel"
+          },
+          {
+            "name": "form_fields[email]",
+            "label": "אימייל",
+            "tagName": "input",
+            "required": true,
+            "fieldType": "email"
+          },
+          {
+            "name": "form_fields[field_81a3dc9]",
+            "label": "קובץ קורות חיים",
+            "tagName": "input",
+            "required": true,
+            "fieldType": "file"
+          },
+          {
+            "name": "form_fields[field_97bef34]",
+            "label": "אישור מדיניות פרטיות",
+            "tagName": "input",
+            "required": true,
+            "fieldType": "checkbox"
+          },
+          {
+            "name": "g-recaptcha-response",
+            "label": "g recaptcha response",
+            "tagName": "textarea",
+            "required": false,
+            "fieldType": "textarea"
+          }
+        ],
+        "method": "POST",
+        "actionUrl": "https://gtech.co.il/%d7%93%d7%a8%d7%95%d7%a9-%d7%94-%d7%a8%d7%a6-%d7%90%d7%91%d7%98%d7%97%d7%aa-%d7%9e%d7%99%d7%93%d7%a2-%d7%9c%d7%9e%d7%97%d7%9c%d7%a7%d7%aa-%d7%aa%d7%a9%d7%aa%d7%99%d7%95%d7%aa/",
+        "formSelector": "div.elementor-element.elementor-element-0ca3a4f > div.e-con-inner > div.elementor-element.elementor-element-9c77935 > div.elementor-element.elementor-element-f7b1fd4:nth-of-type(2) > div.elementor-widget-container > form.elementor-form"
+      },
+      "itemSelector": "article.elementor-post",
+      "revealSelector": null,
+      "listingSelector": null,
+      "browserOverrides": null,
+      "loadMoreSelector": null,
+      "originalMappings": null
+    },
+    "title": {
+      "source": "MANUAL",
+      "selector": "h3.elementor-post__title a",
+      "confidence": 100,
+      "capturedOnUrl": "https://gtech.co.il/%d7%9e%d7%a9%d7%a8%d7%95%d7%aa/"
+    },
+    "location": {
+      "source": "MANUAL",
+      "selector": "[data-extracted-location]",
+      "confidence": 100,
+      "capturedOnUrl": "https://gtech.co.il/%d7%9e%d7%a9%d7%a8%d7%95%d7%aa/"
+    },
+    "detailUrl": {
+      "source": "MANUAL",
+      "selector": "h3.elementor-post__title a",
+      "confidence": 100,
+      "extractAttr": "href",
+      "capturedOnUrl": "https://gtech.co.il/%d7%9e%d7%a9%d7%a8%d7%95%d7%aa/"
+    },
+    "description": {
+      "source": "MANUAL",
+      "selector": ".elementor-widget-theme-post-content",
+      "confidence": 100,
+      "capturedOnUrl": "https://gtech.co.il/%d7%93%d7%a8%d7%95%d7%a9-%d7%94-%d7%a8%d7%a6-%d7%90%d7%91%d7%98%d7%97%d7%aa-%d7%9e%d7%99%d7%93%d7%a2-%d7%9c%d7%9e%d7%97%d7%9c%d7%a7%d7%aa-%d7%aa%d7%a9%d7%aa%d7%99%d7%95%d7%aa/"
+    },
+    "externalJobId": {
+      "source": "MANUAL",
+      "selector": "[data-extracted-jobid]",
+      "confidence": 100,
+      "capturedOnUrl": "https://gtech.co.il/%d7%9e%d7%a9%d7%a8%d7%95%d7%aa/"
+    }
+  }
+}

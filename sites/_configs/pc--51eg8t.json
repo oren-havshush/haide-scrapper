@@ -1,0 +1,57 @@
+{
+  "_exportedAt": "2026-08-06T15:54:03.416Z",
+  "_note": "Mirror of the live config. The DB is authoritative; the worker never reads this file. setupScript lives alongside in <slug>.setup.js.",
+  "id": "cmqicxyw9001801t13s51eg8t",
+  "siteUrl": "https://www.pc.co.il/drushim/",
+  "companyName": "אנשים ומחשבים",
+  "status": "ACTIVE",
+  "setupScriptFile": "pc--51eg8t.setup.js",
+  "pageFlow": [],
+  "fieldMappings": {
+    "_meta": {
+      "savedAt": "2026-06-18T06:47:11.279Z",
+      "pagination": null,
+      "formCapture": null,
+      "itemSelector": "#haide-jobs-root [data-haide-job]",
+      "minPublishDate": null,
+      "minPublishDays": null,
+      "revealSelector": null,
+      "listingSelector": null,
+      "applyLoginReason": null,
+      "browserOverrides": null,
+      "loadMoreSelector": null,
+      "originalMappings": null,
+      "applyRequiresLogin": false
+    },
+    "title": {
+      "source": "MANUAL",
+      "selector": ".__ai-title",
+      "confidence": 100,
+      "capturedOnUrl": "https://www.pc.co.il/drushim/"
+    },
+    "location": {
+      "source": "MANUAL",
+      "selector": ".__ai-location",
+      "confidence": 100,
+      "capturedOnUrl": "https://www.pc.co.il/drushim/"
+    },
+    "description": {
+      "source": "MANUAL",
+      "selector": ".__ai-description",
+      "confidence": 100,
+      "capturedOnUrl": "https://www.pc.co.il/drushim/"
+    },
+    "externalJobId": {
+      "source": "MANUAL",
+      "selector": "[data-haide-job-id]",
+      "confidence": 100,
+      "capturedOnUrl": "https://www.pc.co.il/drushim/"
+    },
+    "applicationInfo": {
+      "source": "MANUAL",
+      "selector": ".__ai-apply-email",
+      "confidence": 100,
+      "capturedOnUrl": "https://www.pc.co.il/drushim/"
+    }
+  }
+}

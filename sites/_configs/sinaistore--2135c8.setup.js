@@ -1,0 +1,1 @@
+try { document.querySelectorAll('.w-tabs-section').forEach(function (el) { if (el.querySelector('.haide-location')) return; var s = document.createElement('span'); s.className = 'haide-location'; s.style.display = 'none'; s.textContent = 'תל אביב'; el.appendChild(s); }); } catch (e) {}

@@ -1,0 +1,46 @@
+{
+  "_exportedAt": "2026-08-06T15:54:05.387Z",
+  "_note": "Mirror of the live config. The DB is authoritative; the worker never reads this file. setupScript lives alongside in <slug>.setup.js.",
+  "id": "cmp9sgn66001j01lssn1koqzt",
+  "siteUrl": "https://www.opl.co.il/%D7%93%D7%A8%D7%95%D7%A9%D7%99%D7%9D",
+  "companyName": "אופרייט",
+  "status": "ACTIVE",
+  "setupScriptFile": "opl--1koqzt.setup.js",
+  "pageFlow": [],
+  "fieldMappings": {
+    "_meta": {
+      "savedAt": "2026-05-17T13:11:02.089Z",
+      "pagination": null,
+      "formCapture": null,
+      "itemSelector": "nav.accordion ul > li",
+      "revealSelector": null,
+      "listingSelector": "nav.subs.list.accordion",
+      "originalMappings": null
+    },
+    "title": {
+      "source": "MANUAL",
+      "selector": ".s_title h4",
+      "confidence": 100,
+      "capturedOnUrl": "https://www.opl.co.il/%D7%93%D7%A8%D7%95%D7%A9%D7%99%D7%9D"
+    },
+    "description": {
+      "source": "MANUAL",
+      "selector": ".s_content .fluid_70",
+      "confidence": 100,
+      "capturedOnUrl": "https://www.opl.co.il/%D7%93%D7%A8%D7%95%D7%A9%D7%99%D7%9D"
+    },
+    "externalJobId": {
+      "source": "MANUAL",
+      "selector": "[data-extracted-jobid]",
+      "confidence": 100,
+      "capturedOnUrl": "https://www.opl.co.il/%D7%93%D7%A8%D7%95%D7%A9%D7%99%D7%9D"
+    },
+    "applicationInfo": {
+      "source": "MANUAL",
+      "selector": "iframe.sendfile",
+      "confidence": 100,
+      "extractAttr": "src",
+      "capturedOnUrl": "https://www.opl.co.il/%D7%93%D7%A8%D7%95%D7%A9%D7%99%D7%9D"
+    }
+  }
+}

@@ -1,0 +1,52 @@
+{
+  "_exportedAt": "2026-08-06T15:54:02.800Z",
+  "_note": "Mirror of the live config. The DB is authoritative; the worker never reads this file. setupScript lives alongside in <slug>.setup.js.",
+  "id": "cmqsble3c000t01nua4el7arg",
+  "siteUrl": "https://www.alyn.org.il/%D7%93%D7%A8%D7%95%D7%A9%D7%99%D7%9D",
+  "companyName": "בית חולים אורטופדי אליון",
+  "status": "ACTIVE",
+  "setupScriptFile": "alyn--el7arg.setup.js",
+  "pageFlow": [],
+  "fieldMappings": {
+    "_meta": {
+      "savedAt": "2026-06-25T11:30:45.137Z",
+      "pagination": null,
+      "formCapture": null,
+      "itemSelector": ".__ai-job-item",
+      "minPublishDate": null,
+      "minPublishDays": null,
+      "revealSelector": null,
+      "listingSelector": null,
+      "applyLoginReason": null,
+      "browserOverrides": null,
+      "loadMoreSelector": null,
+      "locationFallback": "ירושלים",
+      "originalMappings": null,
+      "applyRequiresLogin": false
+    },
+    "title": {
+      "source": "manual",
+      "selector": "h2",
+      "confidence": 0.95,
+      "capturedOnUrl": "https://www.alyn.org.il/%D7%93%D7%A8%D7%95%D7%A9%D7%99%D7%9D"
+    },
+    "description": {
+      "source": "manual",
+      "selector": ".__ai-desc",
+      "confidence": 0.9,
+      "capturedOnUrl": "https://www.alyn.org.il/%D7%93%D7%A8%D7%95%D7%A9%D7%99%D7%9D"
+    },
+    "externalJobId": {
+      "source": "manual",
+      "selector": ".__ai-id",
+      "confidence": 0.95,
+      "capturedOnUrl": "https://www.alyn.org.il/%D7%93%D7%A8%D7%95%D7%A9%D7%99%D7%9D"
+    },
+    "applicationInfo": {
+      "source": "manual",
+      "selector": ".__ai-email",
+      "confidence": 0.9,
+      "capturedOnUrl": "https://www.alyn.org.il/%D7%93%D7%A8%D7%95%D7%A9%D7%99%D7%9D"
+    }
+  }
+}

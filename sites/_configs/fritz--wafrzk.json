@@ -1,0 +1,57 @@
+{
+  "_exportedAt": "2026-08-06T15:54:03.024Z",
+  "_note": "Mirror of the live config. The DB is authoritative; the worker never reads this file. setupScript lives alongside in <slug>.setup.js.",
+  "id": "cmqqjtd04000201nwtmwafrzk",
+  "siteUrl": "https://www.fritz.co.il/open-positions/",
+  "companyName": "Fritz",
+  "status": "ACTIVE",
+  "setupScriptFile": "fritz--wafrzk.setup.js",
+  "pageFlow": [],
+  "fieldMappings": {
+    "_meta": {
+      "savedAt": "2026-06-23T12:31:56.306Z",
+      "pagination": null,
+      "formCapture": null,
+      "itemSelector": ".job_row",
+      "minPublishDate": null,
+      "minPublishDays": null,
+      "revealSelector": null,
+      "listingSelector": null,
+      "applyLoginReason": null,
+      "browserOverrides": {
+        "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+        "extraHeaders": {
+          "accept-language": "he-IL,he;q=0.9,en-US;q=0.8,en;q=0.7"
+        }
+      },
+      "loadMoreSelector": null,
+      "originalMappings": null,
+      "applyRequiresLogin": false
+    },
+    "title": {
+      "source": "auto",
+      "selector": ".__ai-title",
+      "confidence": 0.95
+    },
+    "location": {
+      "source": "auto",
+      "selector": ".__ai-location",
+      "confidence": 0.8
+    },
+    "description": {
+      "source": "auto",
+      "selector": ".job_requirements .requirements",
+      "confidence": 0.9
+    },
+    "externalJobId": {
+      "source": "auto",
+      "selector": ".__ai-jobid",
+      "confidence": 0.95
+    },
+    "applicationInfo": {
+      "source": "auto",
+      "selector": ".__ai-applyinfo",
+      "confidence": 0.8
+    }
+  }
+}

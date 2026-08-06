@@ -1,0 +1,152 @@
+{
+  "_exportedAt": "2026-08-06T15:54:02.860Z",
+  "_note": "Mirror of the live config. The DB is authoritative; the worker never reads this file. setupScript lives alongside in <slug>.setup.js.",
+  "id": "cmqsblat5000j01nugnrdvk6e",
+  "siteUrl": "https://yaelgroup.com/jobs/",
+  "companyName": "יעל גרופ",
+  "status": "ACTIVE",
+  "setupScriptFile": "yaelgroup--rdvk6e.setup.js",
+  "pageFlow": [],
+  "fieldMappings": {
+    "_meta": {
+      "savedAt": "2026-06-28T12:45:26.350Z",
+      "pagination": null,
+      "formCapture": {
+        "fields": [
+          {
+            "name": "form_func",
+            "label": "",
+            "tagName": "input",
+            "required": false,
+            "fieldType": "hidden"
+          },
+          {
+            "name": "job_id",
+            "label": "",
+            "tagName": "input",
+            "required": false,
+            "fieldType": "hidden"
+          },
+          {
+            "name": "job_name",
+            "label": "",
+            "tagName": "input",
+            "required": false,
+            "fieldType": "hidden"
+          },
+          {
+            "name": "link_page_success",
+            "label": "",
+            "tagName": "input",
+            "required": false,
+            "fieldType": "hidden"
+          },
+          {
+            "name": "first_name",
+            "label": "שם פרטי",
+            "tagName": "input",
+            "required": false,
+            "fieldType": "text"
+          },
+          {
+            "name": "last_name",
+            "label": "שם משפחה",
+            "tagName": "input",
+            "required": false,
+            "fieldType": "text"
+          },
+          {
+            "name": "mobile",
+            "label": "נייד",
+            "tagName": "input",
+            "required": false,
+            "fieldType": "tel"
+          },
+          {
+            "name": "upload_cv",
+            "label": "קובץ קורות חיים",
+            "tagName": "input",
+            "required": false,
+            "fieldType": "file"
+          },
+          {
+            "name": "linkedin_profile",
+            "label": "פרופיל לינקדאין",
+            "tagName": "input",
+            "required": false,
+            "fieldType": "url"
+          },
+          {
+            "name": "job_source",
+            "label": "מקור",
+            "tagName": "select",
+            "required": true,
+            "fieldType": "select"
+          }
+        ],
+        "method": "get",
+        "actionUrl": "https://yaelgroup.com/jobs/",
+        "formSelector": "form[action=\"https://yaelgroup.com/jobs/\"]"
+      },
+      "itemSelector": "div.job_item",
+      "minPublishDate": null,
+      "minPublishDays": null,
+      "revealSelector": null,
+      "listingSelector": null,
+      "applyLoginReason": null,
+      "browserOverrides": null,
+      "loadMoreSelector": null,
+      "locationFallback": null,
+      "originalMappings": null,
+      "applyRequiresLogin": false
+    },
+    "title": {
+      "source": "manual",
+      "selector": "h3.job_title",
+      "confidence": 0.95,
+      "capturedOnUrl": "https://yaelgroup.com/jobs/"
+    },
+    "location": {
+      "source": "manual",
+      "selector": ".__ai-location",
+      "confidence": 0.9,
+      "capturedOnUrl": "https://yaelgroup.com/jobs/"
+    },
+    "detailUrl": {
+      "source": "manual",
+      "selector": ".__ai-detailurl",
+      "confidence": 0.9,
+      "capturedOnUrl": "https://yaelgroup.com/jobs/"
+    },
+    "department": {
+      "source": "manual",
+      "selector": ".__ai-department",
+      "confidence": 0.85,
+      "capturedOnUrl": "https://yaelgroup.com/jobs/"
+    },
+    "description": {
+      "source": "manual",
+      "selector": ".job_description",
+      "confidence": 0.9,
+      "capturedOnUrl": "https://yaelgroup.com/jobs/"
+    },
+    "publishDate": {
+      "source": "manual",
+      "selector": ".__ai-publishdate",
+      "confidence": 0.9,
+      "capturedOnUrl": "https://yaelgroup.com/jobs/"
+    },
+    "requirements": {
+      "source": "manual",
+      "selector": ".__ai-requirements",
+      "confidence": 0.75,
+      "capturedOnUrl": "https://yaelgroup.com/jobs/"
+    },
+    "externalJobId": {
+      "source": "manual",
+      "selector": ".__ai-id",
+      "confidence": 0.95,
+      "capturedOnUrl": "https://yaelgroup.com/jobs/"
+    }
+  }
+}

@@ -1,0 +1,175 @@
+{
+  "_exportedAt": "2026-08-06T15:54:05.942Z",
+  "_note": "Mirror of the live config. The DB is authoritative; the worker never reads this file. setupScript lives alongside in <slug>.setup.js.",
+  "id": "cmozlr29i001801phxitz9kd4",
+  "siteUrl": "https://www.clalbit.co.il/careers/#",
+  "companyName": "כלל",
+  "status": "ACTIVE",
+  "setupScriptFile": "clalbit--tz9kd4.setup.js",
+  "pageFlow": [],
+  "fieldMappings": {
+    "_meta": {
+      "savedAt": "2026-05-20T05:33:31.222Z",
+      "pagination": null,
+      "formCapture": {
+        "fields": [
+          {
+            "name": "FirstName",
+            "label": "שם פרטי",
+            "tagName": "input",
+            "required": true,
+            "fieldType": "text"
+          },
+          {
+            "name": "LastName",
+            "label": "שם משפחה",
+            "tagName": "input",
+            "required": true,
+            "fieldType": "text"
+          },
+          {
+            "name": "Identity",
+            "label": "תעודת זהות",
+            "tagName": "input",
+            "required": true,
+            "fieldType": "text"
+          },
+          {
+            "name": "Phone",
+            "label": "טלפון",
+            "tagName": "input",
+            "required": true,
+            "fieldType": "text"
+          },
+          {
+            "name": "Email",
+            "label": "דואר אלקטרוני",
+            "tagName": "input",
+            "required": true,
+            "fieldType": "email"
+          },
+          {
+            "name": "noEmail",
+            "label": "אין לי כתובת מייל",
+            "tagName": "input",
+            "required": false,
+            "fieldType": "checkbox"
+          },
+          {
+            "name": "City",
+            "label": "ישוב",
+            "tagName": "input",
+            "required": true,
+            "fieldType": "text"
+          },
+          {
+            "name": "street",
+            "label": "רחוב",
+            "tagName": "input",
+            "required": true,
+            "fieldType": "text"
+          },
+          {
+            "name": "entrence",
+            "label": "כניסה/מספר",
+            "tagName": "input",
+            "required": true,
+            "fieldType": "text"
+          },
+          {
+            "name": "apartment",
+            "label": "מספר דירה",
+            "tagName": "input",
+            "required": false,
+            "fieldType": "text"
+          },
+          {
+            "name": "HowDidYouGetToUsCb",
+            "label": "כיצד הגעת אלינו",
+            "tagName": "select",
+            "required": true,
+            "fieldType": "select"
+          },
+          {
+            "name": "supplierNumber",
+            "label": "מספר ספק",
+            "tagName": "input",
+            "required": false,
+            "fieldType": "number"
+          },
+          {
+            "name": "opinion",
+            "label": "חוות דעת",
+            "tagName": "textarea",
+            "required": false,
+            "fieldType": "textarea"
+          },
+          {
+            "name": "AddFile",
+            "label": "צרף קובץ קו\"ח",
+            "tagName": "input",
+            "required": false,
+            "fieldType": "file"
+          },
+          {
+            "name": "disclaimer",
+            "label": "אישור תקנון",
+            "tagName": "input",
+            "required": true,
+            "fieldType": "checkbox"
+          }
+        ],
+        "method": "GET",
+        "actionUrl": "https://www.clalbit.co.il/careers/candidacy/",
+        "formSelector": ".RegisterForm"
+      },
+      "itemSelector": ".TableRowWrap",
+      "revealSelector": null,
+      "listingSelector": null,
+      "originalMappings": null
+    },
+    "title": {
+      "source": "MANUAL",
+      "selector": ".TableCol:nth-of-type(1)",
+      "confidence": 100,
+      "capturedOnUrl": "https://www.clalbit.co.il/careers/"
+    },
+    "location": {
+      "source": "MANUAL",
+      "selector": ".TableCol:nth-of-type(2)",
+      "confidence": 100,
+      "capturedOnUrl": "https://www.clalbit.co.il/careers/"
+    },
+    "description": {
+      "source": "MANUAL",
+      "selector": ".JobDetails",
+      "confidence": 100,
+      "capturedOnUrl": "https://www.clalbit.co.il/careers/"
+    },
+    "requirements": {
+      "source": "MANUAL",
+      "selector": ".WantedDesc",
+      "confidence": 100,
+      "capturedOnUrl": "https://www.clalbit.co.il/careers/"
+    },
+    "externalJobId": {
+      "source": "MANUAL",
+      "selector": ".JobIdNumber",
+      "confidence": 100,
+      "capturedOnUrl": "https://www.clalbit.co.il/careers/"
+    },
+    "employmentType": {
+      "source": "MANUAL",
+      "selector": ".TableCol:nth-of-type(3)",
+      "confidence": 100,
+      "capturedOnUrl": "https://www.clalbit.co.il/careers/"
+    },
+    "applicationInfo": {
+      "source": "MANUAL",
+      "selector": ".SendBtn",
+      "confidence": 100,
+      "extractAttr": "href",
+      "capturedOnUrl": "https://www.clalbit.co.il/careers/"
+    }
+  }
+}

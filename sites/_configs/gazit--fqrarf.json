@@ -1,0 +1,176 @@
+{
+  "_exportedAt": "2026-08-06T15:54:05.882Z",
+  "_note": "Mirror of the live config. The DB is authoritative; the worker never reads this file. setupScript lives alongside in <slug>.setup.js.",
+  "id": "cmp02pnno000401k5jrfqrarf",
+  "siteUrl": "https://www.gazit.co.il/%D7%A7%D7%A8%D7%99%D7%99%D7%A8%D7%94/#jobs",
+  "companyName": "גזית",
+  "status": "ACTIVE",
+  "setupScriptFile": "gazit--fqrarf.setup.js",
+  "pageFlow": [],
+  "fieldMappings": {
+    "_meta": {
+      "savedAt": "2026-06-10T19:03:27.188Z",
+      "pagination": null,
+      "formCapture": {
+        "fields": [
+          {
+            "name": "post_id",
+            "label": "post id",
+            "tagName": "input",
+            "required": false,
+            "fieldType": "hidden"
+          },
+          {
+            "name": "form_id",
+            "label": "form id",
+            "tagName": "input",
+            "required": false,
+            "fieldType": "hidden"
+          },
+          {
+            "name": "referer_title",
+            "label": "referer title",
+            "tagName": "input",
+            "required": false,
+            "fieldType": "hidden"
+          },
+          {
+            "name": "queried_id",
+            "label": "queried id",
+            "tagName": "input",
+            "required": false,
+            "fieldType": "hidden"
+          },
+          {
+            "name": "form_fields[name]",
+            "label": "שם פרטי",
+            "tagName": "input",
+            "required": true,
+            "fieldType": "text"
+          },
+          {
+            "name": "form_fields[last]",
+            "label": "שם משפחה",
+            "tagName": "input",
+            "required": true,
+            "fieldType": "text"
+          },
+          {
+            "name": "form_fields[email]",
+            "label": "אימייל",
+            "tagName": "input",
+            "required": true,
+            "fieldType": "email"
+          },
+          {
+            "name": "form_fields[field_phone]",
+            "label": "טלפון",
+            "tagName": "input",
+            "required": true,
+            "fieldType": "tel"
+          },
+          {
+            "name": "form_fields[message]",
+            "label": "למה אני מתאים/ה לעמוס גזית?",
+            "tagName": "textarea",
+            "required": false,
+            "fieldType": "textarea"
+          },
+          {
+            "name": "form_fields[field_e2764f4]",
+            "label": "כן",
+            "tagName": "input",
+            "required": true,
+            "fieldType": "radio"
+          },
+          {
+            "name": "form_fields[field_e2764f4]",
+            "label": "לא",
+            "tagName": "input",
+            "required": true,
+            "fieldType": "radio"
+          },
+          {
+            "name": "form_fields[field_e2764f4]",
+            "label": "אחר (יש לצרף הסבר)",
+            "tagName": "input",
+            "required": true,
+            "fieldType": "radio"
+          },
+          {
+            "name": "form_fields[field_173c6ae]",
+            "label": "כן (נא לציין בקו\"ח איזה)",
+            "tagName": "input",
+            "required": true,
+            "fieldType": "radio"
+          },
+          {
+            "name": "form_fields[field_173c6ae]",
+            "label": "לא",
+            "tagName": "input",
+            "required": true,
+            "fieldType": "radio"
+          },
+          {
+            "name": "form_fields[field_fc6d579]",
+            "label": "העלאת קורות חיים",
+            "tagName": "input",
+            "required": false,
+            "fieldType": "file"
+          },
+          {
+            "name": "form_fields[field_c1338e0]",
+            "label": "קישור ללינקדין",
+            "tagName": "input",
+            "required": false,
+            "fieldType": "url"
+          },
+          {
+            "name": "g-recaptcha-response",
+            "label": "g recaptcha response",
+            "tagName": "textarea",
+            "required": false,
+            "fieldType": "textarea"
+          },
+          {
+            "name": "privacy_consent",
+            "label": "אני מאשר/ת את תנאי הפרטיות",
+            "tagName": "input",
+            "required": false,
+            "fieldType": "checkbox"
+          }
+        ],
+        "method": "POST",
+        "actionUrl": "https://www.gazit.co.il/%D7%A7%D7%A8%D7%99%D7%99%D7%A8%D7%94/#jobs",
+        "formSelector": "#JB_211"
+      },
+      "itemSelector": ".elementor-accordion-item",
+      "revealSelector": null,
+      "listingSelector": null,
+      "applyLoginReason": null,
+      "browserOverrides": null,
+      "loadMoreSelector": null,
+      "originalMappings": null,
+      "applyRequiresLogin": false
+    },
+    "title": {
+      "source": "MANUAL",
+      "selector": ".elementor-accordion-title",
+      "confidence": 100,
+      "capturedOnUrl": "https://www.gazit.co.il/%D7%A7%D7%A8%D7%99%D7%99%D7%A8%D7%94/#jobs"
+    },
+    "description": {
+      "source": "MANUAL",
+      "selector": "[data-extracted-description]",
+      "confidence": 100,
+      "capturedOnUrl": "https://www.gazit.co.il/%D7%A7%D7%A8%D7%99%D7%99%D7%A8%D7%94/#jobs"
+    },
+    "externalJobId": {
+      "source": "MANUAL",
+      "selector": ".elementor-tab-title",
+      "confidence": 100,
+      "extractAttr": "aria-controls",
+      "capturedOnUrl": "https://www.gazit.co.il/%D7%A7%D7%A8%D7%99%D7%99%D7%A8%D7%94/#jobs"
+    }
+  }
+}

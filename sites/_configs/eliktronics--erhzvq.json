@@ -1,0 +1,100 @@
+{
+  "_exportedAt": "2026-08-06T15:54:02.773Z",
+  "_note": "Mirror of the live config. The DB is authoritative; the worker never reads this file. setupScript lives alongside in <slug>.setup.js.",
+  "id": "cmqsblg2p000z01nukjerhzvq",
+  "siteUrl": "https://eliktronics.com/heb/%d7%a7%d7%a8%d7%99%d7%99%d7%a8%d7%94/",
+  "companyName": "אליקטרוניקס בע''מ",
+  "status": "ACTIVE",
+  "setupScriptFile": "eliktronics--erhzvq.setup.js",
+  "pageFlow": [],
+  "fieldMappings": {
+    "_meta": {
+      "savedAt": "2026-06-24T18:32:21.121Z",
+      "pagination": null,
+      "formCapture": {
+        "fields": [
+          {
+            "name": "text-670",
+            "label": "שם מלא",
+            "tagName": "input",
+            "required": true,
+            "fieldType": "text"
+          },
+          {
+            "name": "email-991",
+            "label": "אימייל",
+            "tagName": "input",
+            "required": true,
+            "fieldType": "email"
+          },
+          {
+            "name": "text-749",
+            "label": "LinkedIn",
+            "tagName": "input",
+            "required": false,
+            "fieldType": "text"
+          },
+          {
+            "name": "text-333",
+            "label": "משרה",
+            "tagName": "input",
+            "required": true,
+            "fieldType": "text"
+          },
+          {
+            "name": "textarea-174",
+            "label": "מכתב מקדים",
+            "tagName": "textarea",
+            "required": false,
+            "fieldType": "textarea"
+          },
+          {
+            "name": "file-39",
+            "label": "קורות חיים",
+            "tagName": "input",
+            "required": false,
+            "fieldType": "file"
+          }
+        ],
+        "method": "post",
+        "actionUrl": "https://eliktronics.com/heb/%d7%a7%d7%a8%d7%99%d7%99%d7%a8%d7%94/",
+        "formSelector": "form.wpcf7-form:has(input[type=\"file\"])"
+      },
+      "itemSelector": "article.iconbox",
+      "minPublishDate": null,
+      "minPublishDays": null,
+      "revealSelector": null,
+      "listingSelector": null,
+      "applyLoginReason": null,
+      "browserOverrides": null,
+      "loadMoreSelector": null,
+      "locationFallback": null,
+      "originalMappings": null,
+      "applyRequiresLogin": false
+    },
+    "title": {
+      "source": "manual",
+      "selector": "h3",
+      "confidence": 0.95,
+      "capturedOnUrl": "https://eliktronics.com/heb/%d7%a7%d7%a8%d7%99%d7%99%d7%a8%d7%94/"
+    },
+    "location": {
+      "source": "manual",
+      "selector": ".__ai-location",
+      "confidence": 0.9,
+      "capturedOnUrl": "https://eliktronics.com/heb/%d7%a7%d7%a8%d7%99%d7%99%d7%a8%d7%94/"
+    },
+    "description": {
+      "source": "manual",
+      "selector": ".iconbox_content_container",
+      "confidence": 0.9,
+      "capturedOnUrl": "https://eliktronics.com/heb/%d7%a7%d7%a8%d7%99%d7%99%d7%a8%d7%94/"
+    },
+    "externalJobId": {
+      "source": "manual",
+      "selector": ".__ai-id",
+      "confidence": 0.95,
+      "capturedOnUrl": "https://eliktronics.com/heb/%d7%a7%d7%a8%d7%99%d7%99%d7%a8%d7%94/"
+    }
+  }
+}

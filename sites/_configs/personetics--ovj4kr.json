@@ -1,0 +1,115 @@
+{
+  "_exportedAt": "2026-08-06T15:54:02.539Z",
+  "_note": "Mirror of the live config. The DB is authoritative; the worker never reads this file. setupScript lives alongside in <slug>.setup.js.",
+  "id": "cmqycmkiz001b01nzx7ovj4kr",
+  "siteUrl": "https://personetics.com/careers/",
+  "companyName": "Personetics",
+  "status": "ACTIVE",
+  "setupScriptFile": "personetics--ovj4kr.setup.js",
+  "pageFlow": [],
+  "fieldMappings": {
+    "_meta": {
+      "savedAt": "2026-06-28T22:32:18.750Z",
+      "pagination": null,
+      "formCapture": {
+        "fields": [
+          {
+            "name": "firstName",
+            "label": "First name",
+            "tagName": "INPUT",
+            "required": true,
+            "fieldType": "text"
+          },
+          {
+            "name": "lastName",
+            "label": "Last name",
+            "tagName": "INPUT",
+            "required": true,
+            "fieldType": "text"
+          },
+          {
+            "name": "email",
+            "label": "Email",
+            "tagName": "INPUT",
+            "required": true,
+            "fieldType": "email"
+          },
+          {
+            "name": "phone",
+            "label": "Phone",
+            "tagName": "INPUT",
+            "required": true,
+            "fieldType": "tel"
+          },
+          {
+            "name": "resume",
+            "label": "Resume",
+            "tagName": "INPUT",
+            "required": true,
+            "fieldType": "file"
+          },
+          {
+            "name": "linkedin",
+            "label": "LinkedIn Profile URL",
+            "tagName": "INPUT",
+            "required": false,
+            "fieldType": "url"
+          },
+          {
+            "name": "coverLetter",
+            "label": "Cover Letter",
+            "tagName": "INPUT",
+            "required": false,
+            "fieldType": "file"
+          },
+          {
+            "name": "personalNote",
+            "label": "Personal note",
+            "tagName": "TEXTAREA",
+            "required": false,
+            "fieldType": "text"
+          }
+        ],
+        "method": "POST",
+        "actionUrl": "https://www.comeet.co/jobs/83.00A/DD.C6E/apply",
+        "formSelector": "form.comeet-apply-form-never-matches"
+      },
+      "itemSelector": "div.career-listings > a.active",
+      "minPublishDate": null,
+      "minPublishDays": null,
+      "revealSelector": null,
+      "listingSelector": null,
+      "applyLoginReason": null,
+      "browserOverrides": null,
+      "loadMoreSelector": null,
+      "locationFallback": null,
+      "originalMappings": null,
+      "applyRequiresLogin": false
+    },
+    "title": {
+      "source": "auto",
+      "selector": "p.title",
+      "confidence": 0.95
+    },
+    "location": {
+      "source": "auto",
+      "selector": "p.location",
+      "confidence": 0.9
+    },
+    "detailUrl": {
+      "source": "auto",
+      "selector": ".__ai-detailUrl",
+      "confidence": 0.95
+    },
+    "description": {
+      "source": "auto",
+      "selector": ".__ai-description",
+      "confidence": 0.85
+    },
+    "externalJobId": {
+      "source": "auto",
+      "selector": ".__ai-externalJobId",
+      "confidence": 0.95
+    }
+  }
+}

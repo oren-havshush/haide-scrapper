@@ -1,0 +1,87 @@
+{
+  "_exportedAt": "2026-08-06T15:54:05.581Z",
+  "_note": "Mirror of the live config. The DB is authoritative; the worker never reads this file. setupScript lives alongside in <slug>.setup.js.",
+  "id": "cmp30x0nv001n01nylx8i0ntf",
+  "siteUrl": "https://www.goldpro.co.il/%D7%93%D7%A8%D7%95%D7%A9%D7%99%D7%9D/",
+  "companyName": "גולדברג פרושן ושות' רואי חשבון",
+  "status": "ACTIVE",
+  "setupScriptFile": null,
+  "pageFlow": [],
+  "fieldMappings": {
+    "_meta": {
+      "savedAt": "2026-06-10T18:41:46.408Z",
+      "pagination": null,
+      "formCapture": {
+        "fields": [
+          {
+            "name": "_wpnonce",
+            "label": "wpnonce",
+            "tagName": "input",
+            "required": false,
+            "fieldType": "hidden"
+          },
+          {
+            "name": "_wp_http_referer",
+            "label": "wp http referer",
+            "tagName": "input",
+            "required": false,
+            "fieldType": "hidden"
+          },
+          {
+            "name": "action",
+            "label": "action",
+            "tagName": "input",
+            "required": false,
+            "fieldType": "hidden"
+          },
+          {
+            "name": "full_name",
+            "label": "שם מלא",
+            "tagName": "input",
+            "required": true,
+            "fieldType": "text"
+          },
+          {
+            "name": "phone",
+            "label": "טלפון",
+            "tagName": "input",
+            "required": true,
+            "fieldType": "tel"
+          },
+          {
+            "name": "email",
+            "label": "דוא\"ל",
+            "tagName": "input",
+            "required": true,
+            "fieldType": "email"
+          },
+          {
+            "name": "message",
+            "label": "מהות הפניה",
+            "tagName": "textarea",
+            "required": true,
+            "fieldType": "textarea"
+          },
+          {
+            "name": "newsletter",
+            "label": "מאשר/ת קבלת עדכונים בדוא\"ל",
+            "tagName": "input",
+            "required": false,
+            "fieldType": "checkbox"
+          }
+        ],
+        "method": "POST",
+        "actionUrl": "https://www.goldpro.co.il/wp-admin/admin-ajax.php",
+        "formSelector": "body.rtl.page-template-default > div.floatingForm:nth-of-type(4) > div.floatingForm-container:nth-of-type(1) > div.floatingForm-form > div.floatingForm-form-inner:nth-of-type(2) > form.formpost"
+      },
+      "itemSelector": ".item",
+      "revealSelector": null,
+      "listingSelector": null,
+      "applyLoginReason": null,
+      "browserOverrides": null,
+      "loadMoreSelector": null,
+      "originalMappings": null,
+      "applyRequiresLogin": false
+    }
+  }
+}

@@ -1,0 +1,47 @@
+{
+  "_exportedAt": "2026-08-06T15:54:05.855Z",
+  "_note": "Mirror of the live config. The DB is authoritative; the worker never reads this file. setupScript lives alongside in <slug>.setup.js.",
+  "id": "cmp02sjat000801k5ovtwg0jr",
+  "siteUrl": "https://www.milouot.co.il/%D7%93%D7%A8%D7%95%D7%A9%D7%99%D7%9D.html",
+  "companyName": "מילואות",
+  "status": "ACTIVE",
+  "setupScriptFile": null,
+  "pageFlow": [],
+  "fieldMappings": {
+    "_meta": {
+      "savedAt": "2026-05-10T21:25:47.313Z",
+      "pagination": null,
+      "formCapture": null,
+      "itemSelector": ".tool_text:has(span[style*=\"font-size:20px\"])",
+      "revealSelector": null,
+      "listingSelector": null,
+      "originalMappings": null
+    },
+    "title": {
+      "source": "MANUAL",
+      "selector": "span[style*=\"font-size:20px\"]",
+      "confidence": 100,
+      "capturedOnUrl": "https://www.milouot.co.il/%D7%93%D7%A8%D7%95%D7%A9%D7%99%D7%9D.html"
+    },
+    "description": {
+      "source": "MANUAL",
+      "selector": "[id^=\"content_dr4r3_text\"]",
+      "confidence": 100,
+      "capturedOnUrl": "https://www.milouot.co.il/%D7%93%D7%A8%D7%95%D7%A9%D7%99%D7%9D.html"
+    },
+    "externalJobId": {
+      "source": "MANUAL",
+      "selector": "[id^=\"content_dr4r3_text\"]",
+      "confidence": 100,
+      "extractAttr": "id",
+      "capturedOnUrl": "https://www.milouot.co.il/%D7%93%D7%A8%D7%95%D7%A9%D7%99%D7%9D.html"
+    },
+    "applicationInfo": {
+      "source": "MANUAL",
+      "selector": "a[href^=\"mailto:\"]",
+      "confidence": 100,
+      "extractAttr": "href",
+      "capturedOnUrl": "https://www.milouot.co.il/%D7%93%D7%A8%D7%95%D7%A9%D7%99%D7%9D.html"
+    }
+  }
+}

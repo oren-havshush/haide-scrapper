@@ -1,0 +1,376 @@
+{
+  "_exportedAt": "2026-08-06T15:54:05.334Z",
+  "_note": "Mirror of the live config. The DB is authoritative; the worker never reads this file. setupScript lives alongside in <slug>.setup.js.",
+  "id": "cmpb717o5002c01ls07eazu8j",
+  "siteUrl": "https://www.maccabi4u.co.il/careers/search-job-positions/?",
+  "companyName": "קופת חולים מכבי",
+  "status": "ACTIVE",
+  "setupScriptFile": "maccabi4u--eazu8j.setup.js",
+  "pageFlow": [],
+  "fieldMappings": {
+    "_meta": {
+      "savedAt": "2026-06-10T18:57:23.943Z",
+      "pagination": null,
+      "formCapture": {
+        "fields": [
+          {
+            "name": "JobId",
+            "label": "Job Id",
+            "tagName": "input",
+            "required": false,
+            "fieldType": "hidden"
+          },
+          {
+            "name": "FullName",
+            "label": "*שם מלא",
+            "tagName": "input",
+            "required": false,
+            "fieldType": "text"
+          },
+          {
+            "name": "TZ",
+            "label": "*מספר תעודת זהות",
+            "tagName": "input",
+            "required": false,
+            "fieldType": "text"
+          },
+          {
+            "name": "Telephone",
+            "label": "*טלפון",
+            "tagName": "input",
+            "required": false,
+            "fieldType": "tel"
+          },
+          {
+            "name": "דרום",
+            "label": "דרום",
+            "tagName": "input",
+            "required": false,
+            "fieldType": "checkbox"
+          },
+          {
+            "name": "השפלה",
+            "label": "השפלה",
+            "tagName": "input",
+            "required": false,
+            "fieldType": "checkbox"
+          },
+          {
+            "name": "השרון",
+            "label": "השרון",
+            "tagName": "input",
+            "required": false,
+            "fieldType": "checkbox"
+          },
+          {
+            "name": "חיפה והקריות",
+            "label": "חיפה והקריות",
+            "tagName": "input",
+            "required": false,
+            "fieldType": "checkbox"
+          },
+          {
+            "name": "ירושלים יו\"ש",
+            "label": "ירושלים יו\"ש",
+            "tagName": "input",
+            "required": false,
+            "fieldType": "checkbox"
+          },
+          {
+            "name": "מרכז",
+            "label": "מרכז",
+            "tagName": "input",
+            "required": false,
+            "fieldType": "checkbox"
+          },
+          {
+            "name": "צפון",
+            "label": "צפון",
+            "tagName": "input",
+            "required": false,
+            "fieldType": "checkbox"
+          },
+          {
+            "name": "ת\"א - מטה מכבי",
+            "label": "ת\"א - מטה מכבי",
+            "tagName": "input",
+            "required": false,
+            "fieldType": "checkbox"
+          },
+          {
+            "name": "תפקידים בפריסה ארצית",
+            "label": "תפקידים בפריסה ארצית",
+            "tagName": "input",
+            "required": false,
+            "fieldType": "checkbox"
+          },
+          {
+            "name": "",
+            "label": "hidden input",
+            "tagName": "input",
+            "required": false,
+            "fieldType": "hidden"
+          },
+          {
+            "name": "אדמיניסטרציה",
+            "label": "אדמיניסטרציה",
+            "tagName": "input",
+            "required": false,
+            "fieldType": "checkbox"
+          },
+          {
+            "name": "אחזקה ולוגיסטיקה",
+            "label": "אחזקה ולוגיסטיקה",
+            "tagName": "input",
+            "required": false,
+            "fieldType": "checkbox"
+          },
+          {
+            "name": "אחיות",
+            "label": "אחיות",
+            "tagName": "input",
+            "required": false,
+            "fieldType": "checkbox"
+          },
+          {
+            "name": "אחר",
+            "label": "אחר",
+            "tagName": "input",
+            "required": false,
+            "fieldType": "checkbox"
+          },
+          {
+            "name": "בריאות הנפש",
+            "label": "בריאות הנפש",
+            "tagName": "input",
+            "required": false,
+            "fieldType": "checkbox"
+          },
+          {
+            "name": "בתי חולים",
+            "label": "בתי חולים",
+            "tagName": "input",
+            "required": false,
+            "fieldType": "checkbox"
+          },
+          {
+            "name": "דימות",
+            "label": "דימות",
+            "tagName": "input",
+            "required": false,
+            "fieldType": "checkbox"
+          },
+          {
+            "name": "כללי",
+            "label": "כללי",
+            "tagName": "input",
+            "required": false,
+            "fieldType": "checkbox"
+          },
+          {
+            "name": "כספים",
+            "label": "כספים",
+            "tagName": "input",
+            "required": false,
+            "fieldType": "checkbox"
+          },
+          {
+            "name": "מעבדה",
+            "label": "מעבדה",
+            "tagName": "input",
+            "required": false,
+            "fieldType": "checkbox"
+          },
+          {
+            "name": "מערכות מידע",
+            "label": "מערכות מידע",
+            "tagName": "input",
+            "required": false,
+            "fieldType": "checkbox"
+          },
+          {
+            "name": "משאבי אנוש",
+            "label": "משאבי אנוש",
+            "tagName": "input",
+            "required": false,
+            "fieldType": "checkbox"
+          },
+          {
+            "name": "מתמחים ברפואה בבתי\"ח",
+            "label": "מתמחים ברפואה בבתי\"ח",
+            "tagName": "input",
+            "required": false,
+            "fieldType": "checkbox"
+          },
+          {
+            "name": "ניהול",
+            "label": "ניהול",
+            "tagName": "input",
+            "required": false,
+            "fieldType": "checkbox"
+          },
+          {
+            "name": "עבודה סוציאלית",
+            "label": "עבודה סוציאלית",
+            "tagName": "input",
+            "required": false,
+            "fieldType": "checkbox"
+          },
+          {
+            "name": "פיזיותרפיה",
+            "label": "פיזיותרפיה",
+            "tagName": "input",
+            "required": false,
+            "fieldType": "checkbox"
+          },
+          {
+            "name": "פסיכולוגיה",
+            "label": "פסיכולוגיה",
+            "tagName": "input",
+            "required": false,
+            "fieldType": "checkbox"
+          },
+          {
+            "name": "קלינאות תקשורת",
+            "label": "קלינאות תקשורת",
+            "tagName": "input",
+            "required": false,
+            "fieldType": "checkbox"
+          },
+          {
+            "name": "רופאים - רפואת המשפחה",
+            "label": "רופאים - רפואת המשפחה",
+            "tagName": "input",
+            "required": false,
+            "fieldType": "checkbox"
+          },
+          {
+            "name": "רוקחות",
+            "label": "רוקחות",
+            "tagName": "input",
+            "required": false,
+            "fieldType": "checkbox"
+          },
+          {
+            "name": "ריפוי בעיסוק",
+            "label": "ריפוי בעיסוק",
+            "tagName": "input",
+            "required": false,
+            "fieldType": "checkbox"
+          },
+          {
+            "name": "רפואה",
+            "label": "רפואה",
+            "tagName": "input",
+            "required": false,
+            "fieldType": "checkbox"
+          },
+          {
+            "name": "שיווק",
+            "label": "שיווק",
+            "tagName": "input",
+            "required": false,
+            "fieldType": "checkbox"
+          },
+          {
+            "name": "תזונה",
+            "label": "תזונה",
+            "tagName": "input",
+            "required": false,
+            "fieldType": "checkbox"
+          },
+          {
+            "name": "",
+            "label": "hidden input",
+            "tagName": "input",
+            "required": false,
+            "fieldType": "hidden"
+          },
+          {
+            "name": "ResumeFile",
+            "label": "קו\"ח",
+            "tagName": "input",
+            "required": false,
+            "fieldType": "file"
+          },
+          {
+            "name": "TakanonConsent",
+            "label": "Takanon Consent",
+            "tagName": "input",
+            "required": false,
+            "fieldType": "checkbox"
+          },
+          {
+            "name": "TakanonConsent",
+            "label": "Takanon Consent",
+            "tagName": "input",
+            "required": false,
+            "fieldType": "hidden"
+          },
+          {
+            "name": "PrivacyConsent",
+            "label": "Privacy Consent",
+            "tagName": "input",
+            "required": false,
+            "fieldType": "checkbox"
+          },
+          {
+            "name": "PrivacyConsent",
+            "label": "Privacy Consent",
+            "tagName": "input",
+            "required": false,
+            "fieldType": "hidden"
+          }
+        ],
+        "method": "POST",
+        "actionUrl": "https://www.maccabi4u.co.il/umbraco/Surface/Career/JoinMaccabiCareerForm?MailConsent=False&Title=%D7%A8%D7%95%D7%A6%D7%94%20%D7%9C%D7%94%D7%99%D7%95%D7%AA%20%D7%97%D7%9C%D7%A7%20%D7%9E%D7%9E%D7%9B%D7%91%D7%99%3F%20%3Cbr%3E%D7%9C%D7%90%20%D7%9E%D7%A6%D7%90%D7%AA%20%D7%90%D7%99%D7%9A%20%D7%95%D7%90%D7%99%D7%A4%D7%94%20%D7%9C%D7%94%D7%A9%D7%AA%D7%9C%D7%91%3F&SubTitle=%D7%90%D7%A0%D7%90%20%D7%9E%D7%9C%D7%90%D7%95%20%D7%90%D7%AA%20%D7%94%D7%A4%D7%A8%D7%98%D7%99%D7%9D%20%D7%94%D7%91%D7%90%D7%99%D7%9D%20%D7%95%D7%9E%D7%97%D7%9C%D7%A7%D7%AA%20%D7%94%D7%92%D7%99%D7%95%D7%A1%20%D7%A9%D7%9C%20%D7%9E%D7%9B%D7%91%D7%99%20%D7%AA%D7%99%D7%A6%D7%95%D7%A8%20%D7%A2%D7%9E%D7%9B%D7%9D%20%D7%A7%D7%A9%D7%A8%20%D7%91%D7%94%D7%A7%D7%93%D7%9D&TakanonLink=%2Fmedia%2Ffk2dfdal%2Fmaccabi_regulations.pdf&PrivacyLink=%2F31276%2F23554%2Faccessibility%2F&TakanonConsent=False&PrivacyConsent=False",
+        "formSelector": "#JoinMaccabiCareerForm"
+      },
+      "itemSelector": ".job-item:not(.job-item-clone)",
+      "revealSelector": null,
+      "listingSelector": ".search-jobs-results-cont",
+      "applyLoginReason": null,
+      "browserOverrides": null,
+      "loadMoreSelector": null,
+      "originalMappings": null,
+      "applyRequiresLogin": false
+    },
+    "title": {
+      "source": "MANUAL",
+      "selector": ".job-title",
+      "confidence": 100,
+      "capturedOnUrl": "https://www.maccabi4u.co.il/careers/search-job-positions/?"
+    },
+    "location": {
+      "source": "MANUAL",
+      "selector": ".job-area .text",
+      "confidence": 100,
+      "capturedOnUrl": "https://www.maccabi4u.co.il/careers/search-job-positions/?"
+    },
+    "detailUrl": {
+      "source": "MANUAL",
+      "selector": ".job-details-link",
+      "confidence": 100,
+      "extractAttr": "href",
+      "capturedOnUrl": "https://www.maccabi4u.co.il/careers/search-job-positions/?"
+    },
+    "profession": {
+      "source": "MANUAL",
+      "selector": ".job-profession label",
+      "confidence": 100,
+      "capturedOnUrl": "https://www.maccabi4u.co.il/careers/search-job-positions/?"
+    },
+    "description": {
+      "source": "MANUAL",
+      "selector": ".job-sub-title",
+      "confidence": 100,
+      "capturedOnUrl": "https://www.maccabi4u.co.il/careers/search-job-positions/?"
+    },
+    "externalJobId": {
+      "source": "MANUAL",
+      "selector": "[data-extracted-jobid]",
+      "confidence": 100,
+      "capturedOnUrl": "https://www.maccabi4u.co.il/careers/search-job-positions/?"
+    }
+  }
+}

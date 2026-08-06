@@ -1,0 +1,57 @@
+{
+  "_exportedAt": "2026-08-06T15:54:03.356Z",
+  "_note": "Mirror of the live config. The DB is authoritative; the worker never reads this file. setupScript lives alongside in <slug>.setup.js.",
+  "id": "cmqjkta3n000r01p6p7i3nkhe",
+  "siteUrl": "https://www.shagrir.co.il/jobs",
+  "companyName": "קבוצת שגריר שרותי רכב בעמ",
+  "status": "ACTIVE",
+  "setupScriptFile": "shagrir--i3nkhe.setup.js",
+  "pageFlow": [],
+  "fieldMappings": {
+    "_meta": {
+      "savedAt": "2026-06-21T16:07:00.545Z",
+      "pagination": null,
+      "formCapture": null,
+      "itemSelector": "#haide-jobs-root [data-haide-job]",
+      "minPublishDate": null,
+      "minPublishDays": 90,
+      "revealSelector": null,
+      "listingSelector": null,
+      "applyLoginReason": null,
+      "browserOverrides": null,
+      "loadMoreSelector": null,
+      "originalMappings": null,
+      "applyRequiresLogin": false
+    },
+    "title": {
+      "source": "manual",
+      "selector": ".__ai-title",
+      "confidence": 0.9
+    },
+    "location": {
+      "source": "manual",
+      "selector": ".__ai-location",
+      "confidence": 0.8
+    },
+    "description": {
+      "source": "manual",
+      "selector": ".__ai-description",
+      "confidence": 0.8
+    },
+    "requirements": {
+      "source": "manual",
+      "selector": ".__ai-requirements",
+      "confidence": 0.8
+    },
+    "externalJobId": {
+      "source": "manual",
+      "selector": "[data-haide-job-id]",
+      "confidence": 0.9
+    },
+    "applicationInfo": {
+      "source": "manual",
+      "selector": ".__ai-apply-url",
+      "confidence": 0.8
+    }
+  }
+}

@@ -1,0 +1,58 @@
+{
+  "_exportedAt": "2026-08-06T15:54:02.146Z",
+  "_note": "Mirror of the live config. The DB is authoritative; the worker never reads this file. setupScript lives alongside in <slug>.setup.js.",
+  "id": "cmqymqkbn004101nzck442rnv",
+  "siteUrl": "https://www.imj.org.il/he/node/619",
+  "companyName": "מוזיאון ישראל",
+  "status": "ACTIVE",
+  "setupScriptFile": "imj--442rnv.setup.js",
+  "pageFlow": [],
+  "fieldMappings": {
+    "_meta": {
+      "savedAt": "2026-06-29T08:47:15.710Z",
+      "pagination": null,
+      "formCapture": null,
+      "itemSelector": "#__imj-jobs div.imj-job-item",
+      "minPublishDate": null,
+      "minPublishDays": null,
+      "revealSelector": null,
+      "listingSelector": null,
+      "applyLoginReason": null,
+      "browserOverrides": null,
+      "loadMoreSelector": null,
+      "locationFallback": null,
+      "originalMappings": null,
+      "applyRequiresLogin": false
+    },
+    "title": {
+      "source": "auto",
+      "selector": ".__ai-title",
+      "confidence": 0.9
+    },
+    "deadline": {
+      "source": "auto",
+      "selector": ".__ai-deadline",
+      "confidence": 0.9
+    },
+    "location": {
+      "source": "auto",
+      "selector": ".__ai-location",
+      "confidence": 0.95
+    },
+    "description": {
+      "source": "auto",
+      "selector": ".__ai-description",
+      "confidence": 0.85
+    },
+    "externalJobId": {
+      "source": "auto",
+      "selector": ".__ai-externalJobId",
+      "confidence": 0.95
+    },
+    "applicationInfo": {
+      "source": "auto",
+      "selector": ".__ai-applicationInfo",
+      "confidence": 0.9
+    }
+  }
+}

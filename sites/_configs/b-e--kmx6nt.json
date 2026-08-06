@@ -1,0 +1,91 @@
+{
+  "_exportedAt": "2026-08-06T15:54:04.105Z",
+  "_note": "Mirror of the live config. The DB is authoritative; the worker never reads this file. setupScript lives alongside in <slug>.setup.js.",
+  "id": "cmq9gvay4002201lce5kmx6nt",
+  "siteUrl": "https://b-e.org.il/%d7%a7%d7%a8%d7%99%d7%99%d7%a8%d7%94/%d7%97%d7%99%d7%a4%d7%95%d7%a9-%d7%9e%d7%a9%d7%a8%d7%95%d7%aa/",
+  "companyName": "בית אקשטיין",
+  "status": "ACTIVE",
+  "setupScriptFile": null,
+  "pageFlow": [],
+  "fieldMappings": {
+    "_meta": {
+      "savedAt": "2026-06-11T12:22:32.509Z",
+      "pagination": null,
+      "formCapture": {
+        "fields": [
+          {
+            "name": "your-name",
+            "label": "שם מלא",
+            "tagName": "input",
+            "required": true,
+            "fieldType": "text"
+          },
+          {
+            "name": "your-phone",
+            "label": "טלפון",
+            "tagName": "input",
+            "required": true,
+            "fieldType": "tel"
+          },
+          {
+            "name": "your-email",
+            "label": "אימייל",
+            "tagName": "input",
+            "required": true,
+            "fieldType": "email"
+          },
+          {
+            "name": "file-129",
+            "label": "קורות חיים (קובץ)",
+            "tagName": "input",
+            "required": false,
+            "fieldType": "file"
+          },
+          {
+            "name": "privacy",
+            "label": "אישור מדיניות פרטיות",
+            "tagName": "input",
+            "required": false,
+            "fieldType": "checkbox"
+          }
+        ],
+        "method": "POST",
+        "actionUrl": "https://b-e.org.il/%d7%a7%d7%a8%d7%99%d7%99%d7%a8%d7%94/%d7%97%d7%99%d7%a4%d7%95%d7%a9-%d7%9e%d7%a9%d7%a8%d7%95%d7%aa/",
+        "formSelector": "form.wpcf7-form"
+      },
+      "itemSelector": "div.jobs_list_order_wrap",
+      "minPublishDate": null,
+      "revealSelector": null,
+      "listingSelector": null,
+      "applyLoginReason": null,
+      "browserOverrides": null,
+      "loadMoreSelector": null,
+      "originalMappings": null,
+      "applyRequiresLogin": false
+    },
+    "title": {
+      "source": "MANUAL",
+      "selector": ".jobs_list_order_title",
+      "confidence": 100,
+      "capturedOnUrl": "https://b-e.org.il/%d7%a7%d7%a8%d7%99%d7%99%d7%a8%d7%94/%d7%97%d7%99%d7%a4%d7%95%d7%a9-%d7%9e%d7%a9%d7%a8%d7%95%d7%aa/"
+    },
+    "location": {
+      "source": "MANUAL",
+      "selector": ".details_item.location",
+      "confidence": 95,
+      "capturedOnUrl": "https://b-e.org.il/%d7%a7%d7%a8%d7%99%d7%99%d7%a8%d7%94/%d7%97%d7%99%d7%a4%d7%95%d7%a9-%d7%9e%d7%a9%d7%a8%d7%95%d7%aa/"
+    },
+    "description": {
+      "source": "MANUAL",
+      "selector": ".hp-csc-posts-box-description",
+      "confidence": 100,
+      "capturedOnUrl": "https://b-e.org.il/%d7%a7%d7%a8%d7%99%d7%99%d7%a8%d7%94/%d7%97%d7%99%d7%a4%d7%95%d7%a9-%d7%9e%d7%a9%d7%a8%d7%95%d7%aa/"
+    },
+    "externalJobId": {
+      "source": "MANUAL",
+      "selector": ".date_published .det_item",
+      "confidence": 100,
+      "capturedOnUrl": "https://b-e.org.il/%d7%a7%d7%a8%d7%99%d7%99%d7%a8%d7%94/%d7%97%d7%99%d7%a4%d7%95%d7%a9-%d7%9e%d7%a9%d7%a8%d7%95%d7%aa/"
+    }
+  }
+}

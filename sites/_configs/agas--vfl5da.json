@@ -1,0 +1,83 @@
+{
+  "_exportedAt": "2026-08-06T15:54:02.225Z",
+  "_note": "Mirror of the live config. The DB is authoritative; the worker never reads this file. setupScript lives alongside in <slug>.setup.js.",
+  "id": "cmqyk17og003e01nzxqvfl5da",
+  "siteUrl": "https://www.agas.co.il/category/join-us/",
+  "companyName": "AGAS 3K",
+  "status": "ACTIVE",
+  "setupScriptFile": "agas--vfl5da.setup.js",
+  "pageFlow": [],
+  "fieldMappings": {
+    "_meta": {
+      "savedAt": "2026-06-29T01:53:02.990Z",
+      "pagination": null,
+      "formCapture": {
+        "fields": [
+          {
+            "name": "your-name",
+            "label": "השם שלך",
+            "tagName": "INPUT",
+            "required": true,
+            "fieldType": "text"
+          },
+          {
+            "name": "your-email",
+            "label": "האימייל שלך",
+            "tagName": "INPUT",
+            "required": true,
+            "fieldType": "email"
+          },
+          {
+            "name": "your-phone",
+            "label": "הטלפון שלך",
+            "tagName": "INPUT",
+            "required": true,
+            "fieldType": "tel"
+          },
+          {
+            "name": "your-subject",
+            "label": "נושא",
+            "tagName": "INPUT",
+            "required": false,
+            "fieldType": "text"
+          }
+        ],
+        "method": "POST",
+        "actionUrl": "https://www.agas.co.il/it-system-security/",
+        "formSelector": "form.wpcf7-form"
+      },
+      "itemSelector": "article.list-article",
+      "minPublishDate": null,
+      "minPublishDays": null,
+      "revealSelector": null,
+      "listingSelector": null,
+      "applyLoginReason": null,
+      "browserOverrides": null,
+      "loadMoreSelector": null,
+      "locationFallback": null,
+      "originalMappings": null,
+      "applyRequiresLogin": false
+    },
+    "title": {
+      "source": "auto",
+      "selector": ".entry-title a",
+      "confidence": 0.9
+    },
+    "detailUrl": {
+      "source": "auto",
+      "selector": ".entry-title a",
+      "confidence": 0.9,
+      "extractAttr": "href"
+    },
+    "description": {
+      "source": "auto",
+      "selector": ".__ai-description",
+      "confidence": 0.85
+    },
+    "externalJobId": {
+      "source": "auto",
+      "selector": ".__ai-externalJobId",
+      "confidence": 0.9
+    }
+  }
+}

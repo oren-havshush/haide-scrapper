@@ -1,0 +1,73 @@
+{
+  "_exportedAt": "2026-08-06T15:54:03.188Z",
+  "_note": "Mirror of the live config. The DB is authoritative; the worker never reads this file. setupScript lives alongside in <slug>.setup.js.",
+  "id": "cmqo82ous000t01qpt7duk823",
+  "siteUrl": "https://totali.com/en/Jobs/",
+  "companyName": "ToTali",
+  "status": "ACTIVE",
+  "setupScriptFile": "totali--duk823.setup.js",
+  "pageFlow": [
+    {
+      "url": "https://totali.com/en/Jobs/",
+      "action": "navigate"
+    },
+    {
+      "url": "https://totali.com/en/Jobs/*",
+      "action": ".elementor-post__title a"
+    }
+  ],
+  "fieldMappings": {
+    "_meta": {
+      "savedAt": "2026-06-23T10:57:41.310Z",
+      "pagination": null,
+      "formCapture": null,
+      "itemSelector": "article.elementor-post",
+      "minPublishDate": null,
+      "minPublishDays": null,
+      "revealSelector": null,
+      "listingSelector": null,
+      "applyLoginReason": null,
+      "browserOverrides": null,
+      "loadMoreSelector": null,
+      "originalMappings": null,
+      "applyRequiresLogin": false
+    },
+    "title": {
+      "source": "auto",
+      "selector": ".elementor-post__title a",
+      "confidence": 0.9,
+      "capturedOnUrl": "https://totali.com/en/Jobs/"
+    },
+    "location": {
+      "source": "auto",
+      "selector": ".__ai-location",
+      "confidence": 0.85,
+      "capturedOnUrl": "https://totali.com/en/Jobs/sample-job/"
+    },
+    "detailUrl": {
+      "source": "auto",
+      "selector": ".elementor-post__title a",
+      "confidence": 0.9,
+      "extractAttr": "href",
+      "capturedOnUrl": "https://totali.com/en/Jobs/"
+    },
+    "description": {
+      "source": "auto",
+      "selector": ".__ai-jobbody",
+      "confidence": 0.85,
+      "capturedOnUrl": "https://totali.com/en/Jobs/sample-job/"
+    },
+    "externalJobId": {
+      "source": "auto",
+      "selector": ".__ai-jobid",
+      "confidence": 0.95,
+      "capturedOnUrl": "https://totali.com/en/Jobs/"
+    },
+    "applicationInfo": {
+      "source": "auto",
+      "selector": ".__ai-applyinfo",
+      "confidence": 0.85,
+      "capturedOnUrl": "https://totali.com/en/Jobs/sample-job/"
+    }
+  }
+}

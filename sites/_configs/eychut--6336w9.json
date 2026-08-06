@@ -1,0 +1,99 @@
+{
+  "_exportedAt": "2026-08-06T15:54:03.469Z",
+  "_note": "Mirror of the live config. The DB is authoritative; the worker never reads this file. setupScript lives alongside in <slug>.setup.js.",
+  "id": "cmqickbx4001001t1x36336w9",
+  "siteUrl": "https://eychut.org.il/careers/",
+  "companyName": "עמותת איכות בשיקום",
+  "status": "ACTIVE",
+  "setupScriptFile": "eychut--6336w9.setup.js",
+  "pageFlow": [],
+  "fieldMappings": {
+    "_meta": {
+      "savedAt": "2026-06-17T17:32:02.615Z",
+      "pagination": null,
+      "formCapture": {
+        "fields": [
+          {
+            "name": "first-name",
+            "label": "שם פרטי",
+            "tagName": "input",
+            "required": true,
+            "fieldType": "text"
+          },
+          {
+            "name": "last-name",
+            "label": "שם משפחה",
+            "tagName": "input",
+            "required": true,
+            "fieldType": "text"
+          },
+          {
+            "name": "your-tel",
+            "label": "טלפון",
+            "tagName": "input",
+            "required": true,
+            "fieldType": "tel"
+          },
+          {
+            "name": "your-email",
+            "label": "דוא\"ל",
+            "tagName": "input",
+            "required": true,
+            "fieldType": "email"
+          },
+          {
+            "name": "comments",
+            "label": "הערות",
+            "tagName": "textarea",
+            "required": false,
+            "fieldType": "textarea"
+          },
+          {
+            "name": "cv_file",
+            "label": "קורות חיים",
+            "tagName": "input",
+            "required": false,
+            "fieldType": "file"
+          }
+        ],
+        "method": "POST",
+        "actionUrl": "https://eychut.org.il/wp-json/contact-form-7/v1/contact-forms/5992/feedback",
+        "formSelector": "form.wpcf7-form[action*=\"wpcf7-f5992\"]"
+      },
+      "itemSelector": "article.career",
+      "minPublishDate": null,
+      "minPublishDays": null,
+      "revealSelector": null,
+      "listingSelector": null,
+      "applyLoginReason": null,
+      "browserOverrides": null,
+      "loadMoreSelector": null,
+      "originalMappings": null,
+      "applyRequiresLogin": false
+    },
+    "title": {
+      "source": "MANUAL",
+      "selector": "h3.blue, h3[class*=\"blue\"], h3",
+      "confidence": 100,
+      "capturedOnUrl": "https://eychut.org.il/careers/"
+    },
+    "location": {
+      "source": "MANUAL",
+      "selector": ".__ai-location",
+      "confidence": 100,
+      "capturedOnUrl": "https://eychut.org.il/careers/"
+    },
+    "description": {
+      "source": "MANUAL",
+      "selector": ".inner-content .entry-content, .entry-content",
+      "confidence": 100,
+      "capturedOnUrl": "https://eychut.org.il/careers/"
+    },
+    "externalJobId": {
+      "source": "MANUAL",
+      "selector": "[data-haide-job-id]",
+      "confidence": 100,
+      "capturedOnUrl": "https://eychut.org.il/careers/"
+    }
+  }
+}

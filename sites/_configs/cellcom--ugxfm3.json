@@ -1,0 +1,63 @@
+{
+  "_exportedAt": "2026-08-06T15:54:05.306Z",
+  "_note": "Mirror of the live config. The DB is authoritative; the worker never reads this file. setupScript lives alongside in <slug>.setup.js.",
+  "id": "cmplk021k000m01mvlgugxfm3",
+  "siteUrl": "https://cellcom.co.il/jobs/Careersportal/",
+  "companyName": "סלקום",
+  "status": "ACTIVE",
+  "setupScriptFile": "cellcom--ugxfm3.setup.js",
+  "pageFlow": [],
+  "fieldMappings": {
+    "_meta": {
+      "savedAt": "2026-06-11T13:00:47.276Z",
+      "pagination": null,
+      "formCapture": null,
+      "itemSelector": "#cc-jobs-injected .cc-job",
+      "minPublishDate": null,
+      "revealSelector": null,
+      "listingSelector": null,
+      "applyLoginReason": null,
+      "browserOverrides": null,
+      "loadMoreSelector": null,
+      "originalMappings": null,
+      "applyRequiresLogin": false
+    },
+    "title": {
+      "source": "MANUAL",
+      "selector": ".cc-title",
+      "confidence": 100,
+      "capturedOnUrl": "https://cellcom.co.il/jobs/Careersportal/"
+    },
+    "location": {
+      "source": "MANUAL",
+      "selector": ".cc-loc",
+      "confidence": 95,
+      "capturedOnUrl": "https://cellcom.co.il/jobs/Careersportal/"
+    },
+    "detailUrl": {
+      "source": "MANUAL",
+      "selector": "a.cc-detail",
+      "confidence": 100,
+      "extractAttr": "href",
+      "capturedOnUrl": "https://cellcom.co.il/jobs/Careersportal/"
+    },
+    "description": {
+      "source": "MANUAL",
+      "selector": ".cc-desc",
+      "confidence": 100,
+      "capturedOnUrl": "https://cellcom.co.il/jobs/Careersportal/"
+    },
+    "requirements": {
+      "source": "MANUAL",
+      "selector": ".cc-req",
+      "confidence": 95,
+      "capturedOnUrl": "https://cellcom.co.il/jobs/Careersportal/"
+    },
+    "externalJobId": {
+      "source": "MANUAL",
+      "selector": ".cc-code",
+      "confidence": 100,
+      "capturedOnUrl": "https://cellcom.co.il/jobs/Careersportal/"
+    }
+  }
+}

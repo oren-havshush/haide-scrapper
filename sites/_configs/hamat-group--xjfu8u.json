@@ -1,0 +1,68 @@
+{
+  "_exportedAt": "2026-08-06T15:54:04.732Z",
+  "_note": "Mirror of the live config. The DB is authoritative; the worker never reads this file. setupScript lives alongside in <slug>.setup.js.",
+  "id": "cmq6gxlnk001n01m99axjfu8u",
+  "siteUrl": "https://hamat-group.co.il/%D7%93%D7%A8%D7%95%D7%A9%D7%99%D7%9D",
+  "companyName": "חמת",
+  "status": "ACTIVE",
+  "setupScriptFile": "hamat-group--xjfu8u.setup.js",
+  "pageFlow": [],
+  "fieldMappings": {
+    "_meta": {
+      "savedAt": "2026-06-09T11:06:18.880Z",
+      "pagination": null,
+      "formCapture": null,
+      "itemSelector": "div.job",
+      "revealSelector": null,
+      "listingSelector": null,
+      "applyLoginReason": null,
+      "browserOverrides": null,
+      "loadMoreSelector": null,
+      "originalMappings": null,
+      "applyRequiresLogin": false
+    },
+    "title": {
+      "source": "MANUAL",
+      "selector": ".h3.cursor-pointer",
+      "confidence": 100,
+      "capturedOnUrl": "https://hamat-group.co.il/%D7%93%D7%A8%D7%95%D7%A9%D7%99%D7%9D"
+    },
+    "company": {
+      "source": "MANUAL",
+      "selector": "[data-company]",
+      "confidence": 100,
+      "capturedOnUrl": "https://hamat-group.co.il/%D7%93%D7%A8%D7%95%D7%A9%D7%99%D7%9D"
+    },
+    "location": {
+      "source": "MANUAL",
+      "selector": "[data-loc]",
+      "confidence": 100,
+      "capturedOnUrl": "https://hamat-group.co.il/%D7%93%D7%A8%D7%95%D7%A9%D7%99%D7%9D"
+    },
+    "description": {
+      "source": "MANUAL",
+      "selector": ".job__description",
+      "confidence": 100,
+      "capturedOnUrl": "https://hamat-group.co.il/%D7%93%D7%A8%D7%95%D7%A9%D7%99%D7%9D"
+    },
+    "requirements": {
+      "source": "MANUAL",
+      "selector": ".job__requirements",
+      "confidence": 100,
+      "capturedOnUrl": "https://hamat-group.co.il/%D7%93%D7%A8%D7%95%D7%A9%D7%99%D7%9D"
+    },
+    "externalJobId": {
+      "source": "MANUAL",
+      "selector": "[data-ex-id]",
+      "confidence": 100,
+      "capturedOnUrl": "https://hamat-group.co.il/%D7%93%D7%A8%D7%95%D7%A9%D7%99%D7%9D"
+    },
+    "applicationInfo": {
+      "source": "MANUAL",
+      "selector": "a.btn",
+      "confidence": 100,
+      "extractAttr": "href",
+      "capturedOnUrl": "https://hamat-group.co.il/%D7%93%D7%A8%D7%95%D7%A9%D7%99%D7%9D"
+    }
+  }
+}

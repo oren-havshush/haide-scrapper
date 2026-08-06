@@ -1,0 +1,86 @@
+{
+  "_exportedAt": "2026-08-06T15:54:02.944Z",
+  "_note": "Mirror of the live config. The DB is authoritative; the worker never reads this file. setupScript lives alongside in <slug>.setup.js.",
+  "id": "cmqsb9luz000001nua9uy0ibi",
+  "siteUrl": "https://www.tiecom.co.il/jobs/",
+  "companyName": "תייקום תקשורת",
+  "status": "ACTIVE",
+  "setupScriptFile": "tiecom--uy0ibi.setup.js",
+  "pageFlow": [],
+  "fieldMappings": {
+    "_meta": {
+      "savedAt": "2026-06-24T18:24:51.672Z",
+      "pagination": null,
+      "formCapture": {
+        "fields": [
+          {
+            "name": "form_fields[name]",
+            "label": "שם מלא",
+            "tagName": "input",
+            "required": true,
+            "fieldType": "text"
+          },
+          {
+            "name": "form_fields[email]",
+            "label": "אימייל",
+            "tagName": "input",
+            "required": true,
+            "fieldType": "email"
+          },
+          {
+            "name": "form_fields[field_55ab1d0]",
+            "label": "טלפון",
+            "tagName": "input",
+            "required": true,
+            "fieldType": "tel"
+          }
+        ],
+        "method": "post",
+        "actionUrl": "https://www.tiecom.co.il/jobs/",
+        "formSelector": "form.elementor-form"
+      },
+      "itemSelector": "article.ee-post",
+      "minPublishDate": null,
+      "minPublishDays": null,
+      "revealSelector": null,
+      "listingSelector": null,
+      "applyLoginReason": null,
+      "browserOverrides": null,
+      "loadMoreSelector": null,
+      "locationFallback": null,
+      "originalMappings": null,
+      "applyRequiresLogin": false
+    },
+    "title": {
+      "source": "manual",
+      "selector": ".ee-post__title__heading",
+      "confidence": 0.95,
+      "capturedOnUrl": "https://www.tiecom.co.il/jobs/"
+    },
+    "detailUrl": {
+      "source": "manual",
+      "selector": ".ee-post__read-more a",
+      "confidence": 0.9,
+      "extractAttr": "href",
+      "capturedOnUrl": "https://www.tiecom.co.il/jobs/"
+    },
+    "description": {
+      "source": "manual",
+      "selector": ".__ai-description",
+      "confidence": 0.9,
+      "capturedOnUrl": "https://www.tiecom.co.il/jobs/"
+    },
+    "externalJobId": {
+      "source": "manual",
+      "selector": ".__ai-job-id",
+      "confidence": 0.95,
+      "capturedOnUrl": "https://www.tiecom.co.il/jobs/"
+    },
+    "applicationInfo": {
+      "source": "manual",
+      "selector": ".__ai-applyemail",
+      "confidence": 0.9,
+      "capturedOnUrl": "https://www.tiecom.co.il/jobs/"
+    }
+  }
+}

@@ -1,0 +1,131 @@
+{
+  "_exportedAt": "2026-08-06T15:54:03.077Z",
+  "_note": "Mirror of the live config. The DB is authoritative; the worker never reads this file. setupScript lives alongside in <slug>.setup.js.",
+  "id": "cmqo82pcr001101qplimsnicc",
+  "siteUrl": "https://proportsia.co.il/jobs/",
+  "companyName": "פרופורציה",
+  "status": "ACTIVE",
+  "setupScriptFile": "proportsia--msnicc.setup.js",
+  "pageFlow": [],
+  "fieldMappings": {
+    "_meta": {
+      "savedAt": "2026-06-22T11:19:13.197Z",
+      "pagination": null,
+      "formCapture": {
+        "fields": [
+          {
+            "name": "post_id",
+            "label": "post id",
+            "tagName": "input",
+            "required": false,
+            "fieldType": "hidden"
+          },
+          {
+            "name": "form_id",
+            "label": "form id",
+            "tagName": "input",
+            "required": false,
+            "fieldType": "hidden"
+          },
+          {
+            "name": "referer_title",
+            "label": "referer title",
+            "tagName": "input",
+            "required": false,
+            "fieldType": "hidden"
+          },
+          {
+            "name": "queried_id",
+            "label": "queried id",
+            "tagName": "input",
+            "required": false,
+            "fieldType": "hidden"
+          },
+          {
+            "name": "form_fields[name]",
+            "label": "שם מלא",
+            "tagName": "input",
+            "required": true,
+            "fieldType": "text"
+          },
+          {
+            "name": "form_fields[field_15a24ef]",
+            "label": "טלפון",
+            "tagName": "input",
+            "required": true,
+            "fieldType": "tel"
+          },
+          {
+            "name": "form_fields[email]",
+            "label": "אימייל",
+            "tagName": "input",
+            "required": false,
+            "fieldType": "email"
+          },
+          {
+            "name": "form_fields[field_52e2f25]",
+            "label": "העלו קובץ קורות חיים",
+            "tagName": "input",
+            "required": false,
+            "fieldType": "file"
+          }
+        ],
+        "method": "post",
+        "actionUrl": "https://proportsia.co.il/jobs/%D7%A0%D7%A6%D7%99%D7%92-%D7%9E%D7%9B%D7%99%D7%A8%D7%95%D7%AA-%D7%91%D7%9E%D7%95%D7%A7%D7%93/",
+        "formSelector": "form.elementor-form:has(input[type=\"file\"])"
+      },
+      "itemSelector": "div.jet-listing-grid__item",
+      "minPublishDate": null,
+      "minPublishDays": null,
+      "revealSelector": null,
+      "listingSelector": null,
+      "applyLoginReason": null,
+      "browserOverrides": null,
+      "loadMoreSelector": null,
+      "originalMappings": null,
+      "applyRequiresLogin": false
+    },
+    "title": {
+      "source": "auto",
+      "selector": ".elementor-icon-box-title",
+      "attribute": "text",
+      "confidence": 0.9
+    },
+    "location": {
+      "source": "auto",
+      "selector": ".__ai-location",
+      "attribute": "text",
+      "confidence": 0.8
+    },
+    "detailUrl": {
+      "source": "auto",
+      "selector": ".__ai-detail-url",
+      "attribute": "text",
+      "confidence": 0.9
+    },
+    "description": {
+      "source": "auto",
+      "selector": ".__ai-description",
+      "attribute": "text",
+      "confidence": 0.8
+    },
+    "requirements": {
+      "source": "auto",
+      "selector": ".__ai-requirements",
+      "attribute": "text",
+      "confidence": 0.7
+    },
+    "externalJobId": {
+      "source": "auto",
+      "selector": ".__ai-job-id",
+      "attribute": "text",
+      "confidence": 0.9
+    },
+    "applicationInfo": {
+      "source": "auto",
+      "selector": ".__ai-apply-info",
+      "attribute": "text",
+      "confidence": 0.9
+    }
+  }
+}

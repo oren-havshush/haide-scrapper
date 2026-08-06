@@ -1,0 +1,73 @@
+{
+  "_exportedAt": "2026-08-06T15:54:02.746Z",
+  "_note": "Mirror of the live config. The DB is authoritative; the worker never reads this file. setupScript lives alongside in <slug>.setup.js.",
+  "id": "cmqsblhcg001301nu5gscshwy",
+  "siteUrl": "https://www.mey7.co.il/jobs/tenders/",
+  "companyName": "מי שבע",
+  "status": "ACTIVE",
+  "setupScriptFile": "mey7--scshwy.setup.js",
+  "pageFlow": [],
+  "fieldMappings": {
+    "_meta": {
+      "savedAt": "2026-06-25T10:17:06.435Z",
+      "pagination": null,
+      "formCapture": {
+        "fields": [
+          {
+            "name": "inLink",
+            "label": "קישור LinkedIn",
+            "tagName": "input",
+            "required": false,
+            "fieldType": "text"
+          },
+          {
+            "name": "ContactJobCVFile",
+            "label": "קורות חיים",
+            "tagName": "input",
+            "required": false,
+            "fieldType": "file"
+          }
+        ],
+        "method": "POST",
+        "actionUrl": "https://www.mey7.co.il/jobs/tenders/",
+        "formSelector": "form.form"
+      },
+      "itemSelector": "div.job-item",
+      "minPublishDate": null,
+      "minPublishDays": null,
+      "revealSelector": null,
+      "listingSelector": null,
+      "applyLoginReason": null,
+      "browserOverrides": null,
+      "loadMoreSelector": null,
+      "locationFallback": null,
+      "originalMappings": null,
+      "applyRequiresLogin": false
+    },
+    "title": {
+      "source": "manual",
+      "selector": "h3",
+      "confidence": 0.95
+    },
+    "deadline": {
+      "source": "manual",
+      "selector": ".__ai-deadline",
+      "confidence": 0.85
+    },
+    "location": {
+      "source": "manual",
+      "selector": ".__ai-location",
+      "confidence": 0.8
+    },
+    "description": {
+      "source": "manual",
+      "selector": ".__ai-description",
+      "confidence": 0.9
+    },
+    "externalJobId": {
+      "source": "manual",
+      "selector": ".__ai-externalJobId",
+      "confidence": 0.95
+    }
+  }
+}

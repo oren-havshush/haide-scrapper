@@ -1,0 +1,95 @@
+{
+  "_exportedAt": "2026-08-06T15:54:05.111Z",
+  "_note": "Mirror of the live config. The DB is authoritative; the worker never reads this file. setupScript lives alongside in <slug>.setup.js.",
+  "id": "cmpuzwyr7000d01prgj2135c8",
+  "siteUrl": "https://www.sinaistore.com/%d7%91%d7%95%d7%90%d7%95-%d7%9c%d7%a2%d7%91%d7%95%d7%93-%d7%90%d7%99%d7%aa%d7%a0%d7%95/",
+  "companyName": "סיני סטור",
+  "status": "ACTIVE",
+  "setupScriptFile": "sinaistore--2135c8.setup.js",
+  "pageFlow": [],
+  "fieldMappings": {
+    "_meta": {
+      "savedAt": "2026-06-01T09:25:05.569Z",
+      "pagination": null,
+      "formCapture": {
+        "fields": [
+          {
+            "name": "input_1",
+            "label": "שם מלא*",
+            "tagName": "input",
+            "required": true,
+            "fieldType": "text"
+          },
+          {
+            "name": "input_3",
+            "label": "מספר טלפון*",
+            "tagName": "input",
+            "required": true,
+            "fieldType": "tel"
+          },
+          {
+            "name": "input_4",
+            "label": "כתובת מייל*",
+            "tagName": "input",
+            "required": true,
+            "fieldType": "email"
+          },
+          {
+            "name": "input_7",
+            "label": "המשרה המבוקשת*",
+            "tagName": "input",
+            "required": true,
+            "fieldType": "text"
+          },
+          {
+            "name": "input_5",
+            "label": "קובץ קורות חיים*",
+            "tagName": "input",
+            "required": true,
+            "fieldType": "file"
+          },
+          {
+            "name": "input_8.1",
+            "label": "קראתי והסכמתי למדיניות הפרטיות",
+            "tagName": "input",
+            "required": true,
+            "fieldType": "checkbox"
+          }
+        ],
+        "method": "POST",
+        "actionUrl": "https://www.sinaistore.com/%d7%91%d7%95%d7%90%d7%95-%d7%9c%d7%a2%d7%91%d7%95%d7%93-%d7%90%d7%99%d7%aa%d7%a0%d7%95/#gf_6",
+        "formSelector": "#gform_6"
+      },
+      "itemSelector": ".w-tabs-section",
+      "revealSelector": null,
+      "listingSelector": null,
+      "browserOverrides": null,
+      "loadMoreSelector": null,
+      "originalMappings": null
+    },
+    "title": {
+      "source": "MANUAL",
+      "selector": ".w-tabs-section-title",
+      "confidence": 100,
+      "capturedOnUrl": "https://www.sinaistore.com/%d7%91%d7%95%d7%90%d7%95-%d7%9c%d7%a2%d7%91%d7%95%d7%93-%d7%90%d7%99%d7%aa%d7%a0%d7%95/"
+    },
+    "location": {
+      "source": "MANUAL",
+      "selector": ".haide-location",
+      "confidence": 100,
+      "capturedOnUrl": "https://www.sinaistore.com/%d7%91%d7%95%d7%90%d7%95-%d7%9c%d7%a2%d7%91%d7%95%d7%93-%d7%90%d7%99%d7%aa%d7%a0%d7%95/"
+    },
+    "description": {
+      "source": "MANUAL",
+      "selector": ".w-tabs-section-content",
+      "confidence": 100,
+      "capturedOnUrl": "https://www.sinaistore.com/%d7%91%d7%95%d7%90%d7%95-%d7%9c%d7%a2%d7%91%d7%95%d7%93-%d7%90%d7%99%d7%aa%d7%a0%d7%95/"
+    },
+    "externalJobId": {
+      "source": "MANUAL",
+      "selector": ".w-tabs-section-title",
+      "confidence": 100,
+      "capturedOnUrl": "https://www.sinaistore.com/%d7%91%d7%95%d7%90%d7%95-%d7%9c%d7%a2%d7%91%d7%95%d7%93-%d7%90%d7%99%d7%aa%d7%a0%d7%95/"
+    }
+  }
+}

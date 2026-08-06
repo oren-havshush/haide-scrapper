@@ -1,0 +1,49 @@
+{
+  "_exportedAt": "2026-08-06T15:54:04.546Z",
+  "_note": "Mirror of the live config. The DB is authoritative; the worker never reads this file. setupScript lives alongside in <slug>.setup.js.",
+  "id": "cmq6nxfis000e01liwigyocvt",
+  "siteUrl": "https://www.hylabs.co.il/careers-grid-page",
+  "companyName": "Hylabs",
+  "status": "ACTIVE",
+  "setupScriptFile": "hylabs--gyocvt.setup.js",
+  "pageFlow": [],
+  "fieldMappings": {
+    "_meta": {
+      "savedAt": "2026-06-09T13:38:31.318Z",
+      "pagination": null,
+      "formCapture": null,
+      "itemSelector": "div.section-carrer__item.rtl",
+      "revealSelector": null,
+      "listingSelector": null,
+      "applyLoginReason": null,
+      "browserOverrides": null,
+      "loadMoreSelector": null,
+      "originalMappings": null,
+      "applyRequiresLogin": false
+    },
+    "title": {
+      "source": "MANUAL",
+      "selector": "h3",
+      "confidence": 100,
+      "capturedOnUrl": "https://www.hylabs.co.il/careers-grid-page"
+    },
+    "description": {
+      "source": "MANUAL",
+      "selector": "div.post-txt-wrp",
+      "confidence": 100,
+      "capturedOnUrl": "https://www.hylabs.co.il/careers-grid-page"
+    },
+    "externalJobId": {
+      "source": "MANUAL",
+      "selector": "[data-ex-id]",
+      "confidence": 100,
+      "capturedOnUrl": "https://www.hylabs.co.il/careers-grid-page"
+    },
+    "applicationInfo": {
+      "source": "MANUAL",
+      "selector": "a[href^=\"mailto:\"]",
+      "confidence": 100,
+      "capturedOnUrl": "https://www.hylabs.co.il/careers-grid-page"
+    }
+  }
+}

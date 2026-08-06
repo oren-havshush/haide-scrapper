@@ -1,0 +1,53 @@
+{
+  "_exportedAt": "2026-08-06T15:54:02.888Z",
+  "_note": "Mirror of the live config. The DB is authoritative; the worker never reads this file. setupScript lives alongside in <slug>.setup.js.",
+  "id": "cmqsbl86z000b01nu131u1jp3",
+  "siteUrl": "https://www.novilis.co.il/press-kit",
+  "companyName": "Novilis Software Systems",
+  "status": "ACTIVE",
+  "setupScriptFile": "novilis--1u1jp3.setup.js",
+  "pageFlow": [],
+  "fieldMappings": {
+    "_meta": {
+      "savedAt": "2026-06-28T13:43:50.454Z",
+      "pagination": null,
+      "formCapture": null,
+      "itemSelector": ".wixui-column-strip__column:has(h2):not(:has(section))",
+      "minPublishDate": null,
+      "minPublishDays": null,
+      "revealSelector": null,
+      "listingSelector": null,
+      "applyLoginReason": null,
+      "browserOverrides": null,
+      "loadMoreSelector": null,
+      "locationFallback": "ראשון לציון",
+      "originalMappings": null,
+      "applyRequiresLogin": false
+    },
+    "title": {
+      "source": "manual",
+      "selector": "h2",
+      "confidence": 0.95,
+      "capturedOnUrl": "https://www.novilis.co.il/press-kit"
+    },
+    "description": {
+      "source": "manual",
+      "selector": ".__ai-desc",
+      "confidence": 0.9,
+      "capturedOnUrl": "https://www.novilis.co.il/press-kit"
+    },
+    "externalJobId": {
+      "source": "manual",
+      "selector": ".__ai-id",
+      "confidence": 0.95,
+      "capturedOnUrl": "https://www.novilis.co.il/press-kit"
+    },
+    "applicationInfo": {
+      "source": "manual",
+      "selector": "a[href*=\"mailto\"]",
+      "confidence": 0.9,
+      "extractAttr": "href",
+      "capturedOnUrl": "https://www.novilis.co.il/press-kit"
+    }
+  }
+}

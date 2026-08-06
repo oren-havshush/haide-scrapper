@@ -1,0 +1,64 @@
+{
+  "_exportedAt": "2026-08-06T15:54:05.551Z",
+  "_note": "Mirror of the live config. The DB is authoritative; the worker never reads this file. setupScript lives alongside in <slug>.setup.js.",
+  "id": "cmp5fgi9u000p01lsnnldemj3",
+  "siteUrl": "https://www.abt-industry.co.il/home/doc.aspx?mCatID=51&mode=s&iccID=52&icPID=53&icID=63",
+  "companyName": "א.ב מתכננים",
+  "status": "ACTIVE",
+  "setupScriptFile": "abt-industry--ldemj3.setup.js",
+  "pageFlow": [],
+  "fieldMappings": {
+    "_meta": {
+      "savedAt": "2026-05-14T13:10:16.078Z",
+      "pagination": null,
+      "formCapture": null,
+      "itemSelector": ".p-team-content .p-team-item",
+      "revealSelector": null,
+      "listingSelector": ".p-team-content",
+      "originalMappings": null
+    },
+    "title": {
+      "source": "MANUAL",
+      "selector": ".p-team-item-name",
+      "confidence": 100,
+      "capturedOnUrl": "https://www.abt-industry.co.il/home/doc.aspx?mCatID=51&mode=s&iccID=52&icPID=53&icID=63"
+    },
+    "location": {
+      "source": "MANUAL",
+      "selector": ".haide-location",
+      "confidence": 100,
+      "capturedOnUrl": "https://www.abt-industry.co.il/home/doc.aspx?mCatID=51&mode=s&iccID=52&icPID=53&icID=63"
+    },
+    "department": {
+      "source": "MANUAL",
+      "selector": ".p-team-item-role",
+      "confidence": 100,
+      "capturedOnUrl": "https://www.abt-industry.co.il/home/doc.aspx?mCatID=51&mode=s&iccID=52&icPID=53&icID=63"
+    },
+    "description": {
+      "source": "MANUAL",
+      "selector": ".p-team-item-desc",
+      "confidence": 100,
+      "capturedOnUrl": "https://www.abt-industry.co.il/home/doc.aspx?mCatID=51&mode=s&iccID=52&icPID=53&icID=63"
+    },
+    "contactEmail": {
+      "source": "MANUAL",
+      "selector": ".p-team-item-mail a",
+      "confidence": 100,
+      "extractAttr": "href",
+      "capturedOnUrl": "https://www.abt-industry.co.il/home/doc.aspx?mCatID=51&mode=s&iccID=52&icPID=53&icID=63"
+    },
+    "externalJobId": {
+      "source": "MANUAL",
+      "selector": ".p-team-item-name",
+      "confidence": 100,
+      "capturedOnUrl": "https://www.abt-industry.co.il/home/doc.aspx?mCatID=51&mode=s&iccID=52&icPID=53&icID=63"
+    },
+    "applicationInfo": {
+      "source": "MANUAL",
+      "selector": ".p-team-item-mail",
+      "confidence": 100,
+      "capturedOnUrl": "https://www.abt-industry.co.il/home/doc.aspx?mCatID=51&mode=s&iccID=52&icPID=53&icID=63"
+    }
+  }
+}

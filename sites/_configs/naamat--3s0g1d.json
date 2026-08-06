@@ -1,0 +1,102 @@
+{
+  "_exportedAt": "2026-08-06T15:54:03.498Z",
+  "_note": "Mirror of the live config. The DB is authoritative; the worker never reads this file. setupScript lives alongside in <slug>.setup.js.",
+  "id": "cmqiakw6s000u01t1kc3s0g1d",
+  "siteUrl": "https://naamat.org.il/%d7%9e%d7%a9%d7%a8%d7%95%d7%aa-%d7%91%d7%a0%d7%a2%d7%9e%d7%aa-%d7%93%d7%a8%d7%95%d7%a9%d7%95%d7%aa-%d7%93%d7%a8%d7%95%d7%a9%d7%99%d7%9d/",
+  "companyName": "כפר הנוער כנות",
+  "status": "ACTIVE",
+  "setupScriptFile": "naamat--3s0g1d.setup.js",
+  "pageFlow": [
+    {
+      "url": "https://naamat.org.il/%d7%9e%d7%a9%d7%a8%d7%95%d7%aa-%d7%91%d7%a0%d7%a2%d7%9e%d7%aa-%d7%93%d7%a8%d7%95%d7%a9%d7%95%d7%aa-%d7%93%d7%a8%d7%95%d7%a9%d7%99%d7%9d/",
+      "action": "listing"
+    },
+    {
+      "url": "DETAIL",
+      "action": "navigate",
+      "waitFor": ".jobs-row.position_description .jobs-row-input"
+    }
+  ],
+  "fieldMappings": {
+    "_meta": {
+      "savedAt": "2026-06-18T12:10:00.339Z",
+      "pagination": null,
+      "formCapture": {
+        "fields": [
+          {
+            "name": "input_job_fullname",
+            "label": "שם מלא",
+            "tagName": "input",
+            "required": true,
+            "fieldType": "text"
+          },
+          {
+            "name": "input_job_email",
+            "label": "אימייל",
+            "tagName": "input",
+            "required": true,
+            "fieldType": "email"
+          },
+          {
+            "name": "input_job_phone",
+            "label": "טלפון",
+            "tagName": "input",
+            "required": true,
+            "fieldType": "tel"
+          },
+          {
+            "name": "input_job_letter",
+            "label": "קורות חיים ומסמכים",
+            "tagName": "input",
+            "required": false,
+            "fieldType": "file"
+          }
+        ],
+        "method": "POST",
+        "actionUrl": "https://naamat.org.il/wp-admin/admin-ajax.php",
+        "formSelector": "#jobs-modal-form"
+      },
+      "itemSelector": "div.job-preview.clearfix",
+      "minPublishDate": null,
+      "minPublishDays": null,
+      "revealSelector": null,
+      "listingSelector": null,
+      "applyLoginReason": null,
+      "browserOverrides": null,
+      "loadMoreSelector": null,
+      "originalMappings": null,
+      "applyRequiresLogin": false
+    },
+    "title": {
+      "source": "MANUAL",
+      "selector": ".job-content h5 a, .job-content a",
+      "confidence": 100,
+      "capturedOnUrl": "https://naamat.org.il/%d7%9e%d7%a9%d7%a8%d7%95%d7%aa-%d7%91%d7%a0%d7%a2%d7%9e%d7%aa-%d7%93%d7%a8%d7%95%d7%a9%d7%95%d7%aa-%d7%93%d7%a8%d7%95%d7%a9%d7%99%d7%9d/"
+    },
+    "location": {
+      "source": "MANUAL",
+      "selector": ".job-additional-information span:first-child",
+      "confidence": 100,
+      "capturedOnUrl": "https://naamat.org.il/%d7%9e%d7%a9%d7%a8%d7%95%d7%aa-%d7%91%d7%a0%d7%a2%d7%9e%d7%aa-%d7%93%d7%a8%d7%95%d7%a9%d7%95%d7%aa-%d7%93%d7%a8%d7%95%d7%a9%d7%99%d7%9d/"
+    },
+    "detailUrl": {
+      "source": "MANUAL",
+      "selector": ".job-content h5 a, .job-content a",
+      "confidence": 100,
+      "extractAttr": "href",
+      "capturedOnUrl": "https://naamat.org.il/%d7%9e%d7%a9%d7%a8%d7%95%d7%aa-%d7%91%d7%a0%d7%a2%d7%9e%d7%aa-%d7%93%d7%a8%d7%95%d7%a9%d7%95%d7%aa-%d7%93%d7%a8%d7%95%d7%a9%d7%99%d7%9d/"
+    },
+    "description": {
+      "source": "MANUAL",
+      "selector": "[data-haide-description]",
+      "confidence": 100,
+      "capturedOnUrl": "https://naamat.org.il/job/%d7%9e%d7%96%d7%9b%d7%99%d7%a8-%d7%94-%d7%9c%d7%9c%d7%a9%d7%9b%d7%94-%d7%94%d7%9e%d7%a9%d7%a4%d7%98%d7%99%d7%aa/"
+    },
+    "externalJobId": {
+      "source": "MANUAL",
+      "selector": "[data-haide-job-id]",
+      "confidence": 100,
+      "capturedOnUrl": "https://naamat.org.il/%d7%9e%d7%a9%d7%a8%d7%95%d7%aa-%d7%91%d7%a0%d7%a2%d7%9e%d7%aa-%d7%93%d7%a8%d7%95%d7%a9%d7%95%d7%aa-%d7%93%d7%a8%d7%95%d7%a9%d7%99%d7%9d/"
+    }
+  }
+}
