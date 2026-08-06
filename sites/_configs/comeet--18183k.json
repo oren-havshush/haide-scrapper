@@ -1,0 +1,117 @@
+{
+  "_exportedAt": "2026-08-06T15:54:02.720Z",
+  "_note": "Mirror of the live config. The DB is authoritative; the worker never reads this file. setupScript lives alongside in <slug>.setup.js.",
+  "id": "cmqti7q4f000801no2o18183k",
+  "siteUrl": "https://www.comeet.com/jobs/betshemeshengines/1A.002",
+  "companyName": "מנועי בית שמש",
+  "status": "ACTIVE",
+  "setupScriptFile": "comeet--18183k.setup.js",
+  "pageFlow": [
+    {
+      "url": "https://www.comeet.com/jobs/betshemeshengines/1A.002",
+      "action": "navigate",
+      "waitFor": ".positionItem"
+    },
+    {
+      "url": "https://www.comeet.com/jobs/betshemeshengines/1A.002/--/*",
+      "action": "a.positionItem",
+      "waitFor": "[data-qa='requirementFieldContent']"
+    }
+  ],
+  "fieldMappings": {
+    "_meta": {
+      "savedAt": "2026-06-25T13:54:32.895Z",
+      "pagination": null,
+      "formCapture": {
+        "fields": [
+          {
+            "name": "firstName",
+            "label": "שם פרטי",
+            "tagName": "INPUT",
+            "required": true,
+            "fieldType": "text"
+          },
+          {
+            "name": "lastName",
+            "label": "שם משפחה",
+            "tagName": "INPUT",
+            "required": true,
+            "fieldType": "text"
+          },
+          {
+            "name": "email",
+            "label": "דוא\"ל",
+            "tagName": "INPUT",
+            "required": true,
+            "fieldType": "email"
+          },
+          {
+            "name": "phone",
+            "label": "טלפון",
+            "tagName": "INPUT",
+            "required": true,
+            "fieldType": "tel"
+          },
+          {
+            "name": "resume",
+            "label": "קורות חיים",
+            "tagName": "INPUT",
+            "required": true,
+            "fieldType": "file"
+          }
+        ],
+        "method": "POST",
+        "actionUrl": "https://www.comeet.co/jobs/1A.002/<position-uid>/apply",
+        "formSelector": "form.__comeet-apply-static"
+      },
+      "itemSelector": "li:has(> a.positionItem)",
+      "minPublishDate": null,
+      "minPublishDays": null,
+      "revealSelector": null,
+      "listingSelector": null,
+      "applyLoginReason": null,
+      "browserOverrides": null,
+      "loadMoreSelector": null,
+      "locationFallback": null,
+      "originalMappings": null,
+      "applyRequiresLogin": false
+    },
+    "title": {
+      "source": "auto",
+      "selector": ".positionLink",
+      "confidence": 0.95,
+      "capturedOnUrl": "https://www.comeet.com/jobs/betshemeshengines/1A.002"
+    },
+    "location": {
+      "source": "auto",
+      "selector": ".__ai-location",
+      "confidence": 0.8,
+      "capturedOnUrl": "https://www.comeet.com/jobs/betshemeshengines/1A.002"
+    },
+    "detailUrl": {
+      "source": "auto",
+      "selector": "a.positionItem",
+      "confidence": 0.95,
+      "extractAttr": "href",
+      "capturedOnUrl": "https://www.comeet.com/jobs/betshemeshengines/1A.002"
+    },
+    "department": {
+      "source": "auto",
+      "selector": ".__ai-department",
+      "confidence": 0.9,
+      "capturedOnUrl": "https://www.comeet.com/jobs/betshemeshengines/1A.002"
+    },
+    "description": {
+      "source": "auto",
+      "selector": ".__ai-description",
+      "confidence": 0.85,
+      "capturedOnUrl": "https://www.comeet.com/jobs/betshemeshengines/1A.002/--/9C.354"
+    },
+    "externalJobId": {
+      "source": "auto",
+      "selector": ".__ai-jobid",
+      "confidence": 0.95,
+      "capturedOnUrl": "https://www.comeet.com/jobs/betshemeshengines/1A.002"
+    }
+  }
+}

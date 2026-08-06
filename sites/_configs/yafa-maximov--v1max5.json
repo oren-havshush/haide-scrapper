@@ -1,0 +1,77 @@
+{
+  "_exportedAt": "2026-08-06T15:54:02.690Z",
+  "_note": "Mirror of the live config. The DB is authoritative; the worker never reads this file. setupScript lives alongside in <slug>.setup.js.",
+  "id": "cmqy8f0jt000c01nzbev1max5",
+  "siteUrl": "https://www.yafa-maximov.co.il/%D7%A7%D7%A8%D7%99%D7%99%D7%A8%D7%94-%D7%91%D7%A2%D7%95%D7%9C%D7%9D-%D7%94%D7%91%D7%99%D7%95%D7%98%D7%99",
+  "companyName": "אמביאנס קוסמטיקה רפואית",
+  "status": "ACTIVE",
+  "setupScriptFile": "yafa-maximov--v1max5.setup.js",
+  "pageFlow": [],
+  "fieldMappings": {
+    "_meta": {
+      "savedAt": "2026-06-28T20:27:44.223Z",
+      "pagination": null,
+      "formCapture": {
+        "fields": [
+          {
+            "name": "form_fields[name_field]",
+            "label": "שם מלא",
+            "tagName": "INPUT",
+            "required": true,
+            "fieldType": "text"
+          },
+          {
+            "name": "form_fields[email_field]",
+            "label": "אימייל",
+            "tagName": "INPUT",
+            "required": true,
+            "fieldType": "email"
+          },
+          {
+            "name": "form_fields[field_job]",
+            "label": "שם המשרה",
+            "tagName": "INPUT",
+            "required": true,
+            "fieldType": "text"
+          },
+          {
+            "name": "form_fields[cv]",
+            "label": "קורות חיים",
+            "tagName": "INPUT",
+            "required": true,
+            "fieldType": "file"
+          }
+        ],
+        "method": "POST",
+        "actionUrl": "https://www.yafa-maximov.co.il/%D7%A7%D7%A8%D7%99%D7%99%D7%A8%D7%94-%D7%91%D7%A2%D7%95%D7%9C%D7%9D-%D7%94%D7%91%D7%99%D7%95%D7%98%D7%99",
+        "formSelector": "form#apply_for_job"
+      },
+      "itemSelector": "div.elementor-toggle-item",
+      "minPublishDate": null,
+      "minPublishDays": null,
+      "revealSelector": null,
+      "listingSelector": null,
+      "applyLoginReason": null,
+      "browserOverrides": null,
+      "loadMoreSelector": null,
+      "locationFallback": null,
+      "originalMappings": null,
+      "applyRequiresLogin": false
+    },
+    "title": {
+      "source": "auto",
+      "selector": "a.elementor-toggle-title",
+      "confidence": 0.9
+    },
+    "description": {
+      "source": "auto",
+      "selector": "div.elementor-tab-content",
+      "confidence": 0.8
+    },
+    "externalJobId": {
+      "source": "auto",
+      "selector": ".__ai-externalJobId",
+      "confidence": 0.9
+    }
+  }
+}

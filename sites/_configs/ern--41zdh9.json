@@ -1,0 +1,45 @@
+{
+  "_exportedAt": "2026-08-06T15:54:03.912Z",
+  "_note": "Mirror of the live config. The DB is authoritative; the worker never reads this file. setupScript lives alongside in <slug>.setup.js.",
+  "id": "cmq9jewe2003401lcy941zdh9",
+  "siteUrl": "https://www.ern.co.il/%D7%A7%D7%A8%D7%99%D7%99%D7%A8%D7%94-%D7%91-ern-2/",
+  "companyName": "ERN",
+  "status": "ACTIVE",
+  "setupScriptFile": null,
+  "pageFlow": [],
+  "fieldMappings": {
+    "_meta": {
+      "savedAt": "2026-06-11T13:33:31.841Z",
+      "pagination": null,
+      "formCapture": null,
+      "itemSelector": ".panel.panel-default",
+      "minPublishDate": null,
+      "revealSelector": null,
+      "listingSelector": null,
+      "applyLoginReason": null,
+      "browserOverrides": null,
+      "loadMoreSelector": null,
+      "originalMappings": null,
+      "applyRequiresLogin": false
+    },
+    "title": {
+      "source": "MANUAL",
+      "selector": ".panel-title",
+      "confidence": 100,
+      "capturedOnUrl": "https://www.ern.co.il/career"
+    },
+    "description": {
+      "source": "MANUAL",
+      "selector": ".panel-body",
+      "confidence": 100,
+      "capturedOnUrl": "https://www.ern.co.il/career"
+    },
+    "externalJobId": {
+      "source": "MANUAL",
+      "selector": ".panel-title",
+      "confidence": 80,
+      "extractAttr": "href",
+      "capturedOnUrl": "https://www.ern.co.il/career"
+    }
+  }
+}

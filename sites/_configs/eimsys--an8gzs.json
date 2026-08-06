@@ -1,0 +1,84 @@
+{
+  "_exportedAt": "2026-08-06T15:54:04.759Z",
+  "_note": "Mirror of the live config. The DB is authoritative; the worker never reads this file. setupScript lives alongside in <slug>.setup.js.",
+  "id": "cmq68viva001b01m902an8gzs",
+  "siteUrl": "https://eimsys.co.il/home/now-hiring",
+  "companyName": "Eimsys",
+  "status": "ACTIVE",
+  "setupScriptFile": "eimsys--an8gzs.setup.js",
+  "pageFlow": [],
+  "fieldMappings": {
+    "_meta": {
+      "savedAt": "2026-06-09T09:30:54.500Z",
+      "pagination": null,
+      "formCapture": {
+        "fields": [
+          {
+            "name": "form_fields[name]",
+            "label": "Name",
+            "tagName": "input",
+            "required": false,
+            "fieldType": "text"
+          },
+          {
+            "name": "form_fields[email]",
+            "label": "Email",
+            "tagName": "input",
+            "required": true,
+            "fieldType": "email"
+          },
+          {
+            "name": "form_fields[phone]",
+            "label": "Phone",
+            "tagName": "input",
+            "required": false,
+            "fieldType": "tel"
+          },
+          {
+            "name": "form_fields[fileupload]",
+            "label": "cv",
+            "tagName": "input",
+            "required": false,
+            "fieldType": "file"
+          }
+        ],
+        "method": "POST",
+        "actionUrl": "https://eimsys.co.il/home/now-hiring/",
+        "formSelector": "form.elementor-form"
+      },
+      "itemSelector": ".jet-accordion__item",
+      "revealSelector": null,
+      "listingSelector": null,
+      "applyLoginReason": null,
+      "browserOverrides": null,
+      "loadMoreSelector": null,
+      "originalMappings": null,
+      "applyRequiresLogin": false
+    },
+    "title": {
+      "source": "MANUAL",
+      "selector": ".jet-toggle__label-text",
+      "confidence": 100,
+      "capturedOnUrl": "https://eimsys.co.il/home/now-hiring"
+    },
+    "location": {
+      "source": "MANUAL",
+      "selector": "[data-ex-loc]",
+      "confidence": 100,
+      "capturedOnUrl": "https://eimsys.co.il/home/now-hiring"
+    },
+    "description": {
+      "source": "MANUAL",
+      "selector": ".jet-toggle__content-inner",
+      "confidence": 100,
+      "capturedOnUrl": "https://eimsys.co.il/home/now-hiring"
+    },
+    "externalJobId": {
+      "source": "MANUAL",
+      "selector": "input[name=\"queried_id\"]",
+      "confidence": 100,
+      "extractAttr": "value",
+      "capturedOnUrl": "https://eimsys.co.il/home/now-hiring"
+    }
+  }
+}

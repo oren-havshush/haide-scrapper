@@ -1,0 +1,178 @@
+{
+  "_exportedAt": "2026-08-06T15:54:02.828Z",
+  "_note": "Mirror of the live config. The DB is authoritative; the worker never reads this file. setupScript lives alongside in <slug>.setup.js.",
+  "id": "cmqsblcsy000p01nunllx3ol0",
+  "siteUrl": "https://www.weizmann.ac.il/career/jobs",
+  "companyName": "מכון ויצמן למדע",
+  "status": "ACTIVE",
+  "setupScriptFile": "weizmann--lx3ol0.setup.js",
+  "pageFlow": [],
+  "fieldMappings": {
+    "_meta": {
+      "savedAt": "2026-06-25T11:48:57.499Z",
+      "pagination": null,
+      "formCapture": {
+        "fields": [
+          {
+            "name": "first_name",
+            "label": "שם פרטי",
+            "tagName": "input",
+            "required": true,
+            "fieldType": "text"
+          },
+          {
+            "name": "last_name",
+            "label": "שם משפחה",
+            "tagName": "input",
+            "required": true,
+            "fieldType": "text"
+          },
+          {
+            "name": "phone",
+            "label": "טלפון",
+            "tagName": "input",
+            "required": true,
+            "fieldType": "tel"
+          },
+          {
+            "name": "email",
+            "label": "דוא\"ל",
+            "tagName": "input",
+            "required": true,
+            "fieldType": "email"
+          },
+          {
+            "name": "source",
+            "label": "היכן ראית את המשרה לראשונה?",
+            "options": [
+              {
+                "label": "- ללא -",
+                "value": ""
+              },
+              {
+                "label": "הפניה מעובד.ת מכון",
+                "value": "15"
+              },
+              {
+                "label": "מודעה בלוח דרושים",
+                "value": "16"
+              },
+              {
+                "label": "פרסום בקבוצת פייסבוק",
+                "value": "17"
+              },
+              {
+                "label": "פרסום ב Linkedin",
+                "value": "18"
+              },
+              {
+                "label": "פרסום בקבוצת ווטסאפ",
+                "value": "19"
+              },
+              {
+                "label": "מכניסה לאתר הקריירה של המכון",
+                "value": "20"
+              },
+              {
+                "label": "אחר",
+                "value": "21"
+              }
+            ],
+            "tagName": "select",
+            "required": false,
+            "fieldType": "select"
+          },
+          {
+            "name": "other_source",
+            "label": "מקור אחר",
+            "tagName": "input",
+            "required": false,
+            "fieldType": "text"
+          },
+          {
+            "name": "relatives",
+            "label": "האם יש לך קרובי משפחה העובדים או לומדים במכון ויצמן",
+            "options": [
+              {
+                "label": "כן",
+                "value": "yes"
+              },
+              {
+                "label": "לא",
+                "value": "no"
+              }
+            ],
+            "tagName": "input",
+            "required": false,
+            "fieldType": "radio"
+          },
+          {
+            "name": "relative_details",
+            "label": "פרטי הקרוב/ה (שם ותפקיד)",
+            "tagName": "input",
+            "required": false,
+            "fieldType": "text"
+          },
+          {
+            "name": "cv",
+            "label": "קורות חיים",
+            "tagName": "input",
+            "required": false,
+            "fieldType": "file"
+          }
+        ],
+        "method": "post",
+        "actionUrl": "https://www.weizmann.ac.il/career/form/job-application",
+        "formSelector": "form.non-existent-decoy"
+      },
+      "itemSelector": "div.views-row",
+      "minPublishDate": null,
+      "minPublishDays": null,
+      "revealSelector": null,
+      "listingSelector": null,
+      "applyLoginReason": null,
+      "browserOverrides": null,
+      "loadMoreSelector": null,
+      "locationFallback": null,
+      "originalMappings": null,
+      "applyRequiresLogin": false
+    },
+    "title": {
+      "source": "manual",
+      "selector": ".field--name-field-job-title-hebrew",
+      "confidence": 0.95,
+      "capturedOnUrl": "https://www.weizmann.ac.il/career/jobs"
+    },
+    "location": {
+      "source": "manual",
+      "selector": ".__ai-location",
+      "confidence": 0.95,
+      "capturedOnUrl": "https://www.weizmann.ac.il/career/jobs"
+    },
+    "detailUrl": {
+      "source": "manual",
+      "selector": "a[href*=\"/career/jobs/\"]",
+      "confidence": 0.9,
+      "extractAttr": "href",
+      "capturedOnUrl": "https://www.weizmann.ac.il/career/jobs"
+    },
+    "description": {
+      "source": "manual",
+      "selector": ".__ai-description",
+      "confidence": 0.9,
+      "capturedOnUrl": "https://www.weizmann.ac.il/career/jobs"
+    },
+    "externalJobId": {
+      "source": "manual",
+      "selector": ".__ai-id",
+      "confidence": 0.95,
+      "capturedOnUrl": "https://www.weizmann.ac.il/career/jobs"
+    },
+    "applicationInfo": {
+      "source": "manual",
+      "selector": ".__ai-apply",
+      "confidence": 0.9,
+      "capturedOnUrl": "https://www.weizmann.ac.il/career/jobs"
+    }
+  }
+}

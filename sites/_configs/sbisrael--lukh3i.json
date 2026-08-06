@@ -1,0 +1,74 @@
+{
+  "_exportedAt": "2026-08-06T15:54:05.748Z",
+  "_note": "Mirror of the live config. The DB is authoritative; the worker never reads this file. setupScript lives alongside in <slug>.setup.js.",
+  "id": "cmp03tbjk000s01k5tilukh3i",
+  "siteUrl": "https://sbisrael.co.il/%d7%93%d7%a8%d7%95%d7%a9%d7%99%d7%9d/",
+  "companyName": "ש.ב שמירה וביטחון",
+  "status": "ACTIVE",
+  "setupScriptFile": null,
+  "pageFlow": [],
+  "fieldMappings": {
+    "_meta": {
+      "savedAt": "2026-05-11T20:20:14.597Z",
+      "pagination": null,
+      "formCapture": {
+        "fields": [
+          {
+            "name": "your-name",
+            "label": "שם מלא",
+            "tagName": "input",
+            "required": true,
+            "fieldType": "text"
+          },
+          {
+            "name": "your-phone",
+            "label": "טלפון",
+            "tagName": "input",
+            "required": true,
+            "fieldType": "tel"
+          },
+          {
+            "name": "your-email",
+            "label": "אימייל",
+            "tagName": "input",
+            "required": true,
+            "fieldType": "email"
+          },
+          {
+            "name": "your-message",
+            "label": "הודעה",
+            "tagName": "textarea",
+            "required": false,
+            "fieldType": "textarea"
+          }
+        ],
+        "method": "POST",
+        "actionUrl": "https://sbisrael.co.il/%d7%93%d7%a8%d7%95%d7%a9%d7%99%d7%9d/",
+        "formSelector": "form.wpcf7-form"
+      },
+      "itemSelector": "article.job",
+      "revealSelector": null,
+      "listingSelector": null,
+      "originalMappings": null
+    },
+    "title": {
+      "source": "MANUAL",
+      "selector": ".job__title",
+      "confidence": 100,
+      "capturedOnUrl": "https://sbisrael.co.il/%d7%93%d7%a8%d7%95%d7%a9%d7%99%d7%9d/"
+    },
+    "description": {
+      "source": "MANUAL",
+      "selector": ".job__content",
+      "confidence": 100,
+      "capturedOnUrl": "https://sbisrael.co.il/%d7%93%d7%a8%d7%95%d7%a9%d7%99%d7%9d/"
+    },
+    "externalJobId": {
+      "source": "MANUAL",
+      "selector": ".apply-action a",
+      "confidence": 100,
+      "extractAttr": "job-id",
+      "capturedOnUrl": "https://sbisrael.co.il/%d7%93%d7%a8%d7%95%d7%a9%d7%99%d7%9d/"
+    }
+  }
+}

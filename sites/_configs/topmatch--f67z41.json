@@ -1,0 +1,129 @@
+{
+  "_exportedAt": "2026-08-06T15:54:05.361Z",
+  "_note": "Mirror of the live config. The DB is authoritative; the worker never reads this file. setupScript lives alongside in <slug>.setup.js.",
+  "id": "cmp9t2uj8001p01ls7ef67z41",
+  "siteUrl": "https://careers.topmatch.co.il/diplomat-il/index.html",
+  "companyName": "Top Match",
+  "status": "ACTIVE",
+  "setupScriptFile": "topmatch--f67z41.setup.js",
+  "pageFlow": [
+    {
+      "url": "https://careers.topmatch.co.il/diplomat-il/index.html",
+      "action": "listing"
+    },
+    {
+      "url": "DETAIL",
+      "action": "navigate",
+      "waitFor": "[data-field=\"description\"]"
+    }
+  ],
+  "fieldMappings": {
+    "_meta": {
+      "savedAt": "2026-06-17T15:30:00.278Z",
+      "pagination": null,
+      "formCapture": {
+        "fields": [
+          {
+            "name": "firstName",
+            "label": "שם פרטי",
+            "tagName": "input",
+            "required": true,
+            "fieldType": "text"
+          },
+          {
+            "name": "lastName",
+            "label": "שם משפחה",
+            "tagName": "input",
+            "required": true,
+            "fieldType": "text"
+          },
+          {
+            "name": "email",
+            "label": "דואר אלקטרוני",
+            "tagName": "input",
+            "required": true,
+            "fieldType": "email"
+          },
+          {
+            "name": "id",
+            "label": "תעודת זהות",
+            "tagName": "input",
+            "required": true,
+            "fieldType": "text"
+          },
+          {
+            "name": "cellPhone",
+            "label": "טלפון נייד",
+            "tagName": "input",
+            "required": true,
+            "fieldType": "tel"
+          },
+          {
+            "name": "CV",
+            "label": "קורות חיים",
+            "tagName": "input",
+            "required": true,
+            "fieldType": "file"
+          },
+          {
+            "name": "DisclaimerApply",
+            "label": "קראתי והסכמתי",
+            "tagName": "input",
+            "required": true,
+            "fieldType": "checkbox"
+          }
+        ],
+        "method": "POST",
+        "actionUrl": "https://careers.topmatch.co.il/diplomat-il/redmatch-apply/redmatch.apply.html",
+        "formSelector": "form.redmatch-apply-form"
+      },
+      "itemSelector": "a.job-item[href]",
+      "minPublishDate": null,
+      "minPublishDays": null,
+      "revealSelector": null,
+      "listingSelector": null,
+      "applyLoginReason": null,
+      "browserOverrides": null,
+      "loadMoreSelector": null,
+      "originalMappings": null,
+      "applyRequiresLogin": false
+    },
+    "title": {
+      "source": "MANUAL",
+      "selector": ".job-title",
+      "confidence": 90,
+      "capturedOnUrl": "https://careers.topmatch.co.il/diplomat-il/index.html"
+    },
+    "location": {
+      "source": "MANUAL",
+      "selector": "[data-field=\"location\"]",
+      "confidence": 90,
+      "capturedOnUrl": "https://careers.topmatch.co.il/diplomat-il/index.html"
+    },
+    "detailUrl": {
+      "source": "MANUAL",
+      "selector": ".diplomat-detail-url",
+      "confidence": 90,
+      "extractAttr": "href",
+      "capturedOnUrl": "https://careers.topmatch.co.il/diplomat-il/index.html"
+    },
+    "description": {
+      "source": "MANUAL",
+      "selector": "[data-field=\"description\"]",
+      "confidence": 90,
+      "capturedOnUrl": "https://careers.topmatch.co.il/diplomat-il/redmatch-apply/redmatch.apply.html?compPositionID=197968"
+    },
+    "publishDate": {
+      "source": "MANUAL",
+      "selector": "[data-field=\"activationDate\"]",
+      "confidence": 90,
+      "capturedOnUrl": "https://careers.topmatch.co.il/diplomat-il/index.html"
+    },
+    "externalJobId": {
+      "source": "MANUAL",
+      "selector": "[data-field=\"compPositionID\"]",
+      "confidence": 90,
+      "capturedOnUrl": "https://careers.topmatch.co.il/diplomat-il/index.html"
+    }
+  }
+}

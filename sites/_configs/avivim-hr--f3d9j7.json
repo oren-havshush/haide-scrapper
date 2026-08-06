@@ -1,0 +1,180 @@
+{
+  "_exportedAt": "2026-08-06T15:54:05.689Z",
+  "_note": "Mirror of the live config. The DB is authoritative; the worker never reads this file. setupScript lives alongside in <slug>.setup.js.",
+  "id": "cmp05qxto000d01rqucf3d9j7",
+  "siteUrl": "https://avivim-hr.co.il/%d7%9e%d7%a9%d7%a8%d7%95%d7%aa/",
+  "companyName": "אביבים השמה",
+  "status": "ACTIVE",
+  "setupScriptFile": "avivim-hr--f3d9j7.setup.js",
+  "pageFlow": [],
+  "fieldMappings": {
+    "_meta": {
+      "savedAt": "2026-06-10T18:56:55.586Z",
+      "pagination": null,
+      "formCapture": {
+        "fields": [
+          {
+            "name": "post_id",
+            "label": "post id",
+            "tagName": "input",
+            "required": false,
+            "fieldType": "hidden"
+          },
+          {
+            "name": "form_id",
+            "label": "form id",
+            "tagName": "input",
+            "required": false,
+            "fieldType": "hidden"
+          },
+          {
+            "name": "referer_title",
+            "label": "referer title",
+            "tagName": "input",
+            "required": false,
+            "fieldType": "hidden"
+          },
+          {
+            "name": "queried_id",
+            "label": "queried id",
+            "tagName": "input",
+            "required": false,
+            "fieldType": "hidden"
+          },
+          {
+            "name": "form_fields[name]",
+            "label": "שם מלא",
+            "tagName": "input",
+            "required": true,
+            "fieldType": "text"
+          },
+          {
+            "name": "form_fields[field_e91c9a3]",
+            "label": "שם משפחה",
+            "tagName": "input",
+            "required": true,
+            "fieldType": "text"
+          },
+          {
+            "name": "form_fields[choose_org]",
+            "label": "סוג הפנייה",
+            "tagName": "select",
+            "required": true,
+            "fieldType": "select"
+          },
+          {
+            "name": "form_fields[name_org]",
+            "label": "שם הארגון",
+            "tagName": "input",
+            "required": false,
+            "fieldType": "text"
+          },
+          {
+            "name": "form_fields[field_f2fd3c5]",
+            "label": "נייד",
+            "tagName": "input",
+            "required": true,
+            "fieldType": "tel"
+          },
+          {
+            "name": "form_fields[email]",
+            "label": "אימייל",
+            "tagName": "input",
+            "required": true,
+            "fieldType": "email"
+          },
+          {
+            "name": "form_fields[file_q]",
+            "label": "האם תרצה לצרף קובץ?",
+            "tagName": "select",
+            "required": true,
+            "fieldType": "select"
+          },
+          {
+            "name": "form_fields[file_send]",
+            "label": "צירוף קובץ",
+            "tagName": "input",
+            "required": false,
+            "fieldType": "file"
+          },
+          {
+            "name": "form_fields[field_aa6518d]",
+            "label": "הודעה",
+            "tagName": "textarea",
+            "required": false,
+            "fieldType": "textarea"
+          },
+          {
+            "name": "form_fields[field_704b210]",
+            "label": "form fields[field 704b210]",
+            "tagName": "input",
+            "required": false,
+            "fieldType": "hidden"
+          },
+          {
+            "name": "full-name-maspik-hp",
+            "label": "Leave this field empty",
+            "tagName": "input",
+            "required": false,
+            "fieldType": "text"
+          },
+          {
+            "name": "maspik_spam_key",
+            "label": "maspik spam key",
+            "tagName": "input",
+            "required": false,
+            "fieldType": "hidden"
+          }
+        ],
+        "method": "POST",
+        "actionUrl": "https://avivim-hr.co.il/%d7%9e%d7%a9%d7%a8%d7%95%d7%aa/",
+        "formSelector": "div.elementor.elementor-887 > div.elementor-element.elementor-element-18f60088 > div.elementor-element.elementor-element-2499f80:nth-of-type(1) > div.elementor-element.elementor-element-7d744001:nth-of-type(2) > div.elementor-widget-container > form.elementor-form"
+      },
+      "itemSelector": ".e-loop-item",
+      "revealSelector": null,
+      "listingSelector": null,
+      "applyLoginReason": null,
+      "browserOverrides": null,
+      "loadMoreSelector": null,
+      "originalMappings": null,
+      "applyRequiresLogin": false
+    },
+    "title": {
+      "source": "MANUAL",
+      "selector": "[data-widget_type=\"theme-post-title.default\"] .elementor-heading-title",
+      "confidence": 100,
+      "capturedOnUrl": "https://avivim-hr.co.il/%d7%9e%d7%a9%d7%a8%d7%95%d7%aa/"
+    },
+    "location": {
+      "source": "MANUAL",
+      "selector": "[data-widget_type=\"heading.default\"] .elementor-heading-title",
+      "confidence": 100,
+      "capturedOnUrl": "https://avivim-hr.co.il/%d7%9e%d7%a9%d7%a8%d7%95%d7%aa/"
+    },
+    "description": {
+      "source": "MANUAL",
+      "selector": ".elementor-element-d549c3a",
+      "confidence": 100,
+      "capturedOnUrl": "https://avivim-hr.co.il/%d7%9e%d7%a9%d7%a8%d7%95%d7%aa/"
+    },
+    "requirements": {
+      "source": "MANUAL",
+      "selector": ".elementor-element-df76d33",
+      "confidence": 100,
+      "capturedOnUrl": "https://avivim-hr.co.il/%d7%9e%d7%a9%d7%a8%d7%95%d7%aa/"
+    },
+    "externalJobId": {
+      "source": "MANUAL",
+      "selector": ".e-off-canvas",
+      "confidence": 100,
+      "extractAttr": "id",
+      "capturedOnUrl": "https://avivim-hr.co.il/%d7%9e%d7%a9%d7%a8%d7%95%d7%aa/"
+    },
+    "applicationFormSchema": {
+      "source": "MANUAL",
+      "selector": "[data-extracted-form]",
+      "confidence": 100,
+      "capturedOnUrl": "https://avivim-hr.co.il/%d7%9e%d7%a9%d7%a8%d7%95%d7%aa/"
+    }
+  }
+}

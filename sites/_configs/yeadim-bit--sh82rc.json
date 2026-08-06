@@ -1,0 +1,57 @@
+{
+  "_exportedAt": "2026-08-06T15:54:03.552Z",
+  "_note": "Mirror of the live config. The DB is authoritative; the worker never reads this file. setupScript lives alongside in <slug>.setup.js.",
+  "id": "cmqi9z6q2000m01t1hcsh82rc",
+  "siteUrl": "https://www.yeadim-bit.co.il/jobs/",
+  "companyName": "יעדים סוכנות לביטוח",
+  "status": "ACTIVE",
+  "setupScriptFile": "yeadim-bit--sh82rc.setup.js",
+  "pageFlow": [],
+  "fieldMappings": {
+    "_meta": {
+      "savedAt": "2026-06-18T12:45:24.763Z",
+      "pagination": null,
+      "formCapture": null,
+      "itemSelector": "article.elementor-post.ecs-post-loop",
+      "minPublishDate": null,
+      "minPublishDays": null,
+      "revealSelector": null,
+      "listingSelector": null,
+      "applyLoginReason": null,
+      "browserOverrides": null,
+      "loadMoreSelector": null,
+      "originalMappings": null,
+      "applyRequiresLogin": false
+    },
+    "title": {
+      "source": "MANUAL",
+      "selector": ".elementor-heading-title",
+      "confidence": 100,
+      "capturedOnUrl": "https://www.yeadim-bit.co.il/jobs/"
+    },
+    "location": {
+      "source": "MANUAL",
+      "selector": ".__ai-location",
+      "confidence": 100,
+      "capturedOnUrl": "https://www.yeadim-bit.co.il/jobs/"
+    },
+    "description": {
+      "source": "MANUAL",
+      "selector": ".elementor-widget-theme-post-content",
+      "confidence": 100,
+      "capturedOnUrl": "https://www.yeadim-bit.co.il/jobs/"
+    },
+    "externalJobId": {
+      "source": "MANUAL",
+      "selector": "[data-haide-job-id]",
+      "confidence": 100,
+      "capturedOnUrl": "https://www.yeadim-bit.co.il/jobs/"
+    },
+    "applicationInfo": {
+      "source": "MANUAL",
+      "selector": ".__ai-apply-email",
+      "confidence": 100,
+      "capturedOnUrl": "https://www.yeadim-bit.co.il/jobs/"
+    }
+  }
+}

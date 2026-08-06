@@ -1,0 +1,47 @@
+{
+  "_exportedAt": "2026-08-06T15:54:03.300Z",
+  "_note": "Mirror of the live config. The DB is authoritative; the worker never reads this file. setupScript lives alongside in <slug>.setup.js.",
+  "id": "cmqkph8hm001301p66jellr7p",
+  "siteUrl": "https://www.chemipal.co.il/career-2/",
+  "companyName": "כמיפל",
+  "status": "ACTIVE",
+  "setupScriptFile": "chemipal--ellr7p.setup.js",
+  "pageFlow": [],
+  "fieldMappings": {
+    "_meta": {
+      "savedAt": "2026-06-19T09:15:06.528Z",
+      "pagination": null,
+      "formCapture": null,
+      "itemSelector": ".__ai-job-item",
+      "minPublishDate": null,
+      "minPublishDays": 90,
+      "revealSelector": null,
+      "listingSelector": null,
+      "applyLoginReason": null,
+      "browserOverrides": null,
+      "loadMoreSelector": null,
+      "originalMappings": null,
+      "applyRequiresLogin": false
+    },
+    "title": {
+      "source": "manual",
+      "selector": ".__ai-title",
+      "confidence": 0.9
+    },
+    "description": {
+      "source": "manual",
+      "selector": ".__ai-description",
+      "confidence": 0.85
+    },
+    "externalJobId": {
+      "source": "manual",
+      "selector": ".__ai-jobid",
+      "confidence": 0.95
+    },
+    "applicationInfo": {
+      "source": "manual",
+      "selector": ".__ai-apply",
+      "confidence": 0.8
+    }
+  }
+}

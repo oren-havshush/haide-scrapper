@@ -1,0 +1,134 @@
+{
+  "_exportedAt": "2026-08-06T15:54:06.026Z",
+  "_note": "Mirror of the live config. The DB is authoritative; the worker never reads this file. setupScript lives alongside in <slug>.setup.js.",
+  "id": "cmown1n4y000e01mrsq9i2hm3",
+  "siteUrl": "https://www.hye.co.il/job",
+  "companyName": "קבוצת ח.י",
+  "status": "ACTIVE",
+  "setupScriptFile": null,
+  "pageFlow": [
+    {
+      "url": "https://www.hye.co.il/job",
+      "action": "navigate"
+    },
+    {
+      "url": "https://www.hye.co.il/job/index/detail/id/*",
+      "action": "#all > div.job-list > div.jobs-wrapper > a:nth-child(2)"
+    },
+    {
+      "url": "https://www.hye.co.il/job/index/detail/id/*",
+      "action": "#all > div.job-list > div.jobs-wrapper > a:nth-child(2)"
+    }
+  ],
+  "fieldMappings": {
+    "_meta": {
+      "savedAt": "2026-05-09T13:01:43.047Z",
+      "formCapture": {
+        "fields": [
+          {
+            "name": "form_key",
+            "label": "form key",
+            "tagName": "input",
+            "required": false,
+            "fieldType": "hidden"
+          },
+          {
+            "name": "first_name",
+            "label": "שם פרטי",
+            "tagName": "input",
+            "required": false,
+            "fieldType": "text"
+          },
+          {
+            "name": "last_name",
+            "label": "שם משפחה",
+            "tagName": "input",
+            "required": false,
+            "fieldType": "text"
+          },
+          {
+            "name": "phone",
+            "label": "מספר טלפון",
+            "tagName": "input",
+            "required": false,
+            "fieldType": "text"
+          },
+          {
+            "name": "email",
+            "label": "כתובת דוא”ל",
+            "tagName": "input",
+            "required": false,
+            "fieldType": "text"
+          },
+          {
+            "name": "cv",
+            "label": "cv",
+            "tagName": "input",
+            "required": false,
+            "fieldType": "file"
+          },
+          {
+            "name": "letter",
+            "label": "letter",
+            "tagName": "input",
+            "required": false,
+            "fieldType": "file"
+          },
+          {
+            "name": "terms",
+            "label": "אני מסכים ל תנאי השימוש",
+            "tagName": "input",
+            "required": false,
+            "fieldType": "checkbox"
+          }
+        ],
+        "method": "POST",
+        "actionUrl": "https://www.hye.co.il/job/index/applypost/id/270/",
+        "formSelector": "#job-application-from"
+      },
+      "itemSelector": "div.job-title",
+      "revealSelector": null,
+      "listingSelector": "#all",
+      "originalMappings": {
+        "title": {
+          "source": "MANUAL",
+          "selector": "p.position-title",
+          "confidence": 0
+        },
+        "description": {
+          "source": "MANUAL",
+          "selector": "div.content-right",
+          "confidence": 0
+        },
+        "externalJobId": {
+          "source": "AI",
+          "selector": "span.jobs-number",
+          "confidence": 100
+        }
+      }
+    },
+    "title": {
+      "source": "AI",
+      "selector": "p.position-title",
+      "confidence": 0,
+      "capturedOnUrl": "https://www.hye.co.il/job"
+    },
+    "description": {
+      "source": "AI",
+      "selector": "div.content-right",
+      "confidence": 0,
+      "capturedOnUrl": "https://www.hye.co.il/job/index/detail/id/*"
+    },
+    "description_2": {
+      "source": "MANUAL",
+      "selector": "div.content-right",
+      "confidence": 100,
+      "capturedOnUrl": "https://www.hye.co.il/job/index/detail/id/267"
+    },
+    "externalJobId": {
+      "source": "AI",
+      "selector": "span.jobs-number",
+      "confidence": 100
+    }
+  }
+}

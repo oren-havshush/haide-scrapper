@@ -1,0 +1,93 @@
+{
+  "_exportedAt": "2026-08-06T15:54:04.026Z",
+  "_note": "Mirror of the live config. The DB is authoritative; the worker never reads this file. setupScript lives alongside in <slug>.setup.js.",
+  "id": "cmq9hpp9t002i01lcxhrw2x0o",
+  "siteUrl": "https://tachlit.biz/%D7%93%D7%A8%D7%95%D7%A9%D7%99%D7%9D",
+  "companyName": "תכלית ייעוץ עסקי",
+  "status": "ACTIVE",
+  "setupScriptFile": null,
+  "pageFlow": [],
+  "fieldMappings": {
+    "_meta": {
+      "savedAt": "2026-06-11T12:46:26.279Z",
+      "pagination": null,
+      "formCapture": {
+        "fields": [
+          {
+            "name": "form_fields[name]",
+            "label": "שם",
+            "tagName": "input",
+            "required": true,
+            "fieldType": "text"
+          },
+          {
+            "name": "form_fields[email]",
+            "label": "אימייל",
+            "tagName": "input",
+            "required": true,
+            "fieldType": "email"
+          },
+          {
+            "name": "form_fields[job_number]",
+            "label": "מספר משרה",
+            "tagName": "input",
+            "required": false,
+            "fieldType": "number"
+          },
+          {
+            "name": "form_fields[message]",
+            "label": "הודעה",
+            "tagName": "textarea",
+            "required": false,
+            "fieldType": "textarea"
+          },
+          {
+            "name": "form_fields[cv]",
+            "label": "קורות חיים (קובץ)",
+            "tagName": "input",
+            "required": false,
+            "fieldType": "file"
+          }
+        ],
+        "method": "POST",
+        "actionUrl": "https://tachlit.biz/%D7%93%D7%A8%D7%95%D7%A9%D7%99%D7%9D",
+        "formSelector": "form.elementor-form"
+      },
+      "itemSelector": "article.elementor-post",
+      "minPublishDate": null,
+      "revealSelector": null,
+      "listingSelector": null,
+      "applyLoginReason": null,
+      "browserOverrides": null,
+      "loadMoreSelector": null,
+      "originalMappings": null,
+      "applyRequiresLogin": false
+    },
+    "title": {
+      "source": "MANUAL",
+      "selector": ".elementor-post__title",
+      "confidence": 100,
+      "capturedOnUrl": "https://tachlit.biz/%D7%93%D7%A8%D7%95%D7%A9%D7%99%D7%9D"
+    },
+    "detailUrl": {
+      "source": "MANUAL",
+      "selector": ".elementor-post__read-more",
+      "confidence": 100,
+      "extractAttr": "href",
+      "capturedOnUrl": "https://tachlit.biz/%D7%93%D7%A8%D7%95%D7%A9%D7%99%D7%9D"
+    },
+    "description": {
+      "source": "MANUAL",
+      "selector": ".elementor-post__excerpt",
+      "confidence": 90,
+      "capturedOnUrl": "https://tachlit.biz/%D7%93%D7%A8%D7%95%D7%A9%D7%99%D7%9D"
+    },
+    "externalJobId": {
+      "source": "MANUAL",
+      "selector": ".elementor-post__read-more",
+      "confidence": 95,
+      "extractAttr": "href",
+      "capturedOnUrl": "https://tachlit.biz/%D7%93%D7%A8%D7%95%D7%A9%D7%99%D7%9D"
+    }
+  }
+}

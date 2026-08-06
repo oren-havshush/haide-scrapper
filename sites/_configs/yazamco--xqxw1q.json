@@ -1,0 +1,70 @@
+{
+  "_exportedAt": "2026-08-06T15:54:04.837Z",
+  "_note": "Mirror of the live config. The DB is authoritative; the worker never reads this file. setupScript lives alongside in <slug>.setup.js.",
+  "id": "cmq67cuh9000r01m9rjxqxw1q",
+  "siteUrl": "https://yazamco.co.il/%d7%93%d7%a8%d7%95%d7%a9%d7%99%d7%9d",
+  "companyName": "יזמקו",
+  "status": "ACTIVE",
+  "setupScriptFile": null,
+  "pageFlow": [],
+  "fieldMappings": {
+    "_meta": {
+      "savedAt": "2026-06-09T05:34:35.067Z",
+      "pagination": null,
+      "formCapture": {
+        "fields": [
+          {
+            "name": "name",
+            "label": "שם מלא",
+            "tagName": "input",
+            "required": true,
+            "fieldType": "text"
+          },
+          {
+            "name": "email",
+            "label": "אימייל",
+            "tagName": "input",
+            "required": true,
+            "fieldType": "email"
+          },
+          {
+            "name": "fileE",
+            "label": "קורות חיים",
+            "tagName": "input",
+            "required": true,
+            "fieldType": "file"
+          }
+        ],
+        "method": "POST",
+        "actionUrl": "https://yazamco.co.il/contact.php",
+        "formSelector": "#contact-jobs-0"
+      },
+      "itemSelector": "div.job",
+      "revealSelector": null,
+      "listingSelector": null,
+      "applyLoginReason": null,
+      "browserOverrides": null,
+      "loadMoreSelector": null,
+      "originalMappings": null,
+      "applyRequiresLogin": false
+    },
+    "title": {
+      "source": "MANUAL",
+      "selector": ".title-job h3",
+      "confidence": 100,
+      "capturedOnUrl": "https://yazamco.co.il/%d7%93%d7%a8%d7%95%d7%a9%d7%99%d7%9d"
+    },
+    "description": {
+      "source": "MANUAL",
+      "selector": ".col-lg-7",
+      "confidence": 100,
+      "capturedOnUrl": "https://yazamco.co.il/%d7%93%d7%a8%d7%95%d7%a9%d7%99%d7%9d"
+    },
+    "externalJobId": {
+      "source": "MANUAL",
+      "selector": ".title-job span strong",
+      "confidence": 100,
+      "capturedOnUrl": "https://yazamco.co.il/%d7%93%d7%a8%d7%95%d7%a9%d7%99%d7%9d"
+    }
+  }
+}

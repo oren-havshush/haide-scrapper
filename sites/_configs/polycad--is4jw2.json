@@ -1,0 +1,91 @@
+{
+  "_exportedAt": "2026-08-06T15:54:02.310Z",
+  "_note": "Mirror of the live config. The DB is authoritative; the worker never reads this file. setupScript lives alongside in <slug>.setup.js.",
+  "id": "cmqygos3z002f01nzevis4jw2",
+  "siteUrl": "https://polycad.co.il/about/",
+  "companyName": "פוליכד",
+  "status": "ACTIVE",
+  "setupScriptFile": "polycad--is4jw2.setup.js",
+  "pageFlow": [],
+  "fieldMappings": {
+    "_meta": {
+      "savedAt": "2026-06-29T00:11:28.102Z",
+      "pagination": null,
+      "formCapture": {
+        "fields": [
+          {
+            "name": "form_fields[name]",
+            "label": "שם",
+            "tagName": "INPUT",
+            "required": false,
+            "fieldType": "text"
+          },
+          {
+            "name": "form_fields[email]",
+            "label": "כתובת דואר אלקטרוני",
+            "tagName": "INPUT",
+            "required": true,
+            "fieldType": "email"
+          },
+          {
+            "name": "form_fields[message]",
+            "label": "מס׳ טלפון",
+            "tagName": "INPUT",
+            "required": false,
+            "fieldType": "tel"
+          },
+          {
+            "name": "form_fields[field_0df0281]",
+            "label": "נושא הפנייה",
+            "tagName": "INPUT",
+            "required": true,
+            "fieldType": "text"
+          },
+          {
+            "name": "post_id",
+            "label": "post_id",
+            "tagName": "INPUT",
+            "required": false,
+            "fieldType": "hidden"
+          },
+          {
+            "name": "form_id",
+            "label": "form_id",
+            "tagName": "INPUT",
+            "required": false,
+            "fieldType": "hidden"
+          }
+        ],
+        "method": "POST",
+        "actionUrl": "https://polycad.co.il/wp-admin/admin-ajax.php",
+        "formSelector": "form.elementor-form[name=\"טופס חדש\"]"
+      },
+      "itemSelector": "details.e-n-accordion-item",
+      "minPublishDate": null,
+      "minPublishDays": null,
+      "revealSelector": null,
+      "listingSelector": null,
+      "applyLoginReason": null,
+      "browserOverrides": null,
+      "loadMoreSelector": null,
+      "locationFallback": null,
+      "originalMappings": null,
+      "applyRequiresLogin": false
+    },
+    "title": {
+      "source": "auto",
+      "selector": ".e-n-accordion-item-title-text",
+      "confidence": 0.9
+    },
+    "description": {
+      "source": "auto",
+      "selector": "div[role=\"region\"] .elementor-widget-container",
+      "confidence": 0.8
+    },
+    "externalJobId": {
+      "source": "auto",
+      "selector": ".__ai-externalJobId",
+      "confidence": 0.9
+    }
+  }
+}

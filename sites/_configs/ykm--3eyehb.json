@@ -1,0 +1,109 @@
+{
+  "_exportedAt": "2026-08-06T15:54:04.079Z",
+  "_note": "Mirror of the live config. The DB is authoritative; the worker never reads this file. setupScript lives alongside in <slug>.setup.js.",
+  "id": "cmq9h46g1002601lc513eyehb",
+  "siteUrl": "https://ykm.co.il/jobs/",
+  "companyName": "YKM",
+  "status": "ACTIVE",
+  "setupScriptFile": null,
+  "pageFlow": [
+    {
+      "url": "https://ykm.co.il/jobs/",
+      "action": "navigate"
+    },
+    {
+      "url": "https://ykm.co.il/*",
+      "action": "navigate"
+    }
+  ],
+  "fieldMappings": {
+    "_meta": {
+      "savedAt": "2026-06-11T12:32:15.032Z",
+      "pagination": null,
+      "formCapture": {
+        "fields": [
+          {
+            "name": "full_name",
+            "label": "Full name",
+            "tagName": "input",
+            "required": true,
+            "fieldType": "text"
+          },
+          {
+            "name": "email",
+            "label": "Email",
+            "tagName": "input",
+            "required": true,
+            "fieldType": "email"
+          },
+          {
+            "name": "subject",
+            "label": "Subject",
+            "tagName": "input",
+            "required": false,
+            "fieldType": "text"
+          },
+          {
+            "name": "message",
+            "label": "Message",
+            "tagName": "textarea",
+            "required": false,
+            "fieldType": "textarea"
+          },
+          {
+            "name": "Upload-Your-c-v",
+            "label": "Upload your CV",
+            "tagName": "input",
+            "required": true,
+            "fieldType": "file"
+          },
+          {
+            "name": "consent",
+            "label": "I accept the privacy policy",
+            "tagName": "input",
+            "required": false,
+            "fieldType": "checkbox"
+          }
+        ],
+        "method": "POST",
+        "actionUrl": "https://ykm.co.il/jobs-application-form/",
+        "formSelector": "#fscf_form1"
+      },
+      "itemSelector": ".content-box-column",
+      "minPublishDate": null,
+      "revealSelector": null,
+      "listingSelector": null,
+      "applyLoginReason": null,
+      "browserOverrides": null,
+      "loadMoreSelector": null,
+      "originalMappings": null,
+      "applyRequiresLogin": false
+    },
+    "title": {
+      "source": "MANUAL",
+      "selector": ".heading-link",
+      "confidence": 100,
+      "capturedOnUrl": "https://ykm.co.il/jobs/"
+    },
+    "detailUrl": {
+      "source": "MANUAL",
+      "selector": "a.heading-link",
+      "confidence": 100,
+      "extractAttr": "href",
+      "capturedOnUrl": "https://ykm.co.il/jobs/"
+    },
+    "description": {
+      "source": "MANUAL",
+      "selector": ".post-content",
+      "confidence": 100,
+      "capturedOnUrl": "https://ykm.co.il/front-end-developer/"
+    },
+    "externalJobId": {
+      "source": "MANUAL",
+      "selector": "a.heading-link",
+      "confidence": 95,
+      "extractAttr": "href",
+      "capturedOnUrl": "https://ykm.co.il/jobs/"
+    }
+  }
+}

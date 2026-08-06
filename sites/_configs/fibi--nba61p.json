@@ -1,0 +1,52 @@
+{
+  "_exportedAt": "2026-08-06T15:54:03.804Z",
+  "_note": "Mirror of the live config. The DB is authoritative; the worker never reads this file. setupScript lives alongside in <slug>.setup.js.",
+  "id": "cmq9k8154003k01lcfmnba61p",
+  "siteUrl": "https://www.fibi.co.il/private/general/about/jobs/jobsfibi/",
+  "companyName": "הבנק הבינלאומי",
+  "status": "ACTIVE",
+  "setupScriptFile": "fibi--nba61p.setup.js",
+  "pageFlow": [],
+  "fieldMappings": {
+    "_meta": {
+      "savedAt": "2026-06-11T13:55:44.100Z",
+      "pagination": null,
+      "formCapture": null,
+      "itemSelector": "section[id^=\"section\"]:has(a[href^=\"mailto\"])",
+      "minPublishDate": null,
+      "revealSelector": null,
+      "listingSelector": null,
+      "applyLoginReason": null,
+      "browserOverrides": null,
+      "loadMoreSelector": null,
+      "originalMappings": null,
+      "applyRequiresLogin": false
+    },
+    "title": {
+      "source": "MANUAL",
+      "selector": "h2",
+      "confidence": 100,
+      "capturedOnUrl": "https://www.fibi.co.il/private/general/about/jobs/jobsfibi/"
+    },
+    "description": {
+      "source": "MANUAL",
+      "selector": ".fibi-desc",
+      "confidence": 100,
+      "capturedOnUrl": "https://www.fibi.co.il/private/general/about/jobs/jobsfibi/"
+    },
+    "externalJobId": {
+      "source": "MANUAL",
+      "selector": ".fibi-desc",
+      "confidence": 95,
+      "extractAttr": "data-jobid",
+      "capturedOnUrl": "https://www.fibi.co.il/private/general/about/jobs/jobsfibi/"
+    },
+    "applicationInfo": {
+      "source": "MANUAL",
+      "selector": "a[href^=\"mailto\"]",
+      "confidence": 100,
+      "extractAttr": "href",
+      "capturedOnUrl": "https://www.fibi.co.il/private/general/about/jobs/jobsfibi/"
+    }
+  }
+}

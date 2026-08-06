@@ -1,0 +1,45 @@
+{
+  "_exportedAt": "2026-08-06T15:54:03.886Z",
+  "_note": "Mirror of the live config. The DB is authoritative; the worker never reads this file. setupScript lives alongside in <slug>.setup.js.",
+  "id": "cmq9jmtt2003801lc2rihg3a3",
+  "siteUrl": "https://www.amanet.co.il/career/",
+  "companyName": "קבוצת אמנת- Sysnet",
+  "status": "ACTIVE",
+  "setupScriptFile": null,
+  "pageFlow": [],
+  "fieldMappings": {
+    "_meta": {
+      "savedAt": "2026-06-11T13:39:14.752Z",
+      "pagination": null,
+      "formCapture": null,
+      "itemSelector": ".jet-listing-grid__item",
+      "minPublishDate": null,
+      "revealSelector": null,
+      "listingSelector": null,
+      "applyLoginReason": null,
+      "browserOverrides": null,
+      "loadMoreSelector": null,
+      "originalMappings": null,
+      "applyRequiresLogin": false
+    },
+    "title": {
+      "source": "MANUAL",
+      "selector": ".jet-toggle__control",
+      "confidence": 100,
+      "capturedOnUrl": "https://www.amanet.co.il/career/"
+    },
+    "description": {
+      "source": "MANUAL",
+      "selector": ".elementor-widget-text-editor",
+      "confidence": 100,
+      "capturedOnUrl": "https://www.amanet.co.il/career/"
+    },
+    "applicationInfo": {
+      "source": "MANUAL",
+      "selector": "a[href^=\"mailto\"]",
+      "confidence": 100,
+      "extractAttr": "href",
+      "capturedOnUrl": "https://www.amanet.co.il/career/"
+    }
+  }
+}

@@ -1,0 +1,166 @@
+{
+  "_exportedAt": "2026-08-06T15:54:06.120Z",
+  "_note": "Mirror of the live config. The DB is authoritative; the worker never reads this file. setupScript lives alongside in <slug>.setup.js.",
+  "id": "cmovl9bxk000401m71q52najw",
+  "siteUrl": "https://railcareer.adamtotal.co.il/?token=45e7ea44-8787-4910-3423-c84e9fttredbccf_ext",
+  "companyName": "רכבת ישראל",
+  "status": "ACTIVE",
+  "setupScriptFile": null,
+  "pageFlow": [
+    {
+      "url": "https://railcareer.adamtotal.co.il/?token=45e7ea44-8787-4910-3423-c84e9fttredbccf_ext",
+      "action": "navigate"
+    },
+    {
+      "url": "https://railcareer.adamtotal.co.il/Jobs/JobDetails?token=VGtNL0FxSFFnUW5ZTXhMSXp6ZmxUNERkSllReWUrMDZtSmMyZ1NCYUxrNHp2VnE2WllFQ2ZBRTBwQXRiTUV3bTRFbzFTaVpQSXFSbUtwa3lkRHZONXc9PQ==&shr=&eid=",
+      "action": "body > div > main > div > article:nth-child(1) > div:nth-child(1) > div:nth-child(4) > a"
+    },
+    {
+      "url": "https://railcareer.adamtotal.co.il/Jobs/JobDetails?token=VGtNL0FxSFFnUW5ZTXhMSXp6ZmxUNERkSllReWUrMDZtSmMyZ1NCYUxrNHp2VnE2WllFQ2ZBRTBwQXRiTUV3bTRFbzFTaVpQSXFSbUtwa3lkRHZONXc9PQ==&shr=&eid=",
+      "action": "body > div > main > div > article:nth-child(1) > div:nth-child(1) > div:nth-child(4) > a"
+    }
+  ],
+  "fieldMappings": {
+    "_meta": {
+      "savedAt": "2026-05-11T20:12:28.969Z",
+      "pagination": {
+        "type": "click",
+        "maxPages": 10,
+        "settleMs": 1500,
+        "nextSelector": "li.PagedList-skipToNext > a[rel=\"next\"]"
+      },
+      "formCapture": {
+        "fields": [
+          {
+            "name": "",
+            "label": "שם פרטי",
+            "tagName": "input",
+            "required": false,
+            "fieldType": "text"
+          },
+          {
+            "name": "",
+            "label": "שם משפחה",
+            "tagName": "input",
+            "required": false,
+            "fieldType": "text"
+          },
+          {
+            "name": "",
+            "label": "טלפון",
+            "tagName": "input",
+            "required": false,
+            "fieldType": "text"
+          },
+          {
+            "name": "",
+            "label": "ת.ז",
+            "tagName": "input",
+            "required": false,
+            "fieldType": "text"
+          },
+          {
+            "name": "private_S_15_31",
+            "label": "נולדתי באתיופיה או שאחד/אחת מהורי נולד/ה באתיופיה",
+            "tagName": "input",
+            "required": false,
+            "fieldType": "checkbox"
+          },
+          {
+            "name": "private_S_15_31",
+            "label": "בן/בת העדה הדרוזית",
+            "tagName": "input",
+            "required": false,
+            "fieldType": "checkbox"
+          },
+          {
+            "name": "private_S_15_31",
+            "label": "בן/בת האוכלוסייה הערבית",
+            "tagName": "input",
+            "required": false,
+            "fieldType": "checkbox"
+          },
+          {
+            "name": "private_S_15_31",
+            "label": "בן/בת האוכלוסייה הצ'רקסית",
+            "tagName": "input",
+            "required": false,
+            "fieldType": "checkbox"
+          },
+          {
+            "name": "private_S_15_31",
+            "label": "נכה/ת צה\"ל",
+            "tagName": "input",
+            "required": false,
+            "fieldType": "checkbox"
+          },
+          {
+            "name": "private_S_15_31",
+            "label": "**האוכלוסייה החרדית",
+            "tagName": "input",
+            "required": false,
+            "fieldType": "checkbox"
+          },
+          {
+            "name": "private_S_15_31",
+            "label": "איני משתייך/ת לאחת האוכלוסיות המוזכרות לעיל",
+            "tagName": "input",
+            "required": false,
+            "fieldType": "checkbox"
+          },
+          {
+            "name": "",
+            "label": "בחר קובץ",
+            "tagName": "input",
+            "required": false,
+            "fieldType": "file"
+          },
+          {
+            "name": "agreement1",
+            "label": "אני מאשר/ת שקראתי והבנתי את מדיניות הפרטיות ומסכים/ה לתנאיה.",
+            "tagName": "input",
+            "required": false,
+            "fieldType": "checkbox"
+          }
+        ],
+        "method": "GET",
+        "actionUrl": "https://railcareer.adamtotal.co.il/Jobs/JobDetails?token=VGtNL0FxSFFnUW5ZTXhMSXp6ZmxUNERkSllReWUrMDZtSmMyZ1NCYUxrNHp2VnE2WllFQ2ZBRTBwQXRiTUV3bTRFbzFTaVpQSXFSbUtwa3lkRHZONXc9PQ==&shr=&eid=",
+        "formSelector": "#surveyElement1 > div.sv_main.sv_default_css > form"
+      },
+      "itemSelector": "div.job-card-header",
+      "revealSelector": null,
+      "listingSelector": "#job-list-container",
+      "originalMappings": null
+    },
+    "title": {
+      "source": "MANUAL",
+      "selector": "h1.job-title-button",
+      "confidence": 100
+    },
+    "location": {
+      "source": "MANUAL",
+      "selector": "div.job-meta > span:nth-of-type(3)",
+      "confidence": 0
+    },
+    "department": {
+      "source": "MANUAL",
+      "selector": "div.job-meta > span:nth-of-type(2)",
+      "confidence": 100
+    },
+    "description": {
+      "source": "MANUAL",
+      "selector": "div.description-text",
+      "confidence": 0
+    },
+    "publishDate": {
+      "source": "MANUAL",
+      "selector": "body > div:nth-child(1) > main > div > article:nth-child(1) > div:nth-child(2) > div > div > h2:nth-child(1) > input",
+      "confidence": 100
+    },
+    "externalJobId": {
+      "source": "MANUAL",
+      "selector": "div.job-meta > span:nth-of-type(1)",
+      "confidence": 100
+    }
+  }
+}

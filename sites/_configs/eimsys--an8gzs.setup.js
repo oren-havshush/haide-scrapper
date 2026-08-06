@@ -1,0 +1,1 @@
+document.querySelectorAll('.jet-accordion__item').forEach(function(it){if(it.querySelector('[data-ex-loc]'))return;var s=document.createElement('span');s.setAttribute('data-ex-loc','1');s.style.display='none';s.textContent='\u05e4\u05ea\u05d7 \u05ea\u05d9\u05e7\u05d5\u05d5\u05d4';it.appendChild(s);});

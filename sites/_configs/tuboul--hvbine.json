@@ -1,0 +1,61 @@
+{
+  "_exportedAt": "2026-08-06T15:54:04.626Z",
+  "_note": "Mirror of the live config. The DB is authoritative; the worker never reads this file. setupScript lives alongside in <slug>.setup.js.",
+  "id": "cmq6nxdhf000601lih1hvbine",
+  "siteUrl": "https://www.tuboul.co.il/careers/careers-tuboul",
+  "companyName": "קבוצת טובול",
+  "status": "ACTIVE",
+  "setupScriptFile": "tuboul--hvbine.setup.js",
+  "pageFlow": [],
+  "fieldMappings": {
+    "_meta": {
+      "savedAt": "2026-06-09T21:34:22.392Z",
+      "pagination": null,
+      "formCapture": null,
+      "itemSelector": "div.position.position-wrapper",
+      "revealSelector": null,
+      "listingSelector": null,
+      "applyLoginReason": null,
+      "browserOverrides": null,
+      "loadMoreSelector": null,
+      "originalMappings": null,
+      "applyRequiresLogin": false
+    },
+    "title": {
+      "source": "MANUAL",
+      "selector": ".position-headline",
+      "confidence": 100,
+      "capturedOnUrl": "https://www.tuboul.co.il/careers/careers-tuboul"
+    },
+    "location": {
+      "source": "MANUAL",
+      "selector": "[data-loc]",
+      "confidence": 100,
+      "capturedOnUrl": "https://www.tuboul.co.il/careers/careers-tuboul"
+    },
+    "department": {
+      "source": "MANUAL",
+      "selector": "[data-dept]",
+      "confidence": 100,
+      "capturedOnUrl": "https://www.tuboul.co.il/careers/careers-tuboul"
+    },
+    "description": {
+      "source": "MANUAL",
+      "selector": ".position-body",
+      "confidence": 100,
+      "capturedOnUrl": "https://www.tuboul.co.il/careers/careers-tuboul"
+    },
+    "externalJobId": {
+      "source": "MANUAL",
+      "selector": "[data-ex-id]",
+      "confidence": 100,
+      "capturedOnUrl": "https://www.tuboul.co.il/careers/careers-tuboul"
+    },
+    "applicationInfo": {
+      "source": "MANUAL",
+      "selector": "[data-apply]",
+      "confidence": 100,
+      "capturedOnUrl": "https://www.tuboul.co.il/careers/careers-tuboul"
+    }
+  }
+}

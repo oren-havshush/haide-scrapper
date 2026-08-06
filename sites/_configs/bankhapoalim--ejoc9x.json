@@ -1,0 +1,131 @@
+{
+  "_exportedAt": "2026-08-06T15:54:04.811Z",
+  "_note": "Mirror of the live config. The DB is authoritative; the worker never reads this file. setupScript lives alongside in <slug>.setup.js.",
+  "id": "cmq68fw91001101m9jpejoc9x",
+  "siteUrl": "https://www.bankhapoalim.co.il/he/jobs-site/lobby",
+  "companyName": "בנק הפועלים",
+  "status": "ACTIVE",
+  "setupScriptFile": "bankhapoalim--ejoc9x.setup.js",
+  "pageFlow": [
+    {
+      "url": "https://www.bankhapoalim.co.il/he/jobs-site/lobby",
+      "action": "navigate"
+    },
+    {
+      "url": "https://www.bankhapoalim.co.il/he/node/*",
+      "action": "navigate"
+    }
+  ],
+  "fieldMappings": {
+    "_meta": {
+      "savedAt": "2026-06-09T08:14:33.717Z",
+      "pagination": null,
+      "formCapture": {
+        "fields": [
+          {
+            "name": "Name",
+            "label": "שם פרטי",
+            "tagName": "input",
+            "required": true,
+            "fieldType": "text"
+          },
+          {
+            "name": "Name_1",
+            "label": "שם משפחה",
+            "tagName": "input",
+            "required": true,
+            "fieldType": "text"
+          },
+          {
+            "name": "CustomerID",
+            "label": "ת.ז.",
+            "tagName": "input",
+            "required": true,
+            "fieldType": "tel"
+          },
+          {
+            "name": "hidden_50",
+            "label": "יישוב",
+            "tagName": "input",
+            "required": false,
+            "fieldType": "text"
+          },
+          {
+            "name": "Email",
+            "label": "דוא\"ל",
+            "tagName": "input",
+            "required": true,
+            "fieldType": "email"
+          },
+          {
+            "name": "PhoneNumber",
+            "label": "טלפון",
+            "tagName": "input",
+            "required": true,
+            "fieldType": "tel"
+          },
+          {
+            "name": "hidden_53",
+            "label": "הנני מאשר/ת כי קראתי והבנתי את תנאי השימוש באתר",
+            "tagName": "input",
+            "required": true,
+            "fieldType": "checkbox"
+          },
+          {
+            "name": "files[hidden_100][]",
+            "label": "הוספת קורות חיים",
+            "tagName": "input",
+            "required": false,
+            "fieldType": "file"
+          }
+        ],
+        "method": "POST",
+        "actionUrl": "https://www.bankhapoalim.co.il/submit_forms",
+        "formSelector": "form.webform-submission-form"
+      },
+      "itemSelector": "a.views-row.job",
+      "revealSelector": null,
+      "listingSelector": null,
+      "applyLoginReason": null,
+      "browserOverrides": {
+        "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36",
+        "extraHeaders": {
+          "accept-language": "he-IL,he;q=0.9,en-US;q=0.8,en;q=0.7"
+        }
+      },
+      "loadMoreSelector": null,
+      "originalMappings": null,
+      "applyRequiresLogin": false
+    },
+    "title": {
+      "source": "MANUAL",
+      "selector": ".job-name",
+      "confidence": 100,
+      "capturedOnUrl": "https://www.bankhapoalim.co.il/he/jobs-site/lobby"
+    },
+    "location": {
+      "source": "MANUAL",
+      "selector": ".job-area",
+      "confidence": 100,
+      "capturedOnUrl": "https://www.bankhapoalim.co.il/he/jobs-site/lobby"
+    },
+    "detailUrl": {
+      "source": "MANUAL",
+      "selector": "[data-extracted-url]",
+      "confidence": 100,
+      "capturedOnUrl": "https://www.bankhapoalim.co.il/he/jobs-site/lobby"
+    },
+    "description": {
+      "source": "MANUAL",
+      "selector": ".job-content-description-text",
+      "confidence": 100,
+      "capturedOnUrl": "https://www.bankhapoalim.co.il/he/node/2908"
+    },
+    "externalJobId": {
+      "source": "MANUAL",
+      "selector": "[data-extracted-id]",
+      "confidence": 100,
+      "capturedOnUrl": "https://www.bankhapoalim.co.il/he/jobs-site/lobby"
+    }
+  }
+}

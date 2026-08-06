@@ -1,0 +1,80 @@
+{
+  "_exportedAt": "2026-08-06T15:54:05.911Z",
+  "_note": "Mirror of the live config. The DB is authoritative; the worker never reads this file. setupScript lives alongside in <slug>.setup.js.",
+  "id": "cmp01cdsd001a01ph74xluh8r",
+  "siteUrl": "https://careers.nirlat.com/#jobs",
+  "companyName": "נירלט",
+  "status": "ACTIVE",
+  "setupScriptFile": null,
+  "pageFlow": [],
+  "fieldMappings": {
+    "_meta": {
+      "savedAt": "2026-05-20T05:30:27.073Z",
+      "pagination": null,
+      "formCapture": {
+        "fields": [
+          {
+            "name": "form_fields[name]",
+            "label": "שם מלא",
+            "tagName": "input",
+            "required": true,
+            "fieldType": "text"
+          },
+          {
+            "name": "form_fields[tel]",
+            "label": "טלפון נייד",
+            "tagName": "input",
+            "required": true,
+            "fieldType": "tel"
+          },
+          {
+            "name": "form_fields[email]",
+            "label": "אימייל",
+            "tagName": "input",
+            "required": true,
+            "fieldType": "email"
+          },
+          {
+            "name": "form_fields[file]",
+            "label": "הוספת קורות חיים",
+            "tagName": "input",
+            "required": true,
+            "fieldType": "file"
+          }
+        ],
+        "method": "POST",
+        "actionUrl": "https://my.elementor.com/api/v1/forms/submit",
+        "formSelector": "form.elementor-form[id=\"form_2\"], form.elementor-form"
+      },
+      "itemSelector": ".career-row",
+      "revealSelector": null,
+      "listingSelector": null,
+      "originalMappings": null
+    },
+    "title": {
+      "source": "MANUAL",
+      "selector": ".job-title",
+      "confidence": 100,
+      "capturedOnUrl": "https://careers.nirlat.com/"
+    },
+    "description": {
+      "source": "MANUAL",
+      "selector": ".career-content",
+      "confidence": 100,
+      "capturedOnUrl": "https://careers.nirlat.com/"
+    },
+    "publishDate": {
+      "source": "MANUAL",
+      "selector": ".col-meta:nth-of-type(2) .value",
+      "confidence": 100,
+      "capturedOnUrl": "https://careers.nirlat.com/"
+    },
+    "externalJobId": {
+      "source": "MANUAL",
+      "selector": ".job-id",
+      "confidence": 100,
+      "extractAttr": "data-code",
+      "capturedOnUrl": "https://careers.nirlat.com/"
+    }
+  }
+}

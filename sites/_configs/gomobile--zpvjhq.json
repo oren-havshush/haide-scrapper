@@ -1,0 +1,111 @@
+{
+  "_exportedAt": "2026-08-06T15:54:04.217Z",
+  "_note": "Mirror of the live config. The DB is authoritative; the worker never reads this file. setupScript lives alongside in <slug>.setup.js.",
+  "id": "cmq83gj9a000001mfhizpvjhq",
+  "siteUrl": "https://www.gomobile.co.il/%d7%93%d7%a8%d7%95%d7%a9%d7%99%d7%9d/",
+  "companyName": "go mobile",
+  "status": "ACTIVE",
+  "setupScriptFile": "gomobile--zpvjhq.setup.js",
+  "pageFlow": [],
+  "fieldMappings": {
+    "_meta": {
+      "savedAt": "2026-06-10T13:37:22.838Z",
+      "pagination": null,
+      "formCapture": {
+        "fields": [
+          {
+            "name": "name",
+            "label": "שם מלא",
+            "tagName": "input",
+            "required": true,
+            "fieldType": "text"
+          },
+          {
+            "name": "phone",
+            "label": "טלפון",
+            "tagName": "input",
+            "required": true,
+            "fieldType": "text"
+          },
+          {
+            "name": "email",
+            "label": "דוא״ל",
+            "tagName": "input",
+            "required": true,
+            "fieldType": "text"
+          },
+          {
+            "name": "description",
+            "label": "מלל חופשי",
+            "tagName": "textarea",
+            "required": false,
+            "fieldType": "textarea"
+          },
+          {
+            "name": "cv",
+            "label": "קובץ קורות חיים",
+            "tagName": "input",
+            "required": false,
+            "fieldType": "file"
+          },
+          {
+            "name": "policy-v-0-0-1-0",
+            "label": "קראתי ואני מאשר/ת את מדיניות הפרטיות",
+            "tagName": "input",
+            "required": true,
+            "fieldType": "checkbox"
+          }
+        ],
+        "method": "POST",
+        "actionUrl": "https://www.gomobile.co.il/%d7%93%d7%a8%d7%95%d7%a9%d7%99%d7%9d/",
+        "formSelector": ".CV-popup form"
+      },
+      "itemSelector": ".branch-item",
+      "revealSelector": null,
+      "listingSelector": null,
+      "applyLoginReason": null,
+      "browserOverrides": null,
+      "loadMoreSelector": null,
+      "originalMappings": null,
+      "applyRequiresLogin": false
+    },
+    "title": {
+      "source": "MANUAL",
+      "selector": "h2",
+      "confidence": 100,
+      "capturedOnUrl": "https://www.gomobile.co.il/%d7%93%d7%a8%d7%95%d7%a9%d7%99%d7%9d/"
+    },
+    "location": {
+      "source": "MANUAL",
+      "selector": ".title-30 > div",
+      "confidence": 100,
+      "capturedOnUrl": "https://www.gomobile.co.il/%d7%93%d7%a8%d7%95%d7%a9%d7%99%d7%9d/"
+    },
+    "description": {
+      "source": "MANUAL",
+      "selector": ".text-gray-500",
+      "confidence": 100,
+      "capturedOnUrl": "https://www.gomobile.co.il/%d7%93%d7%a8%d7%95%d7%a9%d7%99%d7%9d/"
+    },
+    "requirements": {
+      "source": "MANUAL",
+      "selector": "h2",
+      "confidence": 100,
+      "extractAttr": "data-ex-req",
+      "capturedOnUrl": "https://www.gomobile.co.il/%d7%93%d7%a8%d7%95%d7%a9%d7%99%d7%9d/"
+    },
+    "externalJobId": {
+      "source": "MANUAL",
+      "selector": "h2",
+      "confidence": 100,
+      "extractAttr": "data-ex-id",
+      "capturedOnUrl": "https://www.gomobile.co.il/%d7%93%d7%a8%d7%95%d7%a9%d7%99%d7%9d/"
+    },
+    "applicationInfo": {
+      "source": "MANUAL",
+      "selector": ".font-bold",
+      "confidence": 100,
+      "capturedOnUrl": "https://www.gomobile.co.il/%d7%93%d7%a8%d7%95%d7%a9%d7%99%d7%9d/"
+    }
+  }
+}

@@ -1,0 +1,102 @@
+{
+  "_exportedAt": "2026-08-06T15:54:05.032Z",
+  "_note": "Mirror of the live config. The DB is authoritative; the worker never reads this file. setupScript lives alongside in <slug>.setup.js.",
+  "id": "cmpwkj7cv000t01prpt6u5xb3",
+  "siteUrl": "https://campaigns.meyeden.co.il/YNET_Jobs/",
+  "companyName": "מי עדן",
+  "status": "ACTIVE",
+  "setupScriptFile": "campaigns-meyeden--6u5xb3.setup.js",
+  "pageFlow": [],
+  "fieldMappings": {
+    "_meta": {
+      "savedAt": "2026-06-02T12:12:32.984Z",
+      "pagination": null,
+      "formCapture": {
+        "fields": [
+          {
+            "name": "full_name",
+            "label": "שם מלא",
+            "tagName": "input",
+            "required": true,
+            "fieldType": "text"
+          },
+          {
+            "name": "phone",
+            "label": "טלפון",
+            "tagName": "input",
+            "required": true,
+            "fieldType": "tel"
+          },
+          {
+            "name": "email",
+            "label": "אימייל",
+            "tagName": "input",
+            "required": true,
+            "fieldType": "email"
+          },
+          {
+            "name": "city",
+            "label": "עיר",
+            "tagName": "input",
+            "required": true,
+            "fieldType": "text"
+          },
+          {
+            "name": "ndropbox_11",
+            "label": "תפקיד",
+            "tagName": "select",
+            "required": true,
+            "fieldType": "select"
+          },
+          {
+            "name": "",
+            "label": "קורות חיים",
+            "tagName": "input",
+            "required": false,
+            "fieldType": "file"
+          }
+        ],
+        "method": "POST",
+        "actionUrl": "https://campaigns.meyeden.co.il/YNET_Jobs/",
+        "formSelector": "body > form:nth-of-type(1)"
+      },
+      "itemSelector": ".div-button.div-has-hover-back-image",
+      "revealSelector": null,
+      "listingSelector": null,
+      "browserOverrides": null,
+      "loadMoreSelector": null,
+      "originalMappings": null
+    },
+    "title": {
+      "source": "MANUAL",
+      "selector": "a.div-button-a",
+      "confidence": 100,
+      "capturedOnUrl": "https://campaigns.meyeden.co.il/YNET_Jobs/"
+    },
+    "location": {
+      "source": "MANUAL",
+      "selector": "[data-haide-location]",
+      "confidence": 100,
+      "capturedOnUrl": "https://campaigns.meyeden.co.il/YNET_Jobs/"
+    },
+    "detailUrl": {
+      "source": "MANUAL",
+      "selector": "a.div-button-a",
+      "confidence": 100,
+      "extractAttr": "href",
+      "capturedOnUrl": "https://campaigns.meyeden.co.il/YNET_Jobs/"
+    },
+    "description": {
+      "source": "MANUAL",
+      "selector": "[data-haide-desc]",
+      "confidence": 100,
+      "capturedOnUrl": "https://campaigns.meyeden.co.il/YNET_Jobs/"
+    },
+    "externalJobId": {
+      "source": "MANUAL",
+      "selector": "[data-haide-jobid]",
+      "confidence": 100,
+      "capturedOnUrl": "https://campaigns.meyeden.co.il/YNET_Jobs/"
+    }
+  }
+}

@@ -1,0 +1,151 @@
+{
+  "_exportedAt": "2026-08-06T15:54:05.172Z",
+  "_note": "Mirror of the live config. The DB is authoritative; the worker never reads this file. setupScript lives alongside in <slug>.setup.js.",
+  "id": "cmpnu619a002701mv7fkjk1e7",
+  "siteUrl": "https://elbitsystemscareer.com/jobs/",
+  "companyName": "אלביט מערכות",
+  "status": "ACTIVE",
+  "setupScriptFile": "elbitsystemscareer--kjk1e7.setup.js",
+  "pageFlow": [],
+  "fieldMappings": {
+    "_meta": {
+      "savedAt": "2026-08-03T16:52:52.533Z",
+      "pagination": null,
+      "formCapture": {
+        "fields": [
+          {
+            "name": "cmd",
+            "label": "command (submit-application)",
+            "tagName": "input",
+            "required": true,
+            "fieldType": "hidden"
+          },
+          {
+            "name": "jobId",
+            "label": "job id",
+            "tagName": "input",
+            "required": true,
+            "fieldType": "hidden"
+          },
+          {
+            "name": "jobCode",
+            "label": "job code",
+            "tagName": "input",
+            "required": false,
+            "fieldType": "hidden"
+          },
+          {
+            "name": "fullName",
+            "label": "שם מלא",
+            "tagName": "input",
+            "required": true,
+            "fieldType": "text"
+          },
+          {
+            "name": "phoneNumber",
+            "label": "מספר טלפון",
+            "tagName": "input",
+            "required": true,
+            "fieldType": "tel"
+          },
+          {
+            "name": "email",
+            "label": "אימייל",
+            "tagName": "input",
+            "required": true,
+            "fieldType": "email"
+          },
+          {
+            "name": "resumeFile",
+            "label": "העלאת קורות חיים (PDF, DOC, DOCX)",
+            "tagName": "input",
+            "required": true,
+            "fieldType": "file"
+          },
+          {
+            "name": "src",
+            "label": "מקור הפניה (אופציונלי)",
+            "tagName": "input",
+            "required": false,
+            "fieldType": "hidden"
+          },
+          {
+            "name": "privacyPolicy",
+            "label": "מדיניות פרטיות — חובה לאשר לפני שליחה (לא נשלח לשרת)",
+            "tagName": "input",
+            "required": true,
+            "fieldType": "checkbox"
+          }
+        ],
+        "method": "POST",
+        "actionUrl": "https://niloo-server.herokuapp.com/actions-elbit",
+        "formSelector": ".haide-apply-form"
+      },
+      "itemSelector": ".haide-job-card",
+      "minPublishDate": null,
+      "minPublishDays": null,
+      "revealSelector": null,
+      "listingSelector": null,
+      "applyLoginReason": null,
+      "browserOverrides": null,
+      "loadMoreSelector": null,
+      "locationFallback": null,
+      "originalMappings": null,
+      "applyRequiresLogin": false
+    },
+    "title": {
+      "source": "MANUAL",
+      "selector": "[data-haide-title]",
+      "confidence": 100,
+      "capturedOnUrl": "https://elbitsystemscareer.com/jobs/"
+    },
+    "location": {
+      "source": "MANUAL",
+      "selector": "[data-haide-location]",
+      "confidence": 100,
+      "capturedOnUrl": "https://elbitsystemscareer.com/jobs/"
+    },
+    "detailUrl": {
+      "source": "MANUAL",
+      "selector": "[data-haide-applyurl]",
+      "confidence": 100,
+      "capturedOnUrl": "https://elbitsystemscareer.com/jobs/"
+    },
+    "department": {
+      "source": "MANUAL",
+      "selector": "[data-haide-department]",
+      "confidence": 100,
+      "capturedOnUrl": "https://elbitsystemscareer.com/jobs/"
+    },
+    "description": {
+      "source": "MANUAL",
+      "selector": "[data-haide-description]",
+      "confidence": 100,
+      "capturedOnUrl": "https://elbitsystemscareer.com/jobs/"
+    },
+    "publishDate": {
+      "source": "MANUAL",
+      "selector": "[data-haide-publishdate]",
+      "confidence": 100,
+      "capturedOnUrl": "https://elbitsystemscareer.com/jobs/"
+    },
+    "requirements": {
+      "source": "MANUAL",
+      "selector": "[data-haide-requirements]",
+      "confidence": 100,
+      "capturedOnUrl": "https://elbitsystemscareer.com/jobs/"
+    },
+    "externalJobId": {
+      "source": "MANUAL",
+      "selector": "[data-haide-jobcode]",
+      "confidence": 100,
+      "capturedOnUrl": "https://elbitsystemscareer.com/jobs/"
+    },
+    "applicationInfo": {
+      "source": "MANUAL",
+      "selector": "[data-haide-applyurl]",
+      "confidence": 100,
+      "capturedOnUrl": "https://elbitsystemscareer.com/jobs/"
+    }
+  }
+}

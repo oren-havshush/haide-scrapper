@@ -1,0 +1,116 @@
+{
+  "_exportedAt": "2026-08-06T15:54:02.919Z",
+  "_note": "Mirror of the live config. The DB is authoritative; the worker never reads this file. setupScript lives alongside in <slug>.setup.js.",
+  "id": "cmqsbl680000501nubg2nwjvz",
+  "siteUrl": "https://tambour.co.il/careers/",
+  "companyName": "טמבור",
+  "status": "ACTIVE",
+  "setupScriptFile": "tambour--2nwjvz.setup.js",
+  "pageFlow": [],
+  "fieldMappings": {
+    "_meta": {
+      "savedAt": "2026-06-28T14:35:14.081Z",
+      "pagination": null,
+      "formCapture": {
+        "fields": [
+          {
+            "name": "career[job_id]",
+            "label": "",
+            "tagName": "input",
+            "required": false,
+            "fieldType": "hidden"
+          },
+          {
+            "name": "career[job_code]",
+            "label": "",
+            "tagName": "input",
+            "required": false,
+            "fieldType": "hidden"
+          },
+          {
+            "name": "career[job_title]",
+            "label": "",
+            "tagName": "input",
+            "required": false,
+            "fieldType": "hidden"
+          },
+          {
+            "name": "career[first_name]",
+            "label": "שם פרטי",
+            "tagName": "input",
+            "required": true,
+            "fieldType": "text"
+          },
+          {
+            "name": "career[last_name]",
+            "label": "שם משפחה",
+            "tagName": "input",
+            "required": true,
+            "fieldType": "text"
+          },
+          {
+            "name": "career[how_hear]",
+            "label": "איך שמעת עלינו",
+            "tagName": "select",
+            "required": true,
+            "fieldType": "select"
+          },
+          {
+            "name": "career[cv_file]",
+            "label": "קורות חיים",
+            "tagName": "input",
+            "required": true,
+            "fieldType": "file"
+          },
+          {
+            "name": "career[privacy_consent]",
+            "label": "הסכמה לפרטיות",
+            "tagName": "input",
+            "required": true,
+            "fieldType": "checkbox"
+          }
+        ],
+        "method": "post",
+        "actionUrl": "https://tambour.co.il/career/career-876/#",
+        "formSelector": "form.donation-form"
+      },
+      "itemSelector": "li.career-lobby-row",
+      "minPublishDate": null,
+      "minPublishDays": null,
+      "revealSelector": null,
+      "listingSelector": null,
+      "applyLoginReason": null,
+      "browserOverrides": null,
+      "loadMoreSelector": null,
+      "locationFallback": null,
+      "originalMappings": null,
+      "applyRequiresLogin": false
+    },
+    "title": {
+      "source": "manual",
+      "selector": "h3.career-lobby-row__title",
+      "confidence": 0.95
+    },
+    "location": {
+      "source": "manual",
+      "selector": ".__ai-location",
+      "confidence": 0.9
+    },
+    "detailUrl": {
+      "source": "manual",
+      "selector": "a.career-lobby-row__link",
+      "confidence": 0.9,
+      "extractAttr": "href"
+    },
+    "description": {
+      "source": "manual",
+      "selector": ".__ai-description",
+      "confidence": 0.9
+    },
+    "externalJobId": {
+      "source": "manual",
+      "selector": "span.career-lobby-row__badge--code",
+      "confidence": 0.95
+    }
+  }
+}

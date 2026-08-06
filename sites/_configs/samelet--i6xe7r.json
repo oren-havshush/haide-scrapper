@@ -1,0 +1,80 @@
+{
+  "_exportedAt": "2026-08-06T15:54:05.969Z",
+  "_note": "Mirror of the live config. The DB is authoritative; the worker never reads this file. setupScript lives alongside in <slug>.setup.js.",
+  "id": "cmozl1to4000y01phtdi6xe7r",
+  "siteUrl": "https://samelet.com/samelet-career/",
+  "companyName": "סמלת",
+  "status": "ACTIVE",
+  "setupScriptFile": null,
+  "pageFlow": [
+    {
+      "url": "https://samelet.com/samelet-career/",
+      "action": "navigate"
+    },
+    {
+      "url": "https://samelet.com/?post_type=cvs&p=*",
+      "action": "navigate"
+    }
+  ],
+  "fieldMappings": {
+    "_meta": {
+      "savedAt": "2026-05-20T05:31:19.843Z",
+      "pagination": null,
+      "formCapture": null,
+      "itemSelector": ".cv_item",
+      "revealSelector": null,
+      "listingSelector": ".cvs_wrapper",
+      "originalMappings": null
+    },
+    "title": {
+      "source": "MANUAL",
+      "selector": ".cv_title",
+      "confidence": 100,
+      "capturedOnUrl": "https://samelet.com/samelet-career/"
+    },
+    "location": {
+      "source": "MANUAL",
+      "selector": ".cv_location",
+      "confidence": 100,
+      "capturedOnUrl": "https://samelet.com/samelet-career/"
+    },
+    "detailUrl": {
+      "source": "MANUAL",
+      "selector": ".cv_view a",
+      "confidence": 100,
+      "extractAttr": "href",
+      "capturedOnUrl": "https://samelet.com/samelet-career/"
+    },
+    "description": {
+      "source": "MANUAL",
+      "selector": ".cv_top > .col-sm-6",
+      "confidence": 100,
+      "capturedOnUrl": "https://samelet.com/?post_type=cvs&p=125276"
+    },
+    "requirements": {
+      "source": "MANUAL",
+      "selector": ".cv_bottom > .col-sm-6:last-child",
+      "confidence": 100,
+      "capturedOnUrl": "https://samelet.com/?post_type=cvs&p=125276"
+    },
+    "externalJobId": {
+      "source": "MANUAL",
+      "selector": ".cv_scope",
+      "confidence": 100,
+      "capturedOnUrl": "https://samelet.com/samelet-career/"
+    },
+    "applicationInfo": {
+      "source": "MANUAL",
+      "selector": ".cv_wrapper a.send_cv",
+      "confidence": 100,
+      "extractAttr": "href",
+      "capturedOnUrl": "https://samelet.com/?post_type=cvs&p=125276"
+    },
+    "referenceNumber": {
+      "source": "MANUAL",
+      "selector": ".cv_scope",
+      "confidence": 100,
+      "capturedOnUrl": "https://samelet.com/samelet-career/"
+    }
+  }
+}

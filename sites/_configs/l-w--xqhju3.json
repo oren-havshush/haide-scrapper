@@ -1,0 +1,56 @@
+{
+  "_exportedAt": "2026-08-06T15:54:05.998Z",
+  "_note": "Mirror of the live config. The DB is authoritative; the worker never reads this file. setupScript lives alongside in <slug>.setup.js.",
+  "id": "cmozix74p000q01ph8zxqhju3",
+  "siteUrl": "https://www.l-w.ac.il/jobs/",
+  "companyName": "המרכז האקדמי לוינסקי־וינגייט",
+  "status": "ACTIVE",
+  "setupScriptFile": null,
+  "pageFlow": [
+    {
+      "url": "https://www.l-w.ac.il/jobs/",
+      "action": "navigate"
+    },
+    {
+      "url": "https://www.l-w.ac.il/jobs/40125-2/",
+      "action": "article.news-item.sort-item.post-40125 > div.news-item-inner > div.post-meta > div.permalink:nth-child(2) > a"
+    },
+    {
+      "url": "https://www.l-w.ac.il/jobs/40125-2/",
+      "action": "article.news-item.sort-item.post-40125 > div.news-item-inner > div.post-meta > div.permalink:nth-child(2) > a"
+    }
+  ],
+  "fieldMappings": {
+    "_meta": {
+      "savedAt": "2026-06-10T18:50:54.965Z",
+      "pagination": null,
+      "formCapture": null,
+      "itemSelector": "div.news-item-inner",
+      "revealSelector": null,
+      "listingSelector": "#page-main section.section.taxonomy-main-section div.container",
+      "applyLoginReason": null,
+      "browserOverrides": null,
+      "loadMoreSelector": null,
+      "originalMappings": {
+        "title": {
+          "source": "AI",
+          "selector": "h1.h1",
+          "confidence": 100
+        }
+      },
+      "applyRequiresLogin": false
+    },
+    "title": {
+      "source": "MANUAL",
+      "selector": "h1.h1",
+      "confidence": 100,
+      "capturedOnUrl": "https://www.l-w.ac.il/jobs/40125-2/"
+    },
+    "description": {
+      "source": "MANUAL",
+      "selector": "section.single-jobs > div.container",
+      "confidence": 100,
+      "capturedOnUrl": "https://www.l-w.ac.il/jobs/40125-2/"
+    }
+  }
+}

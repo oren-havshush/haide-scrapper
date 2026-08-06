@@ -1,0 +1,104 @@
+{
+  "_exportedAt": "2026-08-06T15:54:03.131Z",
+  "_note": "Mirror of the live config. The DB is authoritative; the worker never reads this file. setupScript lives alongside in <slug>.setup.js.",
+  "id": "cmqo82ozg000v01qpkz7zncwp",
+  "siteUrl": "https://tcmcareer.com/find-a-job/",
+  "companyName": "TCMCAREER",
+  "status": "ACTIVE",
+  "setupScriptFile": "tcmcareer--7zncwp.setup.js",
+  "pageFlow": [],
+  "fieldMappings": {
+    "_meta": {
+      "savedAt": "2026-06-22T16:05:32.235Z",
+      "pagination": null,
+      "formCapture": {
+        "fields": [
+          {
+            "name": "%d7%a9%d7%9d-%d7%9e%d7%9c%d7%90",
+            "label": "שם מלא",
+            "tagName": "input",
+            "required": true,
+            "fieldType": "text"
+          },
+          {
+            "name": "%d7%93%d7%95%d7%90%d7%a8-%d7%90%d7%9c%d7%a7%d7%98%d7%a8%d7%95%d7%a0%d7%99",
+            "label": "דואר אלקטרוני",
+            "tagName": "input",
+            "required": true,
+            "fieldType": "email"
+          },
+          {
+            "name": "%d7%9e%d7%9b%d7%aa%d7%91-%d7%9e%d7%a6%d7%95%d7%a8%d7%a3",
+            "label": "מכתב מצורף",
+            "tagName": "textarea",
+            "required": false,
+            "fieldType": "textarea"
+          },
+          {
+            "name": "%d7%a7%d7%95%d7%a8%d7%95%d7%aa-%d7%97%d7%99%d7%99%d7%9d",
+            "label": "קורות חיים",
+            "tagName": "input",
+            "required": true,
+            "fieldType": "file"
+          }
+        ],
+        "method": "post",
+        "actionUrl": "https://tcmcareer.com/find-a-job/",
+        "formSelector": "form.job-manager-application-form"
+      },
+      "itemSelector": "li.job_listing",
+      "minPublishDate": null,
+      "minPublishDays": null,
+      "revealSelector": null,
+      "listingSelector": "ul.job_listings",
+      "applyLoginReason": null,
+      "browserOverrides": null,
+      "loadMoreSelector": null,
+      "originalMappings": null,
+      "applyRequiresLogin": false
+    },
+    "title": {
+      "source": "auto",
+      "selector": "h3.job_listing-title",
+      "confidence": 0.95,
+      "capturedOnUrl": "https://tcmcareer.com/find-a-job/"
+    },
+    "location": {
+      "source": "auto",
+      "selector": ".job_listing-location",
+      "confidence": 0.9,
+      "capturedOnUrl": "https://tcmcareer.com/find-a-job/"
+    },
+    "detailUrl": {
+      "source": "auto",
+      "selector": "a.job_listing-clickbox",
+      "confidence": 0.95,
+      "extractAttr": "href",
+      "capturedOnUrl": "https://tcmcareer.com/find-a-job/"
+    },
+    "description": {
+      "source": "auto",
+      "selector": ".__ai-description",
+      "confidence": 0.9,
+      "capturedOnUrl": "https://tcmcareer.com/find-a-job/"
+    },
+    "publishDate": {
+      "source": "auto",
+      "selector": ".__ai-date",
+      "confidence": 0.85,
+      "capturedOnUrl": "https://tcmcareer.com/find-a-job/"
+    },
+    "externalJobId": {
+      "source": "auto",
+      "selector": ".__ai-jobid",
+      "confidence": 0.95,
+      "capturedOnUrl": "https://tcmcareer.com/find-a-job/"
+    },
+    "applicationInfo": {
+      "source": "auto",
+      "selector": ".__ai-apply",
+      "confidence": 0.8,
+      "capturedOnUrl": "https://tcmcareer.com/find-a-job/"
+    }
+  }
+}

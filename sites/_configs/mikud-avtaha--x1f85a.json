@@ -1,0 +1,137 @@
+{
+  "_exportedAt": "2026-08-06T15:54:03.665Z",
+  "_note": "Mirror of the live config. The DB is authoritative; the worker never reads this file. setupScript lives alongside in <slug>.setup.js.",
+  "id": "cmqe6vyp2004g01lcywx1f85a",
+  "siteUrl": "https://www.mikud-avtaha.co.il/%D7%9E%D7%99%D7%A7%D7%95%D7%93-%D7%9C%D7%A2%D7%95%D7%91%D7%93/%D7%9E%D7%A9%D7%A8%D7%95%D7%AA-%D7%A4%D7%A0%D7%95%D7%99%D7%95%D7%AA/",
+  "companyName": "מיקוד ביטחון ישראל בע''מ",
+  "status": "ACTIVE",
+  "setupScriptFile": "mikud-avtaha--x1f85a.setup.js",
+  "pageFlow": [],
+  "fieldMappings": {
+    "_meta": {
+      "savedAt": "2026-06-15T14:04:32.602Z",
+      "pagination": null,
+      "formCapture": {
+        "fields": [
+          {
+            "name": "your-fname",
+            "label": "שם פרטי",
+            "tagName": "input",
+            "required": true,
+            "fieldType": "text"
+          },
+          {
+            "name": "your-lname",
+            "label": "שם משפחה",
+            "tagName": "input",
+            "required": true,
+            "fieldType": "text"
+          },
+          {
+            "name": "city",
+            "label": "עיר מגורים",
+            "tagName": "input",
+            "required": true,
+            "fieldType": "text"
+          },
+          {
+            "name": "your-mobile",
+            "label": "נייד",
+            "tagName": "input",
+            "required": true,
+            "fieldType": "text"
+          },
+          {
+            "name": "email",
+            "label": "אימייל",
+            "tagName": "input",
+            "required": true,
+            "fieldType": "email"
+          },
+          {
+            "name": "misra",
+            "label": "מספר משרה",
+            "tagName": "input",
+            "required": false,
+            "fieldType": "text"
+          },
+          {
+            "name": "textarea-354",
+            "label": "הערות:",
+            "tagName": "textarea",
+            "required": false,
+            "fieldType": "textarea"
+          },
+          {
+            "name": "cv",
+            "label": "קורות חיים",
+            "tagName": "input",
+            "required": false,
+            "fieldType": "file"
+          },
+          {
+            "name": "concern[]",
+            "label": "מדיניות הפרטיות",
+            "tagName": "input",
+            "required": false,
+            "fieldType": "checkbox"
+          }
+        ],
+        "method": "post",
+        "actionUrl": "https://www.mikud-avtaha.co.il/%D7%9E%D7%99%D7%A7%D7%95%D7%93-%D7%9C%D7%A2%D7%95%D7%91%D7%93/%D7%9E%D7%A9%D7%A8%D7%95%D7%AA-%D7%A4%D7%A0%D7%95%D7%99%D7%95%D7%AA/",
+        "formSelector": "div[id^=\"job_form_pop_\"] form.wpcf7-form"
+      },
+      "itemSelector": "table.table.table-hover.jobs tr:has(span.btn_more)",
+      "minPublishDate": null,
+      "revealSelector": null,
+      "listingSelector": null,
+      "applyLoginReason": null,
+      "browserOverrides": null,
+      "loadMoreSelector": null,
+      "originalMappings": null,
+      "applyRequiresLogin": false
+    },
+    "title": {
+      "source": "MANUAL",
+      "selector": ".__ai-title",
+      "confidence": 100,
+      "capturedOnUrl": "https://www.mikud-avtaha.co.il/%D7%9E%D7%99%D7%A7%D7%95%D7%93-%D7%9C%D7%A2%D7%95%D7%91%D7%93/%D7%9E%D7%A9%D7%A8%D7%95%D7%AA-%D7%A4%D7%A0%D7%95%D7%99%D7%95%D7%AA/"
+    },
+    "location": {
+      "source": "MANUAL",
+      "selector": "td:nth-child(2)",
+      "confidence": 100,
+      "capturedOnUrl": "https://www.mikud-avtaha.co.il/%D7%9E%D7%99%D7%A7%D7%95%D7%93-%D7%9C%D7%A2%D7%95%D7%91%D7%93/%D7%9E%D7%A9%D7%A8%D7%95%D7%AA-%D7%A4%D7%A0%D7%95%D7%99%D7%95%D7%AA/"
+    },
+    "description": {
+      "source": "MANUAL",
+      "selector": ".__ai-description",
+      "confidence": 100,
+      "capturedOnUrl": "https://www.mikud-avtaha.co.il/%D7%9E%D7%99%D7%A7%D7%95%D7%93-%D7%9C%D7%A2%D7%95%D7%91%D7%93/%D7%9E%D7%A9%D7%A8%D7%95%D7%AA-%D7%A4%D7%A0%D7%95%D7%99%D7%95%D7%AA/"
+    },
+    "publishDate": {
+      "source": "MANUAL",
+      "selector": "td:nth-child(3)",
+      "confidence": 100,
+      "capturedOnUrl": "https://www.mikud-avtaha.co.il/%D7%9E%D7%99%D7%A7%D7%95%D7%93-%D7%9C%D7%A2%D7%95%D7%91%D7%93/%D7%9E%D7%A9%D7%A8%D7%95%D7%AA-%D7%A4%D7%A0%D7%95%D7%99%D7%95%D7%AA/"
+    },
+    "requirements": {
+      "source": "MANUAL",
+      "selector": ".__ai-requirements",
+      "confidence": 100,
+      "capturedOnUrl": "https://www.mikud-avtaha.co.il/%D7%9E%D7%99%D7%A7%D7%95%D7%93-%D7%9C%D7%A2%D7%95%D7%91%D7%93/%D7%9E%D7%A9%D7%A8%D7%95%D7%AA-%D7%A4%D7%A0%D7%95%D7%99%D7%95%D7%AA/"
+    },
+    "externalJobId": {
+      "source": "MANUAL",
+      "selector": ".__ai-externalJobId",
+      "confidence": 100,
+      "capturedOnUrl": "https://www.mikud-avtaha.co.il/%D7%9E%D7%99%D7%A7%D7%95%D7%93-%D7%9C%D7%A2%D7%95%D7%91%D7%93/%D7%9E%D7%A9%D7%A8%D7%95%D7%AA-%D7%A4%D7%A0%D7%95%D7%99%D7%95%D7%AA/"
+    },
+    "applicationInfo": {
+      "source": "MANUAL",
+      "selector": ".__ai-apply-email",
+      "confidence": 100,
+      "capturedOnUrl": "https://www.mikud-avtaha.co.il/%D7%9E%D7%99%D7%A7%D7%95%D7%93-%D7%9C%D7%A2%D7%95%D7%91%D7%93/%D7%9E%D7%A9%D7%A8%D7%95%D7%AA-%D7%A4%D7%A0%D7%95%D7%99%D7%95%D7%AA/"
+    }
+  }
+}

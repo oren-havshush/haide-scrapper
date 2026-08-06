@@ -1,0 +1,102 @@
+{
+  "_exportedAt": "2026-08-06T15:54:03.776Z",
+  "_note": "Mirror of the live config. The DB is authoritative; the worker never reads this file. setupScript lives alongside in <slug>.setup.js.",
+  "id": "cmq9kh5qt003q01lcz4hfyc3r",
+  "siteUrl": "https://www.shahal.co.il/jobs/",
+  "companyName": "שחל",
+  "status": "ACTIVE",
+  "setupScriptFile": "shahal--hfyc3r.setup.js",
+  "pageFlow": [
+    {
+      "url": "https://www.shahal.co.il/jobs/",
+      "action": "navigate",
+      "waitFor": ".e-loop-item"
+    },
+    {
+      "url": "https://www.shahal.co.il/jobs/*",
+      "action": "navigate",
+      "waitFor": "[data-elementor-type=\"single-post\"] .elementor-widget-text-editor"
+    }
+  ],
+  "fieldMappings": {
+    "_meta": {
+      "savedAt": "2026-06-17T12:24:57.510Z",
+      "pagination": null,
+      "formCapture": {
+        "fields": [
+          {
+            "name": "form_fields[name]",
+            "label": "שם מלא",
+            "tagName": "input",
+            "required": true,
+            "fieldType": "text"
+          },
+          {
+            "name": "form_fields[email]",
+            "label": "אימייל",
+            "tagName": "input",
+            "required": true,
+            "fieldType": "email"
+          },
+          {
+            "name": "form_fields[phone]",
+            "label": "מספר נייד",
+            "tagName": "input",
+            "required": true,
+            "fieldType": "tel"
+          },
+          {
+            "name": "form_fields[message]",
+            "label": "ספר/י לנו על עצמך",
+            "tagName": "textarea",
+            "required": false,
+            "fieldType": "textarea"
+          },
+          {
+            "name": "form_fields[cv]",
+            "label": "קורות חיים (קובץ)",
+            "tagName": "input",
+            "required": true,
+            "fieldType": "file"
+          }
+        ],
+        "method": "POST",
+        "actionUrl": "https://www.shahal.co.il/jobs/",
+        "formSelector": "form.elementor-form"
+      },
+      "itemSelector": ".e-loop-item",
+      "minPublishDate": null,
+      "minPublishDays": 90,
+      "revealSelector": null,
+      "listingSelector": null,
+      "applyLoginReason": null,
+      "browserOverrides": {
+        "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36"
+      },
+      "loadMoreSelector": null,
+      "originalMappings": null,
+      "applyRequiresLogin": false
+    },
+    "title": {
+      "selector": ".elementor-heading-title",
+      "capturedOnUrl": "https://www.shahal.co.il/jobs/"
+    },
+    "location": {
+      "selector": ".shahal-loc",
+      "capturedOnUrl": "https://www.shahal.co.il/jobs/%d7%a0%d7%a6%d7%99%d7%92-%d7%aa-%d7%a9%d7%99%d7%a8%d7%95%d7%aa-%d7%9c%d7%a7%d7%95%d7%97%d7%95%d7%aa/"
+    },
+    "detailUrl": {
+      "selector": "a[href*=\"/jobs/\"]",
+      "extractAttr": "href",
+      "capturedOnUrl": "https://www.shahal.co.il/jobs/"
+    },
+    "description": {
+      "selector": ".shahal-desc",
+      "capturedOnUrl": "https://www.shahal.co.il/jobs/%d7%a0%d7%a6%d7%99%d7%92-%d7%aa-%d7%a9%d7%99%d7%a8%d7%95%d7%aa-%d7%9c%d7%a7%d7%95%d7%97%d7%95%d7%aa/"
+    },
+    "externalJobId": {
+      "selector": ".shahal-id",
+      "capturedOnUrl": "https://www.shahal.co.il/jobs/%d7%a0%d7%a6%d7%99%d7%92-%d7%aa-%d7%a9%d7%99%d7%a8%d7%95%d7%aa-%d7%9c%d7%a7%d7%95%d7%97%d7%95%d7%aa/"
+    }
+  }
+}

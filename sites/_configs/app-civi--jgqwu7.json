@@ -1,0 +1,115 @@
+{
+  "_exportedAt": "2026-08-06T15:54:02.999Z",
+  "_note": "Mirror of the live config. The DB is authoritative; the worker never reads this file. setupScript lives alongside in <slug>.setup.js.",
+  "id": "cmqqo9j6m000n01nws0jgqwu7",
+  "siteUrl": "https://app.civi.co.il/promos/id=HTRAMH7PYM&src=7442",
+  "companyName": "ויסוצקי",
+  "status": "ACTIVE",
+  "setupScriptFile": "app-civi--jgqwu7.setup.js",
+  "pageFlow": [
+    {
+      "url": "https://app.civi.co.il/promos/id=HTRAMH7PYM&src=7442",
+      "action": "navigate"
+    },
+    {
+      "url": "https://app.civi.co.il/promo/id=*",
+      "action": "a.__ai-detailurl"
+    }
+  ],
+  "fieldMappings": {
+    "_meta": {
+      "savedAt": "2026-06-23T16:16:12.829Z",
+      "pagination": null,
+      "formCapture": {
+        "fields": [
+          {
+            "name": "Form_submitted",
+            "label": "",
+            "tagName": "input",
+            "required": false,
+            "fieldType": "hidden"
+          },
+          {
+            "name": "name",
+            "label": "שם מלא",
+            "tagName": "input",
+            "required": true,
+            "fieldType": "text"
+          },
+          {
+            "name": "phone",
+            "label": "טלפון",
+            "tagName": "input",
+            "required": true,
+            "fieldType": "tel"
+          },
+          {
+            "name": "email",
+            "label": "דואל",
+            "tagName": "input",
+            "required": true,
+            "fieldType": "email"
+          },
+          {
+            "name": "cv",
+            "label": "קורות חיים",
+            "tagName": "input",
+            "required": true,
+            "fieldType": "file"
+          }
+        ],
+        "method": "post",
+        "actionUrl": "https://app.civi.co.il/promo/id=805776&src=7442",
+        "formSelector": "form.Form"
+      },
+      "itemSelector": ".proflist .thumb",
+      "minPublishDate": null,
+      "minPublishDays": null,
+      "revealSelector": null,
+      "listingSelector": null,
+      "applyLoginReason": null,
+      "browserOverrides": null,
+      "loadMoreSelector": null,
+      "locationFallback": "שוהם",
+      "originalMappings": null,
+      "applyRequiresLogin": false
+    },
+    "title": {
+      "source": "auto",
+      "selector": ".title",
+      "confidence": 0.9,
+      "capturedOnUrl": "https://app.civi.co.il/promos/id=HTRAMH7PYM&src=7442"
+    },
+    "location": {
+      "source": "auto",
+      "selector": ".__ai-location",
+      "confidence": 0.9,
+      "capturedOnUrl": "https://app.civi.co.il/promos/id=HTRAMH7PYM&src=7442"
+    },
+    "detailUrl": {
+      "source": "auto",
+      "selector": "a.__ai-detailurl",
+      "confidence": 0.9,
+      "extractAttr": "href",
+      "capturedOnUrl": "https://app.civi.co.il/promos/id=HTRAMH7PYM&src=7442"
+    },
+    "description": {
+      "source": "auto",
+      "selector": "#je-descr",
+      "confidence": 0.8,
+      "capturedOnUrl": "https://app.civi.co.il/promo/id=805776&src=7442"
+    },
+    "requirements": {
+      "source": "auto",
+      "selector": "#je-details",
+      "confidence": 0.8,
+      "capturedOnUrl": "https://app.civi.co.il/promo/id=805776&src=7442"
+    },
+    "externalJobId": {
+      "source": "auto",
+      "selector": ".__ai-jobid",
+      "confidence": 0.9,
+      "capturedOnUrl": "https://app.civi.co.il/promos/id=HTRAMH7PYM&src=7442"
+    }
+  }
+}

@@ -1,0 +1,87 @@
+{
+  "_exportedAt": "2026-08-06T15:54:05.254Z",
+  "_note": "Mirror of the live config. The DB is authoritative; the worker never reads this file. setupScript lives alongside in <slug>.setup.js.",
+  "id": "cmpmhbxi8001n01mvikudr6ty",
+  "siteUrl": "https://www.rapyd.net/company/careers-search/?location=tel-aviv-israel",
+  "companyName": "Rapyd",
+  "status": "ACTIVE",
+  "setupScriptFile": null,
+  "pageFlow": [
+    {
+      "url": "https://www.rapyd.net/company/careers-search/?location=tel-aviv-israel",
+      "action": "navigate"
+    },
+    {
+      "url": "https://www.rapyd.net/company/careers/positions/*",
+      "action": "navigate"
+    }
+  ],
+  "fieldMappings": {
+    "_meta": {
+      "savedAt": "2026-05-26T12:52:08.176Z",
+      "pagination": null,
+      "formCapture": null,
+      "itemSelector": ".vcex-post-type-entry[data-location=\"tel-aviv-israel\"]",
+      "revealSelector": null,
+      "listingSelector": null,
+      "loadMoreSelector": null,
+      "originalMappings": null
+    },
+    "title": {
+      "source": "MANUAL",
+      "selector": ".c-position-details__list li:nth-child(1)",
+      "confidence": 100,
+      "capturedOnUrl": "https://www.rapyd.net/company/careers-search/?location=tel-aviv-israel"
+    },
+    "location": {
+      "source": "MANUAL",
+      "selector": ".c-position-location .name",
+      "confidence": 100,
+      "capturedOnUrl": "https://www.rapyd.net/company/careers-search/?location=tel-aviv-israel"
+    },
+    "detailUrl": {
+      "source": "MANUAL",
+      "selector": "a.theme-button",
+      "confidence": 100,
+      "extractAttr": "href",
+      "capturedOnUrl": "https://www.rapyd.net/company/careers-search/?location=tel-aviv-israel"
+    },
+    "seniority": {
+      "source": "MANUAL",
+      "selector": ".c-position-details__list li:nth-child(3)",
+      "confidence": 100,
+      "capturedOnUrl": "https://www.rapyd.net/company/careers-search/?location=tel-aviv-israel"
+    },
+    "department": {
+      "source": "MANUAL",
+      "selector": ".c-position-details__list li:nth-child(2)",
+      "confidence": 100,
+      "capturedOnUrl": "https://www.rapyd.net/company/careers-search/?location=tel-aviv-israel"
+    },
+    "description": {
+      "source": "MANUAL",
+      "selector": ".single-career-position__main .job-details:nth-of-type(1)",
+      "confidence": 100,
+      "capturedOnUrl": "https://www.rapyd.net/company/careers/positions/ai-productivity-implementation-specialist-tel-aviv-israel/"
+    },
+    "requirements": {
+      "source": "MANUAL",
+      "selector": ".single-career-position__main .job-details:nth-of-type(2)",
+      "confidence": 100,
+      "capturedOnUrl": "https://www.rapyd.net/company/careers/positions/ai-productivity-implementation-specialist-tel-aviv-israel/"
+    },
+    "externalJobId": {
+      "source": "MANUAL",
+      "selector": "a.theme-button",
+      "confidence": 100,
+      "extractAttr": "href",
+      "capturedOnUrl": "https://www.rapyd.net/company/careers-search/?location=tel-aviv-israel"
+    },
+    "employmentType": {
+      "source": "MANUAL",
+      "selector": ".c-position-details__list li:nth-child(4)",
+      "confidence": 100,
+      "capturedOnUrl": "https://www.rapyd.net/company/careers-search/?location=tel-aviv-israel"
+    }
+  }
+}

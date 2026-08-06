@@ -1,0 +1,128 @@
+{
+  "_exportedAt": "2026-08-06T15:54:03.243Z",
+  "_note": "Mirror of the live config. The DB is authoritative; the worker never reads this file. setupScript lives alongside in <slug>.setup.js.",
+  "id": "cmqkqggl0001b01p6zv4tq06k",
+  "siteUrl": "https://calanit.co.il/%d7%9e%d7%a9%d7%a8%d7%95%d7%aa/",
+  "companyName": "CALANIT by one",
+  "status": "ACTIVE",
+  "setupScriptFile": "calanit--4tq06k.setup.js",
+  "pageFlow": [
+    {
+      "url": "https://calanit.co.il/%d7%9e%d7%a9%d7%a8%d7%95%d7%aa/",
+      "action": "navigate",
+      "waitFor": "li .jobDetails"
+    },
+    {
+      "url": "https://calanit.co.il/%d7%9e%d7%a9%d7%a8%d7%94/*",
+      "action": "navigate",
+      "waitFor": ".jobPosition"
+    }
+  ],
+  "fieldMappings": {
+    "_meta": {
+      "savedAt": "2026-06-21T14:51:35.684Z",
+      "pagination": null,
+      "formCapture": {
+        "fields": [
+          {
+            "name": "cvFName",
+            "label": "First Name",
+            "tagName": "INPUT",
+            "required": true,
+            "fieldType": "text"
+          },
+          {
+            "name": "cvLName",
+            "label": "Last Name",
+            "tagName": "INPUT",
+            "required": true,
+            "fieldType": "text"
+          },
+          {
+            "name": "cvEmail",
+            "label": "Email",
+            "tagName": "INPUT",
+            "required": true,
+            "fieldType": "email"
+          },
+          {
+            "name": "cvPhone",
+            "label": "Phone",
+            "tagName": "INPUT",
+            "required": false,
+            "fieldType": "text"
+          },
+          {
+            "name": "cvFile",
+            "label": "CV File",
+            "tagName": "INPUT",
+            "required": false,
+            "fieldType": "file"
+          }
+        ],
+        "method": "POST",
+        "actionUrl": "https://calanit.co.il/",
+        "formSelector": "#cvForm"
+      },
+      "itemSelector": "li:has(.jobDetails)",
+      "minPublishDate": null,
+      "minPublishDays": 90,
+      "revealSelector": null,
+      "listingSelector": null,
+      "applyLoginReason": null,
+      "browserOverrides": null,
+      "loadMoreSelector": null,
+      "originalMappings": null,
+      "applyRequiresLogin": false
+    },
+    "title": {
+      "source": "auto",
+      "selector": ".jobInfoRight h3 a",
+      "confidence": 0.95,
+      "capturedOnUrl": "https://calanit.co.il/%d7%9e%d7%a9%d7%a8%d7%95%d7%aa/"
+    },
+    "location": {
+      "source": "manual",
+      "selector": ".__ai-location",
+      "confidence": 0.9,
+      "capturedOnUrl": "https://calanit.co.il/%d7%9e%d7%a9%d7%a8%d7%95%d7%aa/"
+    },
+    "detailUrl": {
+      "source": "auto",
+      "selector": ".jobInfoRight h3 a",
+      "confidence": 0.95,
+      "extractAttr": "href",
+      "capturedOnUrl": "https://calanit.co.il/%d7%9e%d7%a9%d7%a8%d7%95%d7%aa/"
+    },
+    "department": {
+      "source": "manual",
+      "selector": ".__ai-department",
+      "confidence": 0.85,
+      "capturedOnUrl": "https://calanit.co.il/%d7%9e%d7%a9%d7%a8%d7%95%d7%aa/"
+    },
+    "description": {
+      "source": "manual",
+      "selector": ".__ai-description",
+      "confidence": 0.85,
+      "capturedOnUrl": "https://calanit.co.il/%d7%9e%d7%a9%d7%a8%d7%94/*"
+    },
+    "publishDate": {
+      "source": "manual",
+      "selector": ".__ai-publish-date",
+      "confidence": 0.8,
+      "capturedOnUrl": "https://calanit.co.il/%d7%9e%d7%a9%d7%a8%d7%94/*"
+    },
+    "requirements": {
+      "source": "manual",
+      "selector": ".__ai-requirements",
+      "confidence": 0.8,
+      "capturedOnUrl": "https://calanit.co.il/%d7%9e%d7%a9%d7%a8%d7%94/*"
+    },
+    "externalJobId": {
+      "source": "manual",
+      "selector": ".__ai-jobid",
+      "confidence": 0.95,
+      "capturedOnUrl": "https://calanit.co.il/%d7%9e%d7%a9%d7%a8%d7%95%d7%aa/"
+    }
+  }
+}

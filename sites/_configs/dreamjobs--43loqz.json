@@ -1,0 +1,150 @@
+{
+  "_exportedAt": "2026-08-06T15:54:06.097Z",
+  "_note": "Mirror of the live config. The DB is authoritative; the worker never reads this file. setupScript lives alongside in <slug>.setup.js.",
+  "id": "cmovmegl9000001mr0s43loqz",
+  "siteUrl": "https://dreamjobs.co.il/",
+  "companyName": "קבוצת ויזל - פוקס",
+  "status": "ACTIVE",
+  "setupScriptFile": null,
+  "pageFlow": [
+    {
+      "url": "https://dreamjobs.co.il/",
+      "action": "navigate"
+    },
+    {
+      "url": "https://dreamjobs.co.il/career/*",
+      "action": "#careers-available-jobs-animate-content > a.careers__career-row:nth-child(1)"
+    },
+    {
+      "url": "https://dreamjobs.co.il/career/*",
+      "action": "#careers-available-jobs-animate-content > a.careers__career-row:nth-child(1)"
+    }
+  ],
+  "fieldMappings": {
+    "_meta": {
+      "savedAt": "2026-05-07T15:29:47.249Z",
+      "formCapture": {
+        "fields": [
+          {
+            "name": "",
+            "label": "שם המועמד/ת",
+            "tagName": "input",
+            "required": false,
+            "fieldType": "text"
+          },
+          {
+            "name": "",
+            "label": "טלפון",
+            "tagName": "input",
+            "required": false,
+            "fieldType": "text"
+          },
+          {
+            "name": "",
+            "label": "אימייל",
+            "tagName": "input",
+            "required": false,
+            "fieldType": "text"
+          },
+          {
+            "name": "",
+            "label": "העלת קובצים מסוג pdf,.doc,.docx,.txt,.rtf,.odt",
+            "tagName": "input",
+            "required": false,
+            "fieldType": "file"
+          },
+          {
+            "name": "",
+            "label": "אין לי קורות חיים מעודכנים",
+            "tagName": "input",
+            "required": false,
+            "fieldType": "checkbox"
+          },
+          {
+            "name": "",
+            "label": "האם הינך עובד קבוצת פוקס",
+            "tagName": "input",
+            "required": false,
+            "fieldType": "checkbox"
+          },
+          {
+            "name": "",
+            "label": "אימייל של המפנה",
+            "tagName": "input",
+            "required": false,
+            "fieldType": "text"
+          },
+          {
+            "name": "",
+            "label": "טלפון של המפנה",
+            "tagName": "input",
+            "required": false,
+            "fieldType": "text"
+          },
+          {
+            "name": "",
+            "label": "שם מלא של המפנה",
+            "tagName": "input",
+            "required": false,
+            "fieldType": "text"
+          },
+          {
+            "name": "",
+            "label": "אני מסכים/ה כי המידע האישי שמסרתי יישמר ויעובד על ידי החברה לצורכי בחינת מועמדותי לגיוס, לרבות יצירת",
+            "tagName": "input",
+            "required": false,
+            "fieldType": "checkbox"
+          }
+        ],
+        "method": "GET",
+        "actionUrl": "https://dreamjobs.co.il/career/8196",
+        "formSelector": "div.v-dialog.careers__career-submit-dialog-content > form"
+      },
+      "itemSelector": ".careers__career-row",
+      "revealSelector": null,
+      "listingSelector": "#__layout div.v-application.v-application--is-rtl div.v-application--wrap div.v-application.fox-careers-app div.v-application--wrap div.careers-layout__container section.dreamcard-homepage-container div.careers-page-wrapper.careers-page div.careers__available-jobs-container.mb-7",
+      "originalMappings": {
+        "title": {
+          "source": "unknown",
+          "selector": "h1.text-fontSize-24.text-fontWeight-600.text-lineHeight-1",
+          "confidence": 0
+        },
+        "company": {
+          "source": "unknown",
+          "selector": "div > div:nth-of-type(1) > div:nth-of-type(1) > span",
+          "confidence": 0
+        },
+        "location": {
+          "source": "unknown",
+          "selector": "p.careers__career-city.mb-0.text-fontSize-16 > span:nth-child(1)",
+          "confidence": 0
+        },
+        "description": {
+          "source": "unknown",
+          "selector": "div.careers__career-description-and-profession",
+          "confidence": 0
+        }
+      }
+    },
+    "title": {
+      "source": "MANUAL",
+      "selector": "h1.text-fontSize-24.text-fontWeight-600.text-lineHeight-1",
+      "confidence": 0
+    },
+    "location": {
+      "source": "MANUAL",
+      "selector": "p.careers__career-city.mb-0.text-fontSize-16 > span:nth-child(1)",
+      "confidence": 0
+    },
+    "description": {
+      "source": "MANUAL",
+      "selector": "div.animated__drawer-open-content > p.text-fontSize-22",
+      "confidence": 100
+    },
+    "externalJobId": {
+      "source": "MANUAL",
+      "selector": "div.careers__career-id.text-fontSize-22 > span",
+      "confidence": 100
+    }
+  }
+}

@@ -8,3 +8,9 @@
 Dockerfile*  text eol=lf
 *.yml        text eol=lf
 *.yaml       text eol=lf
+
+# Site config mirror: preserve bytes exactly so a restore matches what the DB
+# held. Several sites store setupScripts with CRLF endings, and the repo-wide
+# `text=auto eol=lf` above would rewrite them — making the backup differ from
+# the live value it exists to reproduce.
+sites/_configs/*.setup.js -text

@@ -1,0 +1,166 @@
+{
+  "_exportedAt": "2026-08-06T15:54:05.142Z",
+  "_note": "Mirror of the live config. The DB is authoritative; the worker never reads this file. setupScript lives alongside in <slug>.setup.js.",
+  "id": "cmpo15tl5002h01mvdda0zkf2",
+  "siteUrl": "https://www.mizrahi-tefahot.co.il/about-mizrahi-tefahot-he/career/open-jobs/",
+  "companyName": "bank mizrahi tefahot",
+  "status": "ACTIVE",
+  "setupScriptFile": null,
+  "pageFlow": [
+    {
+      "url": "https://www.mizrahi-tefahot.co.il/about-mizrahi-tefahot-he/career/open-jobs/",
+      "action": "navigate"
+    },
+    {
+      "url": "https://www.mizrahi-tefahot.co.il/about-mizrahi-tefahot-he/career/open-jobs/*",
+      "action": "navigate"
+    }
+  ],
+  "fieldMappings": {
+    "_meta": {
+      "savedAt": "2026-06-10T19:00:15.029Z",
+      "pagination": null,
+      "formCapture": {
+        "fields": [
+          {
+            "name": "openJobsModel.FullName",
+            "label": "*  שם פרטי ומשפחה",
+            "tagName": "input",
+            "required": false,
+            "fieldType": "text"
+          },
+          {
+            "name": "openJobsModel.IDNumber",
+            "label": "* מספר תעודת זהות",
+            "tagName": "input",
+            "required": false,
+            "fieldType": "text"
+          },
+          {
+            "name": "Question1",
+            "label": "כן",
+            "tagName": "input",
+            "required": false,
+            "fieldType": "radio"
+          },
+          {
+            "name": "Question1",
+            "label": "לא",
+            "tagName": "input",
+            "required": false,
+            "fieldType": "radio"
+          },
+          {
+            "name": "Question2",
+            "label": "כן",
+            "tagName": "input",
+            "required": false,
+            "fieldType": "radio"
+          },
+          {
+            "name": "Question2",
+            "label": "לא",
+            "tagName": "input",
+            "required": false,
+            "fieldType": "radio"
+          },
+          {
+            "name": "tbComments",
+            "label": "דברים שחשוב לך שנדע",
+            "tagName": "textarea",
+            "required": false,
+            "fieldType": "text"
+          },
+          {
+            "name": "openJobsModel.UploadFile",
+            "label": "open Jobs Model.Upload File",
+            "tagName": "input",
+            "required": false,
+            "fieldType": "text"
+          },
+          {
+            "name": "fileUpload",
+            "label": "file Upload",
+            "tagName": "input",
+            "required": false,
+            "fieldType": "file"
+          }
+        ],
+        "method": "GET",
+        "actionUrl": "https://www.mizrahi-tefahot.co.il/about-mizrahi-tefahot-he/career/open-jobs/",
+        "formSelector": "#JobSubmitionForm"
+      },
+      "itemSelector": ".job.filterItem",
+      "revealSelector": null,
+      "listingSelector": ".filterItemsWrapper",
+      "applyLoginReason": null,
+      "browserOverrides": null,
+      "loadMoreSelector": null,
+      "originalMappings": null,
+      "applyRequiresLogin": false
+    },
+    "title": {
+      "source": "MANUAL",
+      "selector": "h3",
+      "confidence": 100,
+      "capturedOnUrl": "https://www.mizrahi-tefahot.co.il/about-mizrahi-tefahot-he/career/open-jobs/"
+    },
+    "location": {
+      "source": "MANUAL",
+      "selector": ".location",
+      "confidence": 100,
+      "capturedOnUrl": "https://www.mizrahi-tefahot.co.il/about-mizrahi-tefahot-he/career/open-jobs/"
+    },
+    "detailUrl": {
+      "source": "MANUAL",
+      "selector": "a.toggler",
+      "confidence": 100,
+      "extractAttr": "href",
+      "capturedOnUrl": "https://www.mizrahi-tefahot.co.il/about-mizrahi-tefahot-he/career/open-jobs/"
+    },
+    "department": {
+      "source": "MANUAL",
+      "selector": ".field",
+      "confidence": 100,
+      "capturedOnUrl": "https://www.mizrahi-tefahot.co.il/about-mizrahi-tefahot-he/career/open-jobs/"
+    },
+    "description": {
+      "source": "MANUAL",
+      "selector": ".jobDetails .mizRteditor",
+      "confidence": 100,
+      "capturedOnUrl": "https://www.mizrahi-tefahot.co.il/about-mizrahi-tefahot-he/career/open-jobs/mizrahiliveteler/"
+    },
+    "requirements": {
+      "source": "MANUAL",
+      "selector": ".jobDetails ul.orange-squares",
+      "confidence": 100,
+      "capturedOnUrl": "https://www.mizrahi-tefahot.co.il/about-mizrahi-tefahot-he/career/open-jobs/mizrahiliveteler/"
+    },
+    "externalJobId": {
+      "source": "MANUAL",
+      "selector": "a.toggler",
+      "confidence": 100,
+      "extractAttr": "href",
+      "capturedOnUrl": "https://www.mizrahi-tefahot.co.il/about-mizrahi-tefahot-he/career/open-jobs/"
+    },
+    "employmentType": {
+      "source": "MANUAL",
+      "selector": ".type",
+      "confidence": 100,
+      "capturedOnUrl": "https://www.mizrahi-tefahot.co.il/about-mizrahi-tefahot-he/career/open-jobs/"
+    },
+    "jobTemplateCode": {
+      "source": "MANUAL",
+      "selector": "input[name=\"HiddenJobsIds\"]",
+      "confidence": 100,
+      "extractAttr": "value",
+      "capturedOnUrl": "https://www.mizrahi-tefahot.co.il/about-mizrahi-tefahot-he/career/open-jobs/"
+    },
+    "shortDescription": {
+      "source": "MANUAL",
+      "selector": ".jobDescription .mizRteditor",
+      "confidence": 100,
+      "capturedOnUrl": "https://www.mizrahi-tefahot.co.il/about-mizrahi-tefahot-he/career/open-jobs/"
+    }
+  }
+}

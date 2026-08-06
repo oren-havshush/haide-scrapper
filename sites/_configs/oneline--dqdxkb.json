@@ -1,0 +1,74 @@
+{
+  "_exportedAt": "2026-08-06T15:54:03.269Z",
+  "_note": "Mirror of the live config. The DB is authoritative; the worker never reads this file. setupScript lives alongside in <slug>.setup.js.",
+  "id": "cmqkpv5d0001701p6r8dqdxkb",
+  "siteUrl": "https://oneline.co.il/?page_id=44",
+  "companyName": "On Line",
+  "status": "ACTIVE",
+  "setupScriptFile": "oneline--dqdxkb.setup.js",
+  "pageFlow": [],
+  "fieldMappings": {
+    "_meta": {
+      "savedAt": "2026-06-19T09:26:11.386Z",
+      "pagination": null,
+      "formCapture": {
+        "fields": [
+          {
+            "name": "rec_fullname",
+            "label": "Full Name",
+            "tagName": "INPUT",
+            "required": true,
+            "fieldType": "text"
+          },
+          {
+            "name": "rec_phone",
+            "label": "Phone",
+            "tagName": "INPUT",
+            "required": true,
+            "fieldType": "tel"
+          },
+          {
+            "name": "rec_city",
+            "label": "City",
+            "tagName": "INPUT",
+            "required": true,
+            "fieldType": "text"
+          }
+        ],
+        "method": "POST",
+        "actionUrl": "https://oneline.co.il/?page_id=44",
+        "formSelector": ".custom-recruitment-form-container"
+      },
+      "itemSelector": "details.job-item",
+      "minPublishDate": null,
+      "minPublishDays": 90,
+      "revealSelector": null,
+      "listingSelector": null,
+      "applyLoginReason": null,
+      "browserOverrides": null,
+      "loadMoreSelector": null,
+      "originalMappings": null,
+      "applyRequiresLogin": false
+    },
+    "title": {
+      "source": "auto",
+      "selector": "summary.job-header",
+      "confidence": 0.95
+    },
+    "location": {
+      "source": "auto",
+      "selector": ".job-details-text > p:first-of-type",
+      "confidence": 0.9
+    },
+    "description": {
+      "source": "manual",
+      "selector": ".__ai-description",
+      "confidence": 0.9
+    },
+    "externalJobId": {
+      "source": "manual",
+      "selector": ".__ai-jobid",
+      "confidence": 0.95
+    }
+  }
+}

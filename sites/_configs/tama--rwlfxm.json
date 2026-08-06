@@ -1,0 +1,150 @@
+{
+  "_exportedAt": "2026-08-06T15:54:03.526Z",
+  "_note": "Mirror of the live config. The DB is authoritative; the worker never reads this file. setupScript lives alongside in <slug>.setup.js.",
+  "id": "cmqiaaekt000q01t1yurwlfxm",
+  "siteUrl": "https://www.tama.co.il/HE/%D7%93%D7%A8%D7%95%D7%A9%D7%99%D7%9D/",
+  "companyName": "תמה גרופ",
+  "status": "ACTIVE",
+  "setupScriptFile": "tama--rwlfxm.setup.js",
+  "pageFlow": [],
+  "fieldMappings": {
+    "_meta": {
+      "savedAt": "2026-06-18T12:22:43.129Z",
+      "pagination": null,
+      "formCapture": {
+        "fields": [
+          {
+            "name": "jobe",
+            "label": "משרה",
+            "options": [
+              {
+                "label": "טכנאי.ת אחזקה לאתר הייצור בגלעד",
+                "value": "טכנאי.ת אחזקה לאתר הייצור בגלעד"
+              },
+              {
+                "label": "מפעילי.ות מכונות לאולמות הייצור – משמר העמק וגלעד",
+                "value": "מפעילי.ות מכונות לאולמות הייצור – משמר העמק וגלעד"
+              },
+              {
+                "label": "מפעילי.ות מכונות לאולמות הייצור – אלון תבור",
+                "value": "מפעילי.ות מכונות לאולמות הייצור – אלון תבור"
+              },
+              {
+                "label": "אחר",
+                "value": "אחר"
+              }
+            ],
+            "tagName": "select",
+            "required": true,
+            "fieldType": "select"
+          },
+          {
+            "name": "your-name",
+            "label": "שם מלא",
+            "tagName": "input",
+            "required": true,
+            "fieldType": "text"
+          },
+          {
+            "name": "your-email",
+            "label": "דוא\"ל",
+            "tagName": "input",
+            "required": true,
+            "fieldType": "email"
+          },
+          {
+            "name": "your-phone",
+            "label": "טלפון",
+            "tagName": "input",
+            "required": true,
+            "fieldType": "tel"
+          },
+          {
+            "name": "your-file",
+            "label": "קורות חיים",
+            "tagName": "input",
+            "required": true,
+            "fieldType": "file"
+          },
+          {
+            "name": "opti",
+            "label": "איך הגעת אלינו",
+            "options": [
+              {
+                "label": "פייסבוק",
+                "value": "פייסבוק"
+              },
+              {
+                "label": "חבר מביא חבר",
+                "value": "חבר מביא חבר"
+              },
+              {
+                "label": "אינטרנט",
+                "value": "אינטרנט"
+              },
+              {
+                "label": "כנס משתחררים",
+                "value": "כנס משתחררים"
+              },
+              {
+                "label": "יריד תעסוקה",
+                "value": "יריד תעסוקה"
+              },
+              {
+                "label": "אחר",
+                "value": "אחר"
+              }
+            ],
+            "tagName": "select",
+            "required": false,
+            "fieldType": "select"
+          },
+          {
+            "name": "your-message",
+            "label": "הודעה נוספת",
+            "tagName": "textarea",
+            "required": false,
+            "fieldType": "textarea"
+          }
+        ],
+        "method": "POST",
+        "actionUrl": "https://www.tama.co.il/HE/%D7%93%D7%A8%D7%95%D7%A9%D7%99%D7%9D/#wpcf7-f18-o1",
+        "formSelector": ".wpcf7-form"
+      },
+      "itemSelector": "#haide-jobs-root [data-haide-job]",
+      "minPublishDate": null,
+      "minPublishDays": null,
+      "revealSelector": null,
+      "listingSelector": null,
+      "applyLoginReason": null,
+      "browserOverrides": null,
+      "loadMoreSelector": null,
+      "originalMappings": null,
+      "applyRequiresLogin": false
+    },
+    "title": {
+      "source": "MANUAL",
+      "selector": ".__ai-title",
+      "confidence": 100,
+      "capturedOnUrl": "https://www.tama.co.il/HE/%D7%93%D7%A8%D7%95%D7%A9%D7%99%D7%9D/"
+    },
+    "location": {
+      "source": "MANUAL",
+      "selector": ".__ai-location",
+      "confidence": 100,
+      "capturedOnUrl": "https://www.tama.co.il/HE/%D7%93%D7%A8%D7%95%D7%A9%D7%99%D7%9D/"
+    },
+    "description": {
+      "source": "MANUAL",
+      "selector": ".__ai-description",
+      "confidence": 100,
+      "capturedOnUrl": "https://www.tama.co.il/HE/%D7%93%D7%A8%D7%95%D7%A9%D7%99%D7%9D/"
+    },
+    "externalJobId": {
+      "source": "MANUAL",
+      "selector": "[data-haide-job-id]",
+      "confidence": 100,
+      "capturedOnUrl": "https://www.tama.co.il/HE/%D7%93%D7%A8%D7%95%D7%A9%D7%99%D7%9D/"
+    }
+  }
+}

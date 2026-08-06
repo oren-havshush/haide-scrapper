@@ -1,0 +1,58 @@
+{
+  "_exportedAt": "2026-08-06T15:54:03.832Z",
+  "_note": "Mirror of the live config. The DB is authoritative; the worker never reads this file. setupScript lives alongside in <slug>.setup.js.",
+  "id": "cmq9k1fml003g01lcad3cdlhs",
+  "siteUrl": "https://landing.iac.ac.il/ravitb/misra.html",
+  "companyName": "האקדמית רמת גן",
+  "status": "ACTIVE",
+  "setupScriptFile": null,
+  "pageFlow": [],
+  "fieldMappings": {
+    "_meta": {
+      "savedAt": "2026-06-11T13:51:01.682Z",
+      "pagination": null,
+      "formCapture": null,
+      "itemSelector": "details.job-card",
+      "minPublishDate": null,
+      "revealSelector": null,
+      "listingSelector": null,
+      "applyLoginReason": null,
+      "browserOverrides": null,
+      "loadMoreSelector": null,
+      "originalMappings": null,
+      "applyRequiresLogin": false
+    },
+    "title": {
+      "source": "MANUAL",
+      "selector": ".job-header-info h3",
+      "confidence": 100,
+      "capturedOnUrl": "https://landing.iac.ac.il/ravitb/misra.html"
+    },
+    "department": {
+      "source": "MANUAL",
+      "selector": ".company-name",
+      "confidence": 80,
+      "capturedOnUrl": "https://landing.iac.ac.il/ravitb/misra.html"
+    },
+    "description": {
+      "source": "MANUAL",
+      "selector": ".job-details",
+      "confidence": 100,
+      "capturedOnUrl": "https://landing.iac.ac.il/ravitb/misra.html"
+    },
+    "externalJobId": {
+      "source": "MANUAL",
+      "selector": "a.apply-btn, .cta-yellow a, a[href^=\"mailto\"], a[href^=\"http\"]",
+      "confidence": 70,
+      "extractAttr": "href",
+      "capturedOnUrl": "https://landing.iac.ac.il/ravitb/misra.html"
+    },
+    "applicationInfo": {
+      "source": "MANUAL",
+      "selector": "a.apply-btn, .cta-yellow a, a[href^=\"mailto\"], a[href^=\"http\"]",
+      "confidence": 100,
+      "extractAttr": "href",
+      "capturedOnUrl": "https://landing.iac.ac.il/ravitb/misra.html"
+    }
+  }
+}

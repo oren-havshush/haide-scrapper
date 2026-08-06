@@ -1,0 +1,59 @@
+{
+  "_exportedAt": "2026-08-06T15:54:02.252Z",
+  "_note": "Mirror of the live config. The DB is authoritative; the worker never reads this file. setupScript lives alongside in <slug>.setup.js.",
+  "id": "cmqyjj2ys003901nz9neq0sxw",
+  "siteUrl": "https://advice.co.il/blogs/careers",
+  "companyName": "אדוויס",
+  "status": "ACTIVE",
+  "setupScriptFile": "advice--eq0sxw.setup.js",
+  "pageFlow": [],
+  "fieldMappings": {
+    "_meta": {
+      "savedAt": "2026-07-01T10:00:43.136Z",
+      "pagination": null,
+      "formCapture": null,
+      "itemSelector": "div.article-card-wrapper",
+      "minPublishDate": null,
+      "minPublishDays": null,
+      "revealSelector": null,
+      "listingSelector": null,
+      "applyLoginReason": null,
+      "browserOverrides": null,
+      "loadMoreSelector": null,
+      "locationFallback": "כפר סבא",
+      "originalMappings": null,
+      "applyRequiresLogin": false
+    },
+    "title": {
+      "source": "auto",
+      "selector": "a.article-card__title",
+      "confidence": 0.9
+    },
+    "_formData": {
+      "source": "auto",
+      "selector": ".__ai-formData",
+      "confidence": 0.85
+    },
+    "detailUrl": {
+      "source": "auto",
+      "selector": "a.article-card__title",
+      "confidence": 0.9,
+      "extractAttr": "href"
+    },
+    "description": {
+      "source": "auto",
+      "selector": ".__ai-description",
+      "confidence": 0.85
+    },
+    "externalJobId": {
+      "source": "auto",
+      "selector": ".__ai-externalJobId",
+      "confidence": 0.9
+    },
+    "applicationInfo": {
+      "source": "auto",
+      "selector": ".__ai-applicationInfo",
+      "confidence": 0.85
+    }
+  }
+}

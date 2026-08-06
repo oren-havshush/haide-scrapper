@@ -1,0 +1,88 @@
+{
+  "_exportedAt": "2026-08-06T15:54:04.922Z",
+  "_note": "Mirror of the live config. The DB is authoritative; the worker never reads this file. setupScript lives alongside in <slug>.setup.js.",
+  "id": "cmq53nx0z000g01qnxxk5bo9h",
+  "siteUrl": "https://www.tmuralife.co.il/aboutus/%d7%a7%d7%a8%d7%99%d7%99%d7%a8%d7%94-%d7%91%d7%aa%d7%9e%d7%95%d7%a8%d7%94/",
+  "companyName": "תמורה",
+  "status": "ACTIVE",
+  "setupScriptFile": "tmuralife--k5bo9h.setup.js",
+  "pageFlow": [],
+  "fieldMappings": {
+    "_meta": {
+      "savedAt": "2026-06-08T11:07:57.280Z",
+      "pagination": null,
+      "formCapture": {
+        "fields": [
+          {
+            "name": "candidacy-your-name",
+            "label": "×©× ×ž×œ×*",
+            "tagName": "input",
+            "required": false,
+            "fieldType": "text"
+          },
+          {
+            "name": "candidacy-your-email",
+            "label": "×ž×™×™×œ*",
+            "tagName": "input",
+            "required": false,
+            "fieldType": "email"
+          },
+          {
+            "name": "candidacy-your-phone",
+            "label": "×˜×œ×¤×•×Ÿ × ×™×™×“*",
+            "tagName": "input",
+            "required": false,
+            "fieldType": "tel"
+          },
+          {
+            "name": "candidacy-your-cv",
+            "label": "candidacy your cv",
+            "tagName": "input",
+            "required": false,
+            "fieldType": "file"
+          },
+          {
+            "name": "acceptance-534",
+            "label": "×‘×©×œ×™×—×ª ×§×•×¨×•×ª ×”×—×™×™× ×•×ž×™×“×¢ × ×•×¡×£, ×× ×™ ×ž×¡×›×™×/×” ×œ×©×ž×™×¨×ª ×”×¤×¨×˜×™× ×‘×ž××’×¨×™ ×”×ž×™×“×¢ ×©×œ ×ª×ž×•×¨×”, ×œ×¢×™×‘×•×“× ×•×œ×ž×¡×™×¨×ª× ×‘×”×ª",
+            "tagName": "input",
+            "required": false,
+            "fieldType": "checkbox"
+          }
+        ],
+        "method": "POST",
+        "actionUrl": "https://www.tmuralife.co.il/aboutus/%d7%a7%d7%a8%d7%99%d7%99%d7%a8%d7%94-%d7%91%d7%aa%d7%9e%d7%95%d7%a8%d7%94/#wpcf7-f5-p388-o1",
+        "formSelector": "#wpcf7-f5-p388-o1 > form.wpcf7-form.init"
+      },
+      "itemSelector": ".accordion-item",
+      "revealSelector": null,
+      "listingSelector": null,
+      "browserOverrides": null,
+      "loadMoreSelector": null,
+      "originalMappings": null
+    },
+    "title": {
+      "source": "MANUAL",
+      "selector": ".accordion-item-title",
+      "confidence": 100,
+      "capturedOnUrl": "https://www.tmuralife.co.il/aboutus/%d7%a7%d7%a8%d7%99%d7%99%d7%a8%d7%94-%d7%91%d7%aa%d7%9e%d7%95%d7%a8%d7%94/"
+    },
+    "location": {
+      "source": "MANUAL",
+      "selector": "[data-extracted-location]",
+      "confidence": 100,
+      "capturedOnUrl": "https://www.tmuralife.co.il/aboutus/%d7%a7%d7%a8%d7%99%d7%99%d7%a8%d7%94-%d7%91%d7%aa%d7%9e%d7%95%d7%a8%d7%94/"
+    },
+    "description": {
+      "source": "MANUAL",
+      "selector": ".accordion-item-content",
+      "confidence": 100,
+      "capturedOnUrl": "https://www.tmuralife.co.il/aboutus/%d7%a7%d7%a8%d7%99%d7%99%d7%a8%d7%94-%d7%91%d7%aa%d7%9e%d7%95%d7%a8%d7%94/"
+    },
+    "externalJobId": {
+      "source": "MANUAL",
+      "selector": ".accordion-item-title",
+      "confidence": 100,
+      "capturedOnUrl": "https://www.tmuralife.co.il/aboutus/%d7%a7%d7%a8%d7%99%d7%99%d7%a8%d7%94-%d7%91%d7%aa%d7%9e%d7%95%d7%a8%d7%94/"
+    }
+  }
+}

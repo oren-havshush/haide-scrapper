@@ -1,0 +1,47 @@
+{
+  "_exportedAt": "2026-08-06T15:54:05.059Z",
+  "_note": "Mirror of the live config. The DB is authoritative; the worker never reads this file. setupScript lives alongside in <slug>.setup.js.",
+  "id": "cmpwioro3000n01pr47cylsu8",
+  "siteUrl": "https://tl-care.co.il/%D7%93%D7%A8%D7%95%D7%A9%D7%99%D7%9D/",
+  "companyName": "Tender Loving Care",
+  "status": "ACTIVE",
+  "setupScriptFile": "tl-care--cylsu8.setup.js",
+  "pageFlow": [],
+  "fieldMappings": {
+    "_meta": {
+      "savedAt": "2026-06-02T11:26:46.189Z",
+      "pagination": null,
+      "formCapture": null,
+      "itemSelector": ".elementor-accordion-item",
+      "revealSelector": null,
+      "listingSelector": ".elementor-accordion",
+      "browserOverrides": null,
+      "loadMoreSelector": null,
+      "originalMappings": null
+    },
+    "title": {
+      "source": "MANUAL",
+      "selector": ".elementor-accordion-title",
+      "confidence": 100,
+      "capturedOnUrl": "https://tl-care.co.il/%D7%93%D7%A8%D7%95%D7%A9%D7%99%D7%9D/"
+    },
+    "location": {
+      "source": "MANUAL",
+      "selector": "[data-haide-location]",
+      "confidence": 100,
+      "capturedOnUrl": "https://tl-care.co.il/%D7%93%D7%A8%D7%95%D7%A9%D7%99%D7%9D/"
+    },
+    "description": {
+      "source": "MANUAL",
+      "selector": ".elementor-tab-content",
+      "confidence": 100,
+      "capturedOnUrl": "https://tl-care.co.il/%D7%93%D7%A8%D7%95%D7%A9%D7%99%D7%9D/"
+    },
+    "externalJobId": {
+      "source": "MANUAL",
+      "selector": "[data-haide-jobid]",
+      "confidence": 100,
+      "capturedOnUrl": "https://tl-care.co.il/%D7%93%D7%A8%D7%95%D7%A9%D7%99%D7%9D/"
+    }
+  }
+}

@@ -1,0 +1,53 @@
+{
+  "_exportedAt": "2026-08-06T15:54:02.512Z",
+  "_note": "Mirror of the live config. The DB is authoritative; the worker never reads this file. setupScript lives alongside in <slug>.setup.js.",
+  "id": "cmqydke4s001k01nzdz6r81oc",
+  "siteUrl": "https://www.safari.co.il/Menu/item/2215",
+  "companyName": "הספארי",
+  "status": "ACTIVE",
+  "setupScriptFile": "safari--6r81oc.setup.js",
+  "pageFlow": [],
+  "fieldMappings": {
+    "_meta": {
+      "savedAt": "2026-06-28T22:47:29.246Z",
+      "pagination": null,
+      "formCapture": null,
+      "itemSelector": "section#section_optional_choice .col-6.mt-3",
+      "minPublishDate": null,
+      "minPublishDays": null,
+      "revealSelector": null,
+      "listingSelector": null,
+      "applyLoginReason": null,
+      "browserOverrides": null,
+      "loadMoreSelector": null,
+      "locationFallback": null,
+      "originalMappings": null,
+      "applyRequiresLogin": false
+    },
+    "title": {
+      "source": "auto",
+      "selector": "h4 > pre.breaklines",
+      "confidence": 0.9
+    },
+    "detailUrl": {
+      "source": "auto",
+      "selector": ".__ai-detailUrl",
+      "confidence": 0.9
+    },
+    "description": {
+      "source": "auto",
+      "selector": ".__ai-description",
+      "confidence": 0.85
+    },
+    "externalJobId": {
+      "source": "auto",
+      "selector": ".__ai-externalJobId",
+      "confidence": 0.95
+    },
+    "applicationInfo": {
+      "source": "auto",
+      "selector": ".__ai-applicationInfo",
+      "confidence": 0.9
+    }
+  }
+}
