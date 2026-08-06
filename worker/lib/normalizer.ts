@@ -557,13 +557,32 @@ const RE_REGION_B = new RegExp(
     NOT_HEB_AFTER,
   "u",
 );
+// Pattern D: "ל<noun> <city>" — the ad addresses a *place of work* whose name
+// carries the ל prefix, leaving the city bare right after it: "לנמל אשדוד",
+// "לסניף קרית גת", "לבית חולים רמת גן". Pattern B misses these because the
+// city itself has no "ב" prefix.
+//
+// The ל-word is required to be Hebrew and at least two letters, and the city
+// is matched from the length-gated CITY_ALT_LONG list, so the classic
+// false-positive "למשרה מלאה" cannot fire ("מלאה" is in GAZETTEER_DENYLIST and
+// therefore absent from every alternation).
+const RE_CITY_L_NOUN = new RegExp(
+  NOT_HEB_BEFORE +
+    String.raw`ל[א-ת]{2,}\s+(` +
+    CITY_ALT_LONG +
+    String.raw`)` +
+    NOT_HEB_AFTER,
+  "u",
+);
 
 /**
  * Attempt to extract an unlabeled Israeli city/region from free-form text.
  * Tries, in order of confidence:
  *   (A)  "לאזור/בעיר <region|city>" — explicit preposition + indicator,
  *   (A2) a location cue (📍/"מיקום"/"סניף"/…) within 30 chars of a city,
- *   (B)  bare "ב<city>" / "ב<region>" prefix (length-gated, see above).
+ *   (B)  bare "ב<city>" prefix (length-gated, see above),
+ *   (D)  "ל<noun> <city>" — city bare after a ל-prefixed workplace noun,
+ *   (C)  bare "ב<region>" prefix — coarsest, tried last.
  * Returns the matched place name, or null if no reliable match is found.
  */
 export function extractLocationFromGazetteer(text: string): string | null {
@@ -573,7 +592,12 @@ export function extractLocationFromGazetteer(text: string): string | null {
     RE_CITY_INDICATOR.exec(text) ||
     RE_CITY_CUE.exec(text) ||
     RE_CITY_B.exec(text) ||
-    RE_REGION_B.exec(text);
+    RE_REGION_B.exec(text) ||
+    // Lowest confidence, so it runs last: the city here carries no prefix of its
+    // own, and any adjective sitting after a ל-noun that happens to share a
+    // place name would otherwise outrank a correct earlier match (the real case:
+    // "למפעל מצליח ברמת הגולן" resolving to מצליח instead of רמת הגולן).
+    RE_CITY_L_NOUN.exec(text);
   return m ? m[1] : null;
 }
 
