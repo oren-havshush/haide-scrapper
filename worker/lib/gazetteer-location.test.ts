@@ -66,6 +66,52 @@ assert(
   "text with no place yields null",
 );
 
+// --- direction words qualify the city, they are not the location ----------
+
+// tigbur job 232880: stored אזור צפון, but the ad says north Tel Aviv.
+eq(
+  extractLocationFromGazetteer('לארגון בצפון ת"א דרוש\\ה מהנדס\\ת מכונות'),
+  "תל אביב-יפו",
+  'בצפון ת"א resolves to Tel Aviv, not the northern region',
+);
+eq(
+  extractLocationFromGazetteer("דרוש/ה עובד/ת לחברה בדרום תל אביב"),
+  "תל אביב",
+  "בדרום <city> resolves to the city",
+);
+// With no city after it, the direction is still a legitimate region read.
+eq(
+  extractLocationFromGazetteer("המשרה בצפון הארץ, נדרשת ניידות"),
+  "צפון",
+  "a direction with no city after it still reads as a region",
+);
+
+// --- city abbreviations ---------------------------------------------------
+
+eq(
+  extractLocationFromGazetteer('דרוש/ה מנהל/ת חשבונות בת"א'),
+  "תל אביב-יפו",
+  'בת"א resolves via abbreviation',
+);
+eq(
+  extractLocationFromGazetteer("דרוש/ה מלצר/ית בב״ש למשמרות ערב"),
+  "באר שבע",
+  "Hebrew gershayim (U+05F4) is accepted as well as ASCII quote",
+);
+eq(
+  extractLocationFromGazetteer('דרוש/ה נהג/ת בפ"ת'),
+  "פתח תקווה",
+  'בפ"ת resolves to פתח תקווה',
+);
+
+// --- אזור is "the area of", not the town ----------------------------------
+
+eq(
+  extractLocationFromGazetteer('לבסיס של צה"ל באזור צומת שוקת דרוש/ה טכנאי/ת'),
+  null,
+  "באזור (in the area of) must not resolve to the town אזור",
+);
+
 // --- existing behaviour still intact --------------------------------------
 
 eq(

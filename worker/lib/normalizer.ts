@@ -477,6 +477,7 @@ const BARE_PREFIX_MIN_LEN = 4;
 // list because their surrounding context makes the place reading reliable.
 const BARE_PREFIX_DENYLIST = new Set<string>([
   "משמרות", // "במשמרות" = in shifts (shift work), not the moshav משמרות
+  "אזור", // "באזור צומת שוקת" = in the area of — not the town אזור
 ]);
 
 const passesBarePrefix = (name: string) =>
@@ -517,6 +518,49 @@ const LOC_CUE =
 // either side (so "אבן יהודה" matches in "...באבן יהודה!" but "תקווה" is not
 // matched as a suffix of an unrelated word).
 const NOT_HEB_BEFORE = String.raw`(?<![\u0590-\u05FF])`;
+
+// Israeli ads write the big cities as abbreviations far more often than in full
+// ("\u05DC\u05D0\u05E8\u05D2\u05D5\u05DF \u05D1\u05E6\u05E4\u05D5\u05DF \u05EA\"\u05D0"). None of these appear in IL_CITIES, so before this the
+// city was simply unmatchable and whatever else was in the sentence \u2014 usually a
+// direction word \u2014 won by default.
+//
+// Ads use both the ASCII quote and the Hebrew gershayim (U+05F4), so the
+// alternation accepts either. Deliberately excluded: \u05E7"\u05D2 (= kilogram) and
+// any other abbreviation that collides with a common unit or word.
+const CITY_ABBREVIATIONS: ReadonlyArray<readonly [string, string]> = [
+  ['\u05E8\u05D0\u05E9\u05DC"\u05E6', "\u05E8\u05D0\u05E9\u05D5\u05DF \u05DC\u05E6\u05D9\u05D5\u05DF"],
+  ['\u05EA"\u05D0', "\u05EA\u05DC \u05D0\u05D1\u05D9\u05D1-\u05D9\u05E4\u05D5"],
+  ['\u05D1"\u05E9', "\u05D1\u05D0\u05E8 \u05E9\u05D1\u05E2"],
+  ['\u05E4"\u05EA', "\u05E4\u05EA\u05D7 \u05EA\u05E7\u05D5\u05D5\u05D4"],
+  ['\u05E8"\u05D2', "\u05E8\u05DE\u05EA \u05D2\u05DF"],
+  ['\u05DB"\u05E1', "\u05DB\u05E4\u05E8 \u05E1\u05D1\u05D0"],
+  ["\u05D9-\u05DD", "\u05D9\u05E8\u05D5\u05E9\u05DC\u05D9\u05DD"],
+];
+const anyQuote = (s: string) => escapeRe(s).replace(/"/g, `["\u05F4]`);
+const ABBR_ALT = CITY_ABBREVIATIONS.slice()
+  .sort((a, b) => b[0].length - a[0].length)
+  .map(([abbr]) => anyQuote(abbr))
+  .join("|");
+const ABBR_TO_CITY = new Map<string, string>(
+  CITY_ABBREVIATIONS.map(([abbr, city]) => [abbr, city]),
+);
+/** Resolve a matched token to a canonical city name (abbreviations only). */
+const resolvePlace = (name: string): string =>
+  ABBR_TO_CITY.get(name.replace(/\u05F4/g, '"')) ?? name;
+
+// Words that qualify the city that follows them rather than naming a place of
+// their own: "\u05D1\u05E6\u05E4\u05D5\u05DF \u05EA\"\u05D0" is north Tel Aviv, "\u05D1\u05D0\u05D6\u05D5\u05E8 \u05EA\u05E2\u05E9\u05D9\u05D4 \u05E2\u05DB\u05D5" is Akko. Note
+// "\u05D0\u05D6\u05D5\u05E8" is itself a town, which is exactly why it is also in
+// BARE_PREFIX_DENYLIST \u2014 on its own it is almost always "the area of".
+const DIRECTION_ALT = [
+  String.raw`\u05D0\u05D6\u05D5\u05E8(?:\s+\u05D4?\u05EA\u05E2\u05E9\u05D9\u05D9?\u05D4)?`,
+  "\u05DE\u05E8\u05D7\u05D1",
+  "\u05E6\u05E4\u05D5\u05DF",
+  "\u05D3\u05E8\u05D5\u05DD",
+  "\u05DE\u05E8\u05DB\u05D6",
+  "\u05DE\u05D6\u05E8\u05D7",
+  "\u05DE\u05E2\u05E8\u05D1",
+].join("|");
 const NOT_HEB_AFTER = String.raw`(?![\u0590-\u05FF])`;
 
 // Pattern A: explicit area indicator — "לאזור X" / "באזור X" / "בעיר X".
@@ -541,6 +585,28 @@ const RE_CITY_CUE = new RegExp(
     CITY_ALT +
     String.raw`)` +
     NOT_HEB_AFTER,
+  "u",
+);
+// Pattern A3: "ב<direction> <city>" — the direction qualifies the city that
+// follows it. Must be tried before RE_REGION_B, which would otherwise match the
+// direction alone and discard the city: "בצפון ת\"א" resolved to the northern
+// region instead of Tel Aviv.
+const RE_DIRECTION_CITY = new RegExp(
+  NOT_HEB_BEFORE +
+    String.raw`ב(?:` +
+    DIRECTION_ALT +
+    String.raw`)\s+(` +
+    ABBR_ALT +
+    "|" +
+    CITY_ALT +
+    String.raw`)` +
+    NOT_HEB_AFTER,
+  "u",
+);
+// Pattern A4: bare "ב<abbreviation>" — "בת\"א", "בב\"ש". Safe without a length
+// gate because the embedded quote makes these unambiguous.
+const RE_CITY_ABBR_B = new RegExp(
+  NOT_HEB_BEFORE + String.raw`ב(` + ABBR_ALT + String.raw`)`,
   "u",
 );
 // Pattern B/C: bare "ב<city>" / "ב<region>" prefix (length-gated). The "ב"
@@ -591,6 +657,9 @@ export function extractLocationFromGazetteer(text: string): string | null {
     RE_REGION_INDICATOR.exec(text) ||
     RE_CITY_INDICATOR.exec(text) ||
     RE_CITY_CUE.exec(text) ||
+    // Before the region matchers: a direction word only qualifies the city.
+    RE_DIRECTION_CITY.exec(text) ||
+    RE_CITY_ABBR_B.exec(text) ||
     RE_CITY_B.exec(text) ||
     RE_REGION_B.exec(text) ||
     // Lowest confidence, so it runs last: the city here carries no prefix of its
@@ -598,7 +667,7 @@ export function extractLocationFromGazetteer(text: string): string | null {
     // place name would otherwise outrank a correct earlier match (the real case:
     // "למפעל מצליח ברמת הגולן" resolving to מצליח instead of רמת הגולן).
     RE_CITY_L_NOUN.exec(text);
-  return m ? m[1] : null;
+  return m ? resolvePlace(m[1]) : null;
 }
 
 /**
