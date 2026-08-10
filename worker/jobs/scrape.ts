@@ -6,6 +6,7 @@ import {
   normalizeJobRecord,
   resolveMetaMinPublishDate,
   computeAgeBucket,
+  extractLocationFromGazetteer,
 } from "../lib/normalizer";
 import type { NormalizedJobRecord } from "../lib/normalizer";
 import { normalizeLocations } from "../lib/locationNormalize";
@@ -2611,6 +2612,124 @@ function buildScrapeWarnings(args: {
   return warnings;
 }
 
+/** Warn when this share of a site's jobs end up with no usable location. */
+const UNKNOWN_LOCATION_WARN_RATIO = 0.4;
+
+/**
+ * Values that are never a workplace. Each of these is a bug we have actually
+ * shipped: gazetteer false positives where a common Hebrew word doubles as a
+ * place name ("באזור" = in the area of, "במשמרות" = in shifts, "משרה מלאה" =
+ * full-time), and unfilled <select> placeholders scraped verbatim.
+ */
+const NON_PLACE_LOCATIONS = new Set([
+  "אזור",
+  "משמרות",
+  "מלאה",
+  "מצליח",
+  "בחר",
+  "בחר אזור",
+  "בחר עיר",
+  "בחר תחום",
+]);
+
+/**
+ * Coarse values that are legitimate on their own — plenty of boards only
+ * publish a region — but wrong when the ad names an actual city. Used only for
+ * the region-over-city check below, never flagged by themselves.
+ */
+const COARSE_LOCATIONS = new Set([
+  "צפון",
+  "דרום",
+  "מרכז",
+  "מזרח",
+  "מערב",
+  "הצפון",
+  "הדרום",
+  "המרכז",
+  "אזור צפון",
+  "אזור דרום",
+  "אזור מרכז",
+  "השרון",
+  "השפלה",
+]);
+
+/**
+ * Location-quality warnings for a finished scrape (non-blocking, like the rest).
+ *
+ * This is the enforcement half of the location work: measurement already
+ * existed, but nothing surfaced a regression, so every bad value so far was
+ * found by a human reading rows. Three signals, each one an actual past defect:
+ *
+ *  - unknown_location_rate — the site stopped yielding locations at all
+ *  - non_place_location    — a value that cannot be a workplace
+ *  - region_over_city      — we stored a coarse region while the ad names a
+ *                            city (tigbur job 232880: stored אזור צפון, the ad
+ *                            said "בצפון ת\"א")
+ *
+ * Deliberately NOT flagged: a coarse region on its own. Many boards publish
+ * nothing finer, and warning on those would bury the real signals in noise.
+ */
+function buildLocationWarnings(
+  jobs: {
+    location: string | null;
+    title: string | null;
+    description: string | null;
+    requirements: string | null;
+  }[],
+): string[] {
+  if (jobs.length === 0) return [];
+  const warnings: string[] = [];
+
+  const unknown = jobs.filter(
+    (j) => !j.location || j.location.trim() === "" || j.location === "Unknown",
+  ).length;
+  if (unknown / jobs.length > UNKNOWN_LOCATION_WARN_RATIO) {
+    warnings.push(
+      `unknown_location_rate: ${unknown}/${jobs.length} job(s) have no location ` +
+        `(${Math.round((unknown / jobs.length) * 100)}%)`,
+    );
+  }
+
+  const nonPlace = new Map<string, number>();
+  let regionOverCity = 0;
+  let regionOverCityExample = "";
+  for (const j of jobs) {
+    const loc = (j.location ?? "").trim();
+    if (!loc) continue;
+    if (NON_PLACE_LOCATIONS.has(loc)) {
+      nonPlace.set(loc, (nonPlace.get(loc) ?? 0) + 1);
+      continue;
+    }
+    if (COARSE_LOCATIONS.has(loc)) {
+      const text = [j.title, j.description, j.requirements]
+        .filter(Boolean)
+        .join("\n");
+      const city = text ? extractLocationFromGazetteer(text) : null;
+      if (city && city !== loc && !COARSE_LOCATIONS.has(city)) {
+        regionOverCity++;
+        if (!regionOverCityExample) regionOverCityExample = `${loc} -> ${city}`;
+      }
+    }
+  }
+
+  if (nonPlace.size > 0) {
+    const detail = [...nonPlace.entries()]
+      .sort((a, b) => b[1] - a[1])
+      .map(([v, n]) => `"${v}"×${n}`)
+      .join(", ");
+    warnings.push(`non_place_location: ${detail} — not a workplace`);
+  }
+
+  if (regionOverCity > 0) {
+    warnings.push(
+      `region_over_city: ${regionOverCity} job(s) stored a region while the ad ` +
+        `names a city (e.g. ${regionOverCityExample})`,
+    );
+  }
+
+  return warnings;
+}
+
 // ---------------------------------------------------------------------------
 // Main: handleScrapeJob
 // ---------------------------------------------------------------------------
@@ -3315,6 +3434,18 @@ async function executeScrape(
       deadDetailPages: countDeadDetailPages(rawFieldsList),
       elapsedMs: Date.now() - scrapeStartedAt,
     });
+    // Location quality is read back from what was actually saved, so it
+    // reflects overrides and normalisation rather than the pre-write values.
+    const savedJobs = await prisma.job.findMany({
+      where: { scrapeRunId },
+      select: {
+        location: true,
+        title: true,
+        description: true,
+        requirements: true,
+      },
+    });
+    scrapeWarnings.push(...buildLocationWarnings(savedJobs));
     if (scrapeWarnings.length > 0) {
       await prisma.scrapeRun.update({
         where: { id: scrapeRunId },

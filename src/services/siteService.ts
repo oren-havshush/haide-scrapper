@@ -239,10 +239,35 @@ export async function updateSiteStatus(siteId: string, newStatus: SiteStatus) {
   return updatedSite;
 }
 
-export async function createAnalysisJob(siteId: string) {
+export async function createAnalysisJob(
+  siteId: string,
+  opts: { force?: boolean } = {},
+) {
   const site = await prisma.site.findUnique({ where: { id: siteId } });
   if (!site) {
     throw new NotFoundError("Site", siteId);
+  }
+
+  // Re-analysing a live site is destructive, and nothing about the button says
+  // so. The transition to ANALYZING deliberately clears configLocked (see
+  // updateSiteStatus), which lets the analyzer overwrite fieldMappings, and a
+  // FAILED outcome deletes the site's scraped jobs. careers.iec.co.il lost a
+  // working config and all 53 of its jobs exactly this way; every selector
+  // still reported "MATCHED" afterwards, so the damage was invisible until the
+  // job count hit zero.
+  //
+  // Refuse by default for a site that has something to lose. Callers who mean
+  // it pass force.
+  if (!opts.force && site.status === "ACTIVE") {
+    const jobCount = await prisma.job.count({ where: { siteId } });
+    if (jobCount > 0) {
+      throw new ConflictError(
+        `Site is ACTIVE with ${jobCount} job(s). Re-analysing overwrites its saved ` +
+          `config and can delete those jobs. Back the config up first ` +
+          `(npx tsx scripts/export-site-configs.ts --site ${siteId}), then retry ` +
+          `with force=true.`,
+      );
+    }
   }
 
   // Check for existing pending/in-progress analysis job
