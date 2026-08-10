@@ -10,7 +10,8 @@ import { PolicyStatusBadge, type PolicyStatusValue } from "@/components/shared/P
 import { ConfidenceBar } from "@/components/shared/ConfidenceBar";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
-import { ChevronUp, ChevronDown, Loader2 } from "lucide-react";
+import { ChevronUp, ChevronDown, Loader2, TriangleAlert } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { toast } from "sonner";
 import { SiteActions } from "@/components/sites/SiteActions";
 import { DeleteSiteDialog } from "@/components/sites/DeleteSiteDialog";
@@ -81,6 +82,30 @@ function previewNote(note: string): string {
     : note;
 }
 
+/**
+ * Location-quality warning types written by the worker into
+ * ScrapeRun.warnings. Only these surface a triangle in the table; any other
+ * warning the scraper records is deliberately ignored here.
+ */
+const LOCATION_WARNING_TYPES = [
+  "region_over_city",
+  "unknown_location_rate",
+  "non_place_location",
+] as const;
+
+/**
+ * Warnings are stored as "type: human readable detail". Return the matching
+ * types only — deduplicated, in the canonical order above, and without the
+ * detail, so the popover never shows counts or job examples.
+ */
+function locationWarningTypes(warnings: string[] | null): string[] {
+  if (!Array.isArray(warnings)) return [];
+  const present = new Set(
+    warnings.map((w) => String(w).split(":", 1)[0].trim()),
+  );
+  return LOCATION_WARNING_TYPES.filter((t) => present.has(t));
+}
+
 const URL_PREVIEW_MAX = 60;
 
 function previewUrl(url: string): string {
@@ -102,7 +127,13 @@ function SortIndicator({ column, sortBy, sortOrder }: {
   );
 }
 
-function ScrapeStatusIndicator({ scrapeRun }: { scrapeRun: LatestScrapeRun | null }) {
+function ScrapeStatusIndicator({
+  scrapeRun,
+  siteStatus,
+}: {
+  scrapeRun: LatestScrapeRun | null;
+  siteStatus: Site["status"];
+}) {
   if (!scrapeRun) return null;
 
   if (scrapeRun.status === "IN_PROGRESS") {
@@ -121,21 +152,37 @@ function ScrapeStatusIndicator({ scrapeRun }: { scrapeRun: LatestScrapeRun | nul
     const completedTime = scrapeRun.completedAt
       ? new Date(scrapeRun.completedAt).toLocaleString([], { month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" })
       : "";
-    const warnings = Array.isArray(scrapeRun.warnings) ? scrapeRun.warnings : [];
+    // Location warnings are advisory and only meaningful for a live site, so
+    // the triangle is limited to ACTIVE. The job count below is unaffected.
+    const warningTypes =
+      siteStatus === "ACTIVE" ? locationWarningTypes(scrapeRun.warnings) : [];
     return (
       <span
         className="inline-flex items-center text-xs ml-2"
         style={{ color: "#22c55e" }}
       >
         {scrapeRun.jobCount} jobs{completedTime ? ` (${completedTime})` : ""}
-        {warnings.length > 0 && (
-          <span
-            className="ml-1 cursor-help"
-            style={{ color: "#f59e0b" }}
-            title={warnings.join("\n")}
-          >
-            {"\u26A0"} {warnings.length}
-          </span>
+        {warningTypes.length > 0 && (
+          <Tooltip>
+            <TooltipTrigger
+              render={
+                <span
+                  className="ml-1 inline-flex cursor-help items-center"
+                  style={{ color: "#f59e0b" }}
+                  aria-label="Location warnings"
+                />
+              }
+            >
+              <TriangleAlert className="size-3.5" />
+            </TooltipTrigger>
+            <TooltipContent side="top" align="center">
+              <span className="flex flex-col gap-0.5">
+                {warningTypes.map((type) => (
+                  <span key={type}>{type}</span>
+                ))}
+              </span>
+            </TooltipContent>
+          </Tooltip>
         )}
       </span>
     );
@@ -382,7 +429,10 @@ export function SitesTable({
                 <TableCell>
                   <div className="flex items-center">
                     <StatusBadge status={site.status} />
-                    <ScrapeStatusIndicator scrapeRun={site.latestScrapeRun} />
+                    <ScrapeStatusIndicator
+                      scrapeRun={site.latestScrapeRun}
+                      siteStatus={site.status}
+                    />
                   </div>
                 </TableCell>
                 <TableCell>
