@@ -95,6 +95,7 @@ export default function JobsPage() {
   const [siteId, setSiteId] = useState<string | undefined>(undefined);
   const [siteUrlSearch, setSiteUrlSearch] = useState("");
   const [companyNameSearch, setCompanyNameSearch] = useState("");
+  const [externalJobIdSearch, setExternalJobIdSearch] = useState("");
   const [ageBucket, setAgeBucket] = useState("");
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState<number>(DEFAULT_PAGE_SIZE);
@@ -105,6 +106,7 @@ export default function JobsPage() {
     siteId,
     siteUrlSearch: siteUrlSearch || undefined,
     companyNameSearch: companyNameSearch || undefined,
+    externalJobIdSearch: externalJobIdSearch || undefined,
     ageBucket: ageBucket || undefined,
   });
 
@@ -124,6 +126,11 @@ export default function JobsPage() {
 
   const handleCompanyNameSearchChange = (value: string) => {
     setCompanyNameSearch(value);
+    setPage(1);
+  };
+
+  const handleExternalJobIdSearchChange = (value: string) => {
+    setExternalJobIdSearch(value);
     setPage(1);
   };
 
@@ -153,7 +160,9 @@ export default function JobsPage() {
   const singleSiteFromText =
     distinctSiteIds.length === 1 ? distinctSiteIds[0] : undefined;
   const applicationFieldsSiteId = siteId ?? singleSiteFromText;
-  const hasFilter = Boolean(siteId || siteUrlSearch || companyNameSearch || ageBucket);
+  const hasFilter = Boolean(
+    siteId || siteUrlSearch || companyNameSearch || externalJobIdSearch || ageBucket,
+  );
 
   return (
     <div>
@@ -167,8 +176,10 @@ export default function JobsPage() {
       <JobsSearchFilters
         companyNameSearch={companyNameSearch}
         siteUrlSearch={siteUrlSearch}
+        externalJobIdSearch={externalJobIdSearch}
         onCompanyNameSearchChange={handleCompanyNameSearchChange}
         onSiteUrlSearchChange={handleSiteUrlSearchChange}
+        onExternalJobIdSearchChange={handleExternalJobIdSearchChange}
       />
       <div className="mb-4">
         <JobsAgeFilter value={ageBucket} onChange={handleAgeBucketChange} />
