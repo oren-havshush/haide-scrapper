@@ -1,7 +1,7 @@
 import { NextRequest } from "next/server";
 import { listResponse } from "@/lib/api-utils";
 import { formatErrorResponse } from "@/lib/errors";
-import { paginationSchema, jobsFilterSchema } from "@/lib/validators";
+import { jobsPaginationSchema, jobsFilterSchema } from "@/lib/validators";
 import { prisma } from "@/lib/prisma";
 import type { Prisma } from "@/generated/prisma/client";
 
@@ -9,7 +9,7 @@ export async function GET(request: NextRequest) {
   try {
     const { searchParams } = request.nextUrl;
 
-    const pagination = paginationSchema.parse({
+    const pagination = jobsPaginationSchema.parse({
       page: searchParams.get("page") ?? undefined,
       pageSize: searchParams.get("pageSize") ?? undefined,
     });

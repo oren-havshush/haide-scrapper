@@ -29,11 +29,54 @@ const AGE_COUNTER_ITEMS = [
   { key: "none", label: "No date", className: "text-[#71717a]" },
 ] as const;
 
+const PAGE_SIZE_OPTIONS = [50, 100, 150] as const;
+
+const DEFAULT_PAGE_SIZE = 50;
+
+/**
+ * Rows-per-page segmented control. All options stay visible — no dropdown —
+ * and the choice is component state only, so a refresh returns to 50.
+ */
+function RowsPerPageControl({
+  pageSize,
+  onPageSizeChange,
+}: {
+  pageSize: number;
+  onPageSizeChange: (size: number) => void;
+}) {
+  return (
+    <div className="ml-auto flex items-center gap-3">
+      <span className="text-[#a1a1aa] text-sm">Rows</span>
+      <div className="inline-flex items-center gap-0.5 rounded-lg border border-white/10 bg-white/5 p-0.5 shadow-inner shadow-black/40 backdrop-blur-md">
+        {PAGE_SIZE_OPTIONS.map((size) => {
+          const isActive = size === pageSize;
+          return (
+            <button
+              key={size}
+              type="button"
+              aria-pressed={isActive}
+              onClick={() => onPageSizeChange(size)}
+              className={
+                "rounded-md px-4 py-1 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50 " +
+                (isActive
+                  ? "bg-white/15 text-[#fafafa] ring-1 ring-white/15"
+                  : "text-[#a1a1aa] hover:bg-white/5 hover:text-[#e4e4e7]")
+              }
+            >
+              {size}
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 function AgeCounterBar({ ageCounts }: { ageCounts: AgeCounts }) {
   const hasAny = AGE_COUNTER_ITEMS.some((item) => (ageCounts[item.key] ?? 0) > 0);
   if (!hasAny) return null;
   return (
-    <div className="mb-4 flex flex-wrap items-center gap-3 rounded-md border border-[#27272a] bg-[#09090b] px-4 py-2 text-sm">
+    <>
       <span className="text-[#71717a] text-xs uppercase tracking-wide mr-1">Age:</span>
       {AGE_COUNTER_ITEMS.map((item) => {
         const count = ageCounts[item.key] ?? 0;
@@ -44,7 +87,7 @@ function AgeCounterBar({ ageCounts }: { ageCounts: AgeCounts }) {
           </span>
         );
       })}
-    </div>
+    </>
   );
 }
 
@@ -54,9 +97,11 @@ export default function JobsPage() {
   const [companyNameSearch, setCompanyNameSearch] = useState("");
   const [ageBucket, setAgeBucket] = useState("");
   const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState<number>(DEFAULT_PAGE_SIZE);
 
   const { data, isLoading } = useJobs({
     page,
+    pageSize,
     siteId,
     siteUrlSearch: siteUrlSearch || undefined,
     companyNameSearch: companyNameSearch || undefined,
@@ -64,7 +109,6 @@ export default function JobsPage() {
   });
 
   const total = data?.meta?.total ?? 0;
-  const pageSize = 50;
   const totalPages = Math.ceil(total / pageSize);
   const ageCounts: AgeCounts = data?.meta?.ageCounts ?? {};
 
@@ -85,6 +129,12 @@ export default function JobsPage() {
 
   const handleAgeBucketChange = (value: string) => {
     setAgeBucket(value);
+    setPage(1);
+  };
+
+  // A different page size changes what page 1 even means, so go back to it.
+  const handlePageSizeChange = (size: number) => {
+    setPageSize(size);
     setPage(1);
   };
 
@@ -123,7 +173,15 @@ export default function JobsPage() {
       <div className="mb-4">
         <JobsAgeFilter value={ageBucket} onChange={handleAgeBucketChange} />
       </div>
-      <AgeCounterBar ageCounts={ageCounts} />
+      {/* One bar: age counters on the left (still hidden when every count is
+          zero), rows control pinned right and always visible. */}
+      <div className="mb-4 flex flex-wrap items-center gap-3 rounded-md border border-[#27272a] bg-[#09090b] px-4 py-2 text-sm">
+        <AgeCounterBar ageCounts={ageCounts} />
+        <RowsPerPageControl
+          pageSize={pageSize}
+          onPageSizeChange={handlePageSizeChange}
+        />
+      </div>
       {applicationFieldsSiteId && (
         <ApplicationFields siteId={applicationFieldsSiteId} />
       )}
@@ -132,6 +190,7 @@ export default function JobsPage() {
         isLoading={isLoading}
         hasFilter={hasFilter}
         page={page}
+        pageSize={pageSize}
         totalPages={totalPages}
         total={total}
         onPageChange={setPage}

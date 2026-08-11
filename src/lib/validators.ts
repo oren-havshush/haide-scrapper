@@ -15,6 +15,14 @@ export const paginationSchema = z.object({
   pageSize: z.coerce.number().int().min(1).max(100).default(50),
 });
 
+// The jobs table offers a 50/100/150 rows-per-page control, so it needs a
+// higher ceiling than the shared schema above. Kept separate so raising it
+// here cannot loosen the limit on any other endpoint.
+export const jobsPaginationSchema = z.object({
+  page: z.coerce.number().int().min(1).default(1),
+  pageSize: z.coerce.number().int().min(1).max(150).default(50),
+});
+
 export const siteUrlFilterSchema = z.object({
   siteUrl: z.string().optional(),
 });
