@@ -66,6 +66,12 @@ export const jobsFilterSchema = z.object({
   // dashboard filters. Caps mirror siteSearchFilterSchema.
   siteUrlSearch: z.string().trim().max(500).optional(),
   companyNameSearch: z.string().trim().max(120).optional(),
+  // Exact match on Job.externalJobId — the value shown in the table's Job ID
+  // column, not the internal cuid. Exact rather than partial because short
+  // numeric ids ("37") would otherwise match every id containing them. The cap
+  // clears the longest id in the data (230 chars, where the scraper fell back
+  // to detailUrl as the job key).
+  externalJobIdSearch: z.string().trim().max(255).optional(),
   // Age-bucket filter: over90 = d90+d180+d365, over180 = d180+d365, over365 = d365 only
   ageBucket: z.enum(["over90", "over180", "over365", "fresh", "none"]).optional(),
 });

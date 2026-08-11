@@ -5,6 +5,19 @@ import { jobsPaginationSchema, jobsFilterSchema } from "@/lib/validators";
 import { prisma } from "@/lib/prisma";
 import type { Prisma } from "@/generated/prisma/client";
 
+/**
+ * Escape the LIKE metacharacters `\`, `%` and `_`.
+ *
+ * Prisma compiles `equals` + `mode: "insensitive"` to a Postgres ILIKE and
+ * passes the value through unescaped, so those characters would otherwise act
+ * as wildcards — searching "%" returned every row, and "1_030" matched 15030.
+ * 400 of the stored job ids contain "_" and 31 contain "%", so this is not
+ * hypothetical. Backslash is ILIKE's default escape character.
+ */
+function escapeLikeValue(value: string): string {
+  return value.replace(/[\\%_]/g, "\\$&");
+}
+
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = request.nextUrl;
@@ -20,6 +33,7 @@ export async function GET(request: NextRequest) {
       validationStatus: searchParams.get("validationStatus") ?? undefined,
       siteUrlSearch: searchParams.get("siteUrlSearch") ?? undefined,
       companyNameSearch: searchParams.get("companyNameSearch") ?? undefined,
+      externalJobIdSearch: searchParams.get("externalJobIdSearch") ?? undefined,
       ageBucket: searchParams.get("ageBucket") ?? undefined,
     });
 
@@ -63,6 +77,21 @@ export async function GET(request: NextRequest) {
         ...(filters.companyNameSearch && {
           companyName: { contains: filters.companyNameSearch, mode: "insensitive" },
         }),
+      };
+    }
+
+    // Job ID filter. Unlike the two searches above this one lives on Job
+    // itself rather than the related Site, so it sits at the top level of
+    // `where` and AND-composes with them.
+    //
+    // `equals` (not `contains`) so "123" never matches "12345", with
+    // insensitive mode because roughly half the ids are slugs rather than
+    // digits and their stored casing is whatever the source page used. The
+    // value is escaped because insensitive mode goes through ILIKE.
+    if (filters.externalJobIdSearch) {
+      where.externalJobId = {
+        equals: escapeLikeValue(filters.externalJobIdSearch),
+        mode: "insensitive",
       };
     }
 
