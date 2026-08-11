@@ -77,6 +77,21 @@ export const domFieldExtract = function (
   // *render* via block layout or <br> rather than insert as characters.
   // Insert a space at every visual break so downstream tools see real words.
   clone.querySelectorAll("br").forEach((n) => n.replaceWith("\n"));
+
+  // A browser draws a marker beside every <li>; textContent does not, so a
+  // list item arrives indistinguishable from a paragraph. Prefix one so the
+  // structure survives — "•" is the canonical glyph the rest of the pipeline
+  // already splits on (BULLET_GLYPHS in descriptionStructure.ts). Only
+  // descendants are touched: querySelectorAll never matches the root, so a
+  // field whose own selector is an <li> (a job card, a title) is unaffected.
+  // Items that already start with a marker are left alone rather than doubled.
+  clone.querySelectorAll("li").forEach((li) => {
+    const text = (li.textContent || "").replace(/^[\s ]+/, "");
+    if (text && !/^[•●▪‣◦·∙※*✔✓☑✅❖➤➔→▶✦★-]/.test(text)) {
+      li.prepend("• ");
+    }
+  });
+
   clone
     .querySelectorAll(
       "p, div, li, tr, h1, h2, h3, h4, h5, h6, section, article, header, footer, blockquote",
