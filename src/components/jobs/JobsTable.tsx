@@ -38,12 +38,13 @@ interface JobsTableProps {
   isLoading: boolean;
   hasFilter: boolean;
   page: number;
+  /** Rows per page currently selected on the Jobs page. */
+  pageSize: number;
   totalPages: number;
   total: number;
   onPageChange: (page: number) => void;
 }
 
-const PAGE_SIZE = 50;
 const STANDARD_KEYS = new Set([
   "title", "description", "requirements", "location",
   "department", "externalJobId", "publishDate", "deadline", "applicationInfo",
@@ -294,6 +295,7 @@ export function JobsTable({
   isLoading,
   hasFilter,
   page,
+  pageSize,
   totalPages,
   total,
   onPageChange,
@@ -333,8 +335,8 @@ export function JobsTable({
     );
   }
 
-  const startItem = (page - 1) * PAGE_SIZE + 1;
-  const endItem = Math.min(page * PAGE_SIZE, total);
+  const startItem = (page - 1) * pageSize + 1;
+  const endItem = Math.min(page * pageSize, total);
 
   return (
     <div>
@@ -401,7 +403,7 @@ export function JobsTable({
         </TableBody>
       </Table>
 
-      {total > PAGE_SIZE && (
+      {total > pageSize && (
         <div className="flex items-center justify-between mt-4 px-2">
           <span className="text-xs" style={{ color: "#a1a1aa" }}>
             Showing {startItem}-{endItem} of {total}
