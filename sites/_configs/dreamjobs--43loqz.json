@@ -1,25 +1,12 @@
 {
-  "_exportedAt": "2026-08-06T15:54:06.097Z",
+  "_exportedAt": "2026-08-12T12:29:40.428Z",
   "_note": "Mirror of the live config. The DB is authoritative; the worker never reads this file. setupScript lives alongside in <slug>.setup.js.",
   "id": "cmovmegl9000001mr0s43loqz",
   "siteUrl": "https://dreamjobs.co.il/",
   "companyName": "קבוצת ויזל - פוקס",
   "status": "ACTIVE",
-  "setupScriptFile": null,
-  "pageFlow": [
-    {
-      "url": "https://dreamjobs.co.il/",
-      "action": "navigate"
-    },
-    {
-      "url": "https://dreamjobs.co.il/career/*",
-      "action": "#careers-available-jobs-animate-content > a.careers__career-row:nth-child(1)"
-    },
-    {
-      "url": "https://dreamjobs.co.il/career/*",
-      "action": "#careers-available-jobs-animate-content > a.careers__career-row:nth-child(1)"
-    }
-  ],
+  "setupScriptFile": "dreamjobs--43loqz.setup.js",
+  "pageFlow": [],
   "fieldMappings": {
     "_meta": {
       "savedAt": "2026-05-07T15:29:47.249Z",

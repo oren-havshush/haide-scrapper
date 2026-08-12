@@ -1,7 +1,7 @@
 {
-  "_exportedAt": "2026-08-06T15:54:05.748Z",
+  "_exportedAt": "2026-08-12T12:29:36.007Z",
   "_note": "Mirror of the live config. The DB is authoritative; the worker never reads this file. setupScript lives alongside in <slug>.setup.js.",
-  "id": "cmp03tbjk000s01k5tilukh3i",
+  "id": "cmspwpwam000k01o1xgu0j3bu",
   "siteUrl": "https://sbisrael.co.il/%d7%93%d7%a8%d7%95%d7%a9%d7%99%d7%9d/",
   "companyName": "ש.ב שמירה וביטחון",
   "status": "ACTIVE",
@@ -9,13 +9,20 @@
   "pageFlow": [],
   "fieldMappings": {
     "_meta": {
-      "savedAt": "2026-05-11T20:20:14.597Z",
+      "savedAt": "2026-08-12T09:54:12.503Z",
       "pagination": null,
       "formCapture": {
         "fields": [
           {
             "name": "your-name",
-            "label": "שם מלא",
+            "label": "שם פרטי",
+            "tagName": "input",
+            "required": true,
+            "fieldType": "text"
+          },
+          {
+            "name": "your-surname",
+            "label": "שם משפחה",
             "tagName": "input",
             "required": true,
             "fieldType": "text"
@@ -35,40 +42,53 @@
             "fieldType": "email"
           },
           {
-            "name": "your-message",
-            "label": "הודעה",
-            "tagName": "textarea",
+            "name": "file-271",
+            "label": "קורות חיים",
+            "tagName": "input",
             "required": false,
-            "fieldType": "textarea"
+            "fieldType": "file"
+          },
+          {
+            "name": "job-id",
+            "label": "מספר משרה",
+            "tagName": "input",
+            "required": true,
+            "fieldType": "text"
           }
         ],
         "method": "POST",
         "actionUrl": "https://sbisrael.co.il/%d7%93%d7%a8%d7%95%d7%a9%d7%99%d7%9d/",
-        "formSelector": "form.wpcf7-form"
+        "formSelector": "form.wpcf7-form:has(input[type=\"file\"])"
       },
       "itemSelector": "article.job",
+      "minPublishDate": null,
+      "minPublishDays": null,
       "revealSelector": null,
       "listingSelector": null,
-      "originalMappings": null
+      "applyLoginReason": null,
+      "browserOverrides": {
+        "userAgent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.7632.6 Safari/537.36"
+      },
+      "loadMoreSelector": null,
+      "locationFallback": null,
+      "originalMappings": null,
+      "applyRequiresLogin": false
     },
     "title": {
       "source": "MANUAL",
       "selector": ".job__title",
-      "confidence": 100,
-      "capturedOnUrl": "https://sbisrael.co.il/%d7%93%d7%a8%d7%95%d7%a9%d7%99%d7%9d/"
+      "confidence": 0.95
     },
     "description": {
       "source": "MANUAL",
       "selector": ".job__content",
-      "confidence": 100,
-      "capturedOnUrl": "https://sbisrael.co.il/%d7%93%d7%a8%d7%95%d7%a9%d7%99%d7%9d/"
+      "confidence": 0.95
     },
     "externalJobId": {
       "source": "MANUAL",
       "selector": ".apply-action a",
-      "confidence": 100,
-      "extractAttr": "job-id",
-      "capturedOnUrl": "https://sbisrael.co.il/%d7%93%d7%a8%d7%95%d7%a9%d7%99%d7%9d/"
+      "confidence": 0.95,
+      "extractAttr": "job-id"
     }
   }
 }

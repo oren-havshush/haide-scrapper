@@ -13,17 +13,17 @@ async function cellcomInject() {
     card.className = 'cc-job';
     const title = val(j.title) || '';
     const code = val(j.codeJob) || '';
-    const desc = stripHtml(val(j.description) || '');
+    const desc = val(j.description) || '';
     const reqArr = val(j.listRequirements) || [];
-    const req = Array.isArray(reqArr) ? reqArr.join(' \u2022 ') : String(reqArr || '');
+    const req = Array.isArray(reqArr) ? ('<ul><li>' + reqArr.join('</li><li>') + '</li></ul>') : String(reqArr || '');
     const locArr = val(j.listOfCareerLocations) || [];
     const loc = Array.isArray(locArr) ? locArr.join(', ') : String(locArr || '');
     const rel = j.url || '';
     const detail = rel ? ('https://cellcom.co.il' + rel) : '';
     const h = document.createElement('h3'); h.className = 'cc-title'; h.textContent = title; card.appendChild(h);
     const c = document.createElement('span'); c.className = 'cc-code'; c.textContent = code; card.appendChild(c);
-    const d = document.createElement('div'); d.className = 'cc-desc'; d.textContent = desc; card.appendChild(d);
-    const r = document.createElement('div'); r.className = 'cc-req'; r.textContent = req; card.appendChild(r);
+    const foot = val(j.footerSite) || ''; const d = document.createElement('div'); d.className = 'cc-desc'; d.innerHTML = desc + foot; card.appendChild(d);
+    const r = document.createElement('div'); r.className = 'cc-req'; r.innerHTML = req; card.appendChild(r);
     const l = document.createElement('div'); l.className = 'cc-loc'; l.textContent = loc; card.appendChild(l);
     if (detail) { const a = document.createElement('a'); a.className = 'cc-detail'; a.href = detail; a.textContent = 'apply'; card.appendChild(a); }
     host.appendChild(card);

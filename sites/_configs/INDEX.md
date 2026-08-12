@@ -85,7 +85,7 @@ from top-level params, so a setupScript left only inside `_meta` is dropped.
 | יקב סוכנות לביטוח | ACTIVE | 5 | — | `yekev--j5qpe6` |
 | ישראייר | ACTIVE | 5 | 363 | `lp-vp4-me--qo0him` |
 | כלי זמר | ACTIVE | 5 | 1994 | `kley-zemer--0m1iuj` |
-| כלל | ACTIVE | 7 | 1292 | `clalbit--tz9kd4` |
+| כלל | ACTIVE | 7 | 1460 | `clalbit--tz9kd4` |
 | כמיפל | ACTIVE | 4 | 1525 | `chemipal--ellr7p` |
 | כפיר מעליות | ACTIVE | 7 | 1979 | `app-civi--buhdfj` |
 | כפר המכביה | ACTIVE | 5 | 1307 | `app-civi--7z3d4c` |
@@ -113,7 +113,7 @@ from top-level params, so a setupScript left only inside `_meta` is dropped.
 | נטפים | ACTIVE | 8 | 293 | `comeet--j78371` |
 | נירלט | ACTIVE | 4 | — | `nirlat--xluh8r` |
 | סיני סטור | ACTIVE | 4 | 286 | `sinaistore--2135c8` |
-| סלקום | ACTIVE | 6 | 2194 | `cellcom--ugxfm3` |
+| סלקום | ACTIVE | 6 | 2255 | `cellcom--ugxfm3` |
 | סמלת | ACTIVE | 8 | — | `samelet--i6xe7r` |
 | עזריאלי | ACTIVE | 5 | 1078 | `azrielipalace--qmhgmh` |
 | עמותת איכות בשיקום | ACTIVE | 4 | 686 | `eychut--6336w9` |
@@ -123,7 +123,7 @@ from top-level params, so a setupScript left only inside `_meta` is dropped.
 | פתרונות עדיפים-ביטוח | ACTIVE | 5 | 1629 | `adifim--2obqtp` |
 | צ'יטה שליחויות | ACTIVE | 4 | 332 | `chitadelivery--xpwqf1` |
 | קבוצת אמנת- Sysnet | ACTIVE | 3 | — | `amanet--ihg3a3` |
-| קבוצת ויזל - פוקס | ACTIVE | 4 | — | `dreamjobs--43loqz` |
+| קבוצת ויזל - פוקס | ACTIVE | 4 | 2133 | `dreamjobs--43loqz` |
 | קבוצת ח.י | ACTIVE | 4 | — | `hye--9i2hm3` |
 | קבוצת טובול | ACTIVE | 6 | 1231 | `tuboul--hvbine` |
 | קבוצת יוניון | ACTIVE | 8 | 5649 | `unioncareer--mhsr2v` |
@@ -136,7 +136,7 @@ from top-level params, so a setupScript left only inside `_meta` is dropped.
 | רזאל מערכות | ACTIVE | 5 | — | `razel--i12d2f` |
 | רכבת ישראל | ACTIVE | 6 | — | `railcareer-adamtotal--52najw` |
 | רשות שדות התעופה | ACTIVE | 5 | 761 | `iaa--676m0e` |
-| ש.ב שמירה וביטחון | ACTIVE | 3 | — | `sbisrael--lukh3i` |
+| ש.ב שמירה וביטחון | ACTIVE | 3 | — | `sbisrael--u0j3bu` |
 | ש.ל.ה שירותי רפואה | ACTIVE | 6 | 2199 | `clalitsmile--xsxv25` |
 | שחל | ACTIVE | 5 | 3333 | `shahal--hfyc3r` |
 | שטראוס | ACTIVE | 6 | — | `strauss-group--oeqo46` |
