@@ -22,7 +22,14 @@ const QUALITY_THRESHOLDS: Record<string, number> = {
 };
 
 const NON_JOB_VALUE_PATTERNS = [
-  /about us|about|home|contact|privacy|terms/i,
+  // NOTE: anchored to the WHOLE value, not a substring. A broad selector that
+  // captures navigation/footer chrome yields the label as the entire field
+  // ("Home", "About Us"); a real posting merely contains those letters. As a
+  // substring this rejected every "FOX HOME" branch job on dreamjobs.co.il
+  // (44 valid postings in one scrape) because the title contains "HOME".
+  // A \b word boundary is NOT sufficient — in "FOX HOME", HOME *is* a whole
+  // word. Same class of defect as the "תנאים" case noted below.
+  /^\s*(?:about(?: us)?|home(?:page)?|contact(?: us)?|privacy(?: policy)?|terms(?: of (?:use|service))?)\s*$/i,
   // NOTE: match the footer phrase "תנאי שימוש" (terms of use), NOT the bare
   // word "תנאים" — "תנאים" ("conditions") is extremely common in legitimate IL
   // job ads (e.g. "תנאים מצויינים" = "excellent conditions") and was silently
