@@ -103,6 +103,16 @@ export const domFieldExtract = function (
     .replace(/\n{3,}/g, "\n\n")  // max two consecutive newlines
     .replace(/ \n/g, "\n")       // drop space before newline
     .replace(/\n /g, "\n")       // drop space after newline
+    // A marker must stay attached to the item it introduces. Pretty-printed
+    // markup — `<li>\n  <p>text</p>\n</li>` — leaves a whitespace text node
+    // between the "• " prepended above and the first real text, which the two
+    // rules above turn into an orphaned "•\ntext". Re-join marker and text.
+    // The lookahead keeps a marker that legitimately precedes another marker
+    // (an empty item) on its own line rather than gluing the two together.
+    .replace(
+      /([•●▪‣◦·∙※✔✓☑✅❖➤➔→▶✦★])\n+(?=[^\s•●▪‣◦·∙※✔✓☑✅❖➤➔→▶✦★])/g,
+      "$1 ",
+    )
     .trim();
 };
 
