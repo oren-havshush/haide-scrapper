@@ -1,4 +1,4 @@
-(async () => {
+await (async () => {
   try {
     if (document.getElementById('haide-egged-injected')) return;
     const apiUrl = 'https://apb.egged.co.il/api/career/allHeadquartersJobs';
@@ -34,6 +34,22 @@
     container.style.display = 'none';
 
     const parser = new DOMParser();
+    function structuredText(el) {
+      if (!el) return '';
+      var c = el.cloneNode(true);
+      c.querySelectorAll('style, script, noscript, svg, iframe').forEach(function (n) { n.remove(); });
+      c.querySelectorAll('br').forEach(function (n) { n.replaceWith('\n'); });
+      c.querySelectorAll('li').forEach(function (li) {
+        var t = (li.textContent || '').replace(/^\s+/, '');
+        if (t && !/^[\u2022\u25CF\u25AA*-]/.test(t)) li.prepend('\u2022 ');
+      });
+      c.querySelectorAll('p, div, li, tr, h1, h2, h3, h4, h5, h6, section, article, blockquote')
+       .forEach(function (b) { b.append('\n'); });
+      return (c.textContent || '')
+        .replace(/[^\S\n]+/g, ' ').replace(/\n{3,}/g, '\n\n')
+        .replace(/ \n/g, '\n').replace(/\n /g, '\n').trim();
+    }
+
     function addChild(parent, tag, cls, text) {
       const e = document.createElement(tag);
       e.className = cls;
@@ -57,7 +73,7 @@
         const t = (el.textContent || '').trim();
         if (t === headerText) {
           const sib = el.nextElementSibling;
-          if (sib) return (sib.textContent || '').trim();
+          if (sib) return structuredText(sib);
         }
       }
       return '';
@@ -74,12 +90,12 @@
           // Fallbacks if header text changed: use the legacy class.
           if (!description || !requirements) {
             const blocks = doc.querySelectorAll('.muirtl-1ght444-SingleJob-StyledDescription');
-            if (!description && blocks.length >= 1) description = (blocks[0].textContent || '').trim();
-            if (!requirements && blocks.length >= 2) requirements = (blocks[1].textContent || '').trim();
+            if (!description && blocks.length >= 1) description = structuredText(blocks[0]);
+            if (!requirements && blocks.length >= 2) requirements = structuredText(blocks[1]);
           }
           if (!description) {
             const wrapper = doc.querySelector('.muirtl-1gfy7g8-SingleJob-StyledTextContent');
-            if (wrapper) description = (wrapper.textContent || '').trim();
+            if (wrapper) description = structuredText(wrapper);
           }
         } catch (e) {}
       }
@@ -97,6 +113,11 @@
       container.appendChild(row);
     });
 
+    // Fail-safe: detail fetches all failed -> render nothing so the scrape
+    // reports empty_results and the worker returns before deleteMany.
+    var withDesc = Array.prototype.slice.call(container.querySelectorAll('.haide-description'))
+      .filter(function (d) { return (d.textContent || '').trim().length > 0; }).length;
+    if (!withDesc) return;
     document.body.appendChild(container);
   } catch (e) {
     console.error('haide egged setup failed:', e);

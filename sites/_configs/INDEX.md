@@ -15,7 +15,7 @@ from top-level params, so a setupScript left only inside `_meta` is dropped.
 | *(none)* | ACTIVE | 7 | — | `yes--ekwenb` |
 | AGAS 3K | ACTIVE | 4 | 1049 | `agas--vfl5da` |
 | AIG | ACTIVE | 4 | — | `aig--0rlmdf` |
-| BDO | ACTIVE | 10 | — | `bdo-career-hunterhrms--dgrgrm` |
+| BDO | ACTIVE | 10 | 2810 | `bdo-career-hunterhrms--dgrgrm` |
 | Biopharmax | ACTIVE | 3 | 944 | `biopharmax--l2zw3a` |
 | CALANIT by one | ACTIVE | 8 | 7364 | `calanit--4tq06k` |
 | ERN | ACTIVE | 3 | — | `ern--41zdh9` |
@@ -47,7 +47,7 @@ from top-level params, so a setupScript left only inside `_meta` is dropped.
 | inManage | ACTIVE | 4 | — | `inmanage--t3xlhk` |
 | א.ב מתכננים | ACTIVE | 7 | 243 | `abt-industry--ldemj3` |
 | אביבים השמה | ACTIVE | 6 | 3739 | `avivim-hr--f3d9j7` |
-| אגד | ACTIVE | 7 | 4559 | `egged--4qc6cy` |
+| אגד | ACTIVE | 7 | 5669 | `egged--4qc6cy` |
 | אדוויס | ACTIVE | 6 | 2334 | `advice--eq0sxw` |
 | אופרייט | ACTIVE | 4 | 854 | `opl--1koqzt` |
 | אלביט מערכות | ACTIVE | 9 | 7741 | `elbitsystemscareer--kjk1e7` |
@@ -133,7 +133,7 @@ from top-level params, so a setupScript left only inside `_meta` is dropped.
 | קופת חולים מכבי | ACTIVE | 6 | 2145 | `maccabi4u--eazu8j` |
 | קימאמה | ACTIVE | 6 | 2102 | `campkimama--j7vrhl` |
 | קישורית | ACTIVE | 3 | 370 | `kishurit--gjuja3` |
-| רזאל מערכות | ACTIVE | 5 | — | `razel--i12d2f` |
+| רזאל מערכות | ACTIVE | 5 | 1337 | `razel--i12d2f` |
 | רכבת ישראל | ACTIVE | 6 | — | `railcareer-adamtotal--52najw` |
 | רשות שדות התעופה | ACTIVE | 5 | 761 | `iaa--676m0e` |
 | ש.ב שמירה וביטחון | ACTIVE | 3 | — | `sbisrael--u0j3bu` |

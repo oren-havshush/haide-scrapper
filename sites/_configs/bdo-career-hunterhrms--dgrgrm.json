@@ -1,11 +1,11 @@
 {
-  "_exportedAt": "2026-08-06T15:54:05.606Z",
+  "_exportedAt": "2026-08-13T09:05:41.111Z",
   "_note": "Mirror of the live config. The DB is authoritative; the worker never reads this file. setupScript lives alongside in <slug>.setup.js.",
   "id": "cmp1hbllq001h01mykrdgrgrm",
   "siteUrl": "https://bdo-career.hunterhrms.com/%D7%9B%D7%9C-%D7%94%D7%9E%D7%A9%D7%A8%D7%95%D7%AA/",
   "companyName": "BDO",
   "status": "ACTIVE",
-  "setupScriptFile": null,
+  "setupScriptFile": "bdo-career-hunterhrms--dgrgrm.setup.js",
   "pageFlow": [
     {
       "url": "https://bdo-career.hunterhrms.com/%D7%9B%D7%9C-%D7%94%D7%9E%D7%A9%D7%A8%D7%95%D7%AA/",
@@ -19,12 +19,7 @@
   "fieldMappings": {
     "_meta": {
       "savedAt": "2026-05-11T18:40:37.809Z",
-      "pagination": {
-        "type": "click",
-        "maxPages": 10,
-        "settleMs": 1500,
-        "nextSelector": ".pager-wrapper a.active + a"
-      },
+      "pagination": null,
       "formCapture": {
         "fields": [
           {
