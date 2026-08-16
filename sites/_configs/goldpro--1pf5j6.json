@@ -1,0 +1,63 @@
+{
+  "_exportedAt": "2026-08-16T15:42:29.802Z",
+  "_note": "Mirror of the live config. The DB is authoritative; the worker never reads this file. setupScript lives alongside in <slug>.setup.js.",
+  "id": "cmsvyynic000601p8kh1pf5j6",
+  "siteUrl": "https://www.goldpro.co.il/%D7%93%D7%A8%D7%95%D7%A9%D7%99%D7%9D/",
+  "companyName": "גולדברג פרושן ושות' רואי חשבון",
+  "status": "ACTIVE",
+  "setupScriptFile": "goldpro--1pf5j6.setup.js",
+  "pageFlow": [
+    {
+      "url": "https://www.goldpro.co.il/%D7%93%D7%A8%D7%95%D7%A9%D7%99%D7%9D/",
+      "action": "navigate"
+    }
+  ],
+  "fieldMappings": {
+    "_meta": {
+      "savedAt": "2026-08-16T15:41:38.815Z",
+      "pagination": null,
+      "formCapture": null,
+      "itemSelector": ".__ai-job",
+      "minPublishDate": null,
+      "minPublishDays": null,
+      "revealSelector": null,
+      "listingSelector": null,
+      "applyLoginReason": null,
+      "browserOverrides": null,
+      "loadMoreSelector": null,
+      "locationFallback": null,
+      "originalMappings": null,
+      "applyRequiresLogin": false
+    },
+    "title": {
+      "source": "MANUAL",
+      "selector": ".__ai-title",
+      "confidence": 100,
+      "capturedOnUrl": "https://www.goldpro.co.il/%D7%93%D7%A8%D7%95%D7%A9%D7%99%D7%9D/"
+    },
+    "location": {
+      "source": "MANUAL",
+      "selector": ".__ai-location",
+      "confidence": 100,
+      "capturedOnUrl": "https://www.goldpro.co.il/%D7%93%D7%A8%D7%95%D7%A9%D7%99%D7%9D/"
+    },
+    "description": {
+      "source": "MANUAL",
+      "selector": ".__ai-description",
+      "confidence": 100,
+      "capturedOnUrl": "https://www.goldpro.co.il/%D7%93%D7%A8%D7%95%D7%A9%D7%99%D7%9D/"
+    },
+    "externalJobId": {
+      "source": "MANUAL",
+      "selector": ".__ai-jobid",
+      "confidence": 100,
+      "capturedOnUrl": "https://www.goldpro.co.il/%D7%93%D7%A8%D7%95%D7%A9%D7%99%D7%9D/"
+    },
+    "applicationInfo": {
+      "source": "MANUAL",
+      "selector": ".__ai-apply",
+      "confidence": 100,
+      "capturedOnUrl": "https://www.goldpro.co.il/%D7%93%D7%A8%D7%95%D7%A9%D7%99%D7%9D/"
+    }
+  }
+}
