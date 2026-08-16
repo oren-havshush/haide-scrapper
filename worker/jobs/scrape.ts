@@ -16,6 +16,7 @@ import type { Browser, Page } from "playwright";
 import { emitWorkerEvent } from "../lib/emitEvent";
 import { DOM_FIELD_EXTRACT_SOURCE } from "../lib/domFieldExtract";
 import { APPLY_LOGIN_SKIP_NOTE, APPLY_LOGIN_FAILURE_CATEGORY } from "../lib/applyGate";
+import { applyJobIdFallback } from "../lib/synthesizeJobId";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -66,6 +67,16 @@ interface ScrapeContext {
   pageLoaded: boolean;
   selectorsMatched: boolean;
   itemsFound: number;
+  /**
+   * Job cards counted on the expanded listing (`_meta.itemSelector` matches,
+   * after setupScript / load-more / pagination). Distinct from `itemsFound`,
+   * which is `rawFieldsList.length` — the records that survived extraction.
+   *
+   * The gap between the two is what nothing currently measures: a card that
+   * yields no detail URL never becomes a record at all, and a dedup collapse
+   * removes one silently. Null when the count could not be taken.
+   */
+  listingItemsSeen: number | null;
 }
 
 /** A normalized record paired with its validation result */
@@ -1357,6 +1368,12 @@ async function extractRawFieldsWithPageFlow(
   pagination: PaginationConfig | null = null,
   setupScript: string | null = null,
   loadMoreSelector: string | null = null,
+  /**
+   * Out-param: how many job cards the expanded listing actually showed. Counted
+   * here because by the time this returns the page has navigated away to detail
+   * pages, so the caller can no longer take the measurement.
+   */
+  stats?: { listingItemsSeen: number | null },
 ): Promise<Record<string, string>[]> {
   const rawFieldsList: Record<string, string>[] = [];
 
@@ -1483,6 +1500,20 @@ async function extractRawFieldsWithPageFlow(
       ? await firstItemSignature(page, itemSelector)
       : "";
     const urlsBefore = detailUrls.length;
+
+    // Count the cards this listing page is showing, before any of them are
+    // turned into detail URLs. Accumulated across paginated pages.
+    if (stats && itemSelector) {
+      try {
+        const shown = await page.evaluate(
+          (sel: string) => document.querySelectorAll(sel).length,
+          itemSelector,
+        );
+        stats.listingItemsSeen = (stats.listingItemsSeen ?? 0) + shown;
+      } catch {
+        // Counting is diagnostic only — never let it break a scrape.
+      }
+    }
 
   if (linkSel) {
     // The Navigate Mode records the full selector of the ONE item the user
@@ -2760,6 +2791,7 @@ export async function handleScrapeJob(
     pageLoaded: false,
     selectorsMatched: false,
     itemsFound: 0,
+    listingItemsSeen: null,
   };
 
   // Parse site configuration
@@ -2949,6 +2981,10 @@ async function executeScrape(
   // Determine scrape strategy
   const hasPageFlow = pageFlow.length > 0;
 
+  // Filled by the pageFlow extractor with the number of cards the expanded
+  // listing showed, so it can be compared against what actually got saved.
+  const listingStats: { listingItemsSeen: number | null } = { listingItemsSeen: null };
+
   let rawFieldsList: Record<string, string>[];
 
   if (hasPageFlow) {
@@ -2965,10 +3001,12 @@ async function executeScrape(
       pagination,
       setupScript,
       loadMoreSelector,
+      listingStats,
     );
     context.pageLoaded = true;
     context.selectorsMatched = rawFieldsList.length > 0;
     context.itemsFound = rawFieldsList.length;
+    context.listingItemsSeen = listingStats.listingItemsSeen;
 
     // Multi-page may visit detail pages and capture per-job form data inline,
     // but a single-step pageFlow leaves us back on the listing page with the
@@ -3181,6 +3219,18 @@ async function executeScrape(
 
     context.selectorsMatched = rawFieldsList.length > 0;
     context.itemsFound = rawFieldsList.length;
+    // Single-page path leaves us on the listing, so the card count can be taken
+    // here rather than threaded out of the extractor.
+    if (itemSelector) {
+      try {
+        context.listingItemsSeen = await page.evaluate(
+          (sel: string) => document.querySelectorAll(sel).length,
+          itemSelector,
+        );
+      } catch {
+        // Diagnostic only.
+      }
+    }
 
     // Extract form data once from the single page and attach to all records.
     // This is a listing-only site (no pageFlow), so a live <form> on the listing
@@ -3328,6 +3378,31 @@ async function executeScrape(
   // their own. Applied below only after extraction comes up empty.
   const locationFallback = getLocationFallback(site.fieldMappings);
 
+  // Last-resort externalJobId. A site whose config exposes no id mapping stores
+  // NULL on every row, scrapes fine, and is then demoted ACTIVE -> REVIEW by
+  // decideActivationStatus (fill >= 0.9) the next time anything rescrapes it.
+  // addsite2.md §6.2 already prescribes a hash fallback, but only as a per-site
+  // setupScript an onboarder has to remember; this applies it centrally.
+  //
+  // Computed here, ahead of the write loop, so `jobKey` below keeps its exact
+  // previous meaning (extracted id ?? detail URL) and manual location overrides
+  // written against the old key still resolve.
+  const idFallback = applyJobIdFallback(
+    recordsToPersist.map(({ normalized }) => ({
+      externalJobId: normalized.externalJobId,
+      title: normalized.title,
+      department: normalized.department,
+      url: normalized.url,
+    })),
+  );
+  if (idFallback.synthesized > 0) {
+    console.info(
+      `[scrape] externalJobId fallback: synthesised ${idFallback.synthesized}/${recordsToPersist.length} id(s)` +
+        (idFallback.unresolved > 0 ? `, ${idFallback.unresolved} unresolvable` : "") +
+        (idFallback.collisions > 0 ? `, ${idFallback.collisions} COLLIDING` : ""),
+    );
+  }
+
   // Save jobs in chunks so progress is preserved even if a timeout occurs.
   // Delete old jobs first, then insert in batches of CHUNK_SIZE, updating the
   // ScrapeRun progress after each chunk.
@@ -3339,8 +3414,12 @@ async function executeScrape(
     const chunk = recordsToPersist.slice(offset, offset + CHUNK_SIZE);
 
     await prisma.$transaction(async (tx) => {
-      for (const { normalized, validation } of chunk) {
+      for (const [chunkIdx, { normalized, validation }] of chunk.entries()) {
+        // Deliberately the EXTRACTED id, not the synthesised one, so a manual
+        // location override keyed before this fallback existed still matches.
         const jobKey = normalized.externalJobId || normalized.url || null;
+        const persistedExternalJobId =
+          idFallback.ids[offset + chunkIdx] ?? normalized.externalJobId ?? null;
         const overriddenLocation =
           (jobKey && locationOverrides.get(jobKey)) || null;
         // Precedence: manual dashboard override → extracted location →
@@ -3365,7 +3444,7 @@ async function executeScrape(
             location: resolvedLocation,
             locations: canonicalLocations,
             department: normalized.department || null,
-            externalJobId: normalized.externalJobId || null,
+            externalJobId: persistedExternalJobId || null,
             publishDate: normalized.publishDate || null,
             deadline: normalized.deadline || null,
             ageBucket: computeAgeBucket(normalized.publishDate),
@@ -3446,6 +3525,44 @@ async function executeScrape(
       },
     });
     scrapeWarnings.push(...buildLocationWarnings(savedJobs));
+    // TIER 1 — cards shown on the listing vs rows actually written. The gap is
+    // never an error on its own: true duplicate postings, dead detail pages
+    // skipped by design, validator rejects, the maxJobs cap and cards with no
+    // http apply link are all legitimate. But nothing else measures it, and it
+    // is the only in-run signal for a dedup collapse (samelet shipped 7 of 8
+    // jobs on a reused requisition number) or for cards silently dropped for
+    // want of a detail URL. Reported, never enforced.
+    if (
+      context.listingItemsSeen != null &&
+      context.listingItemsSeen > savedCount &&
+      savedCount > 0
+    ) {
+      const lost = context.listingItemsSeen - savedCount;
+      scrapeWarnings.push(
+        `listing_vs_saved_gap: ${context.listingItemsSeen} card(s) on the listing but ` +
+          `${savedCount} job(s) saved (${lost} unaccounted) — check for duplicate ids, ` +
+          `cards with no detail URL, or rejected records`,
+      );
+    }
+
+    // The site has no id mapping and is leaning on the synthesised fallback.
+    // Not a failure — it scrapes and passes the activation gate — but a native
+    // id is always better, so make the reliance visible rather than silent.
+    if (idFallback.synthesized > 0) {
+      scrapeWarnings.push(
+        `synthesised_external_job_id: ${idFallback.synthesized}/${recordsToPersist.length} job(s) ` +
+          `had no externalJobId and were keyed on a content hash — prefer a native id`,
+      );
+    }
+    // Two jobs hashed identically (same title, department and detail URL), so
+    // they collapse into one row. This is the silent job-loss class in
+    // LRN-ID-8 and it does need a human.
+    if (idFallback.collisions > 0) {
+      scrapeWarnings.push(
+        `synthesised_id_collision: ${idFallback.collisions} job(s) share a synthesised id ` +
+          `and will dedup into one row — the site needs a real externalJobId`,
+      );
+    }
     if (scrapeWarnings.length > 0) {
       await prisma.scrapeRun.update({
         where: { id: scrapeRunId },

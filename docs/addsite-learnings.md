@@ -57,7 +57,24 @@
   (CSP `connect-src`, NOT CORS).
 - **Fix:** add `browserOverrides.bypassCSP: true` (worker passes to
   `newContext({ bypassCSP: true })`). Per-site, opt-in.
-- **Generalizes to:** any site whose data API is on a CSP-disallowed subdomain. **Home:** Step 6 browserOverrides / WAF recipe.
+- **CEILING — `bypassCSP` frees the request, never the cross-origin response body.**
+  The case above is a subdomain the site owns, which serves CORS headers to its own
+  front-end. Against a genuine **third party** the same `Failed to fetch` appears and
+  `bypassCSP` does not help, because CORS is a different mechanism. Measured on
+  pac.ac.il fetching `campaign.adamtotal.co.il` (2026-08-16):
+  ```
+  bypassCSP=false   cors: fail   no-cors: fail          -> CSP blocked the request
+  bypassCSP=true    cors: fail   no-cors: opaque, 0     -> request out, body unreadable
+  ```
+  Diagnose in two minutes: run the fetch with `bypassCSP` false then true, and try
+  `mode:"no-cors"`. An opaque/0 response while `cors` still fails means the ceiling —
+  **stop designing around a fetch** and reach the data by navigation instead (a
+  `pageFlow` detail step, with a setupScript on the target page extracting the value
+  into a hidden element the mapping can select). That is what pac.ac.il ended up doing,
+  and it is what forced the mailto-only card to be dropped (LRN-WRK-16).
+- **Generalizes to:** any site whose data API is on a CSP-disallowed subdomain; the
+  ceiling applies to every third-party ATS (AdamTotal, Comeet, TopMatch …).
+  **Home:** Step 6 browserOverrides / WAF recipe.
 
 ---
 
@@ -474,6 +491,38 @@
 
 ---
 
+### LRN-COV-5 — "Did we get every job?" is three checks, and only two can be automatic
+- **Date / site:** 2026-08-16 · l-w.ac.il 9 of 60, samelet.com 7 of 8, pac.ac.il 6 of 7
+- **Signal:** a run reports COMPLETED with a plausible count, every gate passes, and
+  the number is still wrong.
+- **Root cause:** every gate inspects what was **saved** — `verify-config` checks the
+  selectors survived a PUT, `verify-jobids` reads stored rows, `addsite-qa` samples
+  stored jobs. None opens the listing and counts. LRN-COV-1 mandates a coverage gate
+  but only at onboarding, and ships no script.
+- **The three tiers — different costs, different limits:**
+  1. **items seen vs jobs saved** — new sites *and* rescrapes, fully automatic. The
+     worker now emits `listing_vs_saved_gap` from `context.listingItemsSeen`. Catches
+     the dedup collapse (samelet: 8 cards, 7 rows, because two shared requisition
+     `1213`). MUST stay a warning: duplicate postings, deliberately-skipped dead
+     detail pages, validator rejects, the `maxJobs` cap and mailto-only cards
+     (LRN-WRK-16) are all legitimate causes.
+  2. **this run vs the previous run** — rescrapes only, already implemented as
+     `job_count_drop` (`COUNT_DROP_WARN_RATIO`). **Caveat:** the 0.3 threshold sits
+     below observed healthy churn on this fleet (האקדמית רמת גן 26 → 13 = −50%,
+     YES 17 → 11, אביבים 21 → 15), so it will be noisy once scrapes are scheduled.
+  3. **the site's TRUE total vs what we saw** — new sites *and* rescrapes, and
+     **impossible from inside a run**. The worker's notion of "live" is already the
+     truncated set: on l-w.ac.il it saw 9 cards and saved 9 while the site had 60, so
+     tiers 1 and 2 both read all-clear and there was no baseline to fall from. Needs
+     ground truth the worker does not hold — the site's own printed count, a REST
+     total, or a human. Partial automation: capture the total at onboarding, store it,
+     and warn when a later scrape lands materially below it.
+- **Detection:** a saved count equal to exactly one page worth of items (9, 10, 20) is
+  the signature of truncation.
+- **Generalizes to:** every site, every scrape. **Home:** Step 4 coverage gate.
+
+---
+
 ## G. SPA / ATS frameworks
 
 ### LRN-SPA-1 — Known offset-API SPAs: enumerate via their API, not the DOM
@@ -838,6 +887,88 @@
 
 ---
 
+### LRN-WRK-15 — Stale rows mask a broken live config; under cron the risk becomes PARTIAL extraction
+- **Date / site:** 2026-08-16 · natali.co.il, biopharmax.co.il, msh.co.il
+- **Signal:** a site looks healthy in every audit — jobs present, descriptions
+  populated, ACTIVE — while its config matches little or nothing live. Measured:
+  all three ACTIVE / COMPLETED / **no failure category**, serving rows last written
+  2026-06-09 (natali 11 jobs with every selector matching 0, biopharmax 5 with the
+  domain moved, msh 6 behind a WAF).
+- **Root cause:** job rows persist until a scrape replaces them, so a config can rot
+  for weeks while the database serves the last good harvest. The worker *does* record
+  `failureCategory = structure_changed / empty_results`, but only when a scrape
+  actually runs — and these had not been rescraped since June, precisely because they
+  were correctly flagged "do not rescrape until re-captured". The signal is therefore
+  **lagging**: it appears only after the risk has been taken. `addsite-fleet-audit.ts`
+  cannot close the gap either; its own header says it judges sites "WITHOUT a per-site
+  browser probe".
+- **Detection — depends on scheduling:**
+  - **On a cron:** cheap and reliable. Every site is rescraped each cycle, so
+    `failureCategory` fires on its own; query the latest ScrapeRun per site.
+  - **Not on a cron:** `failureCategory` is stale. Use `Site.lastScrapedAt` vs
+    `max(Job.createdAt)` — rows weeks old with no new write is the signature; all three
+    sites above are visible by that alone. Confirm with a live probe: zero
+    `itemSelector` matches on an HTTP 200 means drift, not an empty listing.
+- **What survives a cron — partial extraction:** total failure is already guarded
+  (`recordsToPersist.length === 0` returns **before** the `deleteMany`, so stored jobs
+  are preserved and the run is tagged `structure_changed`). Partial extraction has no
+  such guard: a drifted config matching 3 of 11 items deletes the other 8 — COMPLETED
+  run, no failure category, no warning. Alarm on a large non-zero drop (LRN-COV-5
+  tier 2), paired with a cause signal since real churn reaches 50%.
+- **Generalizes to:** every ACTIVE site between rescrapes. **Home:** fleet audit.
+
+### LRN-WRK-16 — Navigate Mode silently drops any card without an http href
+- **Date / site:** 2026-08-16 · pac.ac.il — 7 cards on the listing, 6 jobs saved
+- **Signal:** a site with a `pageFlow` detail step returns fewer jobs than the listing
+  shows, with no error and no warning.
+- **Root cause:** in `extractRawFieldsWithPageFlow` the URL-collection loop is guarded
+  by `if (href)` with no else branch, and the multi-page path builds its output solely
+  from visited detail URLs. A card whose apply target is a `mailto:`, `tel:` or a JS
+  handler contributes no URL and therefore never becomes a row. (Note `skipped_no_url`
+  in `countDeadDetailPages` does NOT cover this — it only fires for an empty entry
+  *inside* the collected URL array, and these cards never enter it.) On a site with
+  **mixed** apply paths only the non-http subset is lost, which is the kind of partial
+  loss nobody notices.
+- **Detection:** count apply targets that are `http` vs otherwise; the difference is
+  exactly the loss. Also visible as `listing_vs_saved_gap` (LRN-COV-5 tier 1).
+- **Fix:** it is a deliberate design — the same guard stops dead links burning the
+  scrape budget — so this is a decision, not a bug. Either accept the loss (chosen for
+  pac.ac.il, to reach the requisition numbers on the apply page), stay listing-only and
+  key the id off a stable card attribute, or synthesise a navigable URL for the odd
+  cards. **Whichever you choose, record it in `Site.adminNote`** — the job otherwise
+  vanishes with nothing to explain it later.
+- **Generalizes to:** every pageFlow site with mixed apply paths. **Home:** Step 4
+  detailUrl row.
+
+### LRN-WRK-17 — The externalJobId hash fallback existed only on paper; the worker now applies it
+- **Date / site:** 2026-08-16 · חיותא, קבוצת אמנת- Sysnet, גולדברג פרושן (0% fill each)
+- **Signal:** an ACTIVE site stores `externalJobId` NULL on every row. It scrapes
+  perfectly well — until the next rescrape demotes it to REVIEW.
+- **Root cause:** the rule was documented and unimplemented. addsite2.md §6.2 lists a
+  hash as the tier-3 id source and LRN-ID-1 / LRN-ID-2 describe the `h-<hash>`
+  convention, but every one of those instructs a human writing a per-site
+  `setupScript`. The worker persisted `normalized.externalJobId || null` and had no
+  fallback, so skipping the rule at onboarding left NULLs that nothing caught —
+  scraping still works because dedup falls back to `jobKey = externalJobId || url`.
+  Only `decideActivationStatus` notices, and only later.
+- **Fix:** `worker/lib/synthesizeJobId.ts`, consulted **only** when extraction produced
+  nothing for a job. Hashes title + department + detail URL and pointedly **not**
+  location (re-canonicalised every run — LRN-ID-7 records ids churning for exactly that
+  reason); index-free so a reordered listing yields identical ids; `h-` prefix marks it
+  synthetic and keeps `verify-jobids` from reading an all-integer set as index-based;
+  returns null rather than invent an unstable key when nothing stable exists. `jobKey`
+  deliberately stays on the **extracted** id so manual location overrides written
+  before this existed still resolve.
+- **Surfaced, not silent:** `synthesised_external_job_id` (informational) and
+  `synthesised_id_collision` — the latter is the LRN-ID-8 job-loss class and needs a
+  human.
+- **Verified:** dry-run over the three sites' real rows — 10/10 ids, all distinct, zero
+  collisions, each moving 0% → 100% fill and clearing the ≥0.9 gate.
+- **Generalizes to:** every site onboarded without the id rule. **Home:** Step 4
+  externalJobId row.
+
+---
+
 ## I. Dedup & API quirks
 
 ### LRN-API-1 — `/api/sites?pageSize>100` silently returns `[]`
@@ -1035,3 +1166,27 @@
   classifies blocking-challenge vs invisible-v3 captchas instead of skipping both, and
   `recipes/form-capture.md` §4 no longer claims the worker serializes a `<form>` mapped
   to `applicationInfo` (it does not — `domFieldExtract.ts` returns plain text).
+
+### LRN-API-4 — The config mirror rots quietly, and its own tooling encourages that
+- **Date / site:** 2026-08-16 · a routine full export changed 142 files; only **7** were
+  real drift, **129** differed solely by the `_exportedAt` stamp
+- **Signal:** among those 7 were **three setupScripts that existed nowhere but the
+  production database** (electra, landing-iac, pac).
+- **Root cause — two compounding tooling faults:**
+  1. `scripts/export-site-configs.ts` rewrites `_exportedAt` on every file whether or
+     not anything else changed, so any run looks like a 140-file diff. That noise is
+     why the export is run rarely — and rare runs are why mirrors go stale.
+  2. The same script with `--site <id>` regenerates `INDEX.md` from **only that site**,
+     deleting the other 136 rows. Committed without reading the diff, it silently
+     destroys the index.
+- **A stale mirror is worse than none:** `main` held a kahane setupScript predating the
+  2026-08-13 rewrite, still doing `textContent.replace(/\s+/g, ' ')`. Restoring from it
+  would have reinstated the flattened descriptions the blob campaign was removing. A
+  missing backup fails loudly; a stale one fails quietly and looks like success.
+- **Detection:** run the **full** export (never `--site`) and diff; ignore
+  `_exportedAt`-only changes, everything else is unmirrored drift. Also flag any site
+  whose live config has a `setupScript` with no matching `.setup.js`.
+- **Fix:** write `_exportedAt` only when something else changed; make `--site` merge its
+  INDEX row rather than regenerate the file; run the full export after any config
+  change rather than as an occasional chore.
+- **Generalizes to:** the whole mirror. **Home:** `sites/_configs/INDEX.md`.

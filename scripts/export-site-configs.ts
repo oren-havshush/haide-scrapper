@@ -10,6 +10,12 @@
  *   npx tsx scripts/export-site-configs.ts                 # all ACTIVE sites
  *   npx tsx scripts/export-site-configs.ts --all-statuses  # every site
  *   npx tsx scripts/export-site-configs.ts --site <id>     # just one
+ *
+ * CAUTION (LRN-API-4): --site regenerates INDEX.md from ONLY that site, deleting
+ * every other row. Prefer the full export; if you must use --site, restore
+ * INDEX.md afterwards or edit its single row by hand. Note also that every run
+ * rewrites `_exportedAt` on all files, so a full export always looks like a
+ * ~140-file change — diff past that noise to find the real drift.
  *   npx tsx scripts/export-site-configs.ts --dry-run       # report, write nothing
  *
  * Output, one pair per site under sites/_configs/:
