@@ -3,11 +3,25 @@ try {
     if (!document.querySelector('[data-haide-desc]')) {
       var parts = [];
       document.querySelectorAll('.elementor-widget-text-editor').forEach(function (el) {
-        var t = (el.textContent || '').replace(/\s+/g, ' ').trim();
-        if (!t) return;
-        if (/כל הזכויות שמורות|הצהרת נגישות|מדיניות פרטיות/.test(t)) return;
-        if (/^המשרה מיועדת לנשים ולגברים כאחד\.?$/.test(t)) return;
-        parts.push(t);
+        var probe = (el.textContent || '').replace(/\s+/g, ' ').trim();
+        if (!probe) return;
+        if (/כל הזכויות שמורות|הצהרת נגישות|מדיניות פרטיות/.test(probe)) return;
+        if (/^המשרה מיועדת לנשים ולגברים כאחד\.?$/.test(probe)) return;
+        var c = el.cloneNode(true);
+        c.querySelectorAll('style, script, noscript, svg, iframe').forEach(function (n) { n.remove(); });
+        c.querySelectorAll('br').forEach(function (n) { n.replaceWith('\n'); });
+        c.querySelectorAll('li').forEach(function (li) {
+          var lt = (li.textContent || '').replace(/^\s+/, '');
+          if (lt && !/^[•–\-]/.test(lt)) { li.prepend('• '); }
+        });
+        c.querySelectorAll('p, div, li, tr, h1, h2, h3, h4, h5, h6').forEach(function (b) { b.append('\n'); });
+        var t = (c.textContent || '')
+          .replace(/[^\S\n]+/g, ' ')
+          .replace(/\n{3,}/g, '\n\n')
+          .replace(/ \n/g, '\n')
+          .replace(/\n /g, '\n')
+          .trim();
+        if (t) parts.push(t);
       });
       if (parts.length) {
         var span = document.createElement('span');
