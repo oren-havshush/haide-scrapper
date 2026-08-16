@@ -1,15 +1,20 @@
 {
-  "_exportedAt": "2026-08-06T15:54:04.575Z",
+  "_exportedAt": "2026-08-16T16:58:03.864Z",
   "_note": "Mirror of the live config. The DB is authoritative; the worker never reads this file. setupScript lives alongside in <slug>.setup.js.",
-  "id": "cmq6nxfgw000c01lie6v0sq5h",
+  "id": "cmsw1nfo0000e01p87z5akm6u",
   "siteUrl": "https://www.globrands.co.il/",
   "companyName": "גלוברנדס",
   "status": "ACTIVE",
-  "setupScriptFile": null,
-  "pageFlow": [],
+  "setupScriptFile": "globrands--5akm6u.setup.js",
+  "pageFlow": [
+    {
+      "url": "https://www.globrands.co.il/",
+      "action": "navigate"
+    }
+  ],
   "fieldMappings": {
     "_meta": {
-      "savedAt": "2026-06-09T13:48:20.905Z",
+      "savedAt": "2026-08-16T16:56:31.596Z",
       "pagination": null,
       "formCapture": {
         "fields": [
@@ -68,48 +73,51 @@
         "formSelector": "#fluentform_1"
       },
       "itemSelector": "div.job",
+      "minPublishDate": null,
+      "minPublishDays": null,
       "revealSelector": null,
       "listingSelector": null,
       "applyLoginReason": null,
       "browserOverrides": null,
       "loadMoreSelector": null,
+      "locationFallback": null,
       "originalMappings": null,
       "applyRequiresLogin": false
     },
     "title": {
       "source": "MANUAL",
       "selector": "h3.job-title",
-      "confidence": 100,
+      "confidence": 0.95,
       "capturedOnUrl": "https://www.globrands.co.il/"
     },
     "location": {
       "source": "MANUAL",
       "selector": ".content-col.placement .content",
-      "confidence": 100,
+      "confidence": 0.95,
       "capturedOnUrl": "https://www.globrands.co.il/"
     },
     "department": {
       "source": "MANUAL",
       "selector": "h3.company-name",
-      "confidence": 100,
+      "confidence": 0.95,
       "capturedOnUrl": "https://www.globrands.co.il/"
     },
     "description": {
       "source": "MANUAL",
       "selector": ".content-col.description .content",
-      "confidence": 100,
+      "confidence": 0.95,
       "capturedOnUrl": "https://www.globrands.co.il/"
     },
     "requirements": {
       "source": "MANUAL",
       "selector": ".content-col.requirements .content",
-      "confidence": 100,
+      "confidence": 0.95,
       "capturedOnUrl": "https://www.globrands.co.il/"
     },
     "externalJobId": {
       "source": "MANUAL",
-      "selector": "p.job-number",
-      "confidence": 100,
+      "selector": ".__ai-jobid",
+      "confidence": 0.95,
       "capturedOnUrl": "https://www.globrands.co.il/"
     }
   }

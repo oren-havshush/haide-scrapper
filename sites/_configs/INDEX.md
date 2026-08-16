@@ -70,7 +70,7 @@ from top-level params, so a setupScript left only inside `_meta` is dropped.
 | גולדברג פרושן ושות' רואי חשבון | ACTIVE | 5 | 4236 | `goldpro--1pf5j6` |
 | גזית | ACTIVE | 3 | 746 | `gazit--fqrarf` |
 | גילאר | ACTIVE | 6 | — | `gilar--h7463m` |
-| גלוברנדס | ACTIVE | 6 | — | `globrands--v0sq5h` |
+| גלוברנדס | ACTIVE | 6 | 1643 | `globrands--5akm6u` |
 | האקדמית רמת גן | ACTIVE | 5 | 1124 | `landing-iac--3cdlhs` |
 | הבנק הבינלאומי | ACTIVE | 4 | 607 | `fibi--nba61p` |
 | החברה לאמנות ותרבות | ACTIVE | 5 | 1559 | `tarbut-herzliya--zvh6d2` |
