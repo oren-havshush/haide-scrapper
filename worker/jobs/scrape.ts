@@ -67,6 +67,16 @@ interface ScrapeContext {
   pageLoaded: boolean;
   selectorsMatched: boolean;
   itemsFound: number;
+  /**
+   * Job cards counted on the expanded listing (`_meta.itemSelector` matches,
+   * after setupScript / load-more / pagination). Distinct from `itemsFound`,
+   * which is `rawFieldsList.length` — the records that survived extraction.
+   *
+   * The gap between the two is what nothing currently measures: a card that
+   * yields no detail URL never becomes a record at all, and a dedup collapse
+   * removes one silently. Null when the count could not be taken.
+   */
+  listingItemsSeen: number | null;
 }
 
 /** A normalized record paired with its validation result */
@@ -1358,6 +1368,12 @@ async function extractRawFieldsWithPageFlow(
   pagination: PaginationConfig | null = null,
   setupScript: string | null = null,
   loadMoreSelector: string | null = null,
+  /**
+   * Out-param: how many job cards the expanded listing actually showed. Counted
+   * here because by the time this returns the page has navigated away to detail
+   * pages, so the caller can no longer take the measurement.
+   */
+  stats?: { listingItemsSeen: number | null },
 ): Promise<Record<string, string>[]> {
   const rawFieldsList: Record<string, string>[] = [];
 
@@ -1484,6 +1500,20 @@ async function extractRawFieldsWithPageFlow(
       ? await firstItemSignature(page, itemSelector)
       : "";
     const urlsBefore = detailUrls.length;
+
+    // Count the cards this listing page is showing, before any of them are
+    // turned into detail URLs. Accumulated across paginated pages.
+    if (stats && itemSelector) {
+      try {
+        const shown = await page.evaluate(
+          (sel: string) => document.querySelectorAll(sel).length,
+          itemSelector,
+        );
+        stats.listingItemsSeen = (stats.listingItemsSeen ?? 0) + shown;
+      } catch {
+        // Counting is diagnostic only — never let it break a scrape.
+      }
+    }
 
   if (linkSel) {
     // The Navigate Mode records the full selector of the ONE item the user
@@ -2761,6 +2791,7 @@ export async function handleScrapeJob(
     pageLoaded: false,
     selectorsMatched: false,
     itemsFound: 0,
+    listingItemsSeen: null,
   };
 
   // Parse site configuration
@@ -2950,6 +2981,10 @@ async function executeScrape(
   // Determine scrape strategy
   const hasPageFlow = pageFlow.length > 0;
 
+  // Filled by the pageFlow extractor with the number of cards the expanded
+  // listing showed, so it can be compared against what actually got saved.
+  const listingStats: { listingItemsSeen: number | null } = { listingItemsSeen: null };
+
   let rawFieldsList: Record<string, string>[];
 
   if (hasPageFlow) {
@@ -2966,10 +3001,12 @@ async function executeScrape(
       pagination,
       setupScript,
       loadMoreSelector,
+      listingStats,
     );
     context.pageLoaded = true;
     context.selectorsMatched = rawFieldsList.length > 0;
     context.itemsFound = rawFieldsList.length;
+    context.listingItemsSeen = listingStats.listingItemsSeen;
 
     // Multi-page may visit detail pages and capture per-job form data inline,
     // but a single-step pageFlow leaves us back on the listing page with the
@@ -3182,6 +3219,18 @@ async function executeScrape(
 
     context.selectorsMatched = rawFieldsList.length > 0;
     context.itemsFound = rawFieldsList.length;
+    // Single-page path leaves us on the listing, so the card count can be taken
+    // here rather than threaded out of the extractor.
+    if (itemSelector) {
+      try {
+        context.listingItemsSeen = await page.evaluate(
+          (sel: string) => document.querySelectorAll(sel).length,
+          itemSelector,
+        );
+      } catch {
+        // Diagnostic only.
+      }
+    }
 
     // Extract form data once from the single page and attach to all records.
     // This is a listing-only site (no pageFlow), so a live <form> on the listing
@@ -3476,6 +3525,26 @@ async function executeScrape(
       },
     });
     scrapeWarnings.push(...buildLocationWarnings(savedJobs));
+    // TIER 1 — cards shown on the listing vs rows actually written. The gap is
+    // never an error on its own: true duplicate postings, dead detail pages
+    // skipped by design, validator rejects, the maxJobs cap and cards with no
+    // http apply link are all legitimate. But nothing else measures it, and it
+    // is the only in-run signal for a dedup collapse (samelet shipped 7 of 8
+    // jobs on a reused requisition number) or for cards silently dropped for
+    // want of a detail URL. Reported, never enforced.
+    if (
+      context.listingItemsSeen != null &&
+      context.listingItemsSeen > savedCount &&
+      savedCount > 0
+    ) {
+      const lost = context.listingItemsSeen - savedCount;
+      scrapeWarnings.push(
+        `listing_vs_saved_gap: ${context.listingItemsSeen} card(s) on the listing but ` +
+          `${savedCount} job(s) saved (${lost} unaccounted) — check for duplicate ids, ` +
+          `cards with no detail URL, or rejected records`,
+      );
+    }
+
     // The site has no id mapping and is leaning on the synthesised fallback.
     // Not a failure — it scrapes and passes the activation gate — but a native
     // id is always better, so make the reliance visible rather than silent.
