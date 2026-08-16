@@ -1,20 +1,24 @@
 {
-  "_exportedAt": "2026-08-06T15:54:06.050Z",
+  "_exportedAt": "2026-08-16T12:13:18.661Z",
   "_note": "Mirror of the live config. The DB is authoritative; the worker never reads this file. setupScript lives alongside in <slug>.setup.js.",
   "id": "cmowla1ei000c01mrhh4xvfi9",
   "siteUrl": "https://www.pac.ac.il/jobs/",
   "companyName": "מרכז האקדמי פרס",
   "status": "ACTIVE",
-  "setupScriptFile": null,
+  "setupScriptFile": "pac--4xvfi9.setup.js",
   "pageFlow": [
     {
       "url": "https://www.pac.ac.il/jobs/",
       "action": "navigate"
+    },
+    {
+      "url": "https://campaign.adamtotal.co.il/*",
+      "action": ".__ai-applyurl"
     }
   ],
   "fieldMappings": {
     "_meta": {
-      "savedAt": "2026-05-11T20:08:15.310Z",
+      "savedAt": "2026-08-16T11:59:19.194Z",
       "pagination": null,
       "formCapture": {
         "fields": [
@@ -52,19 +56,40 @@
         "formSelector": "form[id^=\"hsForm_\"]"
       },
       "itemSelector": "div.job-item",
+      "minPublishDate": null,
+      "minPublishDays": null,
       "revealSelector": null,
       "listingSelector": "section.career",
-      "originalMappings": null
+      "applyLoginReason": null,
+      "browserOverrides": null,
+      "loadMoreSelector": null,
+      "locationFallback": null,
+      "originalMappings": null,
+      "applyRequiresLogin": false
     },
     "title": {
       "source": "MANUAL",
       "selector": "h2",
-      "confidence": 0
+      "confidence": 100,
+      "capturedOnUrl": "https://www.pac.ac.il/jobs/"
     },
     "description": {
       "source": "MANUAL",
       "selector": "div.description",
-      "confidence": 0
+      "confidence": 100,
+      "capturedOnUrl": "https://www.pac.ac.il/jobs/"
+    },
+    "externalJobId": {
+      "source": "MANUAL",
+      "selector": ".__ai-jobid",
+      "confidence": 100,
+      "capturedOnUrl": "https://campaign.adamtotal.co.il/?d=p0CpYKoT2B9DGq9HgEc7YA%3d%3d"
+    },
+    "applicationInfo": {
+      "source": "MANUAL",
+      "selector": ".__ai-applyinfo",
+      "confidence": 100,
+      "capturedOnUrl": "https://www.pac.ac.il/jobs/"
     }
   }
 }

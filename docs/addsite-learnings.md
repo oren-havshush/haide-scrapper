@@ -316,6 +316,27 @@
 - **Generalizes to:** every Hebrew/RTL or non-Latin slugged site. **Home:**
   `recipes/setupscript-patterns.md` §3.
 
+### LRN-ID-8 — `verify-jobids` cannot see a collision that already collapsed — test ids on the LIVE page
+- **Date / site:** 2026-08-16 · samelet.com (`cmozl1to4000y01phtdi6xe7r`) shipped 7 of 8 jobs
+- **Signal:** `verify-jobids` returns `fill 1.00, distinctRate 1.00` and the site looks
+  healthy, but the listing shows more items than the database holds.
+- **Root cause:** the gate reads **stored** jobs. When two postings share an id, the worker
+  dedupes at write time, so by the time the gate runs there is exactly one row and the
+  duplicate is invisible. `.cv_scope` (a printed requisition number) was reused across two
+  unrelated openings — "מיישם/ת SAP MM" and "מנהל/ת שיווק למותגי סמלת" both carried `1213`.
+  Stored distinctness is therefore **structurally incapable** of detecting this class.
+- **Fix:** run `.scratch/id-stability.ts` (or any live extraction) BEFORE the rescrape and
+  compare `distinct(ids)` against the **live item count**, not the saved count. Here:
+  8 items, 8 ids, 7 distinct → collision. addsite2.md §6.2 already warns "a printed job
+  number can be reused across distinct postings by the same recruiter — verify uniqueness",
+  and §12 says "Exit 0 but saved jobs < DOM total means the id collides"; neither is
+  automated, so both depend on the operator remembering.
+- **Rule:** a printed requisition number is NOT automatically unique. Prefer the unique
+  record id (CMS post id, detail-URL param). On samelet the permalink
+  `?post_type=cvs&p=<id>` was 8/8 distinct and sitting on the same card.
+- **Generalizes to:** every site keyed on a human-entered "job number" field.
+  **Home:** Step 9 externalJobId gate.
+
 ### LRN-ID-7 — Never hash a field you may later normalize (location churn)
 - **Date / site:** 2026-08-03 · minrav.co.il/careers/ (`cmsbxxv9b000601p0hbhkk5r9`)
 - **Signal:** the id was `h-<hash(title + '|' + location)>`. A later data-quality fix
@@ -622,6 +643,65 @@
   `document.body`, NOT inside `.__ai-jobbody`, or they corrupt the description text.
 - **Generalizes to:** any pre-enrichment ACTIVE site, or any new listing-only site
   whose description lives on detail pages. **Home:** Step 5b / pageFlow setup.
+
+### LRN-WRK-14 — A filled `publishDate` can still be 100% useless — assert on `ageBucket`, not on fill
+- **Date / site:** 2026-08-16 · l-w.ac.il (`cmsvmcyxs000m01lkm0qajne1`), 12 of 60 filled, 0 of 60 usable
+- **Signal:** QA reports `fillRates.publishDate: 0.4`, which reads as a coverage gap —
+  "most jobs just don't print a date". The real defect is worse and invisible: **every
+  filled value was unparseable**, so `ageBucket` was null on 100% of jobs and the
+  dashboard's age badges / age filter were dead for the whole site.
+- **Root cause:** the mapping pointed at the visible line, which renders as
+  `"פורסם ב-06.08.2026"`. `parsePublishDateToUtc` (`worker/lib/normalizer.ts`) accepts
+  `YYYY-MM-DD`, a bare `D.M.YYYY`, or `Mon D, YYYY` — anchored with `^`, so any prefix
+  (a Hebrew label, "Posted:", "Published on") fails both branches and returns null.
+  Nothing downstream complains; the column is just quietly non-functional.
+- **Fix:** take the machine-readable value. Yoast JSON-LD `datePublished` was present on
+  100% of detail pages. `domFieldExtract` returns `""` for `<script>` nodes, so it cannot
+  be selector-mapped — surface it via setupScript as a hidden span holding `YYYY-MM-DD`.
+  Result: 60/60 parse, revealing 17 postings over 90 days old and 4 over a year that had
+  all been showing as undated.
+- **Invariant worth gating:** `publishDate` non-empty AND `ageBucket` null is **always** a
+  bug — there is no legitimate case. A fleet sweep on this invariant also surfaces stale
+  rows scraped before age-buckets existed (ageBucket is computed at scrape time only, so
+  it does not backfill).
+- **Generalizes to:** any field whose value feeds a parser — validate through the
+  **consumer**, not for non-emptiness. **Home:** Step 7 age-bucket flagging.
+
+### LRN-WRK-13 — `loadMoreSelector` stops after one click when the theme hides the button mid-request
+- **Date / site:** 2026-08-16 · l-w.ac.il/jobs/ (`cmsvmcyxs000m01lkm0qajne1`) shipped 9 of 60 jobs
+- **Signal:** `_meta.loadMoreSelector` is set and the worker log shows it firing, but the
+  listing never expands:
+  ```
+  [scrape] loadMore: button disabled/hidden after 1 clicks (count=9)
+  [scrape] loadMore: 1 clicks done, final count=9
+  ```
+  The button works perfectly when clicked by hand, so the selector is not the problem.
+- **Root cause:** `clickLoadMoreUntilStable` (`worker/jobs/scrape.ts`) re-reads the button
+  at the **top of each iteration** and breaks on `offsetParent === null`. Many themes set
+  the button to `display:none` for the duration of their AJAX round trip and restore it
+  when the new rows land. Measured on l-w.ac.il (`POST /wp-admin/admin-ajax.php`,
+  `action=get_jobs&paged=N`):
+  ```
+  t+150ms  display:inline-block  paged=1  items=9
+  t+1s     display:none          paged=1  items=9    <- worker samples here, breaks
+  t+2s     display:inline-block  paged=2  items=18   <- button is back
+  ```
+  The loop's `settleMs` wait only guards the **item count**, never the button's return, so
+  a button that is slower to reappear than the rows are to render kills the loop after the
+  first click. Silent: the run reports COMPLETED with a plausible job count.
+- **Fix (site-level, no deploy):** drop `loadMoreSelector` and use a Strategy C
+  `setupScript` click loop that waits for the button to become visible **again** before
+  each click (`pagination-and-loading.md` §2). l-w.ac.il: 9 → 60 in ~24s, well inside the
+  90s setupScript budget. Guard the whole loop behind `if (document.querySelector(BTN))`
+  so it no-ops on detail pages instead of burning the wait budget 60 times.
+- **Fix (worker-level, not yet applied):** in `clickLoadMoreUntilStable`, poll for the
+  button to become visible again (up to `settleMs`) before treating hidden as terminal,
+  and only break on hidden after the item count has also stopped growing.
+- **Detection:** always run the §6.2 coverage gate against the number the *site* reports —
+  a load-more listing that returns exactly one page-worth of items (9, 10, 20 …) is the
+  signature. `verify-config` and `verify-jobids` both pass on the truncated set.
+- **Generalizes to:** every append-style "load more" listing whose button hides itself
+  while loading. **Home:** `recipes/pagination-and-loading.md` §2 Strategy A.
 
 ### LRN-WRK-12 — Single-page path runs `setupScript` BEFORE `autoScrollUntilStable` — enrichment scripts must self-scroll
 - **Date / site:** 2026-07-01 · tnuva.co.il/jobs/ (`cmqyh9j7k002n01nzpb7145ri`) shipped 20 of 99 jobs

@@ -11,8 +11,6 @@ from top-level params, so a setupScript left only inside `_meta` is dropped.
 
 | Company | Status | Fields | setupScript chars | File |
 | --- | --- | --- | --- | --- |
-| *(none)* | ACTIVE | 6 | 967 | `tafkid-plus--ioqkzw` |
-| *(none)* | ACTIVE | 7 | — | `yes--ekwenb` |
 | AGAS 3K | ACTIVE | 4 | 1049 | `agas--vfl5da` |
 | AIG | ACTIVE | 4 | — | `aig--0rlmdf` |
 | BDO | ACTIVE | 10 | 2810 | `bdo-career-hunterhrms--dgrgrm` |
@@ -41,6 +39,7 @@ from top-level params, so a setupScript left only inside `_meta` is dropped.
 | Top Match | ACTIVE | 6 | 759 | `topmatch--f67z41` |
 | Unitask | ACTIVE | 5 | 1186 | `unitask-inc--cugks8` |
 | Waterfall Security | ACTIVE | 6 | 2198 | `waterfall-security--c5pw15` |
+| YES | ACTIVE | 7 | — | `yes--ekwenb` |
 | YKM | ACTIVE | 4 | — | `ykm--3eyehb` |
 | bank mizrahi tefahot | ACTIVE | 10 | — | `mizrahi-tefahot--a0zkf2` |
 | go mobile | ACTIVE | 6 | 1081 | `gomobile--zpvjhq` |
@@ -53,7 +52,7 @@ from top-level params, so a setupScript left only inside `_meta` is dropped.
 | אלביט מערכות | ACTIVE | 9 | 7741 | `elbitsystemscareer--kjk1e7` |
 | אלובין תעשייות אלומיניום בע״מ | ACTIVE | 6 | 2373 | `alubin--r73xau` |
 | אליקטרוניקס בע''מ | ACTIVE | 4 | 722 | `eliktronics--erhzvq` |
-| אלקטרה | ACTIVE | 7 | — | `electra--cgkf66` |
+| אלקטרה | ACTIVE | 7 | 1823 | `electra--cgkf66` |
 | אמביאנס קוסמטיקה רפואית | ACTIVE | 3 | 505 | `yafa-maximov--v1max5` |
 | אנשים ומחשבים | ACTIVE | 5 | 2645 | `pc--51eg8t` |
 | אשטרום | ACTIVE | 7 | — | `ashtrom--0oo30k` |
@@ -65,10 +64,10 @@ from top-level params, so a setupScript left only inside `_meta` is dropped.
 | גזית | ACTIVE | 3 | 746 | `gazit--fqrarf` |
 | גילאר | ACTIVE | 6 | — | `gilar--h7463m` |
 | גלוברנדס | ACTIVE | 6 | — | `globrands--v0sq5h` |
-| האקדמית רמת גן | ACTIVE | 5 | — | `landing-iac--3cdlhs` |
+| האקדמית רמת גן | ACTIVE | 5 | 1124 | `landing-iac--3cdlhs` |
 | הבנק הבינלאומי | ACTIVE | 4 | 607 | `fibi--nba61p` |
 | החברה לאמנות ותרבות | ACTIVE | 5 | 1559 | `tarbut-herzliya--zvh6d2` |
-| המרכז האקדמי לוינסקי־וינגייט | ACTIVE | 2 | — | `l-w--xqhju3` |
+| המרכז האקדמי לוינסקי־וינגייט | ACTIVE | 6 | 4210 | `l-w--qajne1` |
 | הספארי | ACTIVE | 5 | 1599 | `safari--6r81oc` |
 | ויסוצקי | ACTIVE | 6 | 777 | `app-civi--jgqwu7` |
 | חברת החשמל | ACTIVE | 8 | 3910 | `iec--7d28yg` |
@@ -107,7 +106,7 @@ from top-level params, so a setupScript left only inside `_meta` is dropped.
 | מנרב | ACTIVE | 5 | 3145 | `minrav--hkk5r9` |
 | מסוף שירותי לוגיסטיקה | ACTIVE | 3 | 534 | `masof--2bfcz7` |
 | מקדונלדס | ACTIVE | 4 | — | `mcdonalds--x0odyk` |
-| מרכז האקדמי פרס | ACTIVE | 2 | — | `pac--4xvfi9` |
+| מרכז האקדמי פרס | ACTIVE | 4 | 2397 | `pac--4xvfi9` |
 | נאות המושבה - גולדנקייר | ACTIVE | 3 | 700 | `gcare--2uvz1w` |
 | נטלי | ACTIVE | 5 | 4418 | `natali--ld00pa` |
 | נטפים | ACTIVE | 8 | 293 | `comeet--j78371` |
@@ -117,7 +116,7 @@ from top-level params, so a setupScript left only inside `_meta` is dropped.
 | סמלת | ACTIVE | 8 | — | `samelet--i6xe7r` |
 | עזריאלי | ACTIVE | 5 | 1078 | `azrielipalace--qmhgmh` |
 | עמותת איכות בשיקום | ACTIVE | 4 | 686 | `eychut--6336w9` |
-| ענבי ציון | ACTIVE | 3 | — | `anvei-zion--tkz1xm` |
+| ענבי ציון | ACTIVE | 4 | — | `anvei-zion--tkz1xm` |
 | פוליכד | ACTIVE | 3 | 315 | `polycad--is4jw2` |
 | פרופורציה | ACTIVE | 7 | 3530 | `proportsia--msnicc` |
 | פתרונות עדיפים-ביטוח | ACTIVE | 5 | 1629 | `adifim--2obqtp` |
@@ -127,7 +126,7 @@ from top-level params, so a setupScript left only inside `_meta` is dropped.
 | קבוצת ח.י | ACTIVE | 4 | — | `hye--9i2hm3` |
 | קבוצת טובול | ACTIVE | 6 | 1231 | `tuboul--hvbine` |
 | קבוצת יוניון | ACTIVE | 8 | 5649 | `unioncareer--mhsr2v` |
-| קבוצת כהנא | ACTIVE | 6 | 1323 | `kahane--8cvjyo` |
+| קבוצת כהנא | ACTIVE | 6 | 2074 | `kahane--8cvjyo` |
 | קבוצת שגריר שרותי רכב בעמ | ACTIVE | 6 | 2367 | `shagrir--i3nkhe` |
 | קדמי ביטוח | ACTIVE | 5 | 1209 | `kedmi770--e2pnpm` |
 | קופת חולים מכבי | ACTIVE | 6 | 2145 | `maccabi4u--eazu8j` |
@@ -147,3 +146,4 @@ from top-level params, so a setupScript left only inside `_meta` is dropped.
 | תמה גרופ | ACTIVE | 4 | 2240 | `tama--rwlfxm` |
 | תמורה | ACTIVE | 4 | 414 | `tmuralife--k5bo9h` |
 | תנובה | ACTIVE | 5 | 1994 | `tnuva--7145ri` |
+| תפקיד פלוס | ACTIVE | 6 | 967 | `tafkid-plus--ioqkzw` |
