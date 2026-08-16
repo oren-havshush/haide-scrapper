@@ -18,6 +18,13 @@
  *
  * Usage: npx tsx scripts/addsite-fleet-audit.ts [--sample 8] [--out <csv>] [--min-fill 0.6]
  *
+ * CAVEAT (LRN-WRK-15): this reads only STORED data. A site whose config has
+ * drifted keeps serving its last good harvest, so it can pass every check here
+ * while extracting nothing live — natali.co.il, biopharmax.co.il and msh.co.il
+ * all read ACTIVE/COMPLETED/no-failure on 2026-08-16 while serving June rows.
+ * To catch that, compare Site.lastScrapedAt against max(Job.createdAt), or probe
+ * the live page with the stored itemSelector.
+ *
  * Read-only: only GET requests. Safe to run anytime.
  */
 import * as fs from "fs";

@@ -8,6 +8,15 @@
 >
 > See also: `LRN-WAF-1`, `LRN-WAF-2` in `docs/addsite-learnings.md`.
 
+
+> **CEILING — `bypassCSP` cannot read a third party's response.** It removes the
+> Content-Security-Policy check, so the request leaves — but CORS still governs
+> *reading* the reply. A host that sends no `Access-Control-Allow-Origin` returns an
+> opaque response (status 0, unreadable body) and no setupScript can ever get the data.
+> Test before designing: fetch with `bypassCSP` false, then true, then `mode:"no-cors"`.
+> `opaque/0` while `cors` fails = ceiling reached; switch to `pageFlow` navigation.
+> Cite: `LRN-WAF-3` (pac.ac.il → campaign.adamtotal.co.il).
+
 ---
 
 ## 1. UA-keyed WAF (TCP reset / connection refused on listing)

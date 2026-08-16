@@ -103,6 +103,14 @@ for (const item of document.querySelectorAll('.job-item')) {
    still per-URL-unique). This is what qasisrael.co.il / madanes.com do. (`LRN-ID-6`.)
 3. **Hash synthesis** — last resort, below.
 
+> **The worker now backstops this.** Since 2026-08-16 a job that reaches the save path
+> with no `externalJobId` gets `h-<hash(title|department|detailUrl)>` synthesised
+> centrally (`worker/lib/synthesizeJobId.ts`), so forgetting the hash here no longer
+> means 0% fill and a demoted site. Writing it per-site is still worth doing when the
+> page exposes something better than a title hash — a printed requisition number, a CMS
+> record id — but it is now an optimisation rather than a requirement. Cite:
+> `LRN-WRK-17`.
+
 Use the synchronous `haideHash` (djb2) — **not** `crypto.subtle.digest`, which is
 async and adds an `await` round-trip inside the injected script. Always prefix
 the synthesized id with **`h-`** so it can never collide with a native numeric id
