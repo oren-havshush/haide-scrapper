@@ -68,7 +68,7 @@ from top-level params, so a setupScript left only inside `_meta` is dropped.
 | האקדמית רמת גן | ACTIVE | 5 | — | `landing-iac--3cdlhs` |
 | הבנק הבינלאומי | ACTIVE | 4 | 607 | `fibi--nba61p` |
 | החברה לאמנות ותרבות | ACTIVE | 5 | 1559 | `tarbut-herzliya--zvh6d2` |
-| המרכז האקדמי לוינסקי־וינגייט | ACTIVE | 2 | — | `l-w--xqhju3` |
+| המרכז האקדמי לוינסקי־וינגייט | ACTIVE | 6 | 4210 | `l-w--qajne1` |
 | הספארי | ACTIVE | 5 | 1599 | `safari--6r81oc` |
 | ויסוצקי | ACTIVE | 6 | 777 | `app-civi--jgqwu7` |
 | חברת החשמל | ACTIVE | 8 | 3910 | `iec--7d28yg` |

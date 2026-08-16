@@ -623,6 +623,42 @@
 - **Generalizes to:** any pre-enrichment ACTIVE site, or any new listing-only site
   whose description lives on detail pages. **Home:** Step 5b / pageFlow setup.
 
+### LRN-WRK-13 — `loadMoreSelector` stops after one click when the theme hides the button mid-request
+- **Date / site:** 2026-08-16 · l-w.ac.il/jobs/ (`cmsvmcyxs000m01lkm0qajne1`) shipped 9 of 60 jobs
+- **Signal:** `_meta.loadMoreSelector` is set and the worker log shows it firing, but the
+  listing never expands:
+  ```
+  [scrape] loadMore: button disabled/hidden after 1 clicks (count=9)
+  [scrape] loadMore: 1 clicks done, final count=9
+  ```
+  The button works perfectly when clicked by hand, so the selector is not the problem.
+- **Root cause:** `clickLoadMoreUntilStable` (`worker/jobs/scrape.ts`) re-reads the button
+  at the **top of each iteration** and breaks on `offsetParent === null`. Many themes set
+  the button to `display:none` for the duration of their AJAX round trip and restore it
+  when the new rows land. Measured on l-w.ac.il (`POST /wp-admin/admin-ajax.php`,
+  `action=get_jobs&paged=N`):
+  ```
+  t+150ms  display:inline-block  paged=1  items=9
+  t+1s     display:none          paged=1  items=9    <- worker samples here, breaks
+  t+2s     display:inline-block  paged=2  items=18   <- button is back
+  ```
+  The loop's `settleMs` wait only guards the **item count**, never the button's return, so
+  a button that is slower to reappear than the rows are to render kills the loop after the
+  first click. Silent: the run reports COMPLETED with a plausible job count.
+- **Fix (site-level, no deploy):** drop `loadMoreSelector` and use a Strategy C
+  `setupScript` click loop that waits for the button to become visible **again** before
+  each click (`pagination-and-loading.md` §2). l-w.ac.il: 9 → 60 in ~24s, well inside the
+  90s setupScript budget. Guard the whole loop behind `if (document.querySelector(BTN))`
+  so it no-ops on detail pages instead of burning the wait budget 60 times.
+- **Fix (worker-level, not yet applied):** in `clickLoadMoreUntilStable`, poll for the
+  button to become visible again (up to `settleMs`) before treating hidden as terminal,
+  and only break on hidden after the item count has also stopped growing.
+- **Detection:** always run the §6.2 coverage gate against the number the *site* reports —
+  a load-more listing that returns exactly one page-worth of items (9, 10, 20 …) is the
+  signature. `verify-config` and `verify-jobids` both pass on the truncated set.
+- **Generalizes to:** every append-style "load more" listing whose button hides itself
+  while loading. **Home:** `recipes/pagination-and-loading.md` §2 Strategy A.
+
 ### LRN-WRK-12 — Single-page path runs `setupScript` BEFORE `autoScrollUntilStable` — enrichment scripts must self-scroll
 - **Date / site:** 2026-07-01 · tnuva.co.il/jobs/ (`cmqyh9j7k002n01nzpb7145ri`) shipped 20 of 99 jobs
 - **Signal:** an infinite-scroll listing has a **per-card enrichment `setupScript`**
