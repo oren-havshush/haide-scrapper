@@ -1,11 +1,11 @@
 {
-  "_exportedAt": "2026-08-06T15:54:03.832Z",
+  "_exportedAt": "2026-08-16T12:13:16.944Z",
   "_note": "Mirror of the live config. The DB is authoritative; the worker never reads this file. setupScript lives alongside in <slug>.setup.js.",
   "id": "cmq9k1fml003g01lcad3cdlhs",
   "siteUrl": "https://landing.iac.ac.il/ravitb/misra.html",
   "companyName": "האקדמית רמת גן",
   "status": "ACTIVE",
-  "setupScriptFile": null,
+  "setupScriptFile": "landing-iac--3cdlhs.setup.js",
   "pageFlow": [],
   "fieldMappings": {
     "_meta": {
@@ -36,7 +36,7 @@
     },
     "description": {
       "source": "MANUAL",
-      "selector": ".job-details",
+      "selector": "[data-haide-desc]",
       "confidence": 100,
       "capturedOnUrl": "https://landing.iac.ac.il/ravitb/misra.html"
     },

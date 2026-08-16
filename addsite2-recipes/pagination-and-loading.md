@@ -148,6 +148,17 @@ path that avoids the async-await landmine below. Use a **CSS** selector
 (`button.load-more-btn`), not a Playwright `:has-text()` pseudo — the worker does a
 plain `page.$(selector)`.
 
+> **LANDMINE — Strategy A silently collects ONE page when the theme hides the button
+> while loading.** `clickLoadMoreUntilStable` re-reads the button at the top of each
+> iteration and treats `offsetParent === null` as "no more pages". Themes that set the
+> button to `display:none` for the duration of their AJAX round trip (l-w.ac.il:
+> hidden at t+1s, back at t+2s with the new rows) therefore stop the loop after the
+> first click. The log gives it away — `loadMore: button disabled/hidden after 1
+> clicks` — but the run still reports COMPLETED, and `verify-config` / `verify-jobids`
+> both pass on the truncated set. **Always check the log line and the §6.2 coverage
+> count; if it stopped after 1 click, switch to Strategy C** and wait for the button
+> to reappear before each click. Cite: `LRN-WRK-13` (l-w.ac.il, 9 of 60 jobs).
+
 **Strategy B: find the underlying API** — open Network tab, click "Load more", find the XHR call. Then use the `setupScript` fetch approach from §1 Strategy C.
 
 **Strategy C: inject click loop** — only if `loadMoreSelector` can't target the

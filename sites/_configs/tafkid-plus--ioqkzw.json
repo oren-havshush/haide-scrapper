@@ -1,9 +1,9 @@
 {
-  "_exportedAt": "2026-08-06T15:54:04.186Z",
+  "_exportedAt": "2026-08-16T12:13:17.269Z",
   "_note": "Mirror of the live config. The DB is authoritative; the worker never reads this file. setupScript lives alongside in <slug>.setup.js.",
   "id": "cmq8egutf000e01mfo9ioqkzw",
   "siteUrl": "https://tafkid-plus.co.il/",
-  "companyName": null,
+  "companyName": "תפקיד פלוס",
   "status": "ACTIVE",
   "setupScriptFile": "tafkid-plus--ioqkzw.setup.js",
   "pageFlow": [],

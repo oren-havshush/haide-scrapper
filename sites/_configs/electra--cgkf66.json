@@ -1,11 +1,11 @@
 {
-  "_exportedAt": "2026-08-06T15:54:05.722Z",
+  "_exportedAt": "2026-08-16T12:13:18.414Z",
   "_note": "Mirror of the live config. The DB is authoritative; the worker never reads this file. setupScript lives alongside in <slug>.setup.js.",
   "id": "cmp03vj40000y01k5o1cgkf66",
   "siteUrl": "https://www.electra.co.il/career/%D7%9E%D7%A9%D7%A8%D7%95%D7%AA",
   "companyName": "אלקטרה",
   "status": "ACTIVE",
-  "setupScriptFile": null,
+  "setupScriptFile": "electra--cgkf66.setup.js",
   "pageFlow": [],
   "fieldMappings": {
     "_meta": {
@@ -98,9 +98,8 @@
     },
     "externalJobId": {
       "source": "MANUAL",
-      "selector": ".title a",
+      "selector": ".haide-jobid",
       "confidence": 100,
-      "extractAttr": "href",
       "capturedOnUrl": "https://www.electra.co.il/career/%D7%9E%D7%A9%D7%A8%D7%95%D7%AA"
     },
     "employmentType": {

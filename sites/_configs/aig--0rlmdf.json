@@ -1,5 +1,5 @@
 {
-  "_exportedAt": "2026-08-06T15:54:05.661Z",
+  "_exportedAt": "2026-08-16T12:13:18.361Z",
   "_note": "Mirror of the live config. The DB is authoritative; the worker never reads this file. setupScript lives alongside in <slug>.setup.js.",
   "id": "cmp05slo1000h01rqc50rlmdf",
   "siteUrl": "https://www.aig.co.il/jobs/#vacancies-section",
@@ -82,7 +82,7 @@
     },
     "description": {
       "source": "MANUAL",
-      "selector": "[class*=\"job-page_page-content\"]",
+      "selector": ".ritch-text",
       "confidence": 100,
       "capturedOnUrl": "https://www.aig.co.il/jobs/נציגת-מכירות-ביטוחי-חיים-ובריאות/"
     },
