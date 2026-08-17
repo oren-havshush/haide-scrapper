@@ -1,5 +1,5 @@
 {
-  "_exportedAt": "2026-08-17T14:52:55.230Z",
+  "_exportedAt": "2026-08-17T15:34:42.436Z",
   "_note": "Mirror of the live config. The DB is authoritative; the worker never reads this file. setupScript lives alongside in <slug>.setup.js.",
   "id": "cmqo82p3v000x01qpmtxsxv25",
   "siteUrl": "https://jobs.clalitsmile.co.il/search-resultes/?areaId=&professionId=&keyWord=",

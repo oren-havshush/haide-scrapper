@@ -1,5 +1,5 @@
 {
-  "_exportedAt": "2026-08-17T14:52:50.144Z",
+  "_exportedAt": "2026-08-17T15:34:41.506Z",
   "_note": "Mirror of the live config. The DB is authoritative; the worker never reads this file. setupScript lives alongside in <slug>.setup.js.",
   "id": "cmsvmcyxs000m01lkm0qajne1",
   "siteUrl": "https://www.l-w.ac.il/jobs/",

@@ -44,7 +44,6 @@ from top-level params, so a setupScript left only inside `_meta` is dropped.
 | Tender Loving Care | ACTIVE | 4 | 1240 | `tl-care--cylsu8` |
 | ToTali | ACTIVE | 6 | 3739 | `totali--duk823` |
 | Top Match | ACTIVE | 6 | 759 | `topmatch--f67z41` |
-| Unitask | ACTIVE | 5 | 1186 | `unitask-inc--cugks8` |
 | Waterfall Security | ACTIVE | 6 | 2198 | `waterfall-security--c5pw15` |
 | YES | ACTIVE | 7 | — | `yes--ekwenb` |
 | YKM | ACTIVE | 8 | 4431 | `ykm--gxcmnf` |
@@ -118,7 +117,7 @@ from top-level params, so a setupScript left only inside `_meta` is dropped.
 | נטלי | ACTIVE | 5 | 4418 | `natali--ld00pa` |
 | נטפים | ACTIVE | 8 | 6573 | `comeet--4q2aga` |
 | נירלט | ACTIVE | 4 | — | `nirlat--xluh8r` |
-| סיני סטור | ACTIVE | 4 | 286 | `sinaistore--2135c8` |
+| סיני סטור | ACTIVE | 3 | 1002 | `sinaistore--uxgr3o` |
 | סלקום | ACTIVE | 6 | 2255 | `cellcom--ugxfm3` |
 | סמלת | ACTIVE | 8 | — | `samelet--i6xe7r` |
 | עזריאלי | ACTIVE | 5 | 1078 | `azrielipalace--qmhgmh` |

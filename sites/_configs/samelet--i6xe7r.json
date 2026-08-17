@@ -1,5 +1,5 @@
 {
-  "_exportedAt": "2026-08-17T14:53:02.428Z",
+  "_exportedAt": "2026-08-17T15:34:44.433Z",
   "_note": "Mirror of the live config. The DB is authoritative; the worker never reads this file. setupScript lives alongside in <slug>.setup.js.",
   "id": "cmozl1to4000y01phtdi6xe7r",
   "siteUrl": "https://samelet.com/samelet-career/",

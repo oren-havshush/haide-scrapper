@@ -1,5 +1,5 @@
 {
-  "_exportedAt": "2026-08-17T14:53:02.712Z",
+  "_exportedAt": "2026-08-17T15:34:44.500Z",
   "_note": "Mirror of the live config. The DB is authoritative; the worker never reads this file. setupScript lives alongside in <slug>.setup.js.",
   "id": "cmowfdwt0000601mr7e6foa66",
   "siteUrl": "https://chayuta.com/career/#position",

@@ -1,5 +1,5 @@
 {
-  "_exportedAt": "2026-08-17T14:53:02.629Z",
+  "_exportedAt": "2026-08-17T15:34:44.479Z",
   "_note": "Mirror of the live config. The DB is authoritative; the worker never reads this file. setupScript lives alongside in <slug>.setup.js.",
   "id": "cmowla1ei000c01mrhh4xvfi9",
   "siteUrl": "https://www.pac.ac.il/jobs/",

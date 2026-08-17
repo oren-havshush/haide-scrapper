@@ -1,5 +1,5 @@
 {
-  "_exportedAt": "2026-08-17T14:53:01.670Z",
+  "_exportedAt": "2026-08-17T15:34:44.085Z",
   "_note": "Mirror of the live config. The DB is authoritative; the worker never reads this file. setupScript lives alongside in <slug>.setup.js.",
   "id": "cmp9p34hw001501lsdle2pnpm",
   "siteUrl": "https://kedmi770.co.il/%D7%93%D7%A8%D7%95%D7%A9%D7%99%D7%9D-%D7%9E%D7%97%D7%A4%D7%A9%D7%99%D7%9D-%D7%A2%D7%95%D7%91%D7%93%D7%99%D7%9D/",

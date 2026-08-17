@@ -1,0 +1,251 @@
+{
+  "site": {
+    "status": 405,
+    "body": ""
+  },
+  "config": {
+    "status": 200,
+    "body": {
+      "data": {
+        "fieldMappings": {
+          "_meta": {
+            "savedAt": "2026-06-01T09:25:05.569Z",
+            "pagination": null,
+            "formCapture": {
+              "fields": [
+                {
+                  "name": "input_1",
+                  "label": "שם מלא*",
+                  "tagName": "input",
+                  "required": true,
+                  "fieldType": "text"
+                },
+                {
+                  "name": "input_3",
+                  "label": "מספר טלפון*",
+                  "tagName": "input",
+                  "required": true,
+                  "fieldType": "tel"
+                },
+                {
+                  "name": "input_4",
+                  "label": "כתובת מייל*",
+                  "tagName": "input",
+                  "required": true,
+                  "fieldType": "email"
+                },
+                {
+                  "name": "input_7",
+                  "label": "המשרה המבוקשת*",
+                  "tagName": "input",
+                  "required": true,
+                  "fieldType": "text"
+                },
+                {
+                  "name": "input_5",
+                  "label": "קובץ קורות חיים*",
+                  "tagName": "input",
+                  "required": true,
+                  "fieldType": "file"
+                },
+                {
+                  "name": "input_8.1",
+                  "label": "קראתי והסכמתי למדיניות הפרטיות",
+                  "tagName": "input",
+                  "required": true,
+                  "fieldType": "checkbox"
+                }
+              ],
+              "method": "POST",
+              "actionUrl": "https://www.sinaistore.com/%d7%91%d7%95%d7%90%d7%95-%d7%9c%d7%a2%d7%91%d7%95%d7%93-%d7%90%d7%99%d7%aa%d7%a0%d7%95/#gf_6",
+              "formSelector": "#gform_6"
+            },
+            "setupScript": "try { document.querySelectorAll('.w-tabs-section').forEach(function (el) { if (el.querySelector('.haide-location')) return; var s = document.createElement('span'); s.className = 'haide-location'; s.style.display = 'none'; s.textContent = 'תל אביב'; el.appendChild(s); }); } catch (e) {}",
+            "itemSelector": ".w-tabs-section",
+            "revealSelector": null,
+            "listingSelector": null,
+            "browserOverrides": null,
+            "loadMoreSelector": null,
+            "originalMappings": null
+          },
+          "title": {
+            "source": "MANUAL",
+            "selector": ".w-tabs-section-title",
+            "confidence": 100,
+            "capturedOnUrl": "https://www.sinaistore.com/%d7%91%d7%95%d7%90%d7%95-%d7%9c%d7%a2%d7%91%d7%95%d7%93-%d7%90%d7%99%d7%aa%d7%a0%d7%95/"
+          },
+          "location": {
+            "source": "MANUAL",
+            "selector": ".haide-location",
+            "confidence": 100,
+            "capturedOnUrl": "https://www.sinaistore.com/%d7%91%d7%95%d7%90%d7%95-%d7%9c%d7%a2%d7%91%d7%95%d7%93-%d7%90%d7%99%d7%aa%d7%a0%d7%95/"
+          },
+          "description": {
+            "source": "MANUAL",
+            "selector": ".w-tabs-section-content",
+            "confidence": 100,
+            "capturedOnUrl": "https://www.sinaistore.com/%d7%91%d7%95%d7%90%d7%95-%d7%9c%d7%a2%d7%91%d7%95%d7%93-%d7%90%d7%99%d7%aa%d7%a0%d7%95/"
+          },
+          "externalJobId": {
+            "source": "MANUAL",
+            "selector": ".w-tabs-section-title",
+            "confidence": 100,
+            "capturedOnUrl": "https://www.sinaistore.com/%d7%91%d7%95%d7%90%d7%95-%d7%9c%d7%a2%d7%91%d7%95%d7%93-%d7%90%d7%99%d7%aa%d7%a0%d7%95/"
+          }
+        },
+        "pageFlow": []
+      }
+    }
+  },
+  "jobs": {
+    "status": 200,
+    "body": {
+      "data": [
+        {
+          "id": "cmpv0ndzo00s11lqgh81uzv2o",
+          "title": "מחסנאי/ת",
+          "description": "יש לכם ניסיון במחסנאות? בואו לעבוד איתנו! קבלת סחורה מספקים וסידור מחסן. אווירה טובה ותנאים מעולים! עבודה בתל אביב. משרה מלאה. הזדמנות לעבודה יציבה ומשתלמת!",
+          "requirements": null,
+          "location": "תל אביב",
+          "locations": [
+            "תל אביב"
+          ],
+          "department": null,
+          "externalJobId": "מחסנאי/ת",
+          "publishDate": null,
+          "deadline": null,
+          "ageBucket": null,
+          "applicationInfo": "{\"actionUrl\":\"https://www.sinaistore.com/%d7%91%d7%95%d7%90%d7%95-%d7%9c%d7%a2%d7%91%d7%95%d7%93-%d7%90%d7%99%d7%aa%d7%a0%d7%95/#gf_6\",\"method\":\"POST\",\"fields\":[{\"name\":\"input_9\",\"label\":\"Comments\",\"fieldType\":\"text\",\"required\":false,\"tagName\":\"input\"},{\"name\":\"input_1\",\"label\":\"שם מלא*\",\"fieldType\":\"text\",\"required\":false,\"tagName\":\"input\"},{\"name\":\"input_3\",\"label\":\"מספר טלפון*\",\"fieldType\":\"tel\",\"required\":false,\"tagName\":\"input\"},{\"name\":\"input_4\",\"label\":\"כתובת מייל*\",\"fieldType\":\"email\",\"required\":false,\"tagName\":\"input\"},{\"name\":\"input_7\",\"label\":\"המשרה המבוקשת*\",\"fieldType\":\"text\",\"required\":false,\"tagName\":\"input\"},{\"name\":\"MAX_FILE_SIZE\",\"label\":\"MAX FILE SIZE\",\"fieldType\":\"hidden\",\"required\":false,\"tagName\":\"input\"},{\"name\":\"input_5\",\"label\":\"קובץ קורות חיים*\",\"fieldType\":\"file\",\"required\":false,\"tagName\":\"input\"},{\"name\":\"input_8.1\",\"label\":\"קראתי והסכמתי למדיניות הפרטיות\",\"fieldType\":\"checkbox\",\"required\":false,\"tagName\":\"input\"},{\"name\":\"input_8.2\",\"label\":\"input 8.2\",\"fieldType\":\"hidden\",\"required\":false,\"tagName\":\"input\"},{\"name\":\"input_8.3\",\"label\":\"input 8.3\",\"fieldType\":\"hidden\",\"required\":false,\"tagName\":\"input\"},{\"name\":\"gform_ajax\",\"label\":\"gform ajax\",\"fieldType\":\"hidden\",\"required\":false,\"tagName\":\"input\"},{\"name\":\"gform_submission_method\",\"label\":\"gform submission method\",\"fieldType\":\"hidden\",\"required\":false,\"tagName\":\"input\"},{\"name\":\"gform_theme\",\"label\":\"gform theme\",\"fieldType\":\"hidden\",\"required\":false,\"tagName\":\"input\"},{\"name\":\"gform_style_settings\",\"label\":\"gform style settings\",\"fieldType\":\"hidden\",\"required\":false,\"tagName\":\"input\"},{\"name\":\"is_submit_6\",\"label\":\"is submit 6\",\"fieldType\":\"hidden\",\"required\":false,\"tagName\":\"input\"},{\"name\":\"gform_submit\",\"label\":\"gform submit\",\"fieldType\":\"hidden\",\"required\":false,\"tagName\":\"input\"},{\"name\":\"gform_currency\",\"label\":\"gform currency\",\"fieldType\":\"hidden\",\"required\":false,\"tagName\":\"input\"},{\"name\":\"gform_unique_id\",\"label\":\"gform unique id\",\"fieldType\":\"hidden\",\"required\":false,\"tagName\":\"input\"},{\"name\":\"state_6\",\"label\":\"state 6\",\"fieldType\":\"hidden\",\"required\":false,\"tagName\":\"input\"},{\"name\":\"gform_target_page_number_6\",\"label\":\"gform target page number 6\",\"fieldType\":\"hidden\",\"required\":false,\"tagName\":\"input\"},{\"name\":\"gform_source_page_number_6\",\"label\":\"gform source page number 6\",\"fieldType\":\"hidden\",\"required\":false,\"tagName\":\"input\"},{\"name\":\"gform_field_values\",\"label\":\"gform field values\",\"fieldType\":\"hidden\",\"required\":false,\"tagName\":\"input\"}]}",
+          "detailUrl": null,
+          "rawData": {
+            "title": "מחסנאי/ת",
+            "location": "תל אביב",
+            "_formData": "{\"actionUrl\":\"https://www.sinaistore.com/%d7%91%d7%95%d7%90%d7%95-%d7%9c%d7%a2%d7%91%d7%95%d7%93-%d7%90%d7%99%d7%aa%d7%a0%d7%95/#gf_6\",\"method\":\"POST\",\"fields\":[{\"name\":\"input_9\",\"label\":\"Comments\",\"fieldType\":\"text\",\"required\":false,\"tagName\":\"input\"},{\"name\":\"input_1\",\"label\":\"שם מלא*\",\"fieldType\":\"text\",\"required\":false,\"tagName\":\"input\"},{\"name\":\"input_3\",\"label\":\"מספר טלפון*\",\"fieldType\":\"tel\",\"required\":false,\"tagName\":\"input\"},{\"name\":\"input_4\",\"label\":\"כתובת מייל*\",\"fieldType\":\"email\",\"required\":false,\"tagName\":\"input\"},{\"name\":\"input_7\",\"label\":\"המשרה המבוקשת*\",\"fieldType\":\"text\",\"required\":false,\"tagName\":\"input\"},{\"name\":\"MAX_FILE_SIZE\",\"label\":\"MAX FILE SIZE\",\"fieldType\":\"hidden\",\"required\":false,\"tagName\":\"input\"},{\"name\":\"input_5\",\"label\":\"קובץ קורות חיים*\",\"fieldType\":\"file\",\"required\":false,\"tagName\":\"input\"},{\"name\":\"input_8.1\",\"label\":\"קראתי והסכמתי למדיניות הפרטיות\",\"fieldType\":\"checkbox\",\"required\":false,\"tagName\":\"input\"},{\"name\":\"input_8.2\",\"label\":\"input 8.2\",\"fieldType\":\"hidden\",\"required\":false,\"tagName\":\"input\"},{\"name\":\"input_8.3\",\"label\":\"input 8.3\",\"fieldType\":\"hidden\",\"required\":false,\"tagName\":\"input\"},{\"name\":\"gform_ajax\",\"label\":\"gform ajax\",\"fieldType\":\"hidden\",\"required\":false,\"tagName\":\"input\"},{\"name\":\"gform_submission_method\",\"label\":\"gform submission method\",\"fieldType\":\"hidden\",\"required\":false,\"tagName\":\"input\"},{\"name\":\"gform_theme\",\"label\":\"gform theme\",\"fieldType\":\"hidden\",\"required\":false,\"tagName\":\"input\"},{\"name\":\"gform_style_settings\",\"label\":\"gform style settings\",\"fieldType\":\"hidden\",\"required\":false,\"tagName\":\"input\"},{\"name\":\"is_submit_6\",\"label\":\"is submit 6\",\"fieldType\":\"hidden\",\"required\":false,\"tagName\":\"input\"},{\"name\":\"gform_submit\",\"label\":\"gform submit\",\"fieldType\":\"hidden\",\"required\":false,\"tagName\":\"input\"},{\"name\":\"gform_currency\",\"label\":\"gform currency\",\"fieldType\":\"hidden\",\"required\":false,\"tagName\":\"input\"},{\"name\":\"gform_unique_id\",\"label\":\"gform unique id\",\"fieldType\":\"hidden\",\"required\":false,\"tagName\":\"input\"},{\"name\":\"state_6\",\"label\":\"state 6\",\"fieldType\":\"hidden\",\"required\":false,\"tagName\":\"input\"},{\"name\":\"gform_target_page_number_6\",\"label\":\"gform target page number 6\",\"fieldType\":\"hidden\",\"required\":false,\"tagName\":\"input\"},{\"name\":\"gform_source_page_number_6\",\"label\":\"gform source page number 6\",\"fieldType\":\"hidden\",\"required\":false,\"tagName\":\"input\"},{\"name\":\"gform_field_values\",\"label\":\"gform field values\",\"fieldType\":\"hidden\",\"required\":false,\"tagName\":\"input\"}]}",
+            "description": "יש לכם ניסיון במחסנאות? בואו לעבוד איתנו! קבלת סחורה מספקים וסידור מחסן. אווירה טובה ותנאים מעולים! עבודה בתל אביב. משרה מלאה. הזדמנות לעבודה יציבה ומשתלמת!",
+            "externalJobId": "מחסנאי/ת",
+            "_debugDescription": "{\"selector\":\".w-tabs-section-content\",\"matched\":true,\"rootTag\":\"div\",\"rawTextLength\":159,\"source\":\"item\",\"revealConfigured\":false,\"revealFound\":false,\"revealClicked\":false,\"wrapperHasOpen\":false}"
+          },
+          "validationStatus": "valid;warn:missing_url",
+          "siteId": "cmpuzwyr7000d01prgj2135c8",
+          "scrapeRunId": "cmpv0mz53000f01pr82k56dci",
+          "createdAt": "2026-06-01T09:38:31.188Z",
+          "site": {
+            "id": "cmpuzwyr7000d01prgj2135c8",
+            "siteUrl": "https://www.sinaistore.com/%d7%91%d7%95%d7%90%d7%95-%d7%9c%d7%a2%d7%91%d7%95%d7%93-%d7%90%d7%99%d7%aa%d7%a0%d7%95/"
+          }
+        },
+        {
+          "id": "cmpv0ndzl00s01lqg8j6pd84r",
+          "title": "נהג/ת רישיון ג׳",
+          "description": "נהג/ת עם רישיון ג’? בוא/י לעבוד איתנו! הפצת סחורות בשיטת כוכב. אווירה טובה ותנאים מעולים! עבודה בתל אביב ימים א’-ה’ 6:00–16:00 שישי – רק פעם בחודש מתאים מגיל 24+ הזדמנות לעבודה יציבה ומשתלמת!",
+          "requirements": null,
+          "location": "תל אביב",
+          "locations": [
+            "תל אביב"
+          ],
+          "department": null,
+          "externalJobId": "נהג/ת רישיון ג׳",
+          "publishDate": null,
+          "deadline": null,
+          "ageBucket": null,
+          "applicationInfo": "{\"actionUrl\":\"https://www.sinaistore.com/%d7%91%d7%95%d7%90%d7%95-%d7%9c%d7%a2%d7%91%d7%95%d7%93-%d7%90%d7%99%d7%aa%d7%a0%d7%95/#gf_6\",\"method\":\"POST\",\"fields\":[{\"name\":\"input_9\",\"label\":\"Comments\",\"fieldType\":\"text\",\"required\":false,\"tagName\":\"input\"},{\"name\":\"input_1\",\"label\":\"שם מלא*\",\"fieldType\":\"text\",\"required\":false,\"tagName\":\"input\"},{\"name\":\"input_3\",\"label\":\"מספר טלפון*\",\"fieldType\":\"tel\",\"required\":false,\"tagName\":\"input\"},{\"name\":\"input_4\",\"label\":\"כתובת מייל*\",\"fieldType\":\"email\",\"required\":false,\"tagName\":\"input\"},{\"name\":\"input_7\",\"label\":\"המשרה המבוקשת*\",\"fieldType\":\"text\",\"required\":false,\"tagName\":\"input\"},{\"name\":\"MAX_FILE_SIZE\",\"label\":\"MAX FILE SIZE\",\"fieldType\":\"hidden\",\"required\":false,\"tagName\":\"input\"},{\"name\":\"input_5\",\"label\":\"קובץ קורות חיים*\",\"fieldType\":\"file\",\"required\":false,\"tagName\":\"input\"},{\"name\":\"input_8.1\",\"label\":\"קראתי והסכמתי למדיניות הפרטיות\",\"fieldType\":\"checkbox\",\"required\":false,\"tagName\":\"input\"},{\"name\":\"input_8.2\",\"label\":\"input 8.2\",\"fieldType\":\"hidden\",\"required\":false,\"tagName\":\"input\"},{\"name\":\"input_8.3\",\"label\":\"input 8.3\",\"fieldType\":\"hidden\",\"required\":false,\"tagName\":\"input\"},{\"name\":\"gform_ajax\",\"label\":\"gform ajax\",\"fieldType\":\"hidden\",\"required\":false,\"tagName\":\"input\"},{\"name\":\"gform_submission_method\",\"label\":\"gform submission method\",\"fieldType\":\"hidden\",\"required\":false,\"tagName\":\"input\"},{\"name\":\"gform_theme\",\"label\":\"gform theme\",\"fieldType\":\"hidden\",\"required\":false,\"tagName\":\"input\"},{\"name\":\"gform_style_settings\",\"label\":\"gform style settings\",\"fieldType\":\"hidden\",\"required\":false,\"tagName\":\"input\"},{\"name\":\"is_submit_6\",\"label\":\"is submit 6\",\"fieldType\":\"hidden\",\"required\":false,\"tagName\":\"input\"},{\"name\":\"gform_submit\",\"label\":\"gform submit\",\"fieldType\":\"hidden\",\"required\":false,\"tagName\":\"input\"},{\"name\":\"gform_currency\",\"label\":\"gform currency\",\"fieldType\":\"hidden\",\"required\":false,\"tagName\":\"input\"},{\"name\":\"gform_unique_id\",\"label\":\"gform unique id\",\"fieldType\":\"hidden\",\"required\":false,\"tagName\":\"input\"},{\"name\":\"state_6\",\"label\":\"state 6\",\"fieldType\":\"hidden\",\"required\":false,\"tagName\":\"input\"},{\"name\":\"gform_target_page_number_6\",\"label\":\"gform target page number 6\",\"fieldType\":\"hidden\",\"required\":false,\"tagName\":\"input\"},{\"name\":\"gform_source_page_number_6\",\"label\":\"gform source page number 6\",\"fieldType\":\"hidden\",\"required\":false,\"tagName\":\"input\"},{\"name\":\"gform_field_values\",\"label\":\"gform field values\",\"fieldType\":\"hidden\",\"required\":false,\"tagName\":\"input\"}]}",
+          "detailUrl": null,
+          "rawData": {
+            "title": "נהג/ת רישיון ג׳",
+            "location": "תל אביב",
+            "_formData": "{\"actionUrl\":\"https://www.sinaistore.com/%d7%91%d7%95%d7%90%d7%95-%d7%9c%d7%a2%d7%91%d7%95%d7%93-%d7%90%d7%99%d7%aa%d7%a0%d7%95/#gf_6\",\"method\":\"POST\",\"fields\":[{\"name\":\"input_9\",\"label\":\"Comments\",\"fieldType\":\"text\",\"required\":false,\"tagName\":\"input\"},{\"name\":\"input_1\",\"label\":\"שם מלא*\",\"fieldType\":\"text\",\"required\":false,\"tagName\":\"input\"},{\"name\":\"input_3\",\"label\":\"מספר טלפון*\",\"fieldType\":\"tel\",\"required\":false,\"tagName\":\"input\"},{\"name\":\"input_4\",\"label\":\"כתובת מייל*\",\"fieldType\":\"email\",\"required\":false,\"tagName\":\"input\"},{\"name\":\"input_7\",\"label\":\"המשרה המבוקשת*\",\"fieldType\":\"text\",\"required\":false,\"tagName\":\"input\"},{\"name\":\"MAX_FILE_SIZE\",\"label\":\"MAX FILE SIZE\",\"fieldType\":\"hidden\",\"required\":false,\"tagName\":\"input\"},{\"name\":\"input_5\",\"label\":\"קובץ קורות חיים*\",\"fieldType\":\"file\",\"required\":false,\"tagName\":\"input\"},{\"name\":\"input_8.1\",\"label\":\"קראתי והסכמתי למדיניות הפרטיות\",\"fieldType\":\"checkbox\",\"required\":false,\"tagName\":\"input\"},{\"name\":\"input_8.2\",\"label\":\"input 8.2\",\"fieldType\":\"hidden\",\"required\":false,\"tagName\":\"input\"},{\"name\":\"input_8.3\",\"label\":\"input 8.3\",\"fieldType\":\"hidden\",\"required\":false,\"tagName\":\"input\"},{\"name\":\"gform_ajax\",\"label\":\"gform ajax\",\"fieldType\":\"hidden\",\"required\":false,\"tagName\":\"input\"},{\"name\":\"gform_submission_method\",\"label\":\"gform submission method\",\"fieldType\":\"hidden\",\"required\":false,\"tagName\":\"input\"},{\"name\":\"gform_theme\",\"label\":\"gform theme\",\"fieldType\":\"hidden\",\"required\":false,\"tagName\":\"input\"},{\"name\":\"gform_style_settings\",\"label\":\"gform style settings\",\"fieldType\":\"hidden\",\"required\":false,\"tagName\":\"input\"},{\"name\":\"is_submit_6\",\"label\":\"is submit 6\",\"fieldType\":\"hidden\",\"required\":false,\"tagName\":\"input\"},{\"name\":\"gform_submit\",\"label\":\"gform submit\",\"fieldType\":\"hidden\",\"required\":false,\"tagName\":\"input\"},{\"name\":\"gform_currency\",\"label\":\"gform currency\",\"fieldType\":\"hidden\",\"required\":false,\"tagName\":\"input\"},{\"name\":\"gform_unique_id\",\"label\":\"gform unique id\",\"fieldType\":\"hidden\",\"required\":false,\"tagName\":\"input\"},{\"name\":\"state_6\",\"label\":\"state 6\",\"fieldType\":\"hidden\",\"required\":false,\"tagName\":\"input\"},{\"name\":\"gform_target_page_number_6\",\"label\":\"gform target page number 6\",\"fieldType\":\"hidden\",\"required\":false,\"tagName\":\"input\"},{\"name\":\"gform_source_page_number_6\",\"label\":\"gform source page number 6\",\"fieldType\":\"hidden\",\"required\":false,\"tagName\":\"input\"},{\"name\":\"gform_field_values\",\"label\":\"gform field values\",\"fieldType\":\"hidden\",\"required\":false,\"tagName\":\"input\"}]}",
+            "description": "נהג/ת עם רישיון ג’? בוא/י לעבוד איתנו! הפצת סחורות בשיטת כוכב. אווירה טובה ותנאים מעולים! עבודה בתל אביב ימים א’-ה’ 6:00–16:00 שישי – רק פעם בחודש מתאים מגיל 24+ הזדמנות לעבודה יציבה ומשתלמת!",
+            "externalJobId": "נהג/ת רישיון ג׳",
+            "_debugDescription": "{\"selector\":\".w-tabs-section-content\",\"matched\":true,\"rootTag\":\"div\",\"rawTextLength\":194,\"source\":\"item\",\"revealConfigured\":false,\"revealFound\":false,\"revealClicked\":false,\"wrapperHasOpen\":false}"
+          },
+          "validationStatus": "valid;warn:missing_url",
+          "siteId": "cmpuzwyr7000d01prgj2135c8",
+          "scrapeRunId": "cmpv0mz53000f01pr82k56dci",
+          "createdAt": "2026-06-01T09:38:31.185Z",
+          "site": {
+            "id": "cmpuzwyr7000d01prgj2135c8",
+            "siteUrl": "https://www.sinaistore.com/%d7%91%d7%95%d7%90%d7%95-%d7%9c%d7%a2%d7%91%d7%95%d7%93-%d7%90%d7%99%d7%aa%d7%a0%d7%95/"
+          }
+        },
+        {
+          "id": "cmpv0ndzi00rz1lqgcidw3arw",
+          "title": "אנשי שירות ומכירות בחנות בתל אביב",
+          "description": "יש לך ניסיון במכירות, מוטיבציה גבוהה ויחסי אנוש מעולים? בוא/י לעבוד איתנו! אנחנו מחפשים אנשי שירות ומכירה לחנות “סיני סטור”. תנאי שכר מצויינים ובונוסים על עמידה ביעדים. משרה מלאה בתל אביב. מה בתפקיד? ניהול מלאי חנות. אחריות על שירות לקוחות. סידור החנות. תפעול יום יומי של החנות. עמידה ביעדי מכירות.\nדרישות התפקיד:\nעבודה במשרה מלאה. ניסיון קודם בשירות לקוחות ומכירות – חובה. ניסיון קודם בניהול – יתרון. יכולת ניהול עצמית וראש גדול.",
+          "requirements": null,
+          "location": "תל אביב",
+          "locations": [
+            "תל אביב"
+          ],
+          "department": null,
+          "externalJobId": "אנשי שירות ומכירות בחנות בתל אביב",
+          "publishDate": null,
+          "deadline": null,
+          "ageBucket": null,
+          "applicationInfo": "{\"actionUrl\":\"https://www.sinaistore.com/%d7%91%d7%95%d7%90%d7%95-%d7%9c%d7%a2%d7%91%d7%95%d7%93-%d7%90%d7%99%d7%aa%d7%a0%d7%95/#gf_6\",\"method\":\"POST\",\"fields\":[{\"name\":\"input_9\",\"label\":\"Comments\",\"fieldType\":\"text\",\"required\":false,\"tagName\":\"input\"},{\"name\":\"input_1\",\"label\":\"שם מלא*\",\"fieldType\":\"text\",\"required\":false,\"tagName\":\"input\"},{\"name\":\"input_3\",\"label\":\"מספר טלפון*\",\"fieldType\":\"tel\",\"required\":false,\"tagName\":\"input\"},{\"name\":\"input_4\",\"label\":\"כתובת מייל*\",\"fieldType\":\"email\",\"required\":false,\"tagName\":\"input\"},{\"name\":\"input_7\",\"label\":\"המשרה המבוקשת*\",\"fieldType\":\"text\",\"required\":false,\"tagName\":\"input\"},{\"name\":\"MAX_FILE_SIZE\",\"label\":\"MAX FILE SIZE\",\"fieldType\":\"hidden\",\"required\":false,\"tagName\":\"input\"},{\"name\":\"input_5\",\"label\":\"קובץ קורות חיים*\",\"fieldType\":\"file\",\"required\":false,\"tagName\":\"input\"},{\"name\":\"input_8.1\",\"label\":\"קראתי והסכמתי למדיניות הפרטיות\",\"fieldType\":\"checkbox\",\"required\":false,\"tagName\":\"input\"},{\"name\":\"input_8.2\",\"label\":\"input 8.2\",\"fieldType\":\"hidden\",\"required\":false,\"tagName\":\"input\"},{\"name\":\"input_8.3\",\"label\":\"input 8.3\",\"fieldType\":\"hidden\",\"required\":false,\"tagName\":\"input\"},{\"name\":\"gform_ajax\",\"label\":\"gform ajax\",\"fieldType\":\"hidden\",\"required\":false,\"tagName\":\"input\"},{\"name\":\"gform_submission_method\",\"label\":\"gform submission method\",\"fieldType\":\"hidden\",\"required\":false,\"tagName\":\"input\"},{\"name\":\"gform_theme\",\"label\":\"gform theme\",\"fieldType\":\"hidden\",\"required\":false,\"tagName\":\"input\"},{\"name\":\"gform_style_settings\",\"label\":\"gform style settings\",\"fieldType\":\"hidden\",\"required\":false,\"tagName\":\"input\"},{\"name\":\"is_submit_6\",\"label\":\"is submit 6\",\"fieldType\":\"hidden\",\"required\":false,\"tagName\":\"input\"},{\"name\":\"gform_submit\",\"label\":\"gform submit\",\"fieldType\":\"hidden\",\"required\":false,\"tagName\":\"input\"},{\"name\":\"gform_currency\",\"label\":\"gform currency\",\"fieldType\":\"hidden\",\"required\":false,\"tagName\":\"input\"},{\"name\":\"gform_unique_id\",\"label\":\"gform unique id\",\"fieldType\":\"hidden\",\"required\":false,\"tagName\":\"input\"},{\"name\":\"state_6\",\"label\":\"state 6\",\"fieldType\":\"hidden\",\"required\":false,\"tagName\":\"input\"},{\"name\":\"gform_target_page_number_6\",\"label\":\"gform target page number 6\",\"fieldType\":\"hidden\",\"required\":false,\"tagName\":\"input\"},{\"name\":\"gform_source_page_number_6\",\"label\":\"gform source page number 6\",\"fieldType\":\"hidden\",\"required\":false,\"tagName\":\"input\"},{\"name\":\"gform_field_values\",\"label\":\"gform field values\",\"fieldType\":\"hidden\",\"required\":false,\"tagName\":\"input\"}]}",
+          "detailUrl": null,
+          "rawData": {
+            "title": "אנשי שירות ומכירות בחנות בתל אביב",
+            "location": "תל אביב",
+            "_formData": "{\"actionUrl\":\"https://www.sinaistore.com/%d7%91%d7%95%d7%90%d7%95-%d7%9c%d7%a2%d7%91%d7%95%d7%93-%d7%90%d7%99%d7%aa%d7%a0%d7%95/#gf_6\",\"method\":\"POST\",\"fields\":[{\"name\":\"input_9\",\"label\":\"Comments\",\"fieldType\":\"text\",\"required\":false,\"tagName\":\"input\"},{\"name\":\"input_1\",\"label\":\"שם מלא*\",\"fieldType\":\"text\",\"required\":false,\"tagName\":\"input\"},{\"name\":\"input_3\",\"label\":\"מספר טלפון*\",\"fieldType\":\"tel\",\"required\":false,\"tagName\":\"input\"},{\"name\":\"input_4\",\"label\":\"כתובת מייל*\",\"fieldType\":\"email\",\"required\":false,\"tagName\":\"input\"},{\"name\":\"input_7\",\"label\":\"המשרה המבוקשת*\",\"fieldType\":\"text\",\"required\":false,\"tagName\":\"input\"},{\"name\":\"MAX_FILE_SIZE\",\"label\":\"MAX FILE SIZE\",\"fieldType\":\"hidden\",\"required\":false,\"tagName\":\"input\"},{\"name\":\"input_5\",\"label\":\"קובץ קורות חיים*\",\"fieldType\":\"file\",\"required\":false,\"tagName\":\"input\"},{\"name\":\"input_8.1\",\"label\":\"קראתי והסכמתי למדיניות הפרטיות\",\"fieldType\":\"checkbox\",\"required\":false,\"tagName\":\"input\"},{\"name\":\"input_8.2\",\"label\":\"input 8.2\",\"fieldType\":\"hidden\",\"required\":false,\"tagName\":\"input\"},{\"name\":\"input_8.3\",\"label\":\"input 8.3\",\"fieldType\":\"hidden\",\"required\":false,\"tagName\":\"input\"},{\"name\":\"gform_ajax\",\"label\":\"gform ajax\",\"fieldType\":\"hidden\",\"required\":false,\"tagName\":\"input\"},{\"name\":\"gform_submission_method\",\"label\":\"gform submission method\",\"fieldType\":\"hidden\",\"required\":false,\"tagName\":\"input\"},{\"name\":\"gform_theme\",\"label\":\"gform theme\",\"fieldType\":\"hidden\",\"required\":false,\"tagName\":\"input\"},{\"name\":\"gform_style_settings\",\"label\":\"gform style settings\",\"fieldType\":\"hidden\",\"required\":false,\"tagName\":\"input\"},{\"name\":\"is_submit_6\",\"label\":\"is submit 6\",\"fieldType\":\"hidden\",\"required\":false,\"tagName\":\"input\"},{\"name\":\"gform_submit\",\"label\":\"gform submit\",\"fieldType\":\"hidden\",\"required\":false,\"tagName\":\"input\"},{\"name\":\"gform_currency\",\"label\":\"gform currency\",\"fieldType\":\"hidden\",\"required\":false,\"tagName\":\"input\"},{\"name\":\"gform_unique_id\",\"label\":\"gform unique id\",\"fieldType\":\"hidden\",\"required\":false,\"tagName\":\"input\"},{\"name\":\"state_6\",\"label\":\"state 6\",\"fieldType\":\"hidden\",\"required\":false,\"tagName\":\"input\"},{\"name\":\"gform_target_page_number_6\",\"label\":\"gform target page number 6\",\"fieldType\":\"hidden\",\"required\":false,\"tagName\":\"input\"},{\"name\":\"gform_source_page_number_6\",\"label\":\"gform source page number 6\",\"fieldType\":\"hidden\",\"required\":false,\"tagName\":\"input\"},{\"name\":\"gform_field_values\",\"label\":\"gform field values\",\"fieldType\":\"hidden\",\"required\":false,\"tagName\":\"input\"}]}",
+            "description": "יש לך ניסיון במכירות, מוטיבציה גבוהה ויחסי אנוש מעולים? בוא/י לעבוד איתנו! אנחנו מחפשים אנשי שירות ומכירה לחנות “סיני סטור”. תנאי שכר מצויינים ובונוסים על עמידה ביעדים. משרה מלאה בתל אביב. מה בתפקיד? ניהול מלאי חנות. אחריות על שירות לקוחות. סידור החנות. תפעול יום יומי של החנות. עמידה ביעדי מכירות. דרישות התפקיד: עבודה במשרה מלאה. ניסיון קודם בשירות לקוחות ומכירות – חובה. ניסיון קודם בניהול – יתרון. יכולת ניהול עצמית וראש גדול.",
+            "externalJobId": "אנשי שירות ומכירות בחנות בתל אביב",
+            "_debugDescription": "{\"selector\":\".w-tabs-section-content\",\"matched\":true,\"rootTag\":\"div\",\"rawTextLength\":435,\"source\":\"item\",\"revealConfigured\":false,\"revealFound\":false,\"revealClicked\":false,\"wrapperHasOpen\":false}"
+          },
+          "validationStatus": "valid;warn:missing_url",
+          "siteId": "cmpuzwyr7000d01prgj2135c8",
+          "scrapeRunId": "cmpv0mz53000f01pr82k56dci",
+          "createdAt": "2026-06-01T09:38:31.181Z",
+          "site": {
+            "id": "cmpuzwyr7000d01prgj2135c8",
+            "siteUrl": "https://www.sinaistore.com/%d7%91%d7%95%d7%90%d7%95-%d7%9c%d7%a2%d7%91%d7%95%d7%93-%d7%90%d7%99%d7%aa%d7%a0%d7%95/"
+          }
+        },
+        {
+          "id": "cmpv0ndz900ry1lqgebaznsos",
+          "title": "מנהל חנות בתל אביב",
+          "description": "יש לך ניסיון במכירות, מוטיבציה גבוהה ויחסי אנוש מעולים? בוא לעבוד איתנו! אנחנו מחפשים מנהל לחנות “סיני סטור”. תנאי שכר מצויינים כולל בונוסים על עמידה ביעדים. שעות עבודה גמישות במשרדי החברה בתל אביב. דרישות התפקיד עבודה במשרה מלאה. ניסיון קודם בשירות לקוחות ומכירות – חובה. ניסיון קודם בניהול – יתרון. יכולת ניהול עצמית וראש גדול.",
+          "requirements": null,
+          "location": "תל אביב",
+          "locations": [
+            "תל אביב"
+          ],
+          "department": null,
+          "externalJobId": "מנהל חנות בתל אביב",
+          "publishDate": null,
+          "deadline": null,
+          "ageBucket": null,
+          "applicationInfo": "{\"actionUrl\":\"https://www.sinaistore.com/%d7%91%d7%95%d7%90%d7%95-%d7%9c%d7%a2%d7%91%d7%95%d7%93-%d7%90%d7%99%d7%aa%d7%a0%d7%95/#gf_6\",\"method\":\"POST\",\"fields\":[{\"name\":\"input_9\",\"label\":\"Comments\",\"fieldType\":\"text\",\"required\":false,\"tagName\":\"input\"},{\"name\":\"input_1\",\"label\":\"שם מלא*\",\"fieldType\":\"text\",\"required\":false,\"tagName\":\"input\"},{\"name\":\"input_3\",\"label\":\"מספר טלפון*\",\"fieldType\":\"tel\",\"required\":false,\"tagName\":\"input\"},{\"name\":\"input_4\",\"label\":\"כתובת מייל*\",\"fieldType\":\"email\",\"required\":false,\"tagName\":\"input\"},{\"name\":\"input_7\",\"label\":\"המשרה המבוקשת*\",\"fieldType\":\"text\",\"required\":false,\"tagName\":\"input\"},{\"name\":\"MAX_FILE_SIZE\",\"label\":\"MAX FILE SIZE\",\"fieldType\":\"hidden\",\"required\":false,\"tagName\":\"input\"},{\"name\":\"input_5\",\"label\":\"קובץ קורות חיים*\",\"fieldType\":\"file\",\"required\":false,\"tagName\":\"input\"},{\"name\":\"input_8.1\",\"label\":\"קראתי והסכמתי למדיניות הפרטיות\",\"fieldType\":\"checkbox\",\"required\":false,\"tagName\":\"input\"},{\"name\":\"input_8.2\",\"label\":\"input 8.2\",\"fieldType\":\"hidden\",\"required\":false,\"tagName\":\"input\"},{\"name\":\"input_8.3\",\"label\":\"input 8.3\",\"fieldType\":\"hidden\",\"required\":false,\"tagName\":\"input\"},{\"name\":\"gform_ajax\",\"label\":\"gform ajax\",\"fieldType\":\"hidden\",\"required\":false,\"tagName\":\"input\"},{\"name\":\"gform_submission_method\",\"label\":\"gform submission method\",\"fieldType\":\"hidden\",\"required\":false,\"tagName\":\"input\"},{\"name\":\"gform_theme\",\"label\":\"gform theme\",\"fieldType\":\"hidden\",\"required\":false,\"tagName\":\"input\"},{\"name\":\"gform_style_settings\",\"label\":\"gform style settings\",\"fieldType\":\"hidden\",\"required\":false,\"tagName\":\"input\"},{\"name\":\"is_submit_6\",\"label\":\"is submit 6\",\"fieldType\":\"hidden\",\"required\":false,\"tagName\":\"input\"},{\"name\":\"gform_submit\",\"label\":\"gform submit\",\"fieldType\":\"hidden\",\"required\":false,\"tagName\":\"input\"},{\"name\":\"gform_currency\",\"label\":\"gform currency\",\"fieldType\":\"hidden\",\"required\":false,\"tagName\":\"input\"},{\"name\":\"gform_unique_id\",\"label\":\"gform unique id\",\"fieldType\":\"hidden\",\"required\":false,\"tagName\":\"input\"},{\"name\":\"state_6\",\"label\":\"state 6\",\"fieldType\":\"hidden\",\"required\":false,\"tagName\":\"input\"},{\"name\":\"gform_target_page_number_6\",\"label\":\"gform target page number 6\",\"fieldType\":\"hidden\",\"required\":false,\"tagName\":\"input\"},{\"name\":\"gform_source_page_number_6\",\"label\":\"gform source page number 6\",\"fieldType\":\"hidden\",\"required\":false,\"tagName\":\"input\"},{\"name\":\"gform_field_values\",\"label\":\"gform field values\",\"fieldType\":\"hidden\",\"required\":false,\"tagName\":\"input\"}]}",
+          "detailUrl": null,
+          "rawData": {
+            "title": "מנהל חנות בתל אביב",
+            "location": "תל אביב",
+            "_formData": "{\"actionUrl\":\"https://www.sinaistore.com/%d7%91%d7%95%d7%90%d7%95-%d7%9c%d7%a2%d7%91%d7%95%d7%93-%d7%90%d7%99%d7%aa%d7%a0%d7%95/#gf_6\",\"method\":\"POST\",\"fields\":[{\"name\":\"input_9\",\"label\":\"Comments\",\"fieldType\":\"text\",\"required\":false,\"tagName\":\"input\"},{\"name\":\"input_1\",\"label\":\"שם מלא*\",\"fieldType\":\"text\",\"required\":false,\"tagName\":\"input\"},{\"name\":\"input_3\",\"label\":\"מספר טלפון*\",\"fieldType\":\"tel\",\"required\":false,\"tagName\":\"input\"},{\"name\":\"input_4\",\"label\":\"כתובת מייל*\",\"fieldType\":\"email\",\"required\":false,\"tagName\":\"input\"},{\"name\":\"input_7\",\"label\":\"המשרה המבוקשת*\",\"fieldType\":\"text\",\"required\":false,\"tagName\":\"input\"},{\"name\":\"MAX_FILE_SIZE\",\"label\":\"MAX FILE SIZE\",\"fieldType\":\"hidden\",\"required\":false,\"tagName\":\"input\"},{\"name\":\"input_5\",\"label\":\"קובץ קורות חיים*\",\"fieldType\":\"file\",\"required\":false,\"tagName\":\"input\"},{\"name\":\"input_8.1\",\"label\":\"קראתי והסכמתי למדיניות הפרטיות\",\"fieldType\":\"checkbox\",\"required\":false,\"tagName\":\"input\"},{\"name\":\"input_8.2\",\"label\":\"input 8.2\",\"fieldType\":\"hidden\",\"required\":false,\"tagName\":\"input\"},{\"name\":\"input_8.3\",\"label\":\"input 8.3\",\"fieldType\":\"hidden\",\"required\":false,\"tagName\":\"input\"},{\"name\":\"gform_ajax\",\"label\":\"gform ajax\",\"fieldType\":\"hidden\",\"required\":false,\"tagName\":\"input\"},{\"name\":\"gform_submission_method\",\"label\":\"gform submission method\",\"fieldType\":\"hidden\",\"required\":false,\"tagName\":\"input\"},{\"name\":\"gform_theme\",\"label\":\"gform theme\",\"fieldType\":\"hidden\",\"required\":false,\"tagName\":\"input\"},{\"name\":\"gform_style_settings\",\"label\":\"gform style settings\",\"fieldType\":\"hidden\",\"required\":false,\"tagName\":\"input\"},{\"name\":\"is_submit_6\",\"label\":\"is submit 6\",\"fieldType\":\"hidden\",\"required\":false,\"tagName\":\"input\"},{\"name\":\"gform_submit\",\"label\":\"gform submit\",\"fieldType\":\"hidden\",\"required\":false,\"tagName\":\"input\"},{\"name\":\"gform_currency\",\"label\":\"gform currency\",\"fieldType\":\"hidden\",\"required\":false,\"tagName\":\"input\"},{\"name\":\"gform_unique_id\",\"label\":\"gform unique id\",\"fieldType\":\"hidden\",\"required\":false,\"tagName\":\"input\"},{\"name\":\"state_6\",\"label\":\"state 6\",\"fieldType\":\"hidden\",\"required\":false,\"tagName\":\"input\"},{\"name\":\"gform_target_page_number_6\",\"label\":\"gform target page number 6\",\"fieldType\":\"hidden\",\"required\":false,\"tagName\":\"input\"},{\"name\":\"gform_source_page_number_6\",\"label\":\"gform source page number 6\",\"fieldType\":\"hidden\",\"required\":false,\"tagName\":\"input\"},{\"name\":\"gform_field_values\",\"label\":\"gform field values\",\"fieldType\":\"hidden\",\"required\":false,\"tagName\":\"input\"}]}",
+            "description": "יש לך ניסיון במכירות, מוטיבציה גבוהה ויחסי אנוש מעולים? בוא לעבוד איתנו! אנחנו מחפשים מנהל לחנות “סיני סטור”. תנאי שכר מצויינים כולל בונוסים על עמידה ביעדים. שעות עבודה גמישות במשרדי החברה בתל אביב. דרישות התפקיד עבודה במשרה מלאה. ניסיון קודם בשירות לקוחות ומכירות – חובה. ניסיון קודם בניהול – יתרון. יכולת ניהול עצמית וראש גדול.",
+            "externalJobId": "מנהל חנות בתל אביב",
+            "_debugDescription": "{\"selector\":\".w-tabs-section-content\",\"matched\":true,\"rootTag\":\"div\",\"rawTextLength\":340,\"source\":\"item\",\"revealConfigured\":false,\"revealFound\":false,\"revealClicked\":false,\"wrapperHasOpen\":false}"
+          },
+          "validationStatus": "valid;warn:missing_url",
+          "siteId": "cmpuzwyr7000d01prgj2135c8",
+          "scrapeRunId": "cmpv0mz53000f01pr82k56dci",
+          "createdAt": "2026-06-01T09:38:31.173Z",
+          "site": {
+            "id": "cmpuzwyr7000d01prgj2135c8",
+            "siteUrl": "https://www.sinaistore.com/%d7%91%d7%95%d7%90%d7%95-%d7%9c%d7%a2%d7%91%d7%95%d7%93-%d7%90%d7%99%d7%aa%d7%a0%d7%95/"
+          }
+        }
+      ],
+      "meta": {
+        "total": 4,
+        "page": 1,
+        "pageSize": 100,
+        "ageCounts": {
+          "fresh": 0,
+          "d90": 0,
+          "d180": 0,
+          "d365": 0,
+          "none": 0
+        }
+      }
+    }
+  }
+}

@@ -1,5 +1,5 @@
 {
-  "_exportedAt": "2026-08-17T14:53:00.520Z",
+  "_exportedAt": "2026-08-17T15:34:43.497Z",
   "_note": "Mirror of the live config. The DB is authoritative; the worker never reads this file. setupScript lives alongside in <slug>.setup.js.",
   "id": "cmq6nxdlb000a01lihi8cvjyo",
   "siteUrl": "https://www.kahane.co.il/jobs",

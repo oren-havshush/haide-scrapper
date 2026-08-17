@@ -1,5 +1,5 @@
 {
-  "_exportedAt": "2026-08-17T14:52:59.965Z",
+  "_exportedAt": "2026-08-17T15:34:43.183Z",
   "_note": "Mirror of the live config. The DB is authoritative; the worker never reads this file. setupScript lives alongside in <slug>.setup.js.",
   "id": "cmq9j8nti003001lc5ii12d2f",
   "siteUrl": "http://www.razel.co.il/html5/FILTERS.TAF?PRO4=&did=8843&_UserReference=E8DE195F246D48D769D4B768&Type=&Attribute1=&Attribute2=&search=%E7%F4%F9",

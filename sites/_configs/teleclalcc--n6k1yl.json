@@ -1,5 +1,5 @@
 {
-  "_exportedAt": "2026-08-17T14:53:01.631Z",
+  "_exportedAt": "2026-08-17T15:34:44.063Z",
   "_note": "Mirror of the live config. The DB is authoritative; the worker never reads this file. setupScript lives alongside in <slug>.setup.js.",
   "id": "cmp9pqqrf001901ls9cn6k1yl",
   "siteUrl": "https://www.teleclalcc.co.il/jobs/",

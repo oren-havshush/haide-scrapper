@@ -1,5 +1,5 @@
 {
-  "_exportedAt": "2026-08-17T14:52:52.273Z",
+  "_exportedAt": "2026-08-17T15:34:41.929Z",
   "_note": "Mirror of the live config. The DB is authoritative; the worker never reads this file. setupScript lives alongside in <slug>.setup.js.",
   "id": "cmqydke4s001k01nzdz6r81oc",
   "siteUrl": "https://www.safari.co.il/Menu/item/2215",

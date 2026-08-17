@@ -1,5 +1,5 @@
 {
-  "_exportedAt": "2026-08-17T14:52:55.817Z",
+  "_exportedAt": "2026-08-17T15:34:42.617Z",
   "_note": "Mirror of the live config. The DB is authoritative; the worker never reads this file. setupScript lives alongside in <slug>.setup.js.",
   "id": "cmqkoy7dp000x01p6qk6mdmh5",
   "siteUrl": "https://my.migdal.co.il/about/jobs",

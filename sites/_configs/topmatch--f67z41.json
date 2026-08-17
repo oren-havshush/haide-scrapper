@@ -1,5 +1,5 @@
 {
-  "_exportedAt": "2026-08-17T14:53:01.541Z",
+  "_exportedAt": "2026-08-17T15:34:44.018Z",
   "_note": "Mirror of the live config. The DB is authoritative; the worker never reads this file. setupScript lives alongside in <slug>.setup.js.",
   "id": "cmp9t2uj8001p01ls7ef67z41",
   "siteUrl": "https://careers.topmatch.co.il/diplomat-il/index.html",

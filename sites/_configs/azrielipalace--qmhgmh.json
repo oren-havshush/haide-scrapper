@@ -1,5 +1,5 @@
 {
-  "_exportedAt": "2026-08-17T14:53:01.354Z",
+  "_exportedAt": "2026-08-17T15:34:43.947Z",
   "_note": "Mirror of the live config. The DB is authoritative; the worker never reads this file. setupScript lives alongside in <slug>.setup.js.",
   "id": "cmpmeucf8001901mvm4qmhgmh",
   "siteUrl": "https://azrielipalace.co.il/career/",

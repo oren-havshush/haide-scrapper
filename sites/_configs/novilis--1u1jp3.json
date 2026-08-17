@@ -1,5 +1,5 @@
 {
-  "_exportedAt": "2026-08-17T14:52:54.326Z",
+  "_exportedAt": "2026-08-17T15:34:42.240Z",
   "_note": "Mirror of the live config. The DB is authoritative; the worker never reads this file. setupScript lives alongside in <slug>.setup.js.",
   "id": "cmqsbl86z000b01nu131u1jp3",
   "siteUrl": "https://www.novilis.co.il/press-kit",

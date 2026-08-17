@@ -1,5 +1,5 @@
 {
-  "_exportedAt": "2026-08-17T14:53:00.192Z",
+  "_exportedAt": "2026-08-17T15:34:43.351Z",
   "_note": "Mirror of the live config. The DB is authoritative; the worker never reads this file. setupScript lives alongside in <slug>.setup.js.",
   "id": "cmq9bnw5u001u01lczhekwenb",
   "siteUrl": "https://career.yes.co.il/jobs-lobby/",

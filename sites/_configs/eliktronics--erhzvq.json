@@ -1,5 +1,5 @@
 {
-  "_exportedAt": "2026-08-17T14:52:53.762Z",
+  "_exportedAt": "2026-08-17T15:34:42.138Z",
   "_note": "Mirror of the live config. The DB is authoritative; the worker never reads this file. setupScript lives alongside in <slug>.setup.js.",
   "id": "cmqsblg2p000z01nukjerhzvq",
   "siteUrl": "https://eliktronics.com/heb/%d7%a7%d7%a8%d7%99%d7%99%d7%a8%d7%94/",

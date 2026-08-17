@@ -1,5 +1,5 @@
 {
-  "_exportedAt": "2026-08-17T14:52:59.468Z",
+  "_exportedAt": "2026-08-17T15:34:43.007Z",
   "_note": "Mirror of the live config. The DB is authoritative; the worker never reads this file. setupScript lives alongside in <slug>.setup.js.",
   "id": "cmqe6ce8q004401lcpn12brnw",
   "siteUrl": "https://www.benjerry.co.il/jobs/",

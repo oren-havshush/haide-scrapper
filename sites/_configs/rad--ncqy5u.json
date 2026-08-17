@@ -1,5 +1,5 @@
 {
-  "_exportedAt": "2026-08-17T14:53:00.693Z",
+  "_exportedAt": "2026-08-17T15:34:43.567Z",
   "_note": "Mirror of the live config. The DB is authoritative; the worker never reads this file. setupScript lives alongside in <slug>.setup.js.",
   "id": "cmq6gxnn4001t01m97qncqy5u",
   "siteUrl": "https://www.rad.com/career",

@@ -1,5 +1,5 @@
 {
-  "_exportedAt": "2026-08-17T14:52:59.316Z",
+  "_exportedAt": "2026-08-17T15:34:42.983Z",
   "_note": "Mirror of the live config. The DB is authoritative; the worker never reads this file. setupScript lives alongside in <slug>.setup.js.",
   "id": "cmqe6q0i3004a01lcx1zvh6d2",
   "siteUrl": "https://www.tarbut-herzliya.co.il/%D7%93%D7%A8%D7%95%D7%A9%D7%99%D7%9D-%D7%95%D7%9E%D7%9B%D7%A8%D7%96%D7%99%D7%9D",

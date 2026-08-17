@@ -1,5 +1,5 @@
 {
-  "_exportedAt": "2026-08-17T14:52:52.934Z",
+  "_exportedAt": "2026-08-17T15:34:42.067Z",
   "_note": "Mirror of the live config. The DB is authoritative; the worker never reads this file. setupScript lives alongside in <slug>.setup.js.",
   "id": "cmqy8f0jt000c01nzbev1max5",
   "siteUrl": "https://www.yafa-maximov.co.il/%D7%A7%D7%A8%D7%99%D7%99%D7%A8%D7%94-%D7%91%D7%A2%D7%95%D7%9C%D7%9D-%D7%94%D7%91%D7%99%D7%95%D7%98%D7%99",
