@@ -80,7 +80,7 @@ from top-level params, so a setupScript left only inside `_meta` is dropped.
 | חברת החשמל | ACTIVE | 8 | 3910 | `iec--7d28yg` |
 | חיותא | ACTIVE | 3 | — | `chayuta--6foa66` |
 | חלילית | ACTIVE | 5 | 1006 | `halilit--0vwgee` |
-| חמת | ACTIVE | 7 | 1265 | `hamat-group--xjfu8u` |
+| חמת | ACTIVE | 7 | 3459 | `hamat-group--4ris60` |
 | טכניון | ACTIVE | 10 | — | `technion--8nqtph` |
 | טלכלל | ACTIVE | 6 | 4062 | `teleclalcc--n6k1yl` |
 | טמבור | ACTIVE | 5 | 2580 | `tambour--2nwjvz` |

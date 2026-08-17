@@ -1,5 +1,5 @@
 {
-  "_exportedAt": "2026-08-17T09:43:34.802Z",
+  "_exportedAt": "2026-08-17T10:22:37.361Z",
   "_note": "Mirror of the live config. The DB is authoritative; the worker never reads this file. setupScript lives alongside in <slug>.setup.js.",
   "id": "cmsx1cmkj000i01p89qgxcmnf",
   "siteUrl": "https://ykm.co.il/jobs/",
@@ -18,9 +18,57 @@
   ],
   "fieldMappings": {
     "_meta": {
-      "savedAt": "2026-08-17T09:41:24.179Z",
+      "savedAt": "2026-08-17T10:11:01.359Z",
       "pagination": null,
-      "formCapture": null,
+      "formCapture": {
+        "fields": [
+          {
+            "name": "full_name",
+            "label": "Name:*",
+            "tagName": "input",
+            "required": true,
+            "fieldType": "text"
+          },
+          {
+            "name": "email",
+            "label": "Email:*",
+            "tagName": "input",
+            "required": true,
+            "fieldType": "email"
+          },
+          {
+            "name": "subject",
+            "label": "Phone Number:*",
+            "tagName": "input",
+            "required": true,
+            "fieldType": "tel"
+          },
+          {
+            "name": "message",
+            "label": "Message:",
+            "tagName": "textarea",
+            "required": false,
+            "fieldType": "textarea"
+          },
+          {
+            "name": "Upload-Your-c-v",
+            "label": "Upload Your CV*",
+            "tagName": "input",
+            "required": true,
+            "fieldType": "file"
+          },
+          {
+            "name": "I-accept-the-a-hrefhttpswww-ykm-co-ilpri",
+            "label": "I accept the privacy policy of this website*",
+            "tagName": "input",
+            "required": true,
+            "fieldType": "checkbox"
+          }
+        ],
+        "method": "POST",
+        "actionUrl": "https://ykm.co.il/jobs-application-form/#FSContact1",
+        "formSelector": "#fscf_form1"
+      },
       "itemSelector": ".content-box-column",
       "minPublishDate": null,
       "minPublishDays": null,
@@ -54,7 +102,7 @@
     },
     "description": {
       "source": "MANUAL",
-      "selector": "div.post-content",
+      "selector": "div.post-content [class*=\"fusion-three-fourth\"]",
       "confidence": 0.95,
       "capturedOnUrl": "https://ykm.co.il/front-end-developer/"
     },
