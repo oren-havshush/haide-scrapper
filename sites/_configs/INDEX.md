@@ -105,7 +105,7 @@ from top-level params, so a setupScript left only inside `_meta` is dropped.
 | מי אביבים | ACTIVE | 6 | 1589 | `mei-avivim--gf85tl` |
 | מי עדן | ACTIVE | 5 | 4162 | `campaigns-meyeden--6u5xb3` |
 | מי שבע | ACTIVE | 5 | 1645 | `mey7--scshwy` |
-| מילואות | ACTIVE | 4 | — | `milouot--twg0jr` |
+| מילואות | ACTIVE | 7 | 8265 | `milouot--dbfy4p` |
 | מיקוד ביטחון ישראל בע''מ | ACTIVE | 7 | 3272 | `mikud-avtaha--x1f85a` |
 | מכון התקנים הישראלי | ACTIVE | 5 | 525 | `sii--t7eowl` |
 | מכון ויצמן למדע | ACTIVE | 6 | 1886 | `weizmann--lx3ol0` |
