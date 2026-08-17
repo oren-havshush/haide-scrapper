@@ -940,6 +940,36 @@
 - **Generalizes to:** every pageFlow site with mixed apply paths. **Home:** Step 4
   detailUrl row.
 
+### LRN-WRK-18 — `setupScript` is NOT re-run after a pagination navigation, so listing-scoped injections exist on page 1 only
+- **Date / site:** 2026-08-17 · unitask-inc.com (`cmsxdjtz1001m01p8dpwsxup8`, 31 jobs over 4 `?paged=` pages)
+- **Signal:** a listing-scoped field backed by a `setupScript`-injected `data-*` span
+  fills correctly for exactly the first page's worth of items and falls back for the
+  rest. Unitask: `externalJobId` came back 8 real ids + 23 synthesised `h-<hash>`
+  (LRN-WRK-17), i.e. 8/31 — and every gate still passed, because `verify-jobids` sees
+  fill 1.00 / 31 distinct once the hash fallback has papered over the gap.
+- **Root cause:** in `worker/jobs/scrape.ts` the multi-page path runs the script once at
+  **line 1402**, before the per-listing-page loop that starts at **1491**; the only
+  re-run is guarded by `loadMoreSelector` (1415). `goToNextListingPage` replaces the DOM
+  for `?paged=2..N` and nothing re-injects, so pages 2+ are extracted from a listing the
+  script never touched. Detail pages are unaffected — the script *is* re-run per detail
+  page at **1719-1725**, which is why sibling detail-scoped fields (location,
+  requirements) read 31/31 in the same run.
+- **Fix (no worker change):** move the field to **detail** scope — set its
+  `capturedOnUrl` to a detail URL so `classifyFieldsByPage` routes it to the detail pass,
+  and source the value from something the detail page carries (Unitask: the
+  `postid-<n>` body class / the printed `מספר משרה` heading rather than the card's
+  `post-<id>` class). Re-scrape → 31/31 real ids, 0 synthesised.
+- **Trap:** the synthesised-id fallback makes this look healthy. `fill=1.00,
+  distinct=31` is not evidence the mapping worked — **count the id PREFIXES**
+  (`h-` vs your own) before believing an id gate on any paginated site.
+- **Generalizes to:** every site combining `pagination` (url or click) with a
+  listing-scoped `setupScript` injection — the fleet's `?paged=`/`?page=` WordPress and
+  Drupal boards especially. Prefer detail scope for injected fields whenever pagination
+  is configured, or re-derive them from the card markup with a plain selector.
+  **Home:** Step 4 externalJobId row; addsite2.md §6.3 setupScript rules.
+
+---
+
 ### LRN-WRK-17 — The externalJobId hash fallback existed only on paper; the worker now applies it
 - **Date / site:** 2026-08-16 · חיותא, קבוצת אמנת- Sysnet, גולדברג פרושן (0% fill each)
 - **Signal:** an ACTIVE site stores `externalJobId` NULL on every row. It scrapes

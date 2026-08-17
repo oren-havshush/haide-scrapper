@@ -44,6 +44,7 @@ from top-level params, so a setupScript left only inside `_meta` is dropped.
 | Tender Loving Care | ACTIVE | 4 | 1240 | `tl-care--cylsu8` |
 | ToTali | ACTIVE | 6 | 3739 | `totali--duk823` |
 | Top Match | ACTIVE | 6 | 759 | `topmatch--f67z41` |
+| Unitask | ACTIVE | 6 | 5453 | `unitask-inc--wsxup8` |
 | Waterfall Security | ACTIVE | 6 | 2198 | `waterfall-security--c5pw15` |
 | YES | ACTIVE | 7 | — | `yes--ekwenb` |
 | YKM | ACTIVE | 8 | 4431 | `ykm--gxcmnf` |

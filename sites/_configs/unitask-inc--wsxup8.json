@@ -1,11 +1,11 @@
 {
-  "_exportedAt": "2026-08-17T14:53:00.889Z",
+  "_exportedAt": "2026-08-17T15:51:47.390Z",
   "_note": "Mirror of the live config. The DB is authoritative; the worker never reads this file. setupScript lives alongside in <slug>.setup.js.",
-  "id": "cmq5kosfl000601m9x4cugks8",
+  "id": "cmsxdjtz1001m01p8dpwsxup8",
   "siteUrl": "https://www.unitask-inc.com/career/jobs-2/",
   "companyName": "Unitask",
   "status": "ACTIVE",
-  "setupScriptFile": "unitask-inc--cugks8.setup.js",
+  "setupScriptFile": "unitask-inc--wsxup8.setup.js",
   "pageFlow": [
     {
       "url": "https://www.unitask-inc.com/career/jobs-2/",
@@ -18,7 +18,7 @@
   ],
   "fieldMappings": {
     "_meta": {
-      "savedAt": "2026-06-08T21:15:26.627Z",
+      "savedAt": "2026-08-17T15:47:47.499Z",
       "pagination": {
         "step": 1,
         "type": "url",
@@ -31,36 +31,39 @@
         "fields": [
           {
             "name": "file-476",
-            "label": "???? ????? ????",
+            "label": "קורות חיים (doc, docx, pdf — עד 1MB)",
             "tagName": "input",
-            "required": false,
+            "required": true,
             "fieldType": "file"
           },
           {
             "name": "email-324",
-            "label": "????? ??????:",
+            "label": "דוא\"ל",
             "tagName": "input",
-            "required": false,
+            "required": true,
             "fieldType": "email"
           },
           {
             "name": "dynamicname",
-            "label": "?? ???:",
+            "label": "מספר משרה",
             "tagName": "input",
             "required": false,
             "fieldType": "text"
           }
         ],
         "method": "POST",
-        "actionUrl": "https://www.unitask-inc.com/%d7%9e%d7%a4%d7%aa%d7%97-%d7%aa-oracle-applications/#wpcf7-f4462-p9015-o1",
-        "formSelector": "#wpcf7-f4462-p9015-o1 > form.wpcf7-form.init"
+        "actionUrl": "https://www.unitask-inc.com/2106-jb/",
+        "formSelector": "form.wpcf7-form"
       },
       "itemSelector": "article.elementor-post",
+      "minPublishDate": null,
+      "minPublishDays": null,
       "revealSelector": null,
       "listingSelector": null,
       "applyLoginReason": null,
       "browserOverrides": null,
       "loadMoreSelector": null,
+      "locationFallback": null,
       "originalMappings": null,
       "applyRequiresLogin": false
     },
@@ -75,7 +78,7 @@
       "selector": "[data-haide-location]",
       "confidence": 100,
       "extractAttr": "data-haide-location",
-      "capturedOnUrl": "https://www.unitask-inc.com/jb-1314/"
+      "capturedOnUrl": "https://www.unitask-inc.com/2106-jb/"
     },
     "detailUrl": {
       "source": "MANUAL",
@@ -88,14 +91,20 @@
       "source": "MANUAL",
       "selector": "article .entry-content",
       "confidence": 100,
-      "capturedOnUrl": "https://www.unitask-inc.com/%d7%9e%d7%a4%d7%aa%d7%97-%d7%aa-oracle-applications/"
+      "capturedOnUrl": "https://www.unitask-inc.com/2106-jb/"
+    },
+    "requirements": {
+      "source": "MANUAL",
+      "selector": "[data-haide-requirements]",
+      "confidence": 100,
+      "capturedOnUrl": "https://www.unitask-inc.com/2106-jb/"
     },
     "externalJobId": {
       "source": "MANUAL",
       "selector": "[data-haide-jobid]",
       "confidence": 100,
       "extractAttr": "data-haide-jobid",
-      "capturedOnUrl": "https://www.unitask-inc.com/%d7%9e%d7%a4%d7%aa%d7%97-%d7%aa-fullstack/"
+      "capturedOnUrl": "https://www.unitask-inc.com/2106-jb/"
     }
   }
 }
