@@ -1,5 +1,5 @@
 {
-  "_exportedAt": "2026-08-16T12:13:18.487Z",
+  "_exportedAt": "2026-08-17T14:17:52.641Z",
   "_note": "Mirror of the live config. The DB is authoritative; the worker never reads this file. setupScript lives alongside in <slug>.setup.js.",
   "id": "cmp02t9g3000c01k5qbtkz1xm",
   "siteUrl": "https://www.anvei-zion.com/job/",

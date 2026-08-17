@@ -1,5 +1,5 @@
 {
-  "_exportedAt": "2026-08-06T15:54:05.201Z",
+  "_exportedAt": "2026-08-17T14:17:51.992Z",
   "_note": "Mirror of the live config. The DB is authoritative; the worker never reads this file. setupScript lives alongside in <slug>.setup.js.",
   "id": "cmpnt68rb002301mv6h7d28yg",
   "siteUrl": "https://careers.iec.co.il/?referid=&freeText=&page=1",

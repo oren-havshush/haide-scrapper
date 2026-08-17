@@ -1,5 +1,5 @@
 {
-  "_exportedAt": "2026-08-16T16:58:03.864Z",
+  "_exportedAt": "2026-08-17T14:17:47.967Z",
   "_note": "Mirror of the live config. The DB is authoritative; the worker never reads this file. setupScript lives alongside in <slug>.setup.js.",
   "id": "cmsw1nfo0000e01p87z5akm6u",
   "siteUrl": "https://www.globrands.co.il/",

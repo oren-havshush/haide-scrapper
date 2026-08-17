@@ -1,5 +1,5 @@
 {
-  "_exportedAt": "2026-08-06T15:54:04.650Z",
+  "_exportedAt": "2026-08-17T14:17:51.470Z",
   "_note": "Mirror of the live config. The DB is authoritative; the worker never reads this file. setupScript lives alongside in <slug>.setup.js.",
   "id": "cmq6nxder000401liq0l2zw3a",
   "siteUrl": "https://www.biopharmax.co.il/career",

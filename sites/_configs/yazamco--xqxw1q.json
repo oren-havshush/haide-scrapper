@@ -1,5 +1,5 @@
 {
-  "_exportedAt": "2026-08-06T15:54:04.837Z",
+  "_exportedAt": "2026-08-17T14:17:51.633Z",
   "_note": "Mirror of the live config. The DB is authoritative; the worker never reads this file. setupScript lives alongside in <slug>.setup.js.",
   "id": "cmq67cuh9000r01m9rjxqxw1q",
   "siteUrl": "https://yazamco.co.il/%d7%93%d7%a8%d7%95%d7%a9%d7%99%d7%9d",

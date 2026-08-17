@@ -1,24 +1,26 @@
 {
-  "_exportedAt": "2026-08-06T15:54:04.864Z",
+  "_exportedAt": "2026-08-17T14:17:47.792Z",
   "_note": "Mirror of the live config. The DB is authoritative; the worker never reads this file. setupScript lives alongside in <slug>.setup.js.",
-  "id": "cmq6729dq000n01m9djj78371",
-  "siteUrl": "https://www.comeet.com/jobs/netafim/B7.002?location=Yiftah,%20Israel",
+  "id": "cmsxb05st001c01p80n4q2aga",
+  "siteUrl": "https://www.comeet.com/jobs/netafim/B7.002",
   "companyName": "נטפים",
   "status": "ACTIVE",
-  "setupScriptFile": "comeet--j78371.setup.js",
+  "setupScriptFile": "comeet--4q2aga.setup.js",
   "pageFlow": [
     {
-      "url": "https://www.comeet.com/jobs/netafim/B7.002?location=Yiftah,%20Israel",
-      "action": "navigate"
+      "url": "https://www.comeet.com/jobs/netafim/B7.002",
+      "action": "navigate",
+      "waitFor": ".positionItem"
     },
     {
       "url": "https://www.comeet.com/jobs/netafim/B7.002/*",
-      "action": "navigate"
+      "action": "a.positionItem",
+      "waitFor": "[data-qa=\"positionDescription\"]"
     }
   ],
   "fieldMappings": {
     "_meta": {
-      "savedAt": "2026-06-09T05:24:40.078Z",
+      "savedAt": "2026-08-17T14:11:38.275Z",
       "pagination": null,
       "formCapture": {
         "fields": [
@@ -94,67 +96,69 @@
           }
         ],
         "method": "POST",
-        "actionUrl": "https://www.comeet.com/jobs/netafim/B7.002?location=Yiftah,%20Israel",
-        "formSelector": "form#applyForm"
+        "actionUrl": "https://www.comeet.co/jobs/B7.002/apply",
+        "formSelector": "form.__comeet-apply-static"
       },
       "itemSelector": "li:has(> a.positionItem)",
+      "minPublishDate": null,
+      "minPublishDays": null,
       "revealSelector": null,
       "listingSelector": null,
       "applyLoginReason": null,
       "browserOverrides": null,
       "loadMoreSelector": null,
+      "locationFallback": "פריסה ארצית",
       "originalMappings": null,
       "applyRequiresLogin": false
     },
     "title": {
-      "source": "MANUAL",
+      "source": "auto",
       "selector": ".positionLink",
-      "confidence": 100,
-      "capturedOnUrl": "https://www.comeet.com/jobs/netafim/B7.002?location=Yiftah,%20Israel"
+      "confidence": 0.95,
+      "capturedOnUrl": "https://www.comeet.com/jobs/netafim/B7.002"
     },
     "location": {
-      "source": "MANUAL",
-      "selector": "[data-qa=\"headerLocation\"]",
-      "confidence": 100,
-      "capturedOnUrl": "https://www.comeet.com/jobs/netafim/B7.002/global-demand--sop-planning-manager/8F.A68?location=Yiftah,%20Israel"
+      "source": "auto",
+      "selector": ".__ai-location",
+      "confidence": 0.9,
+      "capturedOnUrl": "https://www.comeet.com/jobs/netafim/B7.002/customer-service-representative/74.C6D"
     },
     "detailUrl": {
-      "source": "MANUAL",
+      "source": "auto",
       "selector": "a.positionItem",
-      "confidence": 100,
+      "confidence": 0.95,
       "extractAttr": "href",
-      "capturedOnUrl": "https://www.comeet.com/jobs/netafim/B7.002?location=Yiftah,%20Israel"
+      "capturedOnUrl": "https://www.comeet.com/jobs/netafim/B7.002"
     },
     "department": {
-      "source": "MANUAL",
-      "selector": "ul.positionDetails li:first-child",
-      "confidence": 100,
-      "capturedOnUrl": "https://www.comeet.com/jobs/netafim/B7.002?location=Yiftah,%20Israel"
+      "source": "auto",
+      "selector": ".__ai-department",
+      "confidence": 0.9,
+      "capturedOnUrl": "https://www.comeet.com/jobs/netafim/B7.002"
     },
     "description": {
-      "source": "MANUAL",
-      "selector": "[data-qa=\"positionDescription\"]",
-      "confidence": 100,
-      "capturedOnUrl": "https://www.comeet.com/jobs/netafim/B7.002/global-demand--sop-planning-manager/8F.A68?location=Yiftah,%20Israel"
+      "source": "auto",
+      "selector": ".__ai-description",
+      "confidence": 0.9,
+      "capturedOnUrl": "https://www.comeet.com/jobs/netafim/B7.002/customer-service-representative/74.C6D"
     },
     "requirements": {
-      "source": "MANUAL",
-      "selector": "[data-qa=\"positionRequirements\"]",
-      "confidence": 100,
-      "capturedOnUrl": "https://www.comeet.com/jobs/netafim/B7.002/global-demand--sop-planning-manager/8F.A68?location=Yiftah,%20Israel"
+      "source": "auto",
+      "selector": ".__ai-requirements",
+      "confidence": 0.85,
+      "capturedOnUrl": "https://www.comeet.com/jobs/netafim/B7.002/customer-service-representative/74.C6D"
     },
     "externalJobId": {
-      "source": "MANUAL",
-      "selector": "a.positionItem",
-      "confidence": 100,
-      "extractAttr": "href",
-      "capturedOnUrl": "https://www.comeet.com/jobs/netafim/B7.002?location=Yiftah,%20Israel"
+      "source": "auto",
+      "selector": ".__ai-jobid",
+      "confidence": 0.95,
+      "capturedOnUrl": "https://www.comeet.com/jobs/netafim/B7.002"
     },
     "employmentType": {
-      "source": "MANUAL",
-      "selector": "[data-qa=\"headerEmploymentType\"]",
-      "confidence": 100,
-      "capturedOnUrl": "https://www.comeet.com/jobs/netafim/B7.002/global-demand--sop-planning-manager/8F.A68?location=Yiftah,%20Israel"
+      "source": "auto",
+      "selector": ".__ai-employmentType",
+      "confidence": 0.9,
+      "capturedOnUrl": "https://www.comeet.com/jobs/netafim/B7.002"
     }
   }
 }

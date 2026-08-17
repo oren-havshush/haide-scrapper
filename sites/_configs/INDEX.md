@@ -47,7 +47,7 @@ from top-level params, so a setupScript left only inside `_meta` is dropped.
 | Unitask | ACTIVE | 5 | 1186 | `unitask-inc--cugks8` |
 | Waterfall Security | ACTIVE | 6 | 2198 | `waterfall-security--c5pw15` |
 | YES | ACTIVE | 7 | — | `yes--ekwenb` |
-| YKM | ACTIVE | 8 | 4445 | `ykm--gxcmnf` |
+| YKM | ACTIVE | 8 | 4431 | `ykm--gxcmnf` |
 | bank mizrahi tefahot | ACTIVE | 10 | — | `mizrahi-tefahot--a0zkf2` |
 | go mobile | ACTIVE | 6 | 1081 | `gomobile--zpvjhq` |
 | inManage | ACTIVE | 4 | — | `inmanage--t3xlhk` |
@@ -62,7 +62,7 @@ from top-level params, so a setupScript left only inside `_meta` is dropped.
 | אלקטרה | ACTIVE | 7 | 1823 | `electra--cgkf66` |
 | אמביאנס קוסמטיקה רפואית | ACTIVE | 3 | 505 | `yafa-maximov--v1max5` |
 | אנשים ומחשבים | ACTIVE | 5 | 2645 | `pc--51eg8t` |
-| אשטרום | ACTIVE | 8 | 1354 | `ashtrom--9nr6ww` |
+| אשטרום | ACTIVE | 8 | 1341 | `ashtrom--9nr6ww` |
 | בית אקשטיין | ACTIVE | 4 | — | `b-e--kmx6nt` |
 | בית חולים אורטופדי אליון | ACTIVE | 4 | 1576 | `alyn--el7arg` |
 | בן & ג’ריס | ACTIVE | 5 | 1215 | `benjerry--12brnw` |
@@ -70,7 +70,7 @@ from top-level params, so a setupScript left only inside `_meta` is dropped.
 | גולדברג פרושן ושות' רואי חשבון | ACTIVE | 5 | 4236 | `goldpro--1pf5j6` |
 | גזית | ACTIVE | 3 | 746 | `gazit--fqrarf` |
 | גילאר | ACTIVE | 6 | — | `gilar--h7463m` |
-| גלוברנדס | ACTIVE | 6 | 1643 | `globrands--5akm6u` |
+| גלוברנדס | ACTIVE | 6 | 1635 | `globrands--5akm6u` |
 | האקדמית רמת גן | ACTIVE | 5 | 1124 | `landing-iac--3cdlhs` |
 | הבנק הבינלאומי | ACTIVE | 4 | 607 | `fibi--nba61p` |
 | החברה לאמנות ותרבות | ACTIVE | 5 | 1559 | `tarbut-herzliya--zvh6d2` |
@@ -80,7 +80,7 @@ from top-level params, so a setupScript left only inside `_meta` is dropped.
 | חברת החשמל | ACTIVE | 8 | 3910 | `iec--7d28yg` |
 | חיותא | ACTIVE | 3 | — | `chayuta--6foa66` |
 | חלילית | ACTIVE | 5 | 1006 | `halilit--0vwgee` |
-| חמת | ACTIVE | 7 | 3459 | `hamat-group--4ris60` |
+| חמת | ACTIVE | 7 | 3390 | `hamat-group--4ris60` |
 | טכניון | ACTIVE | 10 | — | `technion--8nqtph` |
 | טלכלל | ACTIVE | 6 | 4062 | `teleclalcc--n6k1yl` |
 | טמבור | ACTIVE | 5 | 2580 | `tambour--2nwjvz` |
@@ -102,10 +102,10 @@ from top-level params, so a setupScript left only inside `_meta` is dropped.
 | מגדל שוקי הון | ACTIVE | 4 | 761 | `msh--k3pwyv` |
 | מדנס סוכנות לביטוח | ACTIVE | 7 | 4379 | `madanes--1wzqn7` |
 | מוזיאון ישראל | ACTIVE | 6 | 3801 | `imj--442rnv` |
-| מי אביבים | ACTIVE | 9 | 8259 | `mei-avivim--5afgkc` |
+| מי אביבים | ACTIVE | 9 | 7970 | `mei-avivim--5afgkc` |
 | מי עדן | ACTIVE | 5 | 4162 | `campaigns-meyeden--6u5xb3` |
 | מי שבע | ACTIVE | 5 | 1645 | `mey7--scshwy` |
-| מילואות | ACTIVE | 7 | 8265 | `milouot--dbfy4p` |
+| מילואות | ACTIVE | 7 | 7931 | `milouot--dbfy4p` |
 | מיקוד ביטחון ישראל בע''מ | ACTIVE | 7 | 3272 | `mikud-avtaha--x1f85a` |
 | מכון התקנים הישראלי | ACTIVE | 5 | 525 | `sii--t7eowl` |
 | מכון ויצמן למדע | ACTIVE | 6 | 1886 | `weizmann--lx3ol0` |
@@ -116,7 +116,7 @@ from top-level params, so a setupScript left only inside `_meta` is dropped.
 | מרכז האקדמי פרס | ACTIVE | 4 | 2397 | `pac--4xvfi9` |
 | נאות המושבה - גולדנקייר | ACTIVE | 3 | 700 | `gcare--2uvz1w` |
 | נטלי | ACTIVE | 5 | 4418 | `natali--ld00pa` |
-| נטפים | ACTIVE | 8 | 293 | `comeet--j78371` |
+| נטפים | ACTIVE | 8 | 6573 | `comeet--4q2aga` |
 | נירלט | ACTIVE | 4 | — | `nirlat--xluh8r` |
 | סיני סטור | ACTIVE | 4 | 286 | `sinaistore--2135c8` |
 | סלקום | ACTIVE | 6 | 2255 | `cellcom--ugxfm3` |
@@ -151,6 +151,6 @@ from top-level params, so a setupScript left only inside `_meta` is dropped.
 | תייקום תקשורת | ACTIVE | 5 | 1351 | `tiecom--uy0ibi` |
 | תכלית ייעוץ עסקי | ACTIVE | 4 | — | `tachlit-biz--rw2x0o` |
 | תמה גרופ | ACTIVE | 4 | 2240 | `tama--rwlfxm` |
-| תמורה | ACTIVE | 4 | 6300 | `tmuralife--m6phhu` |
+| תמורה | ACTIVE | 4 | 6170 | `tmuralife--m6phhu` |
 | תנובה | ACTIVE | 5 | 1994 | `tnuva--7145ri` |
 | תפקיד פלוס | ACTIVE | 6 | 967 | `tafkid-plus--ioqkzw` |

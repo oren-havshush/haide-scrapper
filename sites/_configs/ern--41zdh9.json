@@ -1,5 +1,5 @@
 {
-  "_exportedAt": "2026-08-06T15:54:03.912Z",
+  "_exportedAt": "2026-08-17T14:17:50.961Z",
   "_note": "Mirror of the live config. The DB is authoritative; the worker never reads this file. setupScript lives alongside in <slug>.setup.js.",
   "id": "cmq9jewe2003401lcy941zdh9",
   "siteUrl": "https://www.ern.co.il/%D7%A7%D7%A8%D7%99%D7%99%D7%A8%D7%94-%D7%91-ern-2/",

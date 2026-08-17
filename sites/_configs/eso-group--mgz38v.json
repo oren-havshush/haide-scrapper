@@ -1,5 +1,5 @@
 {
-  "_exportedAt": "2026-08-06T15:54:04.519Z",
+  "_exportedAt": "2026-08-17T14:17:51.362Z",
   "_note": "Mirror of the live config. The DB is authoritative; the worker never reads this file. setupScript lives alongside in <slug>.setup.js.",
   "id": "cmq6nxu33000g01lizjmgz38v",
   "siteUrl": "https://eso-group.co.il/%d7%a7%d7%a8%d7%99%d7%99%d7%a8%d7%94",

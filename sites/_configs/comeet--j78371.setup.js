@@ -1,1 +1,0 @@
-await new Promise((resolve) => { if (document.querySelector('[data-qa="positionDescription"]')) { resolve(); return; } let tries = 0; const timer = setInterval(() => { if (document.querySelectorAll('a.positionItem').length > 0 || tries++ > 40) { clearInterval(timer); resolve(); } }, 250); });

@@ -1,5 +1,5 @@
 {
-  "_exportedAt": "2026-08-06T15:54:02.174Z",
+  "_exportedAt": "2026-08-17T14:17:48.330Z",
   "_note": "Mirror of the live config. The DB is authoritative; the worker never reads this file. setupScript lives alongside in <slug>.setup.js.",
   "id": "cmqykv29i003i01nzvw1z5jpw",
   "siteUrl": "https://careers.topmatch.co.il/tadiran/index.html",

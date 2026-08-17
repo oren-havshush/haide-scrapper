@@ -1,5 +1,5 @@
 {
-  "_exportedAt": "2026-08-06T15:54:03.024Z",
+  "_exportedAt": "2026-08-17T14:17:49.600Z",
   "_note": "Mirror of the live config. The DB is authoritative; the worker never reads this file. setupScript lives alongside in <slug>.setup.js.",
   "id": "cmqqjtd04000201nwtmwafrzk",
   "siteUrl": "https://www.fritz.co.il/open-positions/",

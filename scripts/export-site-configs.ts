@@ -186,6 +186,17 @@ async function main() {
     "config that gets overwritten (a re-analyze clears `configLocked`, see",
     "`sites/iec/notes.md` §4) can be restored instead of rebuilt.",
     "",
+    // Kept in this template, not just in the generated file: INDEX.md is
+    // overwritten wholesale on every run, so a hand-added paragraph silently
+    // disappears on the next full export (it did — LRN-API-4's own warning was
+    // lost that way).
+    "**Keeping the mirror honest.** These files go stale silently, and a stale mirror is",
+    "worse than a missing one — restoring from one that predates a fix reinstates the bug",
+    "(`kahane` held a pre-2026-08-13 setupScript that flattened descriptions). Run the",
+    "**full** export after any config change; never `--site <id>`, which regenerates this",
+    "index from that one site and deletes every other row. Ignore `_exportedAt`-only diffs;",
+    "anything else is drift that was never mirrored. Cite: `LRN-API-4`.",
+    "",
     "Restore: PUT the JSON back to `/api/sites/{id}/config`, adding `setupScript` from",
     "the matching `.setup.js` as a top-level field — `saveSiteConfig` rebuilds `_meta`",
     "from top-level params, so a setupScript left only inside `_meta` is dropped.",

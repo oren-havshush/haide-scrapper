@@ -1,5 +1,5 @@
 {
-  "_exportedAt": "2026-08-06T15:54:02.566Z",
+  "_exportedAt": "2026-08-17T14:17:48.797Z",
   "_note": "Mirror of the live config. The DB is authoritative; the worker never reads this file. setupScript lives alongside in <slug>.setup.js.",
   "id": "cmqyc59mw001701nzdz2bfcz7",
   "siteUrl": "https://masof.com/%D7%93%D7%A8%D7%95%D7%A9%D7%99%D7%9D/",

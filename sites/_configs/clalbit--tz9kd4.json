@@ -1,5 +1,5 @@
 {
-  "_exportedAt": "2026-08-06T15:54:05.942Z",
+  "_exportedAt": "2026-08-17T14:17:52.721Z",
   "_note": "Mirror of the live config. The DB is authoritative; the worker never reads this file. setupScript lives alongside in <slug>.setup.js.",
   "id": "cmozlr29i001801phxitz9kd4",
   "siteUrl": "https://www.clalbit.co.il/careers/#",

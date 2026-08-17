@@ -1,5 +1,5 @@
 {
-  "_exportedAt": "2026-08-06T15:54:05.911Z",
+  "_exportedAt": "2026-08-17T14:17:52.693Z",
   "_note": "Mirror of the live config. The DB is authoritative; the worker never reads this file. setupScript lives alongside in <slug>.setup.js.",
   "id": "cmp01cdsd001a01ph74xluh8r",
   "siteUrl": "https://careers.nirlat.com/#jobs",

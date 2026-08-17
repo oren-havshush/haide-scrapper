@@ -1,5 +1,5 @@
 {
-  "_exportedAt": "2026-08-06T15:54:03.693Z",
+  "_exportedAt": "2026-08-17T14:17:50.665Z",
   "_note": "Mirror of the live config. The DB is authoritative; the worker never reads this file. setupScript lives alongside in <slug>.setup.js.",
   "id": "cmqe6suox004e01lc6x676m0e",
   "siteUrl": "https://www.iaa.gov.il/about/jobs/",

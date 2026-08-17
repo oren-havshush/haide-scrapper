@@ -1,5 +1,5 @@
 {
-  "_exportedAt": "2026-08-06T15:54:03.052Z",
+  "_exportedAt": "2026-08-17T14:17:49.892Z",
   "_note": "Mirror of the live config. The DB is authoritative; the worker never reads this file. setupScript lives alongside in <slug>.setup.js.",
   "id": "cmqo82ph6001301qpa01wzqn7",
   "siteUrl": "https://www.madanes.com/jobs/",

@@ -1190,3 +1190,62 @@
   INDEX row rather than regenerate the file; run the full export after any config
   change rather than as an occasional chore.
 - **Generalizes to:** the whole mirror. **Home:** `sites/_configs/INDEX.md`.
+
+### LRN-SPA-10 — Comeet: the group heading is not always the department, and the data-qa blocks carry the apply iframe
+
+- **Date / site:** 2026-08-17, נטפים (`comeet.com/jobs/netafim/B7.002`), rebuilt from scratch.
+- **Signal:** three separate mismatches against the shared Comeet recipe
+  (`addsite2-recipes/spa-frameworks.md#comeet`), all on a board the recipe otherwise fits.
+
+1. **`.positionsGroupTitle` was the LOCATION, not the department.** The recipe injects it
+   as `department` ("MRO", "אגף ייצור"). On this board the headings are places —
+   `Hatzerim, Israel`, `Magal, Israel`, `Yiftah, Israel`, `Colombia`, `India Pune`,
+   `Yinchuan, China`. Department/employment type live in `.positionDetails li` 1 and 2
+   instead. **Read the actual headings before mapping them** — the grouping dimension is
+   a per-tenant Comeet setting, not a platform constant.
+2. **`[data-qa="positionDescription"]` / `positionRequirements` are two-column
+   `.row.noPaddingTop.careerCard` wrappers.** Column 1 (`.positionInfo`) is the prose;
+   column 2 holds the cross-origin apply iframe. Running `structuredText` on the wrapper
+   swept in the CTA text ("Apply for this job") and a stray literal `</div>`. Scope to
+   `el.querySelector('.positionInfo') || el`.
+3. **Both blocks stack TWO label lines** — the block heading (`Requirements`) plus the
+   employer's own sub-label (`דרישות התפקיד:`). A one-shot label strip removes only the
+   first; strip in a loop.
+
+- **Also:** a global employer's board is not an Israeli jobs board. Netafim's board had 44
+  positions, only 25 in Israel (the rest Colombia/Ecuador/Mexico/Guatemala/India/China/
+  Netherlands/EMEA, several Spanish-language). The previous config "solved" this with a
+  `?location=Yiftah,%20Israel` URL filter, which cut it to **5 of 44** — losing 20 Israeli
+  jobs at the other four sites. Prefer scraping the full board and dropping non-Israeli
+  items in the setupScript over a URL filter that silently narrows coverage.
+- **Also:** the coarse group heading disagreed with the per-job
+  `[data-qa="headerLocation"]` — group `Tel Aviv, Israel` resolves to `גבעתיים`. Take
+  location from the detail header, not the heading.
+- **Generalizes to:** every Comeet tenant, and to any ATS whose listing groups rows under
+  a heading whose meaning is tenant-configurable.
+
+### LRN-SETUP-5 — JS `\b` is ASCII-only, so Hebrew label-stripping regexes silently no-op
+
+- **Date / site:** 2026-08-17, נטפים.
+- **Signal:** `/^(...|דרישות)\b/` never matched `"דרישות התפקיד:"`. Hebrew letters are not
+  `\w` in a non-`u` JavaScript regex, so `\b` finds no boundary between `ת` and a space —
+  the strip silently did nothing and the redundant label shipped inside `requirements`.
+- **Fix:** drop `\b` and gate on shape instead (short first line + known keyword prefix,
+  optionally a trailing colon), or use `\p{L}` with the `u` flag. Prefer line-based
+  parsing over one big regex: it is also immune to the non-U+0020 spaces these boards emit.
+- **Generalizes to:** every Hebrew-content setupScript that strips labels or splits
+  sections — the same trap hits `\bדרישות\b`-style section splitters.
+
+### LRN-API-5 — `export-site-configs.ts` deletes hand-written prose from INDEX.md
+
+- **Date:** 2026-08-17, found while mirroring נטפים.
+- **Signal:** the full export dropped the "**Keeping the mirror honest**" paragraph — the
+  very warning `LRN-API-4` added. `INDEX.md` is rebuilt wholesale from a template literal
+  in the script, so anything hand-added to the generated file disappears on the next run.
+- **Fix:** the paragraph now lives in the script's template, not just in the output. Any
+  further guidance for that file belongs in `scripts/export-site-configs.ts`, never in
+  `INDEX.md` itself.
+- **Note:** older INDEX rows recorded setupScript **file bytes** while the script writes
+  JS **string length**; on Hebrew-bearing scripts these differ (ykm 4445 vs 4431). A
+  one-time shrink in that column across many rows is that artifact, not config drift.
+- **Generalizes to:** every generated-file-with-docs in the repo.

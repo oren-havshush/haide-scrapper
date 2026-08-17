@@ -1,5 +1,5 @@
 {
-  "_exportedAt": "2026-08-06T15:54:04.759Z",
+  "_exportedAt": "2026-08-17T14:17:51.549Z",
   "_note": "Mirror of the live config. The DB is authoritative; the worker never reads this file. setupScript lives alongside in <slug>.setup.js.",
   "id": "cmq68viva001b01m902an8gzs",
   "siteUrl": "https://eimsys.co.il/home/now-hiring",

@@ -1,5 +1,5 @@
 {
-  "_exportedAt": "2026-08-06T15:54:03.610Z",
+  "_exportedAt": "2026-08-17T14:17:50.573Z",
   "_note": "Mirror of the live config. The DB is authoritative; the worker never reads this file. setupScript lives alongside in <slug>.setup.js.",
   "id": "cmqi9kjgd000801t1r42obqtp",
   "siteUrl": "https://adifim.co.il/about/jobs/",
