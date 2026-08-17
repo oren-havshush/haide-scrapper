@@ -102,7 +102,7 @@ from top-level params, so a setupScript left only inside `_meta` is dropped.
 | מגדל שוקי הון | ACTIVE | 4 | 761 | `msh--k3pwyv` |
 | מדנס סוכנות לביטוח | ACTIVE | 7 | 4379 | `madanes--1wzqn7` |
 | מוזיאון ישראל | ACTIVE | 6 | 3801 | `imj--442rnv` |
-| מי אביבים | ACTIVE | 6 | 1589 | `mei-avivim--gf85tl` |
+| מי אביבים | ACTIVE | 9 | 8259 | `mei-avivim--5afgkc` |
 | מי עדן | ACTIVE | 5 | 4162 | `campaigns-meyeden--6u5xb3` |
 | מי שבע | ACTIVE | 5 | 1645 | `mey7--scshwy` |
 | מילואות | ACTIVE | 7 | 8265 | `milouot--dbfy4p` |
