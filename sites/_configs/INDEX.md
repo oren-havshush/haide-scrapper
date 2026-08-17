@@ -151,6 +151,6 @@ from top-level params, so a setupScript left only inside `_meta` is dropped.
 | תייקום תקשורת | ACTIVE | 5 | 1351 | `tiecom--uy0ibi` |
 | תכלית ייעוץ עסקי | ACTIVE | 4 | — | `tachlit-biz--rw2x0o` |
 | תמה גרופ | ACTIVE | 4 | 2240 | `tama--rwlfxm` |
-| תמורה | ACTIVE | 4 | 414 | `tmuralife--k5bo9h` |
+| תמורה | ACTIVE | 4 | 6300 | `tmuralife--m6phhu` |
 | תנובה | ACTIVE | 5 | 1994 | `tnuva--7145ri` |
 | תפקיד פלוס | ACTIVE | 6 | 967 | `tafkid-plus--ioqkzw` |

@@ -1,87 +1,92 @@
 {
-  "_exportedAt": "2026-08-06T15:54:04.922Z",
+  "_exportedAt": "2026-08-17T12:30:10.369Z",
   "_note": "Mirror of the live config. The DB is authoritative; the worker never reads this file. setupScript lives alongside in <slug>.setup.js.",
-  "id": "cmq53nx0z000g01qnxxk5bo9h",
+  "id": "cmsx7hlvo001201p8oim6phhu",
   "siteUrl": "https://www.tmuralife.co.il/aboutus/%d7%a7%d7%a8%d7%99%d7%99%d7%a8%d7%94-%d7%91%d7%aa%d7%9e%d7%95%d7%a8%d7%94/",
   "companyName": "תמורה",
   "status": "ACTIVE",
-  "setupScriptFile": "tmuralife--k5bo9h.setup.js",
+  "setupScriptFile": "tmuralife--m6phhu.setup.js",
   "pageFlow": [],
   "fieldMappings": {
     "_meta": {
-      "savedAt": "2026-06-08T11:07:57.280Z",
+      "savedAt": "2026-08-17T12:26:39.132Z",
       "pagination": null,
       "formCapture": {
         "fields": [
           {
             "name": "candidacy-your-name",
-            "label": "×©× ×ž×œ×*",
+            "label": "שם מלא*",
             "tagName": "input",
-            "required": false,
+            "required": true,
             "fieldType": "text"
           },
           {
             "name": "candidacy-your-email",
-            "label": "×ž×™×™×œ*",
+            "label": "מייל*",
             "tagName": "input",
-            "required": false,
+            "required": true,
             "fieldType": "email"
           },
           {
             "name": "candidacy-your-phone",
-            "label": "×˜×œ×¤×•×Ÿ × ×™×™×“*",
+            "label": "טלפון נייד*",
             "tagName": "input",
-            "required": false,
+            "required": true,
             "fieldType": "tel"
           },
           {
             "name": "candidacy-your-cv",
-            "label": "candidacy your cv",
+            "label": "קורות חיים",
             "tagName": "input",
-            "required": false,
+            "required": true,
             "fieldType": "file"
           },
           {
             "name": "acceptance-534",
-            "label": "×‘×©×œ×™×—×ª ×§×•×¨×•×ª ×”×—×™×™× ×•×ž×™×“×¢ × ×•×¡×£, ×× ×™ ×ž×¡×›×™×/×” ×œ×©×ž×™×¨×ª ×”×¤×¨×˜×™× ×‘×ž××’×¨×™ ×”×ž×™×“×¢ ×©×œ ×ª×ž×•×¨×”, ×œ×¢×™×‘×•×“× ×•×œ×ž×¡×™×¨×ª× ×‘×”×ª",
+            "label": "אישור שמירת פרטים במאגרי המידע של תמורה",
             "tagName": "input",
-            "required": false,
+            "required": true,
             "fieldType": "checkbox"
           }
         ],
         "method": "POST",
         "actionUrl": "https://www.tmuralife.co.il/aboutus/%d7%a7%d7%a8%d7%99%d7%99%d7%a8%d7%94-%d7%91%d7%aa%d7%9e%d7%95%d7%a8%d7%94/#wpcf7-f5-p388-o1",
-        "formSelector": "#wpcf7-f5-p388-o1 > form.wpcf7-form.init"
+        "formSelector": "form.wpcf7-form"
       },
       "itemSelector": ".accordion-item",
+      "minPublishDate": null,
+      "minPublishDays": null,
       "revealSelector": null,
       "listingSelector": null,
+      "applyLoginReason": null,
       "browserOverrides": null,
       "loadMoreSelector": null,
-      "originalMappings": null
+      "locationFallback": "הוד השרון",
+      "originalMappings": null,
+      "applyRequiresLogin": false
     },
     "title": {
       "source": "MANUAL",
       "selector": ".accordion-item-title",
-      "confidence": 100,
-      "capturedOnUrl": "https://www.tmuralife.co.il/aboutus/%d7%a7%d7%a8%d7%99%d7%99%d7%a8%d7%94-%d7%91%d7%aa%d7%9e%d7%95%d7%a8%d7%94/"
-    },
-    "location": {
-      "source": "MANUAL",
-      "selector": "[data-extracted-location]",
-      "confidence": 100,
+      "confidence": 95,
       "capturedOnUrl": "https://www.tmuralife.co.il/aboutus/%d7%a7%d7%a8%d7%99%d7%99%d7%a8%d7%94-%d7%91%d7%aa%d7%9e%d7%95%d7%a8%d7%94/"
     },
     "description": {
       "source": "MANUAL",
-      "selector": ".accordion-item-content",
-      "confidence": 100,
+      "selector": ".__ai-desc",
+      "confidence": 95,
+      "capturedOnUrl": "https://www.tmuralife.co.il/aboutus/%d7%a7%d7%a8%d7%99%d7%99%d7%a8%d7%94-%d7%91%d7%aa%d7%9e%d7%95%d7%a8%d7%94/"
+    },
+    "requirements": {
+      "source": "MANUAL",
+      "selector": ".__ai-req",
+      "confidence": 90,
       "capturedOnUrl": "https://www.tmuralife.co.il/aboutus/%d7%a7%d7%a8%d7%99%d7%99%d7%a8%d7%94-%d7%91%d7%aa%d7%9e%d7%95%d7%a8%d7%94/"
     },
     "externalJobId": {
       "source": "MANUAL",
-      "selector": ".accordion-item-title",
-      "confidence": 100,
+      "selector": ".__ai-jobid",
+      "confidence": 95,
       "capturedOnUrl": "https://www.tmuralife.co.il/aboutus/%d7%a7%d7%a8%d7%99%d7%99%d7%a8%d7%94-%d7%91%d7%aa%d7%9e%d7%95%d7%a8%d7%94/"
     }
   }
