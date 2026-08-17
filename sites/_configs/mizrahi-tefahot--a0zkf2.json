@@ -1,5 +1,5 @@
 {
-  "_exportedAt": "2026-08-17T14:17:51.939Z",
+  "_exportedAt": "2026-08-17T14:53:01.161Z",
   "_note": "Mirror of the live config. The DB is authoritative; the worker never reads this file. setupScript lives alongside in <slug>.setup.js.",
   "id": "cmpo15tl5002h01mvdda0zkf2",
   "siteUrl": "https://www.mizrahi-tefahot.co.il/about-mizrahi-tefahot-he/career/open-jobs/",

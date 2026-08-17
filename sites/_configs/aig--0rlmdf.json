@@ -1,5 +1,5 @@
 {
-  "_exportedAt": "2026-08-17T14:17:52.534Z",
+  "_exportedAt": "2026-08-17T14:53:01.890Z",
   "_note": "Mirror of the live config. The DB is authoritative; the worker never reads this file. setupScript lives alongside in <slug>.setup.js.",
   "id": "cmp05slo1000h01rqc50rlmdf",
   "siteUrl": "https://www.aig.co.il/jobs/#vacancies-section",

@@ -1,5 +1,5 @@
 {
-  "_exportedAt": "2026-08-17T14:17:47.907Z",
+  "_exportedAt": "2026-08-17T14:52:49.703Z",
   "_note": "Mirror of the live config. The DB is authoritative; the worker never reads this file. setupScript lives alongside in <slug>.setup.js.",
   "id": "cmsx2ece0000o01p8ph4ris60",
   "siteUrl": "https://hamat-group.co.il/%D7%93%D7%A8%D7%95%D7%A9%D7%99%D7%9D",

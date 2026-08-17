@@ -1,5 +1,5 @@
 {
-  "_exportedAt": "2026-08-17T14:17:50.910Z",
+  "_exportedAt": "2026-08-17T14:52:59.775Z",
   "_note": "Mirror of the live config. The DB is authoritative; the worker never reads this file. setupScript lives alongside in <slug>.setup.js.",
   "id": "cmq9jwffx003c01lcvet7eowl",
   "siteUrl": "https://www.sii.org.il/he/career",

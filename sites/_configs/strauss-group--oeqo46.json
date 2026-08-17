@@ -1,5 +1,5 @@
 {
-  "_exportedAt": "2026-08-17T14:17:52.982Z",
+  "_exportedAt": "2026-08-17T14:53:02.888Z",
   "_note": "Mirror of the live config. The DB is authoritative; the worker never reads this file. setupScript lives alongside in <slug>.setup.js.",
   "id": "cmoq6j2kw000001o84coeqo46",
   "siteUrl": "https://www.strauss-group.co.il/career/jobs/?user_page=1&freeText=",

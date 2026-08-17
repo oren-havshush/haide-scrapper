@@ -1,5 +1,5 @@
 {
-  "_exportedAt": "2026-08-17T14:17:50.119Z",
+  "_exportedAt": "2026-08-17T14:52:55.529Z",
   "_note": "Mirror of the live config. The DB is authoritative; the worker never reads this file. setupScript lives alongside in <slug>.setup.js.",
   "id": "cmqkqggl0001b01p6zv4tq06k",
   "siteUrl": "https://calanit.co.il/%d7%9e%d7%a9%d7%a8%d7%95%d7%aa/",

@@ -1,0 +1,98 @@
+{
+  "_exportedAt": "2026-08-17T14:52:49.335Z",
+  "_note": "Mirror of the live config. The DB is authoritative; the worker never reads this file. setupScript lives alongside in <slug>.setup.js.",
+  "id": "cmsxcic0s001i01p8lvvwexjk",
+  "siteUrl": "https://yazamco.co.il/%d7%93%d7%a8%d7%95%d7%a9%d7%99%d7%9d/",
+  "companyName": "יזמקו",
+  "status": "ACTIVE",
+  "setupScriptFile": "yazamco--vwexjk.setup.js",
+  "pageFlow": [],
+  "fieldMappings": {
+    "_meta": {
+      "savedAt": "2026-08-17T14:47:19.406Z",
+      "pagination": null,
+      "formCapture": {
+        "fields": [
+          {
+            "name": "name",
+            "label": "שם מלא",
+            "tagName": "input",
+            "required": true,
+            "fieldType": "text"
+          },
+          {
+            "name": "email",
+            "label": "אימייל",
+            "tagName": "input",
+            "required": true,
+            "fieldType": "email"
+          },
+          {
+            "name": "fileE",
+            "label": "קורות חיים",
+            "tagName": "input",
+            "required": true,
+            "fieldType": "file"
+          }
+        ],
+        "method": "POST",
+        "actionUrl": "https://yazamco.co.il/contact.php",
+        "formSelector": "form.contact-jobs"
+      },
+      "itemSelector": "div.job",
+      "minPublishDate": null,
+      "minPublishDays": null,
+      "revealSelector": null,
+      "listingSelector": null,
+      "applyLoginReason": null,
+      "browserOverrides": null,
+      "loadMoreSelector": null,
+      "locationFallback": null,
+      "originalMappings": null,
+      "applyRequiresLogin": false
+    },
+    "title": {
+      "source": "MANUAL",
+      "selector": ".title-job h3",
+      "confidence": 1,
+      "capturedOnUrl": "https://yazamco.co.il/%d7%93%d7%a8%d7%95%d7%a9%d7%99%d7%9d/"
+    },
+    "location": {
+      "source": "MANUAL",
+      "selector": ".__ai-location",
+      "confidence": 0.8,
+      "capturedOnUrl": "https://yazamco.co.il/%d7%93%d7%a8%d7%95%d7%a9%d7%99%d7%9d/"
+    },
+    "detailUrl": {
+      "source": "MANUAL",
+      "selector": "a.__ai-detailurl",
+      "confidence": 1,
+      "extractAttr": "href",
+      "capturedOnUrl": "https://yazamco.co.il/%d7%93%d7%a8%d7%95%d7%a9%d7%99%d7%9d/"
+    },
+    "description": {
+      "source": "MANUAL",
+      "selector": ".__ai-description",
+      "confidence": 1,
+      "capturedOnUrl": "https://yazamco.co.il/%d7%93%d7%a8%d7%95%d7%a9%d7%99%d7%9d/"
+    },
+    "requirements": {
+      "source": "MANUAL",
+      "selector": ".__ai-requirements",
+      "confidence": 1,
+      "capturedOnUrl": "https://yazamco.co.il/%d7%93%d7%a8%d7%95%d7%a9%d7%99%d7%9d/"
+    },
+    "externalJobId": {
+      "source": "MANUAL",
+      "selector": ".__ai-jobid",
+      "confidence": 1,
+      "capturedOnUrl": "https://yazamco.co.il/%d7%93%d7%a8%d7%95%d7%a9%d7%99%d7%9d/"
+    },
+    "employmentType": {
+      "source": "MANUAL",
+      "selector": ".__ai-employment",
+      "confidence": 0.8,
+      "capturedOnUrl": "https://yazamco.co.il/%d7%93%d7%a8%d7%95%d7%a9%d7%99%d7%9d/"
+    }
+  }
+}

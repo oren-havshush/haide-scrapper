@@ -84,7 +84,7 @@ from top-level params, so a setupScript left only inside `_meta` is dropped.
 | טכניון | ACTIVE | 10 | — | `technion--8nqtph` |
 | טלכלל | ACTIVE | 6 | 4062 | `teleclalcc--n6k1yl` |
 | טמבור | ACTIVE | 5 | 2580 | `tambour--2nwjvz` |
-| יזמקו | ACTIVE | 3 | — | `yazamco--xqxw1q` |
+| יזמקו | ACTIVE | 7 | 6661 | `yazamco--vwexjk` |
 | יעדים סוכנות לביטוח | ACTIVE | 5 | 1027 | `yeadim-bit--sh82rc` |
 | יעל גרופ | ACTIVE | 8 | 3283 | `yaelgroup--rdvk6e` |
 | יקב טפרברג | ACTIVE | 3 | 889 | `teperbergwinery--unqlym` |

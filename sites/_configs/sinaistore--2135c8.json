@@ -1,5 +1,5 @@
 {
-  "_exportedAt": "2026-08-17T14:17:51.912Z",
+  "_exportedAt": "2026-08-17T14:53:01.135Z",
   "_note": "Mirror of the live config. The DB is authoritative; the worker never reads this file. setupScript lives alongside in <slug>.setup.js.",
   "id": "cmpuzwyr7000d01prgj2135c8",
   "siteUrl": "https://www.sinaistore.com/%d7%91%d7%95%d7%90%d7%95-%d7%9c%d7%a2%d7%91%d7%95%d7%93-%d7%90%d7%99%d7%aa%d7%a0%d7%95/",

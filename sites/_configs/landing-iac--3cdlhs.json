@@ -1,5 +1,5 @@
 {
-  "_exportedAt": "2026-08-17T14:17:50.884Z",
+  "_exportedAt": "2026-08-17T14:52:59.733Z",
   "_note": "Mirror of the live config. The DB is authoritative; the worker never reads this file. setupScript lives alongside in <slug>.setup.js.",
   "id": "cmq9k1fml003g01lcad3cdlhs",
   "siteUrl": "https://landing.iac.ac.il/ravitb/misra.html",

@@ -1,5 +1,5 @@
 {
-  "_exportedAt": "2026-08-17T14:17:52.131Z",
+  "_exportedAt": "2026-08-17T14:53:01.505Z",
   "_note": "Mirror of the live config. The DB is authoritative; the worker never reads this file. setupScript lives alongside in <slug>.setup.js.",
   "id": "cmpb717o5002c01ls07eazu8j",
   "siteUrl": "https://www.maccabi4u.co.il/careers/search-job-positions/?",

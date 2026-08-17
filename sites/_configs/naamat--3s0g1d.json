@@ -1,5 +1,5 @@
 {
-  "_exportedAt": "2026-08-17T14:17:50.464Z",
+  "_exportedAt": "2026-08-17T14:52:56.789Z",
   "_note": "Mirror of the live config. The DB is authoritative; the worker never reads this file. setupScript lives alongside in <slug>.setup.js.",
   "id": "cmqiakw6s000u01t1kc3s0g1d",
   "siteUrl": "https://naamat.org.il/%d7%9e%d7%a9%d7%a8%d7%95%d7%aa-%d7%91%d7%a0%d7%a2%d7%9e%d7%aa-%d7%93%d7%a8%d7%95%d7%a9%d7%95%d7%aa-%d7%93%d7%a8%d7%95%d7%a9%d7%99%d7%9d/",

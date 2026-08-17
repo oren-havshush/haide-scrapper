@@ -1,5 +1,5 @@
 {
-  "_exportedAt": "2026-08-17T14:17:50.401Z",
+  "_exportedAt": "2026-08-17T14:52:56.284Z",
   "_note": "Mirror of the live config. The DB is authoritative; the worker never reads this file. setupScript lives alongside in <slug>.setup.js.",
   "id": "cmqicuvuc001401t17fm39rer",
   "siteUrl": "https://www.one1.co.il/careers/",
