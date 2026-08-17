@@ -1,45 +1,53 @@
 {
-  "_exportedAt": "2026-08-17T15:34:43.159Z",
+  "_exportedAt": "2026-08-17T16:26:11.514Z",
   "_note": "Mirror of the live config. The DB is authoritative; the worker never reads this file. setupScript lives alongside in <slug>.setup.js.",
-  "id": "cmq9jewe2003401lcy941zdh9",
+  "id": "cmsxfsvjg002201p80xtcdrkt",
   "siteUrl": "https://www.ern.co.il/%D7%A7%D7%A8%D7%99%D7%99%D7%A8%D7%94-%D7%91-ern-2/",
   "companyName": "ERN",
   "status": "ACTIVE",
-  "setupScriptFile": null,
+  "setupScriptFile": "ern--tcdrkt.setup.js",
   "pageFlow": [],
   "fieldMappings": {
     "_meta": {
-      "savedAt": "2026-06-11T13:33:31.841Z",
+      "savedAt": "2026-08-17T16:23:02.869Z",
       "pagination": null,
       "formCapture": null,
       "itemSelector": ".panel.panel-default",
       "minPublishDate": null,
+      "minPublishDays": null,
       "revealSelector": null,
       "listingSelector": null,
       "applyLoginReason": null,
       "browserOverrides": null,
       "loadMoreSelector": null,
+      "locationFallback": null,
       "originalMappings": null,
       "applyRequiresLogin": false
     },
     "title": {
       "source": "MANUAL",
-      "selector": ".panel-title",
-      "confidence": 100,
-      "capturedOnUrl": "https://www.ern.co.il/career"
+      "selector": ".__ai-title",
+      "confidence": 0.95
+    },
+    "location": {
+      "source": "MANUAL",
+      "selector": ".__ai-location",
+      "confidence": 0.9
     },
     "description": {
       "source": "MANUAL",
       "selector": ".panel-body",
-      "confidence": 100,
-      "capturedOnUrl": "https://www.ern.co.il/career"
+      "confidence": 0.9
     },
     "externalJobId": {
       "source": "MANUAL",
-      "selector": ".panel-title",
-      "confidence": 80,
-      "extractAttr": "href",
-      "capturedOnUrl": "https://www.ern.co.il/career"
+      "selector": ".__ai-eid",
+      "confidence": 0.95
+    },
+    "applicationInfo": {
+      "source": "MANUAL",
+      "selector": ".__ai-apply",
+      "confidence": 0.95
     }
   }
 }

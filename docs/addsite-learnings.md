@@ -1279,3 +1279,28 @@
   JS **string length**; on Hebrew-bearing scripts these differ (ykm 4445 vs 4431). A
   one-time shrink in that column across many rows is that artifact, not config drift.
 - **Generalizes to:** every generated-file-with-docs in the repo.
+
+### LRN-ID-9 — An anchor `href` can be a *per-page-load* id: check stability across loads, not just across items
+
+- **Date:** 2026-08-17, found rebuilding ern.co.il (מנורה ERN).
+- **Signal:** the careers page is a Bootstrap accordion whose every panel links to
+  `#collapse-<md5>-<index>`. That reads like a native per-item identifier, so the
+  original config mapped `externalJobId` to the `.panel-title` `href`. It is actually
+  **two** defects stacked: the suffix is index-based, and the md5 is **regenerated on
+  every page load** — four fresh loads produced four different hashes
+  (`8bda9230…` in the June DB, then `5ef12a84…`, `864be3f0…`, `d44bad11…`).
+  `jobKey = externalJobId ?? detailUrl`, so every scrape re-keyed all 8 jobs and
+  orphaned the previous 8.
+- **Why every gate stayed green:** `verify-jobids` scores fill and distinctness *within
+  one scrape*, and per-load-random ids are perfectly filled and perfectly distinct. Both
+  properties it measures were satisfied by the very thing that made the ids useless.
+  Nothing in the pipeline compares ids **between** scrapes.
+- **Fix:** load the listing 2–3 times in **independent browser contexts** and diff the
+  extracted id vectors before trusting any id. If they differ, the id is per-render —
+  fall back to `'<prefix>-' + haideHash(title)` (recipe §3). ERN ships `ern-<hash>`;
+  two consecutive production scrapes now yield identical ids and the table stays at
+  8 rows instead of growing by 8 each run.
+- **Generalizes to:** any accordion / tab / modal / `aria-controls` target, and any
+  framework that mints DOM ids at render time (Bootstrap collapse, Elementor toggles,
+  Wix `comp-*` suffixes). Treat a fragment href as decoration, not identity — the
+  rehearsal in `.scratch/ern/rehearse.ts` is the reusable shape for this check.
