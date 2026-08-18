@@ -28,7 +28,7 @@ from top-level params, so a setupScript left only inside `_meta` is dropped.
 | Eimsys | ACTIVE | 4 | 302 | `eimsys--an8gzs` |
 | Fritz | ACTIVE | 5 | 5110 | `fritz--wafrzk` |
 | G STAT | ACTIVE | 5 | 1682 | `g-stat--yvpgzk` |
-| Gtech | ACTIVE | 5 | 680 | `gtech--2cema3` |
+| Gtech | ACTIVE | 6 | 4590 | `gtech--7udl8v` |
 | Hylabs | ACTIVE | 4 | 502 | `hylabs--gyocvt` |
 | LEASE4U | ACTIVE | 5 | 2200 | `freesbe--6vg3i1` |
 | Ness-Tech | ACTIVE | 12 | 2989 | `ness-tech--w43uor` |

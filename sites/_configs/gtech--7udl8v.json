@@ -1,11 +1,11 @@
 {
-  "_exportedAt": "2026-08-17T15:34:43.723Z",
+  "_exportedAt": "2026-08-18T13:02:07.089Z",
   "_note": "Mirror of the live config. The DB is authoritative; the worker never reads this file. setupScript lives alongside in <slug>.setup.js.",
-  "id": "cmpy9pfci000801qnhz2cema3",
+  "id": "cmsymwf2l000401mw8c7udl8v",
   "siteUrl": "https://gtech.co.il/%d7%9e%d7%a9%d7%a8%d7%95%d7%aa/",
   "companyName": "Gtech",
   "status": "ACTIVE",
-  "setupScriptFile": "gtech--2cema3.setup.js",
+  "setupScriptFile": "gtech--7udl8v.setup.js",
   "pageFlow": [
     {
       "url": "https://gtech.co.il/%d7%9e%d7%a9%d7%a8%d7%95%d7%aa/",
@@ -18,7 +18,7 @@
   ],
   "fieldMappings": {
     "_meta": {
-      "savedAt": "2026-06-03T16:19:53.319Z",
+      "savedAt": "2026-08-18T12:55:19.389Z",
       "pagination": null,
       "formCapture": {
         "fields": [
@@ -52,7 +52,7 @@
           },
           {
             "name": "form_fields[page_name]",
-            "label": "form fields[page name]",
+            "label": "page name",
             "tagName": "input",
             "required": false,
             "fieldType": "hidden"
@@ -94,7 +94,7 @@
           },
           {
             "name": "g-recaptcha-response",
-            "label": "g recaptcha response",
+            "label": "g-recaptcha-response",
             "tagName": "textarea",
             "required": false,
             "fieldType": "textarea"
@@ -102,45 +102,56 @@
         ],
         "method": "POST",
         "actionUrl": "https://gtech.co.il/%d7%93%d7%a8%d7%95%d7%a9-%d7%94-%d7%a8%d7%a6-%d7%90%d7%91%d7%98%d7%97%d7%aa-%d7%9e%d7%99%d7%93%d7%a2-%d7%9c%d7%9e%d7%97%d7%9c%d7%a7%d7%aa-%d7%aa%d7%a9%d7%aa%d7%99%d7%95%d7%aa/",
-        "formSelector": "div.elementor-element.elementor-element-0ca3a4f > div.e-con-inner > div.elementor-element.elementor-element-9c77935 > div.elementor-element.elementor-element-f7b1fd4:nth-of-type(2) > div.elementor-widget-container > form.elementor-form"
+        "formSelector": "form.elementor-form"
       },
       "itemSelector": "article.elementor-post",
+      "minPublishDate": null,
+      "minPublishDays": null,
       "revealSelector": null,
       "listingSelector": null,
+      "applyLoginReason": null,
       "browserOverrides": null,
       "loadMoreSelector": null,
-      "originalMappings": null
+      "locationFallback": "תל אביב",
+      "originalMappings": null,
+      "applyRequiresLogin": false
     },
     "title": {
-      "source": "MANUAL",
+      "source": "auto",
       "selector": "h3.elementor-post__title a",
-      "confidence": 100,
-      "capturedOnUrl": "https://gtech.co.il/%d7%9e%d7%a9%d7%a8%d7%95%d7%aa/"
-    },
-    "location": {
-      "source": "MANUAL",
-      "selector": "[data-extracted-location]",
-      "confidence": 100,
+      "confidence": 0.95,
       "capturedOnUrl": "https://gtech.co.il/%d7%9e%d7%a9%d7%a8%d7%95%d7%aa/"
     },
     "detailUrl": {
-      "source": "MANUAL",
+      "source": "auto",
       "selector": "h3.elementor-post__title a",
-      "confidence": 100,
+      "confidence": 0.95,
       "extractAttr": "href",
       "capturedOnUrl": "https://gtech.co.il/%d7%9e%d7%a9%d7%a8%d7%95%d7%aa/"
     },
     "description": {
-      "source": "MANUAL",
+      "source": "auto",
       "selector": ".elementor-widget-theme-post-content",
-      "confidence": 100,
-      "capturedOnUrl": "https://gtech.co.il/%d7%93%d7%a8%d7%95%d7%a9-%d7%94-%d7%a8%d7%a6-%d7%90%d7%91%d7%98%d7%97%d7%aa-%d7%9e%d7%99%d7%93%d7%a2-%d7%9c%d7%9e%d7%97%d7%9c%d7%a7%d7%aa-%d7%aa%d7%a9%d7%aa%d7%99%d7%95%d7%aa/"
+      "confidence": 0.9,
+      "capturedOnUrl": "https://gtech.co.il/*"
+    },
+    "publishDate": {
+      "source": "auto",
+      "selector": "time",
+      "confidence": 0.8,
+      "capturedOnUrl": "https://gtech.co.il/*"
+    },
+    "requirements": {
+      "source": "auto",
+      "selector": ".__ai-requirements",
+      "confidence": 0.85,
+      "capturedOnUrl": "https://gtech.co.il/*"
     },
     "externalJobId": {
-      "source": "MANUAL",
-      "selector": "[data-extracted-jobid]",
-      "confidence": 100,
-      "capturedOnUrl": "https://gtech.co.il/%d7%9e%d7%a9%d7%a8%d7%95%d7%aa/"
+      "source": "auto",
+      "selector": ".__ai-postid",
+      "confidence": 0.95,
+      "capturedOnUrl": "https://gtech.co.il/*"
     }
   }
 }
