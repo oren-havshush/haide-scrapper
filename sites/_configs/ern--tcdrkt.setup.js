@@ -37,19 +37,12 @@ for (var i = 0; i < items.length; i++) {
 
   var body = item.querySelector('.panel-body');
   if (body) {
-    // DEFENSIVE NO-OP ON THE PRODUCTION WORKER — do not delete.
-    // ERN writes its list markers as literal ✔️ / 📍 characters. wp-emoji-loader
-    // only rewrites them into <img class="emoji" alt="✔️"> on browsers it judges
-    // unable to render emoji natively; the worker's Chromium renders them, so no
-    // <img> is ever created there and the glyphs reach textContent verbatim
-    // (verified in the 2026-08-17 production scrape).
-    // Local macOS headless Chromium DOES get the <img> substitution, and
-    // domFieldExtract reads textContent, which drops <img> entirely — every
-    // marker would silently vanish. Swapping the alt glyph back in does not help
-    // (wp-emoji's MutationObserver re-images any emoji character it sees), so we
-    // substitute "•", which is not an emoji and is the canonical marker
-    // BULLET_GLYPHS/descriptionStructure.ts already splits on. This loop is the
-    // guard for that environment, not the normal path.
+    // DEFENSIVE NO-OP ON THE PRODUCTION WORKER — do not delete. ERN's markers are
+    // literal ✔️/📍 chars; wp-emoji-loader only swaps them for <img class="emoji">
+    // on browsers it judges unable to render emoji (local macOS Chromium does,
+    // the worker does not). domFieldExtract reads textContent and drops <img>, so
+    // there every marker would vanish. Re-inserting the alt glyph fails — wp-emoji
+    // re-images any emoji char — so emit "•", a non-emoji BULLET_GLYPHS marker.
     var imgs = body.querySelectorAll('img.emoji');
     for (var k = 0; k < imgs.length; k++) {
       imgs[k].replaceWith('• ');
@@ -63,14 +56,10 @@ for (var i = 0; i < items.length; i++) {
   }
 
   // --- requirements / skills split (recipe setupscript-patterns.md §9) ---
-  // ERN mixes requirements into the same .panel-body as the description, but
-  // always as a WHOLE <p>: either a labeled block ("דרישות המשרה:" /
-  // "דרישות התפקיד:") or a single trailing candidate sentence that opens
-  // "מחפשים מועמדים...". 4 of 8 postings carry one; the rest genuinely have none.
-  // Anchoring on the paragraph's FIRST line is what keeps the מכירות/גבייה
-  // marketing hook ("מחפשים הזדמנות אמיתית להשתלב...") out — it sits mid-paragraph
-  // and is not a heading. Length-guarding the heading (<120 chars) is guardrail 2
-  // in §9: a long prose line that merely contains "דרישות" must not classify.
+  // Requirements are always a WHOLE <p>: a labeled block ("דרישות המשרה:") or a
+  // trailing sentence opening "מחפשים מועמדים...". 4 of 8 postings carry one.
+  // Anchoring on the FIRST line + the <120-char heading guard (§9 guardrail 2) is
+  // what excludes the mid-paragraph hook "מחפשים הזדמנות אמיתית להשתלב...".
   var reqText = '';
   if (body) {
     var reqNodes = [];
@@ -88,10 +77,8 @@ for (var i = 0; i < items.length; i++) {
       var parts = [];
       for (var w = 0; w < reqNodes.length; w++) {
         var txt = structuredText(reqNodes[w].node);
-        // Drop the redundant "דרישות המשרה:" heading — the field is already
-        // labelled Requirements/Skills in the dashboard. Line-based, NOT a
-        // \b-anchored regex: \b does not fire between Hebrew letters, which is
-        // how a previous site shipped the label inside requirements anyway.
+        // Drop the redundant heading (field is already labelled Requirements).
+        // Line-based, NOT \b — \b does not fire between Hebrew letters.
         if (reqNodes[w].labeled) {
           var lines = txt.split('\n');
           lines.shift();
@@ -112,12 +99,9 @@ for (var i = 0; i < items.length; i++) {
   var bodyText = body ? (body.textContent || '') : '';
 
   // --- location (LRN-LOC-1 constant injection) ---
-  // ERN is a single-office employer: "מקום העבודה: יגאל אלון 53 ... ת\"א" and the
-  // page intro reads "מיקום נוח בתל אביב". No panel carries its own location
-  // field, so the old config scraped job-type words (משרה מלאה → "מלאה",
-  // "משמרות") into location. Only the field-sales role spans regions.
-  // "כל הארץ" normalises to "פריסה ארצית" in the worker gazetteer; "תל אביב"
-  // to "תל אביב-יפו". Both are known keys (worker/lib/locationNormalize.ts).
+  // No panel carries a location field, so the old config scraped job-type words
+  // ("משרה מלאה" → "מלאה") as places. ERN is single-office (יגאל אלון 53, ת"א);
+  // only the field-sales role spans regions. "תל אביב" → "תל אביב-יפו".
   var regionHits = 0;
   var REGIONS = ['ירושלים', 'מרכז', 'צפון', 'דרום', 'השרון', 'שפלה', 'חיפה'];
   for (var r = 0; r < REGIONS.length; r++) {
@@ -125,10 +109,55 @@ for (var i = 0; i < items.length; i++) {
   }
   var multiRegion = /לפי\s+אזורים/.test(bodyText) || regionHits >= 3;
 
+  // A territory posting names its regions outright, so a blanket "כל הארץ" throws
+  // away what it states. Emit the real list: normalizeLocations() splits on commas
+  // into Job.locations[], with locations[0] as the primary `location`.
+  // EVERY value must be VERBATIM in "CSV files/city.csv" — NOT the same vocabulary
+  // as the worker gazetteer. "הקריות"/"גוש דן" are absent from it, so they map to
+  // the nearest present entry. Gate: scripts/verify-location-csv.ts.
+  var TERRITORY_MAP = [
+    ['ירושלים', 'ירושלים'],
+    ['גוש דן', 'אזור מרכז'],
+    ['מרכז', 'אזור מרכז'],
+    ['השרון', 'אזור השרון'],
+    ['חיפה', 'חיפה'],
+    ['הקריות', 'אזור צפון'],
+    ['קריות', 'אזור צפון'],
+    ['צפון', 'אזור צפון'],
+    ['דרום', 'אזור דרום'],
+    ['שפלה', 'אזור שפלה'],
+    ['אילת', 'אזור אילת']
+  ];
+  var territories = [];
+  if (multiRegion && body) {
+    // Scan ONLY the territory paragraph — perks/office addresses elsewhere in the
+    // body would otherwise register as territories.
+    var tp = null;
+    var tps = body.querySelectorAll('p');
+    for (var y = 0; y < tps.length; y++) {
+      if (/לפי\s+אזורים/.test(tps[y].textContent || '')) { tp = tps[y]; break; }
+    }
+    if (tp) {
+      var tlines = structuredText(tp).split('\n');
+      for (var z = 0; z < tlines.length; z++) {
+        for (var t = 0; t < TERRITORY_MAP.length; t++) {
+          if (tlines[z].indexOf(TERRITORY_MAP[t][0]) !== -1 &&
+              territories.indexOf(TERRITORY_MAP[t][1]) === -1) {
+            territories.push(TERRITORY_MAP[t][1]);
+          }
+        }
+      }
+    }
+  }
+  // "כל הארץ" (→ "פריסה ארצית") is the fallback for nationwide-but-unnamed.
+  var locationValue = territories.length
+    ? territories.join(', ')
+    : (multiRegion ? 'כל הארץ' : 'תל אביב');
+
   var spans = [
     ['__ai-title', title],
     ['__ai-eid', 'ern-' + haideHash(title.toLowerCase())],
-    ['__ai-location', multiRegion ? 'כל הארץ' : 'תל אביב'],
+    ['__ai-location', locationValue],
     ['__ai-apply', 'jobs@ern.co.il']
   ];
   // Tier-B: only inject when the posting actually states requirements.

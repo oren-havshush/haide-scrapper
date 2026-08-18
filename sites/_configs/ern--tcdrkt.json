@@ -1,5 +1,5 @@
 {
-  "_exportedAt": "2026-08-18T12:05:15.161Z",
+  "_exportedAt": "2026-08-18T12:40:22.867Z",
   "_note": "Mirror of the live config. The DB is authoritative; the worker never reads this file. setupScript lives alongside in <slug>.setup.js.",
   "id": "cmsxfsvjg002201p80xtcdrkt",
   "siteUrl": "https://www.ern.co.il/%D7%A7%D7%A8%D7%99%D7%99%D7%A8%D7%94-%D7%91-ern-2/",
@@ -9,7 +9,7 @@
   "pageFlow": [],
   "fieldMappings": {
     "_meta": {
-      "savedAt": "2026-08-18T12:02:55.537Z",
+      "savedAt": "2026-08-18T12:38:34.528Z",
       "pagination": null,
       "formCapture": null,
       "itemSelector": ".panel.panel-default",

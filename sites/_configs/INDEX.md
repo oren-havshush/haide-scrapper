@@ -23,7 +23,7 @@ from top-level params, so a setupScript left only inside `_meta` is dropped.
 | BDO | ACTIVE | 10 | 2810 | `bdo-career-hunterhrms--dgrgrm` |
 | Biopharmax | ACTIVE | 3 | 944 | `biopharmax--l2zw3a` |
 | CALANIT by one | ACTIVE | 8 | 7364 | `calanit--4tq06k` |
-| ERN | ACTIVE | 6 | 6843 | `ern--tcdrkt` |
+| ERN | ACTIVE | 6 | 7423 | `ern--tcdrkt` |
 | ESO Group | ACTIVE | 4 | 577 | `eso-group--mgz38v` |
 | Eimsys | ACTIVE | 4 | 302 | `eimsys--an8gzs` |
 | Fritz | ACTIVE | 5 | 5110 | `fritz--wafrzk` |
