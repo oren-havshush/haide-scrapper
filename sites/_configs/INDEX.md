@@ -50,7 +50,7 @@ from top-level params, so a setupScript left only inside `_meta` is dropped.
 | YKM | ACTIVE | 8 | 4431 | `ykm--gxcmnf` |
 | bank mizrahi tefahot | ACTIVE | 10 | — | `mizrahi-tefahot--a0zkf2` |
 | go mobile | ACTIVE | 6 | 1081 | `gomobile--zpvjhq` |
-| inManage | ACTIVE | 4 | — | `inmanage--t3xlhk` |
+| inManage | ACTIVE | 4 | 4219 | `inmanage--zjbxnf` |
 | א.ב מתכננים | ACTIVE | 7 | 243 | `abt-industry--ldemj3` |
 | אביבים השמה | ACTIVE | 6 | 3739 | `avivim-hr--f3d9j7` |
 | אגד | ACTIVE | 7 | 5669 | `egged--4qc6cy` |

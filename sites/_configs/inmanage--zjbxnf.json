@@ -1,15 +1,15 @@
 {
-  "_exportedAt": "2026-08-17T15:34:43.278Z",
+  "_exportedAt": "2026-08-18T13:56:15.365Z",
   "_note": "Mirror of the live config. The DB is authoritative; the worker never reads this file. setupScript lives alongside in <slug>.setup.js.",
-  "id": "cmq9he0nj002a01lcqyt3xlhk",
+  "id": "cmsyp0l9x000k01mw5qzjbxnf",
   "siteUrl": "https://www.inmanage.co.il/%D7%93%D7%A8%D7%95%D7%A9%D7%99%D7%9D",
   "companyName": "inManage",
   "status": "ACTIVE",
-  "setupScriptFile": null,
+  "setupScriptFile": "inmanage--zjbxnf.setup.js",
   "pageFlow": [],
   "fieldMappings": {
     "_meta": {
-      "savedAt": "2026-06-11T12:37:53.819Z",
+      "savedAt": "2026-08-18T13:51:03.127Z",
       "pagination": null,
       "formCapture": {
         "fields": [
@@ -36,7 +36,7 @@
           },
           {
             "name": "file_upload",
-            "label": "קורות חיים (קובץ)",
+            "label": "קורות חיים (PDF / Word)",
             "tagName": "input",
             "required": true,
             "fieldType": "file"
@@ -55,37 +55,38 @@
       },
       "itemSelector": ".job-item",
       "minPublishDate": null,
+      "minPublishDays": null,
       "revealSelector": null,
       "listingSelector": null,
       "applyLoginReason": null,
       "browserOverrides": null,
       "loadMoreSelector": null,
+      "locationFallback": null,
       "originalMappings": null,
       "applyRequiresLogin": false
     },
     "title": {
       "source": "MANUAL",
-      "selector": ".job-group-title",
-      "confidence": 100,
+      "selector": ".job-title",
+      "confidence": 0.95,
+      "capturedOnUrl": "https://www.inmanage.co.il/%D7%93%D7%A8%D7%95%D7%A9%D7%99%D7%9D"
+    },
+    "location": {
+      "source": "MANUAL",
+      "selector": ".__ai-location",
+      "confidence": 0.9,
       "capturedOnUrl": "https://www.inmanage.co.il/%D7%93%D7%A8%D7%95%D7%A9%D7%99%D7%9D"
     },
     "description": {
       "source": "MANUAL",
-      "selector": ".job-content",
-      "confidence": 100,
-      "capturedOnUrl": "https://www.inmanage.co.il/%D7%93%D7%A8%D7%95%D7%A9%D7%99%D7%9D"
-    },
-    "requirements": {
-      "source": "MANUAL",
-      "selector": ".js_job_require",
-      "confidence": 95,
+      "selector": ".__ai-description",
+      "confidence": 0.9,
       "capturedOnUrl": "https://www.inmanage.co.il/%D7%93%D7%A8%D7%95%D7%A9%D7%99%D7%9D"
     },
     "externalJobId": {
       "source": "MANUAL",
-      "selector": "a.js-apply-job",
-      "confidence": 100,
-      "extractAttr": "data-job-id",
+      "selector": ".__ai-jobid",
+      "confidence": 1,
       "capturedOnUrl": "https://www.inmanage.co.il/%D7%93%D7%A8%D7%95%D7%A9%D7%99%D7%9D"
     }
   }
