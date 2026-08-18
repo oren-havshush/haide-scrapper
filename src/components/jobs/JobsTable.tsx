@@ -91,8 +91,16 @@ function DetailSection({ label, value }: { label: string; value: string | null |
           direction. Per-line `auto` would flip an item that happens to open with
           a Latin word ("AWS| AZURE - חובה") to LTR and break the alignment
           mid-list. Source pages do the same thing — inmanage.co.il sets
-          `direction: rtl` on the requirements block as a whole. */}
-      <div dir="auto" className="text-sm text-[#d4d4d8] mt-0.5">
+          `direction: rtl` on the requirements block as a whole.
+          `text-left` is deliberate and must not be dropped: direction and
+          alignment are separate concerns, and we only want the first one from
+          `dir`. Left to itself an RTL block aligns to `start`, which is the
+          right edge, so the fix above would also shunt every Hebrew
+          description across the panel. Pinning `text-align: left` keeps the
+          corrected word order while leaving the column flush left like the
+          rest of the dashboard. LTR descriptions are unaffected — `left` and
+          `start` coincide for them. */}
+      <div dir="auto" className="text-sm text-[#d4d4d8] mt-0.5 text-left">
         {value.split("\n").map((line, i) => (
           <p key={i} className="whitespace-pre-wrap min-h-[1em]">
             {line}
