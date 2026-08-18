@@ -114,8 +114,10 @@
     }
   }
 
-  // requirements — split the CLEANED body at the first דרישות boundary (30/31 postings
-  // print one). description deliberately keeps the whole body; this is additive.
+  // requirements — split at the first דרישות boundary (30/31 postings print one) and
+  // then CUT that tail out of the description, so the two fields are disjoint. The cut
+  // is done in the DOM (not by replacing description with injected text) so the worker's
+  // own list/bullet formatting on the remaining body is preserved.
   if (!document.querySelector('[data-haide-requirements]')) {
     var cleaned = (ec.innerText || '').replace(/\n{3,}/g, '\n\n').trim();
     var at = cleaned.search(/דרישות(\s*סף)?\s*:/);
@@ -127,6 +129,27 @@
         rd.style.display = 'none';
         rd.textContent = req;
         document.body.appendChild(rd);
+      }
+
+      // locate the innermost element whose own text opens the דרישות section
+      var marker = null;
+      var cand = ec.querySelectorAll('p, div, h1, h2, h3, h4, h5, h6, li, span, strong, b');
+      for (var c = 0; c < cand.length; c++) {
+        var ct = (cand[c].textContent || '').replace(/\s+/g, ' ').trim();
+        if (/^דרישות(\s*סף)?\s*:/.test(ct)) {
+          // prefer the deepest match so we cut at the label, not at a wrapper
+          if (!marker || marker.contains(cand[c])) marker = cand[c];
+        }
+      }
+      // remove everything after the marker in document order, then the marker itself
+      if (marker) {
+        var cur = marker;
+        while (cur && cur !== ec && cur.parentNode) {
+          var par = cur.parentNode;
+          while (cur.nextSibling) par.removeChild(cur.nextSibling);
+          cur = par;
+        }
+        if (marker.parentNode) marker.parentNode.removeChild(marker);
       }
     }
   }
