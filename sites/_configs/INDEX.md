@@ -94,7 +94,7 @@ from top-level params, so a setupScript left only inside `_meta` is dropped.
 | כלל | ACTIVE | 7 | 1460 | `clalbit--tz9kd4` |
 | כמיפל | ACTIVE | 4 | 1525 | `chemipal--ellr7p` |
 | כפיר מעליות | ACTIVE | 7 | 1979 | `app-civi--buhdfj` |
-| כפר המכביה | ACTIVE | 5 | 1307 | `app-civi--7z3d4c` |
+| כפר המכביה | ACTIVE | 7 | 5238 | `app-civi--fdmziu` |
 | כפר הנוער כנות | ACTIVE | 5 | 1578 | `naamat--3s0g1d` |
 | לילית קוסמטיקה | ACTIVE | 4 | 1091 | `lilit--jrzaf3` |
 | לין ביכלר ראשי | ACTIVE | 6 | — | `l-b--ksvcq8` |
