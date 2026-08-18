@@ -1,0 +1,79 @@
+{
+  "_exportedAt": "2026-08-18T11:25:17.397Z",
+  "_note": "Mirror of the live config. The DB is authoritative; the worker never reads this file. setupScript lives alongside in <slug>.setup.js.",
+  "id": "cmsxh4kiv002801p8aju03od8",
+  "siteUrl": "https://www.opl.co.il/%D7%93%D7%A8%D7%95%D7%A9%D7%99%D7%9D",
+  "companyName": "אופרייט",
+  "status": "ACTIVE",
+  "setupScriptFile": "opl--u03od8.setup.js",
+  "pageFlow": [],
+  "fieldMappings": {
+    "_meta": {
+      "savedAt": "2026-08-18T11:24:00.722Z",
+      "pagination": null,
+      "formCapture": {
+        "fields": [
+          {
+            "name": "file",
+            "label": "צרף קורות חיים",
+            "tagName": "input",
+            "required": true,
+            "fieldType": "file"
+          },
+          {
+            "name": "message",
+            "label": "שם המשרה",
+            "tagName": "input",
+            "required": false,
+            "fieldType": "hidden"
+          }
+        ],
+        "method": "POST",
+        "actionUrl": "https://www.opl.co.il/form/wanted.php",
+        "formSelector": "form.form.position_r:has(input[type=\"file\"])"
+      },
+      "itemSelector": "nav.accordion ul > li",
+      "minPublishDate": null,
+      "minPublishDays": null,
+      "revealSelector": null,
+      "listingSelector": null,
+      "applyLoginReason": null,
+      "browserOverrides": null,
+      "loadMoreSelector": null,
+      "locationFallback": null,
+      "originalMappings": null,
+      "applyRequiresLogin": false
+    },
+    "title": {
+      "source": "MANUAL",
+      "selector": ".s_title h4",
+      "confidence": 0.95
+    },
+    "location": {
+      "source": "MANUAL",
+      "selector": ".__ai-location",
+      "confidence": 0.85
+    },
+    "description": {
+      "source": "MANUAL",
+      "selector": ".__ai-description",
+      "confidence": 0.9
+    },
+    "requirements": {
+      "source": "MANUAL",
+      "selector": ".__ai-requirements",
+      "confidence": 0.85
+    },
+    "externalJobId": {
+      "source": "MANUAL",
+      "selector": ".__ai-jobid",
+      "confidence": 0.9
+    },
+    "applicationInfo": {
+      "source": "MANUAL",
+      "selector": "iframe.sendfile",
+      "confidence": 0.95,
+      "extractAttr": "src"
+    }
+  }
+}

@@ -21,6 +21,8 @@ interface Job {
   description: string | null;
   requirements: string | null;
   location: string;
+  /** Every location the job names; `location` is just `locations[0]`. */
+  locations: string[];
   department: string | null;
   externalJobId: string | null;
   publishDate: string | null;
@@ -233,9 +235,21 @@ function ExpandedDetail({ job }: { job: Job }) {
   );
 }
 
-function EditableLocation({ jobId, location }: { jobId: string; location: string }) {
+function EditableLocation({
+  jobId,
+  location,
+  locations,
+}: {
+  jobId: string;
+  location: string;
+  locations: string[];
+}) {
+  // A job can name several places (Job.locations[]; `location` is only the
+  // primary). Show and edit the full list — rendering `location` alone hid the
+  // extra cities, and seeding the draft with it made a save silently drop them.
+  const display = locations?.length ? locations.join(", ") : location;
   const [editing, setEditing] = useState(false);
-  const [draft, setDraft] = useState(location);
+  const [draft, setDraft] = useState(display);
   const inputRef = useRef<HTMLInputElement>(null);
   const { mutate, isPending } = useUpdateJobLocation();
 
@@ -245,8 +259,8 @@ function EditableLocation({ jobId, location }: { jobId: string; location: string
 
   function handleSave() {
     const trimmed = draft.trim();
-    if (!trimmed || trimmed === location) {
-      setDraft(location);
+    if (!trimmed || trimmed === display) {
+      setDraft(display);
       setEditing(false);
       return;
     }
@@ -258,7 +272,7 @@ function EditableLocation({ jobId, location }: { jobId: string; location: string
 
   function handleKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
     if (e.key === "Enter") handleSave();
-    if (e.key === "Escape") { setDraft(location); setEditing(false); }
+    if (e.key === "Escape") { setDraft(display); setEditing(false); }
   }
 
   if (editing) {
@@ -279,11 +293,13 @@ function EditableLocation({ jobId, location }: { jobId: string; location: string
   return (
     <span
       className="group flex items-center gap-1 cursor-pointer rounded hover:bg-[#18181b] px-1 -mx-1"
-      onClick={(e) => { e.stopPropagation(); setEditing(true); }}
-      title="Click to edit location"
+      // Seed the draft as editing starts, so it always reflects the freshest
+      // props (a save elsewhere may have changed them since the last edit).
+      onClick={(e) => { e.stopPropagation(); setDraft(display); setEditing(true); }}
+      title="Click to edit location (comma-separate several places)"
     >
-      <span className={location && location !== "Unknown" ? "" : "text-[#52525b]"}>
-        {location || "Unknown"}
+      <span className={display && display !== "Unknown" ? "" : "text-[#52525b]"}>
+        {display || "Unknown"}
       </span>
       <span className="opacity-0 group-hover:opacity-60 text-[#71717a] text-[10px] select-none">✎</span>
     </span>
@@ -371,7 +387,11 @@ export function JobsTable({
                     </span>
                   </TableCell>
                   <TableCell className="text-sm">
-                    <EditableLocation jobId={job.id} location={job.location} />
+                    <EditableLocation
+                      jobId={job.id}
+                      location={job.location}
+                      locations={job.locations}
+                    />
                   </TableCell>
                   <TableCell className="text-sm font-mono text-[#a1a1aa]">
                     {job.externalJobId || "—"}

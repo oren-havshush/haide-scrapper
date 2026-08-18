@@ -387,6 +387,45 @@
   Only blanket-inject when confident every posting shares the location.
 - **Generalizes to:** single-HQ / region-in-prose employers. **Home:** Step 4 location / `recipes/setupscript-patterns.md`.
 
+### LRN-LOC-5 — A multi-city posting must stay multi-city: emit a comma-separated list, not one city
+- **Date / site:** 2026-08-17 · opl.co.il/דרושים (`cmsxh4kiv002801p8aju03od8`)
+- **Signal:** two of eight postings name several places in the title
+  (`נציג/ת שינוע – ת"א וירושלים`, `… ברחבי הארץ – כרמיאל, עפולה, גלילות וב"ש`).
+  Both landed as `location: "Unknown"` — the fallback resolved neither, and the
+  obvious "fix" (inject the first city) would have silently discarded the rest.
+- **Fix:** `Job.locations String[]` is first-class and `Job.location` is just
+  `locations[0]`, so the value to inject is the **whole list**:
+  `normalizeLocations()` splits on `,|/;` and canonicalises each part
+  independently (`ת"א`→`תל אביב-יפו`, `ב"ש`→`באר שבע`). A setupScript place-scanner
+  over the title emits `'ת"א, ירושלים'` → `["תל אביב-יפו","ירושלים"]`. Scan
+  longest-needle-first with Hebrew word boundaries, tolerating ONE leading particle
+  (`ו/ב/ל/מ/ה/ש/כ`) so `בחיפה` and `וב"ש` match while `הגליל` can't match inside
+  `גלילות`. **Inject only on a hit** — leaving the span absent on a miss keeps the
+  gazetteer fallback alive (an always-injected span overrides it, LRN-LOC-1).
+- **The standing condition (approved 2026-08-09):** a job may carry several
+  locations ONLY if **every city is a verbatim entry in `CSV files/city.csv`**.
+  Do not assume `isCanonicalLocation()` settles it: that tests `IL_CANONICAL`, a
+  **separately maintained** list that merely *happens* to equal city.csv today
+  (re-measured 2026-08-18: 1367 = 1367, zero divergence either way — the 29-entry
+  gap in LRN-LOC-4 no longer reproduces). The rule still needs its own check,
+  because the real leak is `normalizeLocations()`'s raw-string passthrough
+  (`return out.length ? out : [original]`): an unresolved token comes back
+  **verbatim** and lands in the DB — `הגליל` → `["הגליל"]`, a value in neither
+  list. Validate against the CSV and gate it in code:
+  `npx tsx scripts/verify-location-csv.ts --site-id <id>` (exit 2 = a stored value is
+  absent from city.csv; checks `location` and every `locations[]` element).
+  When the setupScript emits places itself, keep an `EMIT_AS` map so tokens outside
+  the CSV resolve to the nearest entry inside it — on opl.co.il `הגליל` normalises to
+  itself and is absent from city.csv, so it is emitted as `אזור הצפון`.
+- **Emitted value != stored value.** `LOCATION_ALIAS` holds 46 accepted *input*
+  spellings, and **none of them is in city.csv** (`מרכז`, `ת"א`, `גוש דן`,
+  `אזור המרכז`, `תל אביב`). They are legal to emit because `normalizeLocations()`
+  maps them into canonical values first: OPL emits `אזור הצפון` and `כל הארץ`, which
+  are stored as `אזור צפון` and `פריסה ארצית`. Assert the rule on what is **stored**,
+  never on what the setupScript emits.
+- **Generalizes to:** any employer with branch networks or "אזור X ו-Y" titles —
+  common on IL retail/logistics/leasing careers pages. **Home:** Step 4 location.
+
 ### LRN-LOC-2 — Gazetteer common-word ↔ place collisions
 - **Date:** fixed worker-wide 2026-06-10
 - **Signal:** the bare `ב<city>` matcher read **"במשמרות" ("in shifts") as the
@@ -410,7 +449,7 @@
   label that isn't a place, and the spelling `תל-אביב`, which exists in **neither**
   reference list. Deriving a "canonical" spelling from the worker gazetteer would have
   produced `תל אביב` — a value the product's own city list does not contain.
-- **The two lists are NOT the same** (measured 2026-08-03):
+- **The two lists are NOT the same** (measured 2026-08-03; **re-measured 2026-08-18: they are now IDENTICAL — 1367 entries each, zero divergence in either direction. The gap below has been closed. Treat the lists as independently maintained and re-measure rather than trusting either figure**):
 
   | list | entries |
   | --- | --- |
@@ -1304,3 +1343,40 @@
   framework that mints DOM ids at render time (Bootstrap collapse, Elementor toggles,
   Wix `comp-*` suffixes). Treat a fragment href as decoration, not identity — the
   rehearsal in `.scratch/ern/rehearse.ts` is the reusable shape for this check.
+
+### LRN-LOC-6 — `locations[]` was invisible in the dashboard, and editing a row silently deleted the extras
+- **Date / site:** 2026-08-17 · opl.co.il (`cmsxh4kiv002801p8aju03od8`), job `opl-xeolkp`
+- **Signal:** a correctly-stored two-city job (`locations: ["תל אביב-יפו","ירושלים"]`)
+  read as "the second city was ignored" — because `JobsTable` rendered only
+  `job.location`, which is by definition just `locations[0]`. The data was right;
+  the consumer was lossy.
+- **The worse half:** the cell is click-to-edit, and it seeded its draft from
+  `location` too. Opening and saving a multi-city row therefore posted a single
+  city, and `updateJobLocation` rewrote `locations` from that one value — a silent
+  destructive edit of data the scraper got right.
+- **Fix:** render and edit `locations.join(", ")`, falling back to `location` when
+  the array is empty; the override endpoint already splits a comma list back into
+  `locations[]`, so the round-trip is lossless. Also added `locations` to the
+  mutation's return `select` so the refetched row carries the full list.
+- **Generalizes to:** every array-backed field with a scalar "primary" mirror
+  (`location`/`locations` today). When a field has both shapes, check what the UI
+  binds to before concluding the extractor dropped something — and check whether
+  an inline editor writes the scalar back over the array.
+
+### LRN-SETUP-6 — Drop the "position not on the list, send us your CV" row: it is a mailbox, not a vacancy
+- **Date / site:** 2026-08-17 · opl.co.il/דרושים (`cmsxh4kiv002801p8aju03od8`)
+- **Signal:** the listing's last accordion row is a permanent open-CV catch-all
+  (`למשרה שאינה ברשימה הנ"ל - הקליקו כאן למשלוח קו"ח`) with an apply iframe but an
+  **empty description body**. It matches `itemSelector` like any other row, so it
+  ships as a job with `description: ""` — dragging the description fill rate down
+  and putting a non-job in front of users. It survived in the DB for months.
+- **Fix:** `li.remove()` it in the setupScript **before** extraction, matched on the
+  title (`/למשרה\s+שאינה\s+ברשימה/`) OR an empty body, so the row never reaches
+  `itemSelector`. Removing beats a `:has()` selector here: the empty body is
+  whitespace text nodes, so `:empty` does not match it.
+- **Watch the count:** the drop must be visible and intentional — rehearse and print
+  `items before -> after` (9 → 8 here), otherwise a too-greedy matcher silently eats
+  real vacancies and the coverage line still looks plausible.
+- **Generalizes to:** the "משרה שלא ברשימה" / "שלחו קו״ח כללי" / "לא מצאת משרה
+  מתאימה?" row that IL career pages routinely append to a listing, and to any
+  always-present non-vacancy row (spontaneous applications, talent pool).

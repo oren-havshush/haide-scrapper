@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { NotFoundError, ValidationError } from "@/lib/errors";
+import { resolveLocationInput } from "@/lib/locations";
 
 /**
  * Persist a manual location override for a job, keyed by (siteId, jobKey).
@@ -27,14 +28,12 @@ export async function updateJobLocation(jobId: string, location: string) {
     );
   }
 
-  const trimmed = location.trim();
-  // A manual edit may name several places, comma-separated. Store the full list
-  // alongside the primary value so the next scrape doesn't collapse it.
-  const list = trimmed
-    .split(/\s*,\s*/)
-    .map((s) => s.trim())
-    .filter(Boolean);
-  const primary = list[0] ?? trimmed;
+  // A manual edit may name several places, comma-separated. Canonicalise each
+  // one and reject anything outside the approved city vocabulary, then store the
+  // full list alongside the primary value so the next scrape doesn't collapse it.
+  // Previously this only split on commas: an alias an operator typed (`ת"א`) was
+  // stored raw, i.e. a value absent from city.csv, which nothing repairs later.
+  const { primary, list } = resolveLocationInput(location);
 
   await prisma.$transaction([
     prisma.jobLocationOverride.upsert({
@@ -54,6 +53,7 @@ export async function updateJobLocation(jobId: string, location: string) {
       id: true,
       title: true,
       location: true,
+      locations: true,
       externalJobId: true,
       detailUrl: true,
       siteId: true,
