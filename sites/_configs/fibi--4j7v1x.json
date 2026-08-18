@@ -1,24 +1,26 @@
 {
-  "_exportedAt": "2026-08-17T15:34:43.062Z",
+  "_exportedAt": "2026-08-18T20:37:31.985Z",
   "_note": "Mirror of the live config. The DB is authoritative; the worker never reads this file. setupScript lives alongside in <slug>.setup.js.",
-  "id": "cmq9k8154003k01lcfmnba61p",
+  "id": "cmsz3n8q2000001kffv4j7v1x",
   "siteUrl": "https://www.fibi.co.il/private/general/about/jobs/jobsfibi/",
   "companyName": "הבנק הבינלאומי",
   "status": "ACTIVE",
-  "setupScriptFile": "fibi--nba61p.setup.js",
+  "setupScriptFile": "fibi--4j7v1x.setup.js",
   "pageFlow": [],
   "fieldMappings": {
     "_meta": {
-      "savedAt": "2026-06-11T13:55:44.100Z",
+      "savedAt": "2026-08-18T20:34:47.698Z",
       "pagination": null,
       "formCapture": null,
-      "itemSelector": "section[id^=\"section\"]:has(a[href^=\"mailto\"])",
+      "itemSelector": "section[id^=\"section\"]",
       "minPublishDate": null,
+      "minPublishDays": null,
       "revealSelector": null,
       "listingSelector": null,
       "applyLoginReason": null,
       "browserOverrides": null,
       "loadMoreSelector": null,
+      "locationFallback": null,
       "originalMappings": null,
       "applyRequiresLogin": false
     },
@@ -28,24 +30,34 @@
       "confidence": 100,
       "capturedOnUrl": "https://www.fibi.co.il/private/general/about/jobs/jobsfibi/"
     },
+    "location": {
+      "source": "MANUAL",
+      "selector": ".__ai-loc",
+      "confidence": 90,
+      "capturedOnUrl": "https://www.fibi.co.il/private/general/about/jobs/jobsfibi/"
+    },
     "description": {
       "source": "MANUAL",
-      "selector": ".fibi-desc",
-      "confidence": 100,
+      "selector": ".__ai-desc",
+      "confidence": 95,
+      "capturedOnUrl": "https://www.fibi.co.il/private/general/about/jobs/jobsfibi/"
+    },
+    "requirements": {
+      "source": "MANUAL",
+      "selector": ".__ai-req",
+      "confidence": 95,
       "capturedOnUrl": "https://www.fibi.co.il/private/general/about/jobs/jobsfibi/"
     },
     "externalJobId": {
       "source": "MANUAL",
-      "selector": ".fibi-desc",
+      "selector": ".__ai-jobid",
       "confidence": 95,
-      "extractAttr": "data-jobid",
       "capturedOnUrl": "https://www.fibi.co.il/private/general/about/jobs/jobsfibi/"
     },
     "applicationInfo": {
       "source": "MANUAL",
-      "selector": "a[href^=\"mailto\"]",
+      "selector": ".__ai-apply",
       "confidence": 100,
-      "extractAttr": "href",
       "capturedOnUrl": "https://www.fibi.co.il/private/general/about/jobs/jobsfibi/"
     }
   }
