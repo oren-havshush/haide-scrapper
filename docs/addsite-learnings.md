@@ -1380,3 +1380,100 @@
 - **Generalizes to:** the "משרה שלא ברשימה" / "שלחו קו״ח כללי" / "לא מצאת משרה
   מתאימה?" row that IL career pages routinely append to a listing, and to any
   always-present non-vacancy row (spontaneous applications, talent pool).
+
+### LRN-SETUP-8 — One prose block per job: map it once, and let QA's "Tier-B unmapped" stand
+
+- **Date:** 2026-08-18
+- **Site:** inmanage.co.il (17 `.job-item` cards, listing-only)
+- **Signal:** every card is exactly `title` + a `דרישות התפקיד:` heading + one
+  `p.js_job_require` prose block. Detail pages render the *same* card, so there is
+  no second body to fetch. LRN-SETUP-7 says to split the DOM rather than copy the
+  string — but here there is nothing to split: one block, one meaning. The original
+  (2026-06) build mapped `description` to `.job-content` (the whole card) *and*
+  `requirements` to `.js_job_require`, so all 17 rows shipped the requirements twice,
+  wrapped in the card's `הגשת מועמדות` boilerplate. That is the blob.
+- **Fix:** map the block to `description` only and leave `requirements` unset.
+  `description` is the Tier-A gated field (≥0.6) and the one the product renders;
+  `requirements` is Tier-B and ungated. `addsite-qa` then returns **REVIEW** with
+  `Tier-B exposed but unmapped: requirements` — that verdict is correct about the
+  DOM and wrong about the site. Override to ACTIVE when Tier-A is complete, and say
+  why in `adminNote`, or the next person "fixes" it straight back into a duplicate.
+- **Also on this build:** the native `data-job-id` values are bare integers
+  (8, 14, 16, 23 … 44). `verify-jobids`' `indexLike` heuristic hard-fails any
+  all-integer set, so a real CMS record id trips it exactly like `item-0` would.
+  Inject `im-<data-job-id>` instead of mapping the attribute directly — still derived
+  from the stable native id, but the prefix carries the "not an index" signal that the
+  gate cannot otherwise read (same dodge as `lw-`/`pac-`, LRN-ID-8).
+- **Generalizes to:** small IL company career pages that publish a requirements
+  bullet-list and nothing else. Two fields both "available" in the DOM is not the same
+  as two fields of content — before mapping the second one, check whether it is the
+  first one under a different heading.
+
+### LRN-SETUP-9 — `\n<br>\n` in pretty-printed markup ships a blank line between every list item
+
+- **Date:** 2026-08-18
+- **Site:** inmanage.co.il (`p.js_job_require`, 17 cards)
+- **Signal:** the description passed every blob check — `isBlob()` is false, the rows
+  have real `\n`, fill is 1.0 — and still read wrong in the product: a blank line
+  between every single requirement. Cause is `domFieldExtract` meeting hand-indented
+  HTML. The source is `…חובה \n<br>\nניסיון…`; the extractor turns the `<br>` into
+  `\n` and the two surrounding text-node newlines survive, giving `\n\n\n`, which the
+  `\n{3,}` guard caps at `\n\n` — a blank line, not the single break the page renders.
+  Nothing flags it: "has newlines" is the only structural check anywhere in the gates.
+- **Fix:** don't map a `<br>`-separated block straight to `description`. Build it in
+  the setupScript: clone the node, `br → '\n'`, split, trim each line, drop empties,
+  re-join with a single `\n`. **Order matters** — collapse whitespace *last*. The same
+  site's third authoring style separates items by runs of 2+ spaces, and normalising
+  whitespace before splitting erases the only separator those lines have (cost one
+  rehearsal round: id 16 came back as a single 195-char line).
+- **Restructure, don't re-style.** The first build of this also prefixed `• ` to every
+  line, on the reasoning that `<li>` extraction does it and `BULLET_GLYPHS` expects it.
+  The user rejected it: the page has no bullets, and "same as in the site" means the
+  glyphs the ad actually prints (these ads mark some items with a literal `*` — keep
+  that, verbatim). A leading bullet is also a *neutral* character, which makes the
+  RTL rendering strictly worse — see LRN-UI-1. Add structure; never add characters.
+- **Guard the space-split:** fire it only when a line holds **3+** runs of 2+ spaces.
+  One double space is a typo — `תואר ראשון BSc  במדעי המחשב` appears on 9 of these 17
+  cards and must not become two requirements.
+- **Assert content preservation, not just shape.** Re-flowing text can silently drop
+  words. Compare `source.replace(/[•*\s]/g,'')` to `output.replace(/[•*\s]/g,'')` per
+  row and print the match count (17/17 here), plus a count of fragments under ~4 chars
+  to catch over-splitting. Fill rate and line count both look fine on shredded prose.
+- **Generalizes to:** any hand-written (non-CMS-templated) listing where the ad body is
+  one `<p>` with `<br>` separators — common on small IL company career pages. Check the
+  raw `innerHTML`, not `innerText`: the browser hides the extra newlines, so the defect
+  is invisible until it reaches the database.
+
+## LRN-UI-1
+
+### LRN-UI-1 — A correct Hebrew description renders as gibberish without `dir` on the block
+
+- **Date:** 2026-08-18
+- **Site:** inmanage.co.il (surfaced there; applies to every RTL site in the fleet)
+- **Signal:** the user reported a description as "still blob … fix the word order"
+  after the stored text had been verified line-by-line against the page. It was not
+  the data. `JobsTable`'s `DetailSection` rendered `<p className="whitespace-pre-line">`
+  with **no `dir`**, so the dashboard's LTR base direction applied to Hebrew lines. The
+  bidi algorithm then lays an RTL line out left-to-right and its runs land in the wrong
+  visual order: `ניסיון של שנה עד שנתיים בתפקיד Help Desk ברמה גבוהה – חובה` displayed
+  as `ברמה גבוהה – חובה Help Desk ניסיון של שנה עד שנתיים בתפקיד` — logically-last words
+  first. The stored string was correct the whole time.
+- **Fix:** `dir="auto"` on the **container**, with each line its own `<p>`:
+  ```tsx
+  <div dir="auto">{value.split("\n").map((l, i) =>
+    <p key={i} className="whitespace-pre-wrap min-h-[1em]">{l}</p>)}</div>
+  ```
+  Container-level, not per-line: per-line `auto` flips any item that happens to open
+  with a Latin word (`AWS| AZURE - חובה`) to LTR and breaks the alignment mid-list.
+  One direction per description matches what the source pages do — inmanage.co.il sets
+  `direction: rtl` on the requirements block as a whole (the `<body>` stays `ltr`).
+  `min-h-[1em]` keeps deliberate blank lines from collapsing once `pre-line` is gone.
+- **Diagnosis trick:** render the *stored* string in a headless browser under the app's
+  exact CSS, once per variant (with/without `dir`), and screenshot. Comparing the four
+  panels took one Playwright script and settled in seconds what "the word order is
+  wrong" meant — `repr()` of the string proves only that the logical order is right,
+  which is exactly the half that was never broken.
+- **Generalizes to:** every surface showing scraped Hebrew — job description,
+  requirements, applicationInfo, and any public-site renderer outside this repo. Before
+  concluding a scraper shipped bad text for an RTL site, check whether the *viewer* has
+  a base direction. Logical order and visual order are different bugs with different owners.

@@ -81,7 +81,24 @@ function DetailSection({ label, value }: { label: string; value: string | null |
   return (
     <div>
       <span className="text-xs font-medium text-[#71717a]">{label}</span>
-      <p className="text-sm text-[#d4d4d8] mt-0.5 whitespace-pre-line">{value}</p>
+      {/* These are Hebrew ads with English embedded in them ("… בתפקיד Help Desk
+          ברמה גבוהה"), and the dashboard's base direction is LTR. Without a `dir`
+          the bidi algorithm lays an RTL line out left-to-right and its segments
+          arrive in the wrong visual order — the text reads as scrambled even
+          though the stored string is correct.
+          `dir="auto"` sits on the CONTAINER, not on each line: it takes the whole
+          description's first strong character, so every line shares one base
+          direction. Per-line `auto` would flip an item that happens to open with
+          a Latin word ("AWS| AZURE - חובה") to LTR and break the alignment
+          mid-list. Source pages do the same thing — inmanage.co.il sets
+          `direction: rtl` on the requirements block as a whole. */}
+      <div dir="auto" className="text-sm text-[#d4d4d8] mt-0.5">
+        {value.split("\n").map((line, i) => (
+          <p key={i} className="whitespace-pre-wrap min-h-[1em]">
+            {line}
+          </p>
+        ))}
+      </div>
     </div>
   );
 }
