@@ -1,46 +1,18 @@
 {
-  "_exportedAt": "2026-08-17T15:34:44.367Z",
+  "_exportedAt": "2026-08-19T11:02:23.032Z",
   "_note": "Mirror of the live config. The DB is authoritative; the worker never reads this file. setupScript lives alongside in <slug>.setup.js.",
-  "id": "cmp02pnno000401k5jrfqrarf",
-  "siteUrl": "https://www.gazit.co.il/%D7%A7%D7%A8%D7%99%D7%99%D7%A8%D7%94/#jobs",
+  "id": "cmszz0jfd000s01kfclgejiix",
+  "siteUrl": "https://www.gazit.co.il/%D7%A7%D7%A8%D7%99%D7%99%D7%A8%D7%94/",
   "companyName": "גזית",
   "status": "ACTIVE",
-  "setupScriptFile": "gazit--fqrarf.setup.js",
+  "setupScriptFile": "gazit--gejiix.setup.js",
   "pageFlow": [],
   "fieldMappings": {
     "_meta": {
-      "savedAt": "2026-06-10T19:03:27.188Z",
+      "savedAt": "2026-08-19T10:54:59.437Z",
       "pagination": null,
       "formCapture": {
         "fields": [
-          {
-            "name": "post_id",
-            "label": "post id",
-            "tagName": "input",
-            "required": false,
-            "fieldType": "hidden"
-          },
-          {
-            "name": "form_id",
-            "label": "form id",
-            "tagName": "input",
-            "required": false,
-            "fieldType": "hidden"
-          },
-          {
-            "name": "referer_title",
-            "label": "referer title",
-            "tagName": "input",
-            "required": false,
-            "fieldType": "hidden"
-          },
-          {
-            "name": "queried_id",
-            "label": "queried id",
-            "tagName": "input",
-            "required": false,
-            "fieldType": "hidden"
-          },
           {
             "name": "form_fields[name]",
             "label": "שם פרטי",
@@ -78,35 +50,38 @@
           },
           {
             "name": "form_fields[field_e2764f4]",
-            "label": "כן",
-            "tagName": "input",
-            "required": true,
-            "fieldType": "radio"
-          },
-          {
-            "name": "form_fields[field_e2764f4]",
-            "label": "לא",
-            "tagName": "input",
-            "required": true,
-            "fieldType": "radio"
-          },
-          {
-            "name": "form_fields[field_e2764f4]",
-            "label": "אחר (יש לצרף הסבר)",
-            "tagName": "input",
-            "required": true,
-            "fieldType": "radio"
-          },
-          {
-            "name": "form_fields[field_173c6ae]",
-            "label": "כן (נא לציין בקו\"ח איזה)",
+            "label": "האם עבדת בעבר בעמוס גזית?",
+            "options": [
+              {
+                "label": "כן",
+                "value": "כן"
+              },
+              {
+                "label": "לא",
+                "value": "לא"
+              },
+              {
+                "label": "אחר (יש לצרף הסבר)",
+                "value": "אחר (יש לצרף הסבר)"
+              }
+            ],
             "tagName": "input",
             "required": true,
             "fieldType": "radio"
           },
           {
             "name": "form_fields[field_173c6ae]",
-            "label": "לא",
+            "label": "האם יש לך קרוב משפחה בחברה?",
+            "options": [
+              {
+                "label": "כן (נא לציין בקו\"ח איזה)",
+                "value": "כן (נא לציין בקו\"ח איזה)"
+              },
+              {
+                "label": "לא",
+                "value": "לא"
+              }
+            ],
             "tagName": "input",
             "required": true,
             "fieldType": "radio"
@@ -126,13 +101,6 @@
             "fieldType": "url"
           },
           {
-            "name": "g-recaptcha-response",
-            "label": "g recaptcha response",
-            "tagName": "textarea",
-            "required": false,
-            "fieldType": "textarea"
-          },
-          {
             "name": "privacy_consent",
             "label": "אני מאשר/ת את תנאי הפרטיות",
             "tagName": "input",
@@ -141,36 +109,55 @@
           }
         ],
         "method": "POST",
-        "actionUrl": "https://www.gazit.co.il/%D7%A7%D7%A8%D7%99%D7%99%D7%A8%D7%94/#jobs",
-        "formSelector": "#JB_211"
+        "actionUrl": "https://www.gazit.co.il/%D7%A7%D7%A8%D7%99%D7%99%D7%A8%D7%94/",
+        "formSelector": "form.elementor-form:has(input[type=\"file\"])"
       },
       "itemSelector": ".elementor-accordion-item",
+      "minPublishDate": null,
+      "minPublishDays": null,
       "revealSelector": null,
       "listingSelector": null,
       "applyLoginReason": null,
       "browserOverrides": null,
       "loadMoreSelector": null,
+      "locationFallback": null,
       "originalMappings": null,
       "applyRequiresLogin": false
     },
     "title": {
-      "source": "MANUAL",
-      "selector": ".elementor-accordion-title",
-      "confidence": 100,
-      "capturedOnUrl": "https://www.gazit.co.il/%D7%A7%D7%A8%D7%99%D7%99%D7%A8%D7%94/#jobs"
+      "source": "manual",
+      "selector": ".__ai-title",
+      "confidence": 0.95
+    },
+    "location": {
+      "source": "manual",
+      "selector": ".__ai-location",
+      "confidence": 0.9
+    },
+    "department": {
+      "source": "manual",
+      "selector": ".__ai-department",
+      "confidence": 0.8
     },
     "description": {
-      "source": "MANUAL",
-      "selector": "[data-extracted-description]",
-      "confidence": 100,
-      "capturedOnUrl": "https://www.gazit.co.il/%D7%A7%D7%A8%D7%99%D7%99%D7%A8%D7%94/#jobs"
+      "source": "manual",
+      "selector": ".__ai-description",
+      "confidence": 0.95
+    },
+    "requirements": {
+      "source": "manual",
+      "selector": ".__ai-requirements",
+      "confidence": 0.9
     },
     "externalJobId": {
-      "source": "MANUAL",
-      "selector": ".elementor-tab-title",
-      "confidence": 100,
-      "extractAttr": "aria-controls",
-      "capturedOnUrl": "https://www.gazit.co.il/%D7%A7%D7%A8%D7%99%D7%99%D7%A8%D7%94/#jobs"
+      "source": "manual",
+      "selector": ".__ai-jobid",
+      "confidence": 0.95
+    },
+    "applicationInfo": {
+      "source": "manual",
+      "selector": ".__ai-applyinfo",
+      "confidence": 0.9
     }
   }
 }

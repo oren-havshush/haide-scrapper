@@ -1541,3 +1541,48 @@
   requirements, applicationInfo, and any public-site renderer outside this repo. Before
   concluding a scraper shipped bad text for an RTL site, check whether the *viewer* has
   a base direction. Logical order and visual order are different bugs with different owners.
+
+### LRN-ID-10 — Elementor accordion/tab DOM ids are index-based and get REUSED
+- **Date / site:** 2026-08-19 · gazit.co.il/קריירה/ (rebuild; old `cmp02pnno000401k5jrfqrarf` → new `cmszz0jfd000s01kfclgejiix`)
+- **Signal:** the previous config shipped `externalJobId` = the Elementor panel id
+  (`elementor-tab-content-4171` … `-4175`). These pass `verify-jobids` cleanly — fill 1.00,
+  all distinct, not literally `item-N`, so the `indexLike` heuristic does **not** fire.
+  They are nonetheless positional: Elementor builds them as `<widget-suffix><ordinal>`.
+  Proof from this site's own history: the stored `-4173` was `מהנדס/ת שירות לתחום הדימות`;
+  after the employer reordered the accordion, live `-4173` is `אחראי/אחראית מבנה`. The id
+  survived; the job behind it did not. Dedup silently rewrites one posting into another —
+  no error, no warning, and the QA suite cannot see it from a single scrape.
+- **Fix:** on Elementor (and any accordion/tabs widget), never map the panel id. Elementor
+  form widgets embed the real WordPress record id as a hidden input on each panel's inline
+  form: `item.querySelector('input[name="post_id"]').value` → `gazit-<post_id>`. Stable
+  across reordering, unique per posting, and free — no hashing needed.
+  Fall back to `h-<hash(title|dept|location)>` only when no form is present.
+- **Detection rule that generalises:** an id whose numeric tail is a small consecutive run
+  (`…71, …72, …73, …74, …75`) is positional until proven otherwise, however "distinct" it
+  looks. Consecutive-run ids should be treated like `item-N`. Compare against a *previous*
+  scrape's title-for-id mapping, not just within one run — `verify-jobids` only inspects a
+  single snapshot, so this class of bug is invisible to it by construction.
+- **Generalises to:** every Elementor accordion/toggle/tabs job board (very common on
+  Israeli WordPress company sites), and to any widget-generated `*-<n>` DOM id.
+
+### LRN-SETUP-10 — Splitting one description blob by heading needs a state machine, not "everything after"
+- **Date / site:** 2026-08-19 · gazit.co.il/קריירה/
+- **Signal:** each job is a single `.elementor-tab-content` holding description *and*
+  requirements. The obvious split — "everything from `דרישות התפקיד:` onward is
+  requirements" — is wrong here: `מה אנחנו מחפשים?` (requirements) is followed by
+  `מה אנחנו מציעים לך?` (benefits, i.e. description). A tail-split swallows the benefits
+  block into requirements, and a naive both-fields-get-the-whole-blob approach violates the
+  no-duplicate-field-content rule outright.
+- **Fix:** iterate the content node's **direct children** and run a two-bucket state
+  machine. A child is a heading when it is short (`< 60` chars), single-line, and ends in
+  `?` or `:`; a heading whose text matches `^(דרישות|מה אנחנו מחפשים|מי מתאים|כישורים|תנאי סף|דרוש)`
+  switches the active bucket to requirements, any other heading switches it back to
+  description. Non-heading children append to whichever bucket is active. Because every
+  child lands in exactly one bucket, non-overlap is guaranteed *by construction* rather
+  than asserted afterwards.
+- **Also:** injected `<span>`s carrying pre-rendered text bypass `domFieldExtract.ts`'s
+  `<li>` handling, so the worker never prefixes `•`. Add the bullet inside `structuredText`
+  or lists arrive as flat prose. (Not a blob — `isBlob` only fires with zero `\n` — so
+  nothing warns you.)
+- **Generalises to:** any single-container job body with labeled Hebrew sections, and any
+  site where a description-class heading follows a requirements-class heading.

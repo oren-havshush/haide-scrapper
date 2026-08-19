@@ -68,7 +68,7 @@ from top-level params, so a setupScript left only inside `_meta` is dropped.
 | בן & ג’ריס | ACTIVE | 5 | 1215 | `benjerry--12brnw` |
 | בנק הפועלים | ACTIVE | 5 | 570 | `bankhapoalim--ejoc9x` |
 | גולדברג פרושן ושות' רואי חשבון | ACTIVE | 5 | 4236 | `goldpro--1pf5j6` |
-| גזית | ACTIVE | 3 | 746 | `gazit--fqrarf` |
+| גזית | ACTIVE | 7 | 7944 | `gazit--gejiix` |
 | גילאר | ACTIVE | 6 | — | `gilar--h7463m` |
 | גלוברנדס | ACTIVE | 6 | 1635 | `globrands--5akm6u` |
 | האקדמית רמת גן | ACTIVE | 5 | 1124 | `landing-iac--3cdlhs` |
