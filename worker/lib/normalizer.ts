@@ -172,9 +172,36 @@ const VALUE_TERMINATOR =
   String.raw`\s*[|\n)]|\s*\p{Extended_Pictographic}|\s+` + CTA_TERMINATOR +
   String.raw`|\.\s|$)`;
 
-function matchLabeled(text: string, labelAlt: string): string | null {
+/**
+ * A qualifier, not a value: Hebrew ads close a requirement line with
+ * "– חובה" / "– יתרון". When the label word sits mid-sentence
+ * ("ניסיון בניהול צוות – יתרון") the separator is real and the capture is a
+ * grammatical accident, so the qualifier is the tell that we matched prose.
+ */
+const QUALIFIER_VALUE =
+  /^(?:יתרון|חובה|רצוי|נדרש|מומלץ|לא\s+חובה|not\s+required|advantage|required)\b/iu;
+
+type LabelOpts = {
+  /**
+   * Only accept a label that opens its own line (a leading bullet/emoji is
+   * still fine). A real "Label: value" pair is line-leading; a label word
+   * buried in a sentence is prose.
+   */
+  lineLeading?: boolean;
+  /** Reject values longer than this — a long capture is a sentence, not a field. */
+  maxLen?: number;
+};
+
+function matchLabeled(
+  text: string,
+  labelAlt: string,
+  opts: LabelOpts = {},
+): string | null {
+  const prefix = opts.lineLeading
+    ? String.raw`(?:^|\n)[\s\-•·*✔✓]*`
+    : String.raw`(?:^|[\s|.(])`;
   const re = new RegExp(
-    String.raw`(?:^|[\s|.(])` +
+    prefix +
       String.raw`(?:` + labelAlt + String.raw`)` +
       String.raw`\s*[:\-–]\s*` +
       String.raw`(.+?)` +
@@ -184,14 +211,20 @@ function matchLabeled(text: string, labelAlt: string): string | null {
   const m = re.exec(text);
   if (!m) return null;
   const v = m[1].trim().replace(/[\s,;|]+$/g, "");
-  return v.length > 0 && v.length <= 200 ? v : null;
+  if (v.length === 0 || v.length > (opts.maxLen ?? 200)) return null;
+  if (QUALIFIER_VALUE.test(v)) return null;
+  return v;
 }
 
 // Per-field label alternations. Order matters: more specific labels first so
 // "מיקום המשרה" wins over "מיקום" (which would match a prefix and stop short).
 const LABELS = {
   location: String.raw`מיקום\s+המשרה|אזור\s+(?:גיאוגרפי|גאוגרפי)|מיקום|אזור|Location|Based\s+in|City`,
-  department: String.raw`שם\s+המחלקה|מחלקה|אגף|צוות|Department|Team|Division`,
+  // `צוות`/`Team` are dropped on purpose: they are the words IL ads use in
+  // prose ("ניהול צוות", "חברי הצוות", "אנשי צוות"), and every department they
+  // ever recovered fleet-wide was a fragment of a requirement line, never a
+  // department. The rest are matched line-leading only (see extractFieldsFromText).
+  department: String.raw`שם\s+המחלקה|מחלקה|אגף|Department|Division`,
   externalJobId: String.raw`מספר\s+משרה|מס['׳]?\s*משרה|משרה\s+מס['׳]?|מספר\s+דרושים|קוד\s+משרה|Job\s+ID|Job\s+Number|Requisition(?:\s+ID)?|Req(?:\s*ID)?|Position\s+ID|Vacancy\s+(?:ID|Number)`,
   jobType: String.raw`סוג\s+(?:ה)?משרה|היקף\s+(?:ה)?משרה|Job\s+Type|Employment\s+Type|Position\s+Type`,
 };
@@ -691,7 +724,15 @@ export function extractFieldsFromText(text: string): ExtractedFromText {
 
   return {
     location: matchLabeled(t, LABELS.location),
-    department: matchLabeled(t, LABELS.department),
+    // Department is the one label whose words also occur in ordinary prose, so it
+    // is held to the stricter contract: line-leading label, short value, no
+    // "– יתרון"-style qualifier. Measured on the live fleet before this guard:
+    // 38 departments came from prose and 37 of them were junk ("יתרון", "חובה",
+    // "4 שנים לפחות", "02.07.2026").
+    department: matchLabeled(t, LABELS.department, {
+      lineLeading: true,
+      maxLen: 60,
+    }),
     externalJobId:
       // Labeled capture can sweep trailing form text into the value; reduce it
       // to the bare job-ID token. The fallback already returns clean IDs (bare
