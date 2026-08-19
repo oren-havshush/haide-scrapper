@@ -1,0 +1,105 @@
+{
+  "_exportedAt": "2026-08-19T14:57:47.865Z",
+  "_note": "Mirror of the live config. The DB is authoritative; the worker never reads this file. setupScript lives alongside in <slug>.setup.js.",
+  "id": "cmt07ezrv002501kfkvai732i",
+  "siteUrl": "https://app.civi.co.il/promos/id=Y5499HHEL5&src=19522",
+  "companyName": "נטלי",
+  "status": "ACTIVE",
+  "setupScriptFile": "app-civi--ai732i.setup.js",
+  "pageFlow": [],
+  "fieldMappings": {
+    "_meta": {
+      "savedAt": "2026-08-19T14:55:24.009Z",
+      "pagination": null,
+      "formCapture": {
+        "fields": [
+          {
+            "name": "Form_submitted",
+            "label": "",
+            "tagName": "INPUT",
+            "required": false,
+            "fieldType": "hidden"
+          },
+          {
+            "name": "name",
+            "label": "שם מלא",
+            "tagName": "INPUT",
+            "required": true,
+            "fieldType": "text"
+          },
+          {
+            "name": "phone",
+            "label": "טלפון",
+            "tagName": "INPUT",
+            "required": true,
+            "fieldType": "tel"
+          },
+          {
+            "name": "email",
+            "label": "דוא\"ל",
+            "tagName": "INPUT",
+            "required": true,
+            "fieldType": "email"
+          },
+          {
+            "name": "cv",
+            "label": "קורות חיים",
+            "tagName": "INPUT",
+            "required": true,
+            "fieldType": "file"
+          }
+        ],
+        "method": "POST",
+        "actionUrl": "https://app.civi.co.il/promo/id=616502&src=19522",
+        "formSelector": "form.Form"
+      },
+      "itemSelector": ".proflist .thumb",
+      "minPublishDate": null,
+      "minPublishDays": null,
+      "revealSelector": null,
+      "listingSelector": null,
+      "applyLoginReason": null,
+      "browserOverrides": null,
+      "loadMoreSelector": null,
+      "locationFallback": null,
+      "originalMappings": null,
+      "applyRequiresLogin": false
+    },
+    "title": {
+      "source": "auto",
+      "selector": ".__ai-title",
+      "confidence": 0.95
+    },
+    "location": {
+      "source": "auto",
+      "selector": ".__ai-location",
+      "confidence": 0.9
+    },
+    "detailUrl": {
+      "source": "auto",
+      "selector": "a.__ai-detailurl",
+      "confidence": 0.95,
+      "extractAttr": "href"
+    },
+    "description": {
+      "source": "auto",
+      "selector": ".__ai-description",
+      "confidence": 0.9
+    },
+    "requirements": {
+      "source": "auto",
+      "selector": ".__ai-requirements",
+      "confidence": 0.8
+    },
+    "externalJobId": {
+      "source": "auto",
+      "selector": ".__ai-jobid",
+      "confidence": 0.95
+    },
+    "applicationInfo": {
+      "source": "auto",
+      "selector": ".__ai-applicationInfo",
+      "confidence": 0.9
+    }
+  }
+}

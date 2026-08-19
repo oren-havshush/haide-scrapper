@@ -1723,3 +1723,44 @@
   `publishDate` and `ageBucket` from 0% to 100%.
 - **Generalizes to:** every multinational careers board scraped for one country, and every ad whose
   location field holds a country. **Home:** `recipes/setupscript-patterns.md` §7.
+
+---
+
+### LRN-SPA-12 — A "blob site" can be a platform migration: re-triage the URL before blaming the config
+- **Date / site:** 2026-08-19 · natali.co.il/דרושים → `app.civi.co.il/promos/id=Y5499HHEL5&src=19522`
+  (old record `cmq7sn3au…`, 11 jobs / 7 blobs → new record `cmt07ezrv…`, 20 jobs / 0 blobs)
+- **Signal:** the site sat on the blob queue with an Elementor-popup `setupScript` that
+  decoded `openPopup` ids and scraped modal widgets. None of it was broken code — the
+  employer had rebuilt the careers page. The stored `siteUrl` **301s** to `/careers/`,
+  whose jobs are an `<iframe src="https://app.civi.co.il/promos/…">`. The old script kept
+  matching a layout that no longer exists, so the record slowly rotted into blobs.
+- **Fix:** re-run `triage` on the stored URL as step 1 of any blob/drift investigation.
+  It follows the redirect, spots the cross-origin ATS iframe and emits `embeddedBoardUrl`;
+  onboard **that** as the `siteUrl` (LRN-SPA-8) and delete the wrapper record — the worker
+  cannot read across the iframe boundary, so a wrapper record can only ever go stale again.
+  The whole Civi recipe then applies unchanged (`recipes/spa-frameworks.md#civi`).
+- **Generalizes to:** every site whose config predates a website redesign. A `301` on the
+  stored `siteUrl`, or a `topCluster` that no longer matches the stored `itemSelector`, is
+  the tell. **Home:** §2 triage / `recipes/spa-frameworks.md#civi`.
+
+---
+
+### LRN-LOC-8 — Mining cities from ad prose: ban the `ה` prefix, and emit `Unknown` explicitly
+- **Date / site:** 2026-08-19 · נטלי (Civi board, 20 jobs) — Civi exposes no per-job
+  location field, so every city has to come out of the body text (LRN-LOC-6).
+- **Signal 1 — common words that are also city.csv rows.** A gazetteer-style scan of these
+  ads returns `מתן` ("מתן מענה"), `מלאה` ("משרה מלאה"), `משמרות` ("עבודה במשמרות") and
+  `רווחה` ("גורמי הרווחה") — all four are real localities. Mine against an **explicit
+  allowlist** of the cities the employer actually uses plus the majors, never the full list.
+- **Signal 2 — the `ה` prefix manufactures places.** Accepting attached one-letter prefixes
+  is what lets `ברמת גן` / `בר"ג` match, but including `ה` turns `הגדרה` ("definition")
+  into `גדרה`. Hebrew never prefixes `ה` to a city name: accept `ב ל מ ו ש כ`, drop `ה`.
+- **Signal 3 — an empty location is not the `Unknown` sentinel.** Leaving `.__ai-location`
+  unset for an ad that names no city lets the worker's labeled scan lift the first
+  `מיקום: …` line out of the body — here `מיקום: מרחק הליכה מתחנת רכבת סבידור`, a landmark,
+  which `verify-location-csv` then fails. Emit the literal `Unknown` yourself (LRN-LOC-7);
+  being non-empty it also correctly suppresses `locationFallback`.
+- **Result:** 20 jobs, 5 distinct values, all verbatim in `CSV files/city.csv`, 2
+  multi-location (`רמת גן + ראשון לציון`, `+ ירושלים`), 3 honest `Unknown`.
+- **Generalizes to:** every board with no location field and a free-text body.
+  **Home:** Step 4 location / `recipes/setupscript-patterns.md`.
