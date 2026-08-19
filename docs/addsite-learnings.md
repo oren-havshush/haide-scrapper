@@ -1662,3 +1662,30 @@
 - **Generalizes to:** every site whose blob survives a rescrape while its selectors verify
   clean — grep the stored `setupScript` for `replace(/\s+/g` before classifying it as drift.
   **Home:** `recipes/setupscript-patterns.md` §7 / Step 4 description.
+
+### LRN-SETUP-12 — The apply CTA is not description text: strip "שלחו קו״ח למייל" + the address, keep it in `applicationInfo`
+- **Date / site:** 2026-08-19 · kley-zemer.co.il (`cmt06bb61001p01kfoht2o5co`), 3 jobs — re-onboard
+  of the 2026-06-28 record (`cmqyexbel001v01nz2e0m1iuj`), which shipped 2 of 3 descriptions as blobs.
+- **Signal:** an email-apply site (LRN-FORM-3). The ad's last line is a call to action —
+  `שלחו קורות חיים למייל: jerusalem@kley-zemer.co.il` — and importing the detail node whole
+  carries it into `description`, where it duplicates `applicationInfo` and reads as spam in
+  the product's job card. `formStatus: EMAIL` and a 100% `applicationInfo` fill do **not**
+  mean the address is gone from the prose; nothing in the QA gates looks for it.
+- **Fix:** clean the imported node in the setupScript, in this order — (1) remove
+  `[data-cfemail], .__cf_email__, a[href^="mailto:"], a[href*="email-protection"]`, (2) walk the
+  remaining **text nodes** and strip a bare-email regex plus a CTA regex
+  (`(?:שליחת )?(?:ל?שלוח|שלחו|שלח/י|להעביר)? ?(?:את )?(?:קורות ?ה?חיים|קו"ח)(?: (?:או|ו) ?פרטים)? ?(?:ל?מייל|ל?דוא"ל|ל?אימייל)? ?:?`),
+  (3) drop `p/div/strong/span` left whitespace-only and any trailing `<br>`. Editing text nodes
+  rather than `innerHTML` keeps the block structure that LRN-SETUP-11 exists to preserve.
+  Strip only the CTA fragment, not the sentence: `- לסניף ירושלים שלחו קורות חיים למייל:` must
+  keep `- לסניף ירושלים`, which is also the location evidence.
+- **The gazetteer reads shift words as places.** The old record stored `משמרות` for the driver
+  job — the gazetteer matched `משמרות בוקר בלבד` ("morning shifts only") to the moshav משמרות.
+  `locationFallback` cannot repair a wrong guess (LRN-LOC-1), so the setupScript now matches the
+  ad prose against a city.csv-verbatim list with alias entries for neighbourhoods and industrial
+  zones (`צהלה` → `תל אביב-יפו`, `קריית אריה` → `פתח תקווה`) and falls back to `פריסה ארצית`.
+- **A CMS id beats a Hebrew slug.** The card image carries `id="BSUniqueID_<num>_<n>_BSIMAGE"` and
+  the detail body is `id="BSText<num>_<n>_BSTEXT"` — one key that both addresses the prose container
+  and yields a stable `externalJobId` (`kz-58336_8`), byte-identical across two consecutive scrapes.
+- **Generalizes to:** every email-apply site (LRN-FORM-3) and every detail-fetch setupScript that
+  imports a whole prose container. **Home:** `recipes/setupscript-patterns.md` §7.

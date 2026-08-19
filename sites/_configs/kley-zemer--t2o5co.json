@@ -1,15 +1,15 @@
 {
-  "_exportedAt": "2026-08-17T15:34:41.880Z",
+  "_exportedAt": "2026-08-19T14:23:23.465Z",
   "_note": "Mirror of the live config. The DB is authoritative; the worker never reads this file. setupScript lives alongside in <slug>.setup.js.",
-  "id": "cmqyexbel001v01nz2e0m1iuj",
+  "id": "cmt06bb61001p01kfoht2o5co",
   "siteUrl": "https://www.kley-zemer.co.il/%D7%93%D7%A8%D7%95%D7%A9%D7%99%D7%9D",
   "companyName": "כלי זמר",
   "status": "ACTIVE",
-  "setupScriptFile": "kley-zemer--0m1iuj.setup.js",
+  "setupScriptFile": "kley-zemer--t2o5co.setup.js",
   "pageFlow": [],
   "fieldMappings": {
     "_meta": {
-      "savedAt": "2026-06-28T23:27:58.892Z",
+      "savedAt": "2026-08-19T14:22:32.095Z",
       "pagination": null,
       "formCapture": null,
       "itemSelector": "div.item.row",
@@ -29,6 +29,11 @@
       "selector": ".name h2",
       "confidence": 0.95
     },
+    "location": {
+      "source": "auto",
+      "selector": ".__ai-location",
+      "confidence": 0.9
+    },
     "detailUrl": {
       "source": "auto",
       "selector": ".__ai-detailUrl",
@@ -37,12 +42,12 @@
     "description": {
       "source": "auto",
       "selector": ".__ai-description",
-      "confidence": 0.8
+      "confidence": 0.9
     },
     "externalJobId": {
       "source": "auto",
       "selector": ".__ai-externalJobId",
-      "confidence": 0.9
+      "confidence": 0.95
     },
     "applicationInfo": {
       "source": "auto",
