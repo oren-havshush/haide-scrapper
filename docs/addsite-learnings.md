@@ -1381,6 +1381,70 @@
   מתאימה?" row that IL career pages routinely append to a listing, and to any
   always-present non-vacancy row (spontaneous applications, talent pool).
 
+### LRN-SETUP-7 — Splitting one body into description + requirements: move the nodes, never copy the text
+
+- **Date:** 2026-08-18
+- **Site:** gtech.co.il (Elementor/WordPress post per vacancy)
+- **Signal:** the whole ad lives in one `.elementor-widget-theme-post-content`
+  block with a `דרישות:` heading partway down. The obvious build — map
+  `description` to that block, and inject `.__ai-requirements` with the text
+  *after* the heading — passes every gate: fill rates 1.0, Tier-A complete,
+  `verify-jobids` clean. It is still wrong: `requirements` is then a verbatim
+  slice of `description`, so 11/14 rows shipped the same prose twice (the other
+  3 differed only because the worker's block-aware extractor prepends `• ` to
+  `<li>` while a setupScript's `innerText` does not — the duplication was total
+  in all 14). Nothing in QA looks for a field that is a substring of another.
+- **Fix:** split the DOM instead of the string. Walk the content host's
+  children, find the heading node, `appendChild` it and every following sibling
+  into a hidden `div.__ai-requirements` on `<body>` — `appendChild` *moves*
+  nodes, so what lands in `requirements` leaves `description` in the same pass.
+  Map `description` to the (now shorter) content element and `requirements` to
+  the new container. Two details that matter: when the heading runs inline with
+  its content (`דרישות התפקיד:תואר ראשון…`) clone the node and strip the label
+  from its first text node rather than rebuilding it from `textContent`, which
+  would drop `<br>`/`<li>` structure; and bail out of the split when the text
+  ahead of the heading is under ~40 chars, since an empty description is worse
+  than an unsplit one.
+- **Verify:** assert `requirements[:60] not in description` per row, not just
+  fill rates. Before: 14/14 duplicated. After: 0/14, and `description` avg
+  dropped 519 → 251 chars while the pair still carries the whole ad.
+- **Generalizes to:** every site whose detail page is one prose block with
+  labeled sections (דרישות / כישורים / תנאי סף / יתרון) — the same shape the
+  merge-the-sections guidance in `setupscript-patterns.md` §8 covers from the
+  opposite direction. Merging sections into `description` and lifting one out
+  into `requirements` are the same operation; do it by moving nodes once, not by
+  reading the text twice.
+
+### LRN-SPA-11 — Civi: a detail page can return 200-but-empty, and `#je-details` is optional
+- **Date / site:** 2026-08-18 · `app.civi.co.il/promos/id=5N5DYKF7RR&src=17409` (כפר המכביה),
+  rebuilt from scratch after the previous record was deleted.
+- **Signal:** two independent gaps that both look like "the scraper is fine, the site is thin":
+  1. `promo/id=777931` answered **HTTP 200 with a 45-char body** — no `#je-*` nodes, no
+     `form.Form`. Same-origin `fetch` from the board, direct navigation, retries: all identical,
+     so it is a Civi-side defect on that one promo, not rate limiting. The card on the listing
+     still carried the full 1220-char ad.
+  2. `#je-details` was populated on only **4 of 9** postings. The other five headline their
+     requirements *inside* `#je-descr` — `מה אנחנו מחפשים?`, `יש לכם?`, `דרישות:`,
+     `דרישות התפקיד:`, `אתם מתאימים אם:` — so a `#je-details`-only mapping silently ships
+     the requirements buried in the description and `requirements` fill sitting at 0.44.
+- **Fix:** treat the detail page as an *enrichment*, never the sole source. Fall back to the
+  listing `.descr`/`.title` whenever the fetched document yields nothing (description 8/9 → 9/9),
+  and when `#je-details` is empty apply the LRN-SETUP-7 split to `#je-descr`: find a
+  heading-like line, take until the next heading or blank line, and **remove it from the body**
+  (requirements 4/9 → 8/9, zero overlap). Match headings after stripping leading emoji/bullets —
+  `✨ מה מחכה לכם?` and `🏊 תעודת מציל בתוקף` both start with non-letter characters, and a
+  heading only counts when the line holds nothing but the heading; `מה אנחנו מחפשים? נציגי קבלה
+  ושירות לעבודה תפעולית…` is an intro sentence, not a section break.
+- **Also on this board:** some postings repeat `<title> (<jobId>)` as the first line of
+  `#je-descr` — strip that lead. The listing page carries **zero** `<form>` elements, so
+  `formSelector: "form.Form"` correctly matches nothing there and forces the static captured
+  fields (LRN-APPLY-7). The visible file input has no `name`; Civi uploads asynchronously and
+  posts a hidden `input[name=cv]`.
+- **Generalizes to:** every ATS where the row exists on the listing but the detail page is a
+  separate document that can fail independently — the per-item fetch needs a fallback, and a
+  0% field is worth probing per-row before concluding "the site does not publish it". Fill
+  rates hide this: 8/9 and 4/9 both read as "mostly fine" until you diff against the listing.
+
 ### LRN-SETUP-8 — One prose block per job: map it once, and let QA's "Tier-B unmapped" stand
 
 - **Date:** 2026-08-18

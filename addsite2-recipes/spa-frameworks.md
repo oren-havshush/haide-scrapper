@@ -419,6 +419,34 @@ precedence in the dashboard. Use `formSelector: "form.Form"` with a sample `acti
 ### pageFlow
 `[]` — no pageFlow needed. All enrichment happens inside the setupScript via same-origin fetch.
 
+### Pitfalls (`LRN-SPA-11`)
+
+**A detail page can return 200 with an empty body.** On כפר המכביה, `promo/id=777931`
+answered HTTP 200 with a 45-char document — no `#je-*`, no `form.Form` — while its listing
+card carried the full 1220-char ad. Treat the detail fetch as enrichment, never the sole
+source: keep the listing `.title`/`.descr` as fallbacks, or that job ships with an empty
+description (and, if you gate on it, gets dropped entirely).
+
+```js
+if (!descr) descr = listingDescr;   // detail page may be empty for a given promo
+```
+
+**`#je-details` is optional.** Only 4 of 9 postings filled it; the rest headline their
+requirements inside `#je-descr` (`מה אנחנו מחפשים?`, `יש לכם?`, `דרישות:`,
+`דרישות התפקיד:`, `אתם מתאימים אם:`). Mapping `#je-details` alone leaves the requirements
+buried in the description. When it is empty, split `#je-descr` per `LRN-SETUP-7` — take from
+the heading to the next heading or blank line and **remove that block from the description**
+so the two fields never duplicate. Two rules make the match reliable:
+- strip leading emoji/bullets before testing (`✨ מה מחכה לכם?`, `🏊 תעודת מציל בתוקף`);
+- a heading only counts when the line contains nothing else — `מה אנחנו מחפשים? נציגי קבלה
+  ושירות לעבודה תפעולית…` is an intro sentence, not a section break.
+
+**Other board quirks:** some postings repeat `<title> (<jobId>)` as the first line of
+`#je-descr` — strip that lead. The listing page has **zero** `<form>` elements, so
+`formSelector: "form.Form"` matches nothing there and correctly forces the static captured
+fields (`LRN-APPLY-7`). The visible file input carries no `name`; Civi uploads asynchronously
+and posts a hidden `input[name=cv]`, which is why `cv` is advertised as the file field.
+
 ---
 
 ## Adding a new ATS pattern
