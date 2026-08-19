@@ -45,7 +45,7 @@ from top-level params, so a setupScript left only inside `_meta` is dropped.
 | ToTali | ACTIVE | 6 | 3739 | `totali--duk823` |
 | Top Match | ACTIVE | 6 | 759 | `topmatch--f67z41` |
 | Unitask | ACTIVE | 6 | 6543 | `unitask-inc--wsxup8` |
-| Waterfall Security | ACTIVE | 6 | 2198 | `waterfall-security--c5pw15` |
+| Waterfall Security | ACTIVE | 8 | 5161 | `waterfall-security--jam3c9` |
 | YES | ACTIVE | 7 | — | `yes--ekwenb` |
 | YKM | ACTIVE | 8 | 4431 | `ykm--gxcmnf` |
 | bank mizrahi tefahot | ACTIVE | 10 | — | `mizrahi-tefahot--a0zkf2` |

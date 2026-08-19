@@ -1,0 +1,147 @@
+{
+  "_exportedAt": "2026-08-19T09:29:54.167Z",
+  "_note": "Mirror of the live config. The DB is authoritative; the worker never reads this file. setupScript lives alongside in <slug>.setup.js.",
+  "id": "cmszvn1a7000401kft1jam3c9",
+  "siteUrl": "https://waterfall-security.com/about-waterfall/careers/",
+  "companyName": "Waterfall Security",
+  "status": "ACTIVE",
+  "setupScriptFile": "waterfall-security--jam3c9.setup.js",
+  "pageFlow": [],
+  "fieldMappings": {
+    "_meta": {
+      "savedAt": "2026-08-19T09:27:49.464Z",
+      "pagination": null,
+      "formCapture": {
+        "fields": [
+          {
+            "name": "firstName",
+            "label": "First name",
+            "tagName": "INPUT",
+            "required": true,
+            "fieldType": "text"
+          },
+          {
+            "name": "lastName",
+            "label": "Last name",
+            "tagName": "INPUT",
+            "required": true,
+            "fieldType": "text"
+          },
+          {
+            "name": "email",
+            "label": "Email",
+            "tagName": "INPUT",
+            "required": true,
+            "fieldType": "email"
+          },
+          {
+            "name": "phone",
+            "label": "Phone",
+            "tagName": "INPUT",
+            "required": true,
+            "fieldType": "tel"
+          },
+          {
+            "name": "cv",
+            "label": "Resume",
+            "tagName": "INPUT",
+            "required": true,
+            "fieldType": "file"
+          },
+          {
+            "name": "linkedin",
+            "label": "LinkedIn Profile URL",
+            "tagName": "INPUT",
+            "required": false,
+            "fieldType": "url"
+          },
+          {
+            "name": "coverLetter",
+            "label": "Cover Letter",
+            "tagName": "INPUT",
+            "required": false,
+            "fieldType": "file"
+          },
+          {
+            "name": "portfolio",
+            "label": "Portfolio",
+            "tagName": "INPUT",
+            "required": false,
+            "fieldType": "file"
+          },
+          {
+            "name": "comment",
+            "label": "Personal note",
+            "tagName": "TEXTAREA",
+            "required": false,
+            "fieldType": "textarea"
+          }
+        ],
+        "method": "POST",
+        "actionUrl": "https://www.comeet.co/jobs/C7.009/apply",
+        "formSelector": "form.__comeet-apply-static"
+      },
+      "itemSelector": "ul.comeet-positions-list > li",
+      "minPublishDate": null,
+      "minPublishDays": null,
+      "revealSelector": null,
+      "listingSelector": null,
+      "applyLoginReason": null,
+      "browserOverrides": {
+        "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36"
+      },
+      "loadMoreSelector": null,
+      "locationFallback": null,
+      "originalMappings": null,
+      "applyRequiresLogin": false
+    },
+    "title": {
+      "source": "MANUAL",
+      "selector": ".comeet-position-name",
+      "confidence": 0.95,
+      "capturedOnUrl": "https://waterfall-security.com/about-waterfall/careers/"
+    },
+    "location": {
+      "source": "MANUAL",
+      "selector": ".__ai-loc",
+      "confidence": 0.9,
+      "capturedOnUrl": "https://waterfall-security.com/about-waterfall/careers/"
+    },
+    "detailUrl": {
+      "source": "MANUAL",
+      "selector": ".__ai-detailUrl",
+      "confidence": 0.95,
+      "capturedOnUrl": "https://waterfall-security.com/about-waterfall/careers/"
+    },
+    "department": {
+      "source": "MANUAL",
+      "selector": ".__ai-dept",
+      "confidence": 0.8,
+      "capturedOnUrl": "https://waterfall-security.com/about-waterfall/careers/"
+    },
+    "description": {
+      "source": "MANUAL",
+      "selector": ".__ai-desc",
+      "confidence": 0.9,
+      "capturedOnUrl": "https://waterfall-security.com/about-waterfall/careers/"
+    },
+    "requirements": {
+      "source": "MANUAL",
+      "selector": ".__ai-req",
+      "confidence": 0.85,
+      "capturedOnUrl": "https://waterfall-security.com/about-waterfall/careers/"
+    },
+    "externalJobId": {
+      "source": "MANUAL",
+      "selector": ".__ai-jobid",
+      "confidence": 0.95,
+      "capturedOnUrl": "https://waterfall-security.com/about-waterfall/careers/"
+    },
+    "applicationInfo": {
+      "source": "MANUAL",
+      "selector": ".__ai-apply",
+      "confidence": 0.9,
+      "capturedOnUrl": "https://waterfall-security.com/about-waterfall/careers/"
+    }
+  }
+}
