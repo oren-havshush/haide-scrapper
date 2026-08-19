@@ -1,0 +1,125 @@
+{
+  "_exportedAt": "2026-08-19T16:02:49.563Z",
+  "_note": "Mirror of the live config. The DB is authoritative; the worker never reads this file. setupScript lives alongside in <slug>.setup.js.",
+  "id": "cmt08f7va002f01kfcxpyuhhh",
+  "siteUrl": "https://www.flying-cargo.com/careers/",
+  "companyName": "פליינג קרגו",
+  "status": "ACTIVE",
+  "setupScriptFile": "flying-cargo--pyuhhh.setup.js",
+  "pageFlow": [],
+  "fieldMappings": {
+    "_meta": {
+      "savedAt": "2026-08-19T15:34:58.031Z",
+      "pagination": null,
+      "formCapture": {
+        "fields": [
+          {
+            "name": "form_fields[name]",
+            "label": "שמי המלא",
+            "tagName": "input",
+            "required": false,
+            "fieldType": "text"
+          },
+          {
+            "name": "form_fields[email]",
+            "label": "אימייל",
+            "tagName": "input",
+            "required": true,
+            "fieldType": "email"
+          },
+          {
+            "name": "form_fields[email]",
+            "label": "טלפון / נייד",
+            "tagName": "input",
+            "required": true,
+            "fieldType": "tel"
+          },
+          {
+            "name": "form_fields[name]",
+            "label": "אזור עבודה מועדף",
+            "options": [
+              {
+                "label": "אזור עבודה מועדף",
+                "value": ""
+              },
+              {
+                "label": "צפון",
+                "value": "צפון"
+              },
+              {
+                "label": "מרכז",
+                "value": "מרכז"
+              },
+              {
+                "label": "דרום",
+                "value": "דרום"
+              }
+            ],
+            "tagName": "select",
+            "required": true,
+            "fieldType": "select"
+          },
+          {
+            "name": "form_fields[field_c172175]",
+            "label": "העלאת קבצים (קורות חיים)",
+            "tagName": "input",
+            "required": true,
+            "fieldType": "file"
+          },
+          {
+            "name": "form_fields[field_524547f]",
+            "label": "אני מסכים/ה שהפרטים שלי ישמשו לצורך יצירת קשר וישמרו במאגר המידע של העסק, בהתאם למדיניות הפרטיות",
+            "tagName": "input",
+            "required": false,
+            "fieldType": "checkbox"
+          }
+        ],
+        "method": "POST",
+        "actionUrl": "https://www.flying-cargo.com/wp-admin/admin-ajax.php",
+        "formSelector": "form.elementor-form:has(input[type=\"file\"])"
+      },
+      "itemSelector": "div.e-loop-item",
+      "minPublishDate": null,
+      "minPublishDays": null,
+      "revealSelector": null,
+      "listingSelector": null,
+      "applyLoginReason": null,
+      "browserOverrides": null,
+      "loadMoreSelector": null,
+      "locationFallback": null,
+      "originalMappings": null,
+      "applyRequiresLogin": false
+    },
+    "title": {
+      "source": "auto",
+      "selector": "h3.e-n-accordion-item-title-text",
+      "confidence": 0.95
+    },
+    "location": {
+      "source": "auto",
+      "selector": ".__ai-location",
+      "confidence": 0.85
+    },
+    "detailUrl": {
+      "source": "auto",
+      "selector": "a.__ai-detail",
+      "confidence": 0.9,
+      "extractAttr": "href"
+    },
+    "description": {
+      "source": "auto",
+      "selector": ".main-text",
+      "confidence": 0.9
+    },
+    "publishDate": {
+      "source": "auto",
+      "selector": ".__ai-publishdate",
+      "confidence": 0.9
+    },
+    "externalJobId": {
+      "source": "auto",
+      "selector": ".__ai-jobid",
+      "confidence": 0.95
+    }
+  }
+}

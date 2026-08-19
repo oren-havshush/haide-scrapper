@@ -377,7 +377,9 @@
 
 ### LRN-LOC-1 — Inject a constant/computed location when the listing omits it
 - **Date / sites:** abt-industry.co.il (run `cmp5ibrop000t01lsrqaasmq1`) single office;
-  msh.co.il (`cmq6gxm6y001p01m9k3k3pwyv`) 2/6 gazetteer → constant תל אביב;
+  msh.co.il (`cmq6gxm6y001p01m9k3k3pwyv`) 2/6 gazetteer → constant תל אביב — **REVERTED
+  2026-08-19, see LRN-LOC-9: the gazetteer resolves this site unaided and the constant was
+  both stale and non-canonical; do not cite msh as precedent for blanket injection**;
   natali.co.il (`cmq7sn3au000601mfqhld00pa`) per-item region (2 field→המרכז, 9→רמת גן)
 - **Signal:** no structured location field; the IL gazetteer only auto-fills
   `location` for jobs naming a token it recognizes → partial/inconsistent coverage.
@@ -1763,4 +1765,38 @@
 - **Result:** 20 jobs, 5 distinct values, all verbatim in `CSV files/city.csv`, 2
   multi-location (`רמת גן + ראשון לציון`, `+ ירושלים`), 3 honest `Unknown`.
 - **Generalizes to:** every board with no location field and a free-text body.
+  **Home:** Step 4 location / `recipes/setupscript-patterns.md`.
+
+### LRN-LOC-9 — Before injecting a location, check whether the built-in gazetteer already resolves it — and reverse a blanket injection that outlived its accuracy
+- **Date / site:** 2026-08-19 · msh.co.il / מגדל שוקי הון (`cmt09nz46002r01kf1pfdohdt`,
+  re-onboard of `cmq6gxm6y001p01m9k3k3pwyv`) — 5-job in-page accordion, no location element.
+- **Signal — the injected constant had gone stale and was never re-checked.** The 2026-06
+  config blanket-injected `data-loc = "תל אביב"` on **every** panel per LRN-LOC-1. Two
+  problems compounded: (a) one of the five live ads (job 4078) names no location at all, so
+  the constant asserted a workplace the ad never claims; (b) `תל אביב` is **not** a verbatim
+  `CSV files/city.csv` row (`תל אביב-יפו` is), so all six stored jobs failed the standing
+  city.csv condition — the injection had bypassed the normalizer that would have fixed the
+  spelling. A blanket injection is a **standing assertion**: it keeps claiming the old
+  location for every future posting, and nothing re-validates it.
+- **Fix — map nothing and let the worker enrich.** `normalizer.ts` runs
+  `extractLocationFromGazetteer(title + description + requirements)` whenever `location`
+  extracts empty, then canonicalises the hit. Dry-run the real ad text through that exact
+  function *before* writing any injection:
+  ```
+  npx tsx -e 'import {extractLocationFromGazetteer} from "./worker/lib/normalizer"; …'
+  ```
+  Here it resolved 4/5 unaided — including both abbreviated forms (`ממוקמים בת"א`,
+  `מיקום: סעדיה גאון, ת"א.`) → `תל אביב-יפו` — and returned `null` for the ad that names
+  no city, which the persist path then stores as the honest `Unknown` sentinel (LRN-LOC-7).
+  Result: 5 jobs, 1 distinct value, `verify-location-csv` clean, 1 honest `Unknown`.
+- **The ordering rule:** injection is the *fallback*, not the default. Reach for a hidden
+  span only when the gazetteer measurably under-performs on that site's real text
+  (LRN-LOC-6/8). When it already wins, an injected span is strictly worse — it overrides
+  the tested path (LRN-LOC-1), skips canonicalisation, and cannot degrade to `Unknown`.
+- **Amends LRN-LOC-1:** its msh.co.il citation is **reverted** — do not use that site as
+  precedent for blanket injection. Its abt-industry (genuinely single-office) case stands.
+  Re-read LRN-LOC-1's own caveat: "only blanket-inject when confident **every** posting
+  shares the location" — on a live board that confidence expires as new ads are posted.
+- **Generalizes to:** every re-onboard of a site whose old config injected a constant
+  location, and any single-HQ employer whose ads mention the city in prose.
   **Home:** Step 4 location / `recipes/setupscript-patterns.md`.

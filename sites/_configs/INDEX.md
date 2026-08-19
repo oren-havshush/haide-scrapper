@@ -99,7 +99,7 @@ from top-level params, so a setupScript left only inside `_meta` is dropped.
 | לילית קוסמטיקה | ACTIVE | 4 | 1091 | `lilit--jrzaf3` |
 | לין ביכלר ראשי | ACTIVE | 6 | — | `l-b--ksvcq8` |
 | מגדל חברה לביטוח | ACTIVE | 6 | 2709 | `my-migdal--6mdmh5` |
-| מגדל שוקי הון | ACTIVE | 4 | 761 | `msh--k3pwyv` |
+| מגדל שוקי הון | ACTIVE | 4 | 3372 | `msh--fdohdt` |
 | מדנס סוכנות לביטוח | ACTIVE | 7 | 4379 | `madanes--1wzqn7` |
 | מוזיאון ישראל | ACTIVE | 6 | 3801 | `imj--442rnv` |
 | מי אביבים | ACTIVE | 9 | 7970 | `mei-avivim--5afgkc` |
@@ -125,6 +125,7 @@ from top-level params, so a setupScript left only inside `_meta` is dropped.
 | עמותת איכות בשיקום | ACTIVE | 4 | 686 | `eychut--6336w9` |
 | ענבי ציון | ACTIVE | 4 | — | `anvei-zion--tkz1xm` |
 | פוליכד | ACTIVE | 3 | 315 | `polycad--is4jw2` |
+| פליינג קרגו | ACTIVE | 6 | 2613 | `flying-cargo--pyuhhh` |
 | פרופורציה | ACTIVE | 7 | 3530 | `proportsia--msnicc` |
 | פתרונות עדיפים-ביטוח | ACTIVE | 6 | 4489 | `adifim--26vavw` |
 | צ'יטה שליחויות | ACTIVE | 4 | 332 | `chitadelivery--xpwqf1` |
