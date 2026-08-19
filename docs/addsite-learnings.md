@@ -1584,5 +1584,50 @@
   `<li>` handling, so the worker never prefixes `•`. Add the bullet inside `structuredText`
   or lists arrive as flat prose. (Not a blob — `isBlob` only fires with zero `\n` — so
   nothing warns you.)
+- **Also (2026-08-19 · tigbur.co.il, 553 ads — the same machine over *lines*, not DOM
+  children):** three refinements the DOM version never hits. (1) Switch back only on a
+  **description-class** heading (תיאור/שעות/היקף/שכר/מציע/מיקום/פרטים…), never on "any
+  other heading" — requirement blocks carry their own sub-heads (`השכלה:`, `ניסיון:`,
+  `מיומנויות:`) and an any-heading rule dumps the whole requirements body into
+  description. (2) The label is often **mid-line** (`…מתן שירות טלפוני דרישות: ידע בסיסי…`,
+  one line, no break): match it inside the line, keep the head, file the tail — otherwise
+  the worker's own `_enrichedFromDescription_requirements` recovers it and you ship the
+  duplicate you were trying to avoid. (3) A **compound label** (`כישורים ודרישות התפקיד:`)
+  needs up to two extra words, but only consume them when a separator follows — greedy
+  consumption eats real content, and a separator-less label (`דרישות התפקיד`) must drop
+  its trailing word or it lands in requirements as a one-word fragment. Verify with the
+  LRN-SETUP-9 preservation assert **after** subtracting label text: the only row that may
+  legitimately lose content is one where the ad itself repeats a line.
 - **Generalises to:** any single-container job body with labeled Hebrew sections, and any
   site where a description-class heading follows a requirements-class heading.
+
+---
+
+### LRN-LOC-6 — A board that prints only a coarse region: mine the city out of the ad text in setupScript
+- **Date / site:** 2026-08-19 · tigbur.co.il/לוח-משרות-ראשי (`cmszzye81000z01kfx0iobe0d`), 553 jobs
+- **Signal:** the feed exposes one coarse `region` per job (`מרכז - גוש דן`,
+  `חיפה והצפון`) while the ad body names the real city. Mapping the region wins the
+  fill-rate gate but masks the city on every posting — this is the exact case
+  `buildLocationWarnings`' `region_over_city` flags, and the worker's own
+  `extractLocationFromGazetteer` never runs because it only fires when `location`
+  is **empty**.
+- **Fix:** mine the city in `setupScript` and inject it, keeping the region only as a
+  fallback. Match **exactly** against an embedded subset of `CSV files/city.csv` (this
+  board's names + the major localities — 100 entries ≈ 800 B, and the whole `≥4` list
+  is 10.5 KB, so the full gazetteer will never fit the 8 000-char `setupScript` cap).
+  Five passes, best first: `מיקום:`/`כתובת` label → softer cue (`באזור X`, `בעיר X`,
+  `לסניף X`, and `בצפון ת"א`-style direction+city) → a line that is nothing but a place
+  → bare `ב`/`ל` prefix (min 4 chars) → multi-word/long names anywhere, which is how a
+  city in the **title** (`…כפר גני פתח תקווה`) or a parenthetical list
+  (`(ת"א, רמת גן, יבנה)`) is caught; collect up to 3 so `locations` stays multi-city
+  (LRN-LOC-5). Result on 553 ads: city-level location 0% → 82.8% (458 jobs), 81
+  multi-location, every stored value canonical, 0 values that trace to neither the ad
+  text nor the board's own region field.
+- **Do NOT** hand raw candidate phrases to `normalizeLocations()` and let it resolve
+  them: its cascade ends in a **levenshtein-1** step, so `בארגון`→`ארגמן`,
+  `בטיחות`→`טפחות`, `מיקום`→`יקום`, `במשמרת`→`שמרת`. Exact-match in the browser, or
+  the location column fills with plausible-looking garbage. Equally, `ALIAS` keys need
+  the gershayim/geresh squash (`ת״א` is U+05F4, not `"`) or every abbreviation misses.
+- **Generalizes to:** every staffing/recruiter board with a region filter and a
+  free-text body (tigbur, natali, and the `region_over_city` warning list).
+  **Home:** Step 4 location / `recipes/setupscript-patterns.md`.
