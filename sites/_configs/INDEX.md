@@ -147,7 +147,7 @@ from top-level params, so a setupScript left only inside `_meta` is dropped.
 | שחל | ACTIVE | 5 | 3333 | `shahal--hfyc3r` |
 | שטראוס | ACTIVE | 6 | — | `strauss-group--oeqo46` |
 | שמרד אלקטרוניקה | ACTIVE | 4 | 1536 | `shamrad--dv1p94` |
-| תיגבור כח אדם | ACTIVE | 6 | 2598 | `tigbur--ssobp7` |
+| תיגבור כח אדם | ACTIVE | 9 | 8000 | `tigbur--iobe0d` |
 | תייקום תקשורת | ACTIVE | 5 | 1351 | `tiecom--uy0ibi` |
 | תכלית ייעוץ עסקי | ACTIVE | 4 | — | `tachlit-biz--rw2x0o` |
 | תמה גרופ | ACTIVE | 4 | 2240 | `tama--rwlfxm` |
