@@ -137,7 +137,7 @@ from top-level params, so a setupScript left only inside `_meta` is dropped.
 | קבוצת שגריר שרותי רכב בעמ | ACTIVE | 6 | 2367 | `shagrir--i3nkhe` |
 | קדמי ביטוח | ACTIVE | 5 | 1209 | `kedmi770--e2pnpm` |
 | קופת חולים מכבי | ACTIVE | 6 | 2145 | `maccabi4u--eazu8j` |
-| קימאמה | ACTIVE | 6 | 2102 | `campkimama--j7vrhl` |
+| קימאמה | ACTIVE | 6 | 2719 | `campkimama--lz6kls` |
 | קישורית | ACTIVE | 3 | 370 | `kishurit--gjuja3` |
 | רזאל מערכות | ACTIVE | 5 | 1337 | `razel--i12d2f` |
 | רכבת ישראל | ACTIVE | 6 | — | `railcareer-adamtotal--52najw` |

@@ -1631,3 +1631,34 @@
 - **Generalizes to:** every staffing/recruiter board with a region filter and a
   free-text body (tigbur, natali, and the `region_over_city` warning list).
   **Home:** Step 4 location / `recipes/setupscript-patterns.md`.
+
+---
+
+### LRN-SETUP-11 — A setupScript that injects prose as `textContent` is a blob factory: leave prose on its native nodes
+- **Date / site:** 2026-08-19 · campkimama.org (`cmt041iz3001j01kfgslz6kls`), 9 jobs — re-onboard
+  of the 2026-06-29 record (`cmqynnjle004901nz99j7vrhl`), which shipped **6 of 9 descriptions
+  as blobs** and 0 newlines in any of the 18 prose fields.
+- **Signal:** the site is on the "Needs Fix" list for blobs, the stored `itemSelector` and
+  field selectors all still match the live page, and a rescrape changes nothing. The cause
+  is not drift and not stale rows (LRN-WRK-blob causes 1–3) — it is a **fourth** cause: the
+  site's own `setupScript` built the field with
+  `mk('__ai-description', el.textContent.replace(/\s+/g,' ').trim())`. `domFieldExtract`'s
+  `<br>`/block→`\n` and `<li>`→`•` work (commits `bfe1935`, `ecb8101`) never get a chance:
+  by the time they run, the field is a single `<span>` holding one flat string.
+- **Fix:** map prose fields to the **native DOM nodes** and reserve the setupScript for
+  scalars. On a Wix repeater (LRN-SPA-6) every field is already addressable by an id prefix,
+  so `description` → `[id^="comp-<descPrefix>__item-"]` and `requirements` →
+  `[id^="comp-<reqPrefix>__item-"]` need no injection at all; the setupScript then only
+  appends `__ai-externalJobId` / `__ai-location` / `__ai-applicationInfo` to the row root
+  (LRN-SETUP-1). Result here: 6/9 blobs → 0/9, all 9 requirements bulleted, 0 desc/req
+  overlap (LRN-SETUP-7), ids identical across two consecutive scrapes.
+- **Watch the invisible characters.** The "strip the `דרישות התפקיד:` label" pass matched 8
+  of 9 rows; the 9th carried a **U+200B** after the colon, so `\s` did not match it and the
+  label shipped. Squash `[ ​-‏﻿]` before testing a Hebrew label regex —
+  same family of trap as LRN-SETUP-5 (`\b` is ASCII-only).
+- **The old location was outside the gazetteer.** The 2026-06 config hardcoded
+  `כל הארץ`, which is **not** in `CSV files/city.csv`; the canonical nationwide value is
+  `פריסה ארצית`. A hardcoded constant still has to pass `verify-location-csv`.
+- **Generalizes to:** every site whose blob survives a rescrape while its selectors verify
+  clean — grep the stored `setupScript` for `replace(/\s+/g` before classifying it as drift.
+  **Home:** `recipes/setupscript-patterns.md` §7 / Step 4 description.
