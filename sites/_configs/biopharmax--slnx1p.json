@@ -1,0 +1,115 @@
+{
+  "_exportedAt": "2026-08-19T14:47:03.958Z",
+  "_note": "Mirror of the live config. The DB is authoritative; the worker never reads this file. setupScript lives alongside in <slug>.setup.js.",
+  "id": "cmt06x4p2001x01kfyxslnx1p",
+  "siteUrl": "https://www.biopharmax.com/he/careers/",
+  "companyName": "Biopharmax",
+  "status": "ACTIVE",
+  "setupScriptFile": "biopharmax--slnx1p.setup.js",
+  "pageFlow": [],
+  "fieldMappings": {
+    "_meta": {
+      "savedAt": "2026-08-19T14:42:44.809Z",
+      "pagination": null,
+      "formCapture": {
+        "fields": [
+          {
+            "name": "form_fields[name]",
+            "group": "Apply",
+            "label": "Full name",
+            "tagName": "input",
+            "required": true,
+            "fieldType": "text"
+          },
+          {
+            "name": "form_fields[field_2534548]",
+            "group": "Apply",
+            "label": "Phone number",
+            "tagName": "input",
+            "required": true,
+            "fieldType": "tel"
+          },
+          {
+            "name": "form_fields[email]",
+            "group": "Apply",
+            "label": "Email",
+            "tagName": "input",
+            "required": true,
+            "fieldType": "email"
+          },
+          {
+            "name": "form_fields[field_0cf915d]",
+            "group": "Apply",
+            "label": "Resume / CV",
+            "tagName": "input",
+            "required": false,
+            "fieldType": "file"
+          }
+        ],
+        "method": "post",
+        "actionUrl": "https://www.biopharmax.com/wp-admin/admin-ajax.php",
+        "formSelector": "form.elementor-form:has(input[type=file])"
+      },
+      "itemSelector": ".jet-listing-grid__item",
+      "minPublishDate": null,
+      "minPublishDays": null,
+      "revealSelector": null,
+      "listingSelector": null,
+      "applyLoginReason": null,
+      "browserOverrides": null,
+      "loadMoreSelector": null,
+      "locationFallback": null,
+      "originalMappings": null,
+      "applyRequiresLogin": false
+    },
+    "title": {
+      "source": "MANUAL",
+      "selector": "h2",
+      "confidence": 100,
+      "capturedOnUrl": "https://www.biopharmax.com/he/careers/"
+    },
+    "location": {
+      "source": "MANUAL",
+      "selector": ".__ai-location",
+      "confidence": 100,
+      "capturedOnUrl": "https://www.biopharmax.com/he/careers/"
+    },
+    "detailUrl": {
+      "source": "MANUAL",
+      "selector": "a[href*=\"/career/\"]",
+      "confidence": 100,
+      "extractAttr": "href",
+      "capturedOnUrl": "https://www.biopharmax.com/he/careers/"
+    },
+    "description": {
+      "source": "MANUAL",
+      "selector": ".__ai-description",
+      "confidence": 100,
+      "capturedOnUrl": "https://www.biopharmax.com/he/careers/"
+    },
+    "publishDate": {
+      "source": "MANUAL",
+      "selector": ".__ai-publishDate",
+      "confidence": 100,
+      "capturedOnUrl": "https://www.biopharmax.com/he/careers/"
+    },
+    "requirements": {
+      "source": "MANUAL",
+      "selector": ".__ai-requirements",
+      "confidence": 100,
+      "capturedOnUrl": "https://www.biopharmax.com/he/careers/"
+    },
+    "externalJobId": {
+      "source": "MANUAL",
+      "selector": ".__ai-externalJobId",
+      "confidence": 100,
+      "capturedOnUrl": "https://www.biopharmax.com/he/careers/"
+    },
+    "applicationInfo": {
+      "source": "MANUAL",
+      "selector": ".__ai-apply",
+      "confidence": 100,
+      "capturedOnUrl": "https://www.biopharmax.com/he/careers/"
+    }
+  }
+}

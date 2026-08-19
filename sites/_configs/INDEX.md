@@ -21,7 +21,7 @@ from top-level params, so a setupScript left only inside `_meta` is dropped.
 | AGAS 3K | ACTIVE | 4 | 1049 | `agas--vfl5da` |
 | AIG | ACTIVE | 4 | — | `aig--0rlmdf` |
 | BDO | ACTIVE | 10 | 2810 | `bdo-career-hunterhrms--dgrgrm` |
-| Biopharmax | ACTIVE | 3 | 944 | `biopharmax--l2zw3a` |
+| Biopharmax | ACTIVE | 8 | 6183 | `biopharmax--slnx1p` |
 | CALANIT by one | ACTIVE | 8 | 7364 | `calanit--4tq06k` |
 | ERN | ACTIVE | 6 | 7423 | `ern--tcdrkt` |
 | ESO Group | ACTIVE | 4 | 577 | `eso-group--mgz38v` |
@@ -115,7 +115,6 @@ from top-level params, so a setupScript left only inside `_meta` is dropped.
 | מקדונלדס | ACTIVE | 4 | — | `mcdonalds--x0odyk` |
 | מרכז האקדמי פרס | ACTIVE | 4 | 2397 | `pac--4xvfi9` |
 | נאות המושבה - גולדנקייר | ACTIVE | 3 | 700 | `gcare--2uvz1w` |
-| נטלי | ACTIVE | 5 | 4418 | `natali--ld00pa` |
 | נטפים | ACTIVE | 8 | 6573 | `comeet--4q2aga` |
 | נירלט | ACTIVE | 4 | — | `nirlat--xluh8r` |
 | סיני סטור | ACTIVE | 3 | 1002 | `sinaistore--uxgr3o` |

@@ -1689,3 +1689,37 @@
   and yields a stable `externalJobId` (`kz-58336_8`), byte-identical across two consecutive scrapes.
 - **Generalizes to:** every email-apply site (LRN-FORM-3) and every detail-fetch setupScript that
   imports a whole prose container. **Home:** `recipes/setupscript-patterns.md` §7.
+
+### LRN-LOC-7 — An ad that names a *country* has no location: emit `Unknown`, don't synthesize a nationwide value or the HQ
+- **Date / site:** 2026-08-19 · biopharmax.com/he/careers/ (`cmt06x4p2001x01kfyxslnx1p`), 4 jobs —
+  re-onboard of the 2026-06-09 record (`cmq6nxder000401liq0l2zw3a`), whose 5 stored jobs were all
+  stale one-line blobs against an itemSelector that matched 0 elements.
+- **Signal:** the detail page has a real `Job location:` section, and its entire body is `– Israel`.
+  Three of four ads say only that ("Israel", "Israel and abroad"); one names `Herzliya` and
+  `central Israel`. A city-token map finds nothing in the first three, so the fallback branch decides
+  what ships for 75% of the site.
+- **The trap:** two plausible fallbacks are both guesses. `פריסה ארצית` (as LRN-SETUP-12 used) reads
+  the country as "nationwide"; the company's Israeli HQ from the contact page (`4 Hasadnaot St,
+  Herzlia`) reads it as "head office". Neither is in the ad, and `locationFallback` cannot repair a
+  wrong guess later (LRN-LOC-1). Asked directly, the user chose neither: **do not guess.**
+- **Fix:** emit the literal `Unknown` sentinel. `normalizeLocations` returns `[]` for it,
+  `verify-location-csv` skips it, and the dashboard city filter simply has no claim to fragment.
+  Emit a real value **only** when the token is present in the ad *and* verbatim in
+  `CSV files/city.csv` — here only `bpx-3071` → `הרצליה, אזור מרכז`, both stated in its body.
+  Note the sentinel is non-empty, so it also suppresses the site-level `locationFallback` — which is
+  the point.
+- **Corollary — QA's location correctness suspect fires on every correct Hebrew mapping.** The gate
+  substring-matches the emitted value against the detail body; an English page mapped to a city.csv
+  Hebrew value can never match. It flagged `פריסה ארצית` and `Unknown` alike. Benign here, but it
+  means the suspect is not evidence either way on a non-Hebrew site — check the mapping by hand.
+- **Scope filters belong in the setupScript, gated on positive evidence.** This board carries 7
+  posts, 3 of them India (Pune). The user's scope is Israel-only, so the script `remove()`s a card
+  unless it shows positive Israel evidence — a future Germany posting is dropped by default rather
+  than shipped because it failed an India blacklist. Print `items before -> after` in the rehearsal
+  (7 → 4) so a too-greedy matcher can't silently eat real vacancies (LRN-SETUP-6).
+- **Two free wins on a WP/JetEngine board:** the card class `jet-listing-dynamic-post-<id>` is the
+  native post id (`bpx-3070`, byte-identical across two consecutive scrapes), and Yoast's JSON-LD
+  `"datePublished"` carries a real post date that nothing renders in the DOM — mapping it took
+  `publishDate` and `ageBucket` from 0% to 100%.
+- **Generalizes to:** every multinational careers board scraped for one country, and every ad whose
+  location field holds a country. **Home:** `recipes/setupscript-patterns.md` §7.
