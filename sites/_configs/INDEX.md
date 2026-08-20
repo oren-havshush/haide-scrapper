@@ -125,7 +125,7 @@ from top-level params, so a setupScript left only inside `_meta` is dropped.
 | עמותת איכות בשיקום | ACTIVE | 4 | 686 | `eychut--6336w9` |
 | ענבי ציון | ACTIVE | 4 | — | `anvei-zion--tkz1xm` |
 | פוליכד | ACTIVE | 3 | 315 | `polycad--is4jw2` |
-| פליינג קרגו | ACTIVE | 6 | 2613 | `flying-cargo--pyuhhh` |
+| פליינג קרגו | ACTIVE | 9 | 7325 | `flying-cargo--pyuhhh` |
 | פרופורציה | ACTIVE | 7 | 3530 | `proportsia--msnicc` |
 | פתרונות עדיפים-ביטוח | ACTIVE | 6 | 4489 | `adifim--26vavw` |
 | צ'יטה שליחויות | ACTIVE | 4 | 332 | `chitadelivery--xpwqf1` |

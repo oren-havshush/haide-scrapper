@@ -92,6 +92,7 @@ If the existing status is SKIPPED or FAILED and `--force` is set:
 | Dry-run returns fewer than 2 items (0–1, 2× attempts) | dry-run | SKIPPED |
 | Tier-A incomplete after scrape | `addsite-qa` | SKIP / REVIEW / REQUEUE (per verdict) |
 | Config clobbered after PUT | `verify-config` | Re-PUT (max 2×), then REVIEW |
+| Stored location absent from `city.csv` (exit 2) | `verify-location-csv` | Fix the value, re-scrape, re-run. Never ACTIVE while failing |
 
 ### B2a Remediation budget
 Before remediation, check these invariants. A fix attempt only runs when its signal fires:
@@ -121,9 +122,24 @@ Before marking ACTIVE, all of these must hold:
 - `fillRates.description ≥ 0.6` (description is the primary job-utility field)
 - `formStatus !== "NONE"` (at least one usable apply path)
 - `externalJobId` fill ≥ 0.9 (dedup health)
+- `verify-location-csv` exits 0 (every location value is a real `city.csv` entry)
 
 If any fails → SKIP with the specific missing field as reason.
 **Exception:** if the page provably doesn't expose description (probe `probe.fieldsOnPage.description === false`) → REVIEW (not SKIP); a human can confirm.
+
+> **Location fill is not location correctness.** `verify-config`, `addsite-qa` and
+> `verify-jobids` never look at location *values* — a site can report `location=1.00`
+> and still ship a name the dashboard's city filter has no bucket for, and **nothing
+> auto-repairs it**: the gazetteer and `locationFallback` only fill an EMPTY location,
+> never correct a wrong one. The worker gazetteer is also **not** the same list as the
+> product's `city.csv` (29 spellings diverge, `LRN-LOC-4`), so passing extraction proves
+> nothing about the CSV. Run the gate — especially after any hardcoded or `setupScript`-
+> injected location, which overrides the gazetteer outright (`LRN-LOC-1`).
+> Caught 10 bad values on flying-cargo (`צריפין`) that all four other gates passed
+> (`LRN-WP-3`). `Unknown` is an accepted value; multi-location jobs are fine provided
+> **every** element of `locations[]` is an exact entry.
+> **Caveat:** the script reads only the first page (`pageSize=100`, and >100 silently
+> returns `[]` — `LRN-API-1`), so on a 100+ job site it validates a sample, not the set.
 
 ### B2.6 QA gate
 ```
@@ -676,6 +692,19 @@ Exit 0 but `saved jobs < API/DOM total` → the id field has collisions (non-uni
 native number). Switch to the record's unique internal id (CMS `_id`, DB row id,
 detail URL path) and re-scrape. Cite: `LRN-ID-5`.
 
+**location gate (MANDATORY before ACTIVE) — values, not fill rate:**
+```bash
+npx tsx scripts/verify-location-csv.ts --site-id $SITE_ID
+# Exit 2 = at least one stored location is not a verbatim "CSV files/city.csv" entry
+```
+Checks `location` and every element of `locations[]` against the product's city list
+(`Unknown` is the accepted sentinel for "job states no location"). No other gate reads
+location values, and a wrong value is never auto-repaired — the gazetteer and
+`locationFallback` only fill an EMPTY location. Exit 2 → fix the value (map it to the
+canonical entry in `setupScript`, or fall back to the site's own region/area if no city
+is defensible), re-PUT, re-scrape, re-run. Do **not** mark ACTIVE while it fails.
+Cite: `LRN-LOC-4`, `LRN-WP-3`.
+
 **Completeness gate (double-check before ACTIVE):** if `formStatus === "NONE"` → override verdict to SKIP regardless of QA exit code. Apply path is mandatory.
 
 ---
@@ -734,4 +763,5 @@ Pre-reading all recipes defeats the lean-core cost goal.
 3. **Coverage line is mandatory.** Emit `coverage: X/Y` for every site. Never silently ship page-1-only.
 4. **externalJobId must be stable AND verified by code.** Never mark ACTIVE without a passing `verify-jobids` (exit 0). The id is the dedup key: raw-title reuse, index-based, or all-identical ids are blockers. Prefer `h-<hash>` synthesis (recipe §3). Prose intent is not enough — the gate checks the real values.
 5. **Apply path is mandatory for ACTIVE.** No form + no email + no URL = SKIP, not ACTIVE.
-6. **REVIEW is not failure.** Routing to REVIEW with an honest reason is a correct outcome and saves both cost and product quality.
+6. **Location values must be verified by code, not by fill rate.** Never mark ACTIVE without a passing `verify-location-csv` (exit 0). A 100% location fill says nothing about correctness — no other gate reads the values, and nothing auto-repairs a wrong one. Cite: `LRN-LOC-4`, `LRN-WP-3`.
+7. **REVIEW is not failure.** Routing to REVIEW with an honest reason is a correct outcome and saves both cost and product quality.

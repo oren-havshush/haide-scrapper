@@ -1124,6 +1124,64 @@
 - **Generalizes to:** any WP job board whose CPT retains closed postings — i.e. most of
   them. **Home:** `recipes/pagination-and-loading.md` §0.
 
+### LRN-WP-3 — Elementor Loop Grid: every job AND its apply form live on the listing page, inside collapsed `<details>`
+- **Date / site:** 2026-08-20 · flying-cargo.com/careers/ (`cmt08f7va002f01kfcxpyuhhh`, 38 jobs)
+- **Signal:** WordPress + Elementor archive (`body.post-type-archive-<cpt>`, items
+  `div.elementor.elementor-<tplid>.e-loop-item`). Each card is a `details.e-n-accordion-item`
+  holding the full job body **and its own complete `form.elementor-form`** with a CV
+  `input[type=file]`. Three traps in one page:
+  1. **Collapsed accordions read as empty.** The body is in the DOM but the `<details>` is
+     closed, so `innerText` returns `""` (`textContent` still works). A probe that measures
+     fill with `innerText` reports `description=0` and looks like a detail-page-only site.
+  2. **The apply form is on the LISTING page**, contradicting `form-capture.md` §1 ("almost
+     always lives on the per-job detail page"). `querySelectorAll('form')` returns one
+     structurally identical form per job.
+  3. **No detail links in the cards** — the only `<a>` is the privacy policy, because the
+     accordion *is* the detail view. There is no natural `detailUrl`.
+- **Fix:** stay listing-only (`pageFlow: []`) and do it all in `setupScript`:
+  `document.querySelectorAll('details').forEach(d => d.setAttribute('open',''))`, then read
+  the WP post id off the card's own class (`/(?:^|\s)post-(\d+)/`) and use the open
+  `wp-json/wp/v2/<cpt>?per_page=100&_fields=id,link,date` as a sidecar for detailUrl +
+  publishDate. `X-WP-Total` gives the coverage ground truth (38 = 38 rendered cards) — a
+  cross-check, not the source of truth (LRN-WP-2).
+- **id choice:** the form's hidden `form_fields[job_number]` *looks* like the id but is
+  **blank on 3 of 38** cards; the `post-<id>` class is 38/38 distinct. On any WordPress
+  board prefer the WP post id over a printed/hidden "job number" (`LRN-ID-5`).
+- **Per-job apply data on a listing-only site.** `form_fields[job_number]` is the only
+  per-job value in the submit and the thing that routes an application to the right role,
+  but a site-level `_meta.formCapture` cannot carry it — and on a listing-only site the
+  worker **unconditionally overwrites** `raw["_formData"]` with the site-wide blob for
+  every record (`scrape.ts:3238-3249`, no "already set" guard, unlike the pageFlow branch
+  at `:3014-3018`). So per-job data must ride on **`applicationInfo`**, which wins over
+  `_formData` in `normalizer.ts:751-759` and is written independently — keeping the
+  site-level panel intact. Mapping an arbitrary key (`jobNumber`) also works: field names
+  are **not** whitelisted (`scrape.ts:334-369`), unknown keys survive into `rawData`
+  (`normalizer.ts:726`, `scrape.ts:3453`) and render under "Additional Fields".
+- **Verify the submit contract by intercepting and ABORTING it**, never by sending one:
+  `page.route('**/admin-ajax.php', r => { capture(r.request().postData()); r.abort(); })`.
+  That is what proved `post_id`/`form_id` are constant across all 38 (they identify the
+  Elementor template/widget, not the job) — an assumption that reads plausibly and is wrong.
+- **Their form can be broken in a way that no gate sees.** Here `form_fields[name]` is used
+  by BOTH the full-name input and the region select, and `form_fields[email]` by BOTH email
+  and phone (Elementor field IDs left at default). Each key posts twice, PHP keeps the last,
+  so the employer receives region-as-name and phone-as-email — for human applicants too.
+  Capture it verbatim with disambiguated labels and record it; do not silently "fix" it.
+- **Splitting the body:** the description/requirements split here needs the `LRN-SETUP-10`
+  line-based state machine, **not** a tail-split — 2 of 38 ads put benefits/hours
+  ("שעות עבודה 08:00-17:00", "תנאים מעולים") *after* the דרישות list, and "everything after
+  the heading" files those as requirements. Note `תנאים` is description-class while
+  `תנאי סף` is requirements-class.
+- **Run `verify-location-csv` — it is not in the addsite2 gate matrix.** This onboard
+  shipped `צריפין` on 10 jobs; it is in neither `CSV files/city.csv` nor the worker
+  gazetteer, and nothing auto-repairs it (the gazetteer and `locationFallback` only fill an
+  EMPTY location). `verify-config`/`addsite-qa`/`verify-jobids` all pass regardless, because
+  none of them look at location *values*.
+- **Generalizes to:** any Elementor Loop Grid / accordion jobs archive (a common Israeli
+  WordPress build), and more broadly to **any** board whose prose sits in `<details>`, tabs,
+  or `hidden` containers — measure fill with `textContent`, or force the container open,
+  before concluding a field is missing.
+- **Home:** `recipes/setupscript-patterns.md`, `recipes/form-capture.md` §7, addsite2.md §2.2.
+
 ---
 
 ### LRN-SPA-8 — Civi.co.il embedded jobs board: false AWSM scrape + listing-only content truncation
