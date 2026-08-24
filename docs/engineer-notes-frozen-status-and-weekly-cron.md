@@ -78,6 +78,74 @@ When the weekly scrape runs, after change detection:
 
 ---
 
+## Side note (2026-08-24) — the weekly cron needs a drift check, not just a scrape
+
+> **Status: NOTE ONLY, nothing built.** Parked here because it belongs to the same
+> slice as the weekly cron. Raised while onboarding flying-cargo.
+
+### The problem the cron does NOT solve on its own
+
+Config fixes are durable: `itemSelector` / `fieldMappings` / `setupScript` /
+`formCapture` live on the site row, and a scrape only ever **reads** them. So a
+weekly re-scrape reproduces today's output exactly — the setupScript re-executes
+each run and re-injects every field. Only an **ANALYSIS** job rewrites a config
+(`LRN-RACE-1/2`), and that is enqueued on site *creation*. **The cron must enqueue
+SCRAPE only** — if a future "refresh" ever re-analyzes ACTIVE sites it would flatten
+every hand-built config in the fleet at once.
+
+What breaks instead is the **site**, not the config: a re-theme, new section wording,
+a value outside a hardcoded list. And the worker's own safety behaviour is what makes
+that invisible:
+
+- 0 items extracted → early return `empty_results` (`worker/jobs/scrape.ts:3261`)
+- items but 0 valid records → early return `structure_changed` (`:3327`)
+
+Both return **before** `prisma.job.deleteMany` (`:3410`), so the last good harvest is
+preserved. Correct for availability, and precisely why a dead config reads as a
+healthy site: ACTIVE, COMPLETED, no failure — serving months-old rows. Already
+observed on natali / biopharmax / msh (`LRN-WRK-15`, and the caveat block at the top
+of `scripts/addsite-fleet-audit.ts`).
+
+Compounding it: **no addsite2 gate ever re-runs after a site goes ACTIVE**
+(`verify-config`, `verify-jobids`, `verify-location-csv`, `addsite-qa` are all
+onboarding-time). `LRN-COV-5` is the same lesson from the coverage angle — l-w.ac.il
+served 9 of its 60 jobs for months.
+
+### Proposed: scrape → audit → alert
+
+1. **Freshness** — compare `Site.lastScrapedAt` against `max(Job.createdAt)`. Scraped
+   this week, newest job from months ago ⇒ the config is dead. One query, no browser,
+   highest value. `addsite-fleet-audit.ts` recommends exactly this in its own header
+   and does not implement it — that is the smallest useful first step.
+2. **Surface `failureCategory`** — `empty_results` / `structure_changed` are the
+   worker already reporting drift. Nothing reads them after the fact; the cron should
+   alert on them rather than only on hard errors.
+3. **Re-run the value gates** — `verify-location-csv` plus a coverage re-check (render
+   with the stored `itemSelector`, compare live count to saved count). Browser cost, so
+   run it over a rotating slice of the fleet rather than all sites every week.
+
+### The gap none of those close: partial drift
+
+If *some* fields break while extraction still succeeds, records persist, `deleteMany`
+runs, and the harvest is silently replaced with **worse** data — no `failureCategory`,
+no freshness gap, no alert. Only a value-level check catches it. Concrete example:
+flying-cargo derives `location` from a hardcoded `CITIES` list in its setupScript, and
+splits requirements on a Hebrew heading regex. A job posted in an unlisted city
+degrades to the coarse region; a new heading wording folds requirements back into the
+description. Both keep fill rates at 1.00. Any site whose setupScript encodes a
+site-specific list or regex has the same exposure.
+
+### Also worth fixing while in here
+
+The "Already shipped" section below states that addsite2 §10 makes `minPublishDays: 90`
+mandatory for every onboard. **That is now stale** — §10 says `minPublishDays` and
+`minPublishDate` are inert and silently ignored at scrape time, replaced by `ageBucket`
+(fresh/d90/d180/d365) computed at write time. This matters here because §6 of this doc
+builds FROZEN's design on top of `minPublishDays` doing the thinning. Re-check that
+interaction before building FROZEN.
+
+---
+
 ## Already shipped (2026-06-15): rolling `minPublishDays`
 
 Independent of FROZEN, the per-job rolling stale-cutoff is live:
