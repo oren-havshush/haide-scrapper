@@ -48,6 +48,13 @@ COPY --from=builder /app/public ./public
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 
+# Company-logo store. Docker copies the image path's ownership into an empty
+# named volume on first mount, so this directory MUST exist and be owned by
+# nextjs (uid 1001) BEFORE the USER switch below. Without it the volume mounts
+# root-owned and every logo upload fails with EACCES.
+RUN mkdir -p /data/logos && chown nextjs:nodejs /data/logos
+ENV COMPANY_LOGO_DIR=/data/logos
+
 USER nextjs
 
 EXPOSE 3000

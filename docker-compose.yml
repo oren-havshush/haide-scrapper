@@ -34,8 +34,16 @@ services:
       DATABASE_URL: postgresql://postgres:${POSTGRES_PASSWORD}@db:5432/scrapnew
       API_TOKEN: ${API_TOKEN}
       NEXT_PUBLIC_API_TOKEN: ${NEXT_PUBLIC_API_TOKEN}
+      COMPANY_LOGO_DIR: /data/logos
     expose:
       - "3000"
+    volumes:
+      # Company logos. Written here by POST /api/sites/:id/company-logo and
+      # served read-only by caddy at /logos/*. A named volume survives
+      # `docker compose build` and deploy.sh's rsync --delete; it is lost only
+      # on `docker compose down -v` or a host migration, which
+      # scripts/rehydrate-logos.ts recovers from via companyLogoSourceUrl.
+      - company_logos:/data/logos
     healthcheck:
       test: ["CMD-SHELL", "node -e \"fetch('http://localhost:3000/api/health').then(r=>{if(!r.ok)throw 1}).catch(()=>process.exit(1))\""]
       interval: 15s
@@ -88,6 +96,7 @@ services:
       - "443:443/udp"
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - company_logos:/srv/company-logos:ro
       - caddy_data:/data
       - caddy_config:/config
     logging:
@@ -116,3 +125,4 @@ volumes:
   caddy_data:
   caddy_config:
   db_backups:
+  company_logos:

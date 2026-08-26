@@ -2,9 +2,28 @@
 # domain (e.g. scrapper.haide-jobs.co.il) to get automatic HTTPS, or
 # leave unset to serve plain HTTP on :80.
 {$SITE_ADDRESS::80} {
-	reverse_proxy web:3000
-
 	encode zstd gzip
+
+	# Company logos, served straight off the shared volume. This matches BEFORE
+	# the reverse_proxy below, so src/proxy.ts auth never applies to /logos/* —
+	# intentional, since the public jobs site reads these anonymously. It does
+	# NOT loosen /api/*, which still goes through the proxy and its bearer check.
+	#
+	# nosniff + a locked-down CSP are belt-and-braces against a crafted "PNG"
+	# a browser might otherwise sniff as HTML. Uploads are additionally
+	# magic-byte validated server-side (src/lib/logo-store.ts) and SVG is
+	# rejected outright.
+	handle_path /logos/* {
+		root * /srv/company-logos
+		file_server
+		header Cache-Control "public, max-age=86400"
+		header X-Content-Type-Options "nosniff"
+		header Content-Security-Policy "default-src 'none'"
+	}
+
+	handle {
+		reverse_proxy web:3000
+	}
 
 	log {
 		output stdout

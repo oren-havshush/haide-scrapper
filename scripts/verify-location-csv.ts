@@ -15,6 +15,7 @@
  *   exit 0 = all values in city.csv · exit 2 = at least one is not
  */
 import { readFileSync } from "fs";
+import { isKnownCity, loadCityList, type CityList } from "./lib/city-csv";
 
 const BASE = process.env.SCRAP_BASE ?? "https://scrapper.haide-jobs.co.il";
 const TOKEN = readFileSync(".claude/scrap-token", "utf8").trim();
@@ -24,41 +25,13 @@ function arg(name: string): string | undefined {
   return i === -1 ? undefined : process.argv[i + 1];
 }
 
-const norm = (s: string) =>
-  s.normalize("NFC").trim().replace(/״/g, '"').replace(/׳/g, "'").replace(/\s+/g, " ");
-
 /**
- * city.csv is a real RFC4180 CSV: it carries a `city` header and quotes any value
- * containing a gershayim — `"ביל""ו"` is the single value `ביל"ו`. A naive
- * split(",") both admits the header as a legal city and mangles the 18 real places
- * whose names contain a quote (נתב"ג, בני עי"ש, ביל"ו …), so parse it properly.
+ * city.csv parsing lives in scripts/lib/city-csv.ts so this gate and the
+ * company-profile capture can never drift onto two different readers. See that
+ * file for why a naive split(",") is wrong (quoted gershayim names, header row).
  */
-function loadCities(): Set<string> {
-  const raw = readFileSync("CSV files/city.csv", "utf8").replace(/^\ufeff/, "");
-  const out = new Set<string>();
-  for (const line of raw.split(/\r?\n/)) {
-    if (!line.trim()) continue;
-    const cells: string[] = [];
-    let cur = "";
-    let inQuotes = false;
-    for (let i = 0; i < line.length; i++) {
-      const ch = line[i];
-      if (inQuotes) {
-        if (ch === '"') {
-          if (line[i + 1] === '"') { cur += '"'; i++; }  // escaped quote
-          else inQuotes = false;
-        } else cur += ch;
-      } else if (ch === '"') inQuotes = true;
-      else if (ch === ",") { cells.push(cur); cur = ""; }
-      else cur += ch;
-    }
-    cells.push(cur);
-    for (const cell of cells) {
-      const c = norm(cell);
-      if (c && c !== "city") out.add(c);   // drop the header row
-    }
-  }
-  return out;
+function loadCities(): CityList {
+  return loadCityList();
 }
 
 async function main() {
@@ -79,7 +52,7 @@ async function main() {
     for (const v of values) {
       if (!v || v === "Unknown") continue;
       seen.add(v);
-      if (!cities.has(norm(v)))
+      if (!isKnownCity(v, cities))
         offenders.push({ id: j.externalJobId ?? j.id, value: v });
     }
   }

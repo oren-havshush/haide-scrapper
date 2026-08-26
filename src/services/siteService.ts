@@ -486,3 +486,148 @@ export async function deleteSite(siteId: string) {
     prisma.site.delete({ where: { id: siteId } }),
   ]);
 }
+
+// ---------------------------------------------------------------------------
+// Company profile
+//
+// Captured ONCE per site at onboarding by scripts/company-profile.ts. These
+// functions touch ONLY the `company*` columns. They must never write `status`,
+// `configLocked`, `fieldMappings`, `pageFlow`, or any `*At` timestamp other
+// than `companyProfileAt`, and they must never call saveSiteConfig() (which
+// sets configLocked and demotes ACTIVE -> REVIEW) or updateSiteStatus().
+//
+// The allowlist assertion below is the mechanical guarantee of that invariant:
+// a future edit cannot slip a non-company field into this write path without
+// tripping it.
+// ---------------------------------------------------------------------------
+
+const COMPANY_PROFILE_FIELDS = [
+  "companyHomepageUrl",
+  "companyAbout",
+  "companyLogoPath",
+  "companyLogoSourceUrl",
+  "companyHqAddress",
+  "companyHqCity",
+  "companyProfileStatus",
+  "companyProfileAt",
+] as const;
+
+/** The `company*` columns, as returned by GET /api/sites/:id/company-profile. */
+export const COMPANY_PROFILE_SELECT = {
+  id: true,
+  siteUrl: true,
+  companyName: true,
+  companyHomepageUrl: true,
+  companyAbout: true,
+  companyLogoPath: true,
+  companyLogoSourceUrl: true,
+  companyHqAddress: true,
+  companyHqCity: true,
+  companyProfileStatus: true,
+  companyProfileAt: true,
+} as const;
+
+export type CompanyProfileInput = {
+  companyHomepageUrl?: string | null;
+  companyAbout?: string | null;
+  companyLogoPath?: string | null;
+  companyLogoSourceUrl?: string | null;
+  companyHqAddress?: string | null;
+  companyHqCity?: string | null;
+  companyProfileStatus?: string | null;
+};
+
+/** Empty/whitespace-only becomes null, mirroring updateSiteCompanyName(). */
+function nullIfBlank(value: string | null | undefined): string | null {
+  const trimmed = value?.trim() ?? null;
+  return trimmed && trimmed.length > 0 ? trimmed : null;
+}
+
+export async function getCompanyProfile(siteId: string) {
+  const site = await prisma.site.findUnique({
+    where: { id: siteId },
+    select: COMPANY_PROFILE_SELECT,
+  });
+  if (!site) {
+    throw new NotFoundError("Site", siteId);
+  }
+  return site;
+}
+
+/**
+ * Write the company profile. Presence-based: a key absent from `input` leaves
+ * that column untouched; a key present as null clears it. That is what lets
+ * "attempted, found nothing" propagate without a partial payload nulling out
+ * data another step already wrote.
+ *
+ * `force` bypasses the once-only guard. Without it, a site whose
+ * companyProfileAt is already set is rejected with ConflictError — this is
+ * where "scraped once, never refreshed" is enforced in code rather than merely
+ * intended, so a re-run cannot clobber a hand-corrected value.
+ */
+export async function saveCompanyProfile(
+  siteId: string,
+  input: CompanyProfileInput,
+  options?: { force?: boolean },
+) {
+  const site = await prisma.site.findUnique({ where: { id: siteId } });
+  if (!site) {
+    throw new NotFoundError("Site", siteId);
+  }
+
+  if (site.companyProfileAt && !options?.force) {
+    throw new ConflictError(
+      `Company profile for site ${siteId} was already captured at ` +
+        `${site.companyProfileAt.toISOString()}. Company data is scraped once ` +
+        `per site; pass ?force=1 to overwrite.`,
+    );
+  }
+
+  const data: Record<string, unknown> = { companyProfileAt: new Date() };
+
+  for (const field of COMPANY_PROFILE_FIELDS) {
+    if (!Object.prototype.hasOwnProperty.call(input, field)) continue;
+    const value = (input as Record<string, unknown>)[field];
+    data[field] = typeof value === "string" || value === null || value === undefined
+      ? nullIfBlank(value as string | null | undefined)
+      : value;
+  }
+
+  const stray = Object.keys(data).filter(
+    (key) => !(COMPANY_PROFILE_FIELDS as readonly string[]).includes(key),
+  );
+  if (stray.length > 0) {
+    throw new Error(
+      `company profile write attempted non-company field(s): ${stray.join(", ")}`,
+    );
+  }
+
+  return prisma.site.update({
+    where: { id: siteId },
+    data,
+    select: COMPANY_PROFILE_SELECT,
+  });
+}
+
+/**
+ * Record the logo file that POST /api/sites/:id/company-logo just wrote.
+ * Separate from saveCompanyProfile() because the logo path is server-derived
+ * and must never be settable by a client payload. Deliberately does NOT set
+ * companyProfileAt: uploading a logo is not by itself a capture attempt, and
+ * stamping it here would trip the once-only guard before the profile lands.
+ */
+export async function saveCompanyLogo(
+  siteId: string,
+  logoPath: string,
+  sourceUrl: string | null,
+) {
+  const site = await prisma.site.findUnique({ where: { id: siteId } });
+  if (!site) {
+    throw new NotFoundError("Site", siteId);
+  }
+  return prisma.site.update({
+    where: { id: siteId },
+    data: { companyLogoPath: logoPath, companyLogoSourceUrl: nullIfBlank(sourceUrl) },
+    select: COMPANY_PROFILE_SELECT,
+  });
+}

@@ -54,6 +54,24 @@ export const updateSiteCompanyNameSchema = z.object({
   companyName: z.string().max(120).nullable(),
 });
 
+// Company profile — written by scripts/company-profile.ts through
+// PUT /api/sites/:id/company-profile. Multi-field by design: unlike
+// PATCH /api/sites/:id (which honors exactly one of status/adminNote/
+// companyName), this is a whole-object write, so there is no silent-drop
+// hazard. Every field is optional with presence-based semantics — a key that
+// is absent leaves the column untouched, a key present as null clears it.
+//
+// companyLogoPath / companyLogoSourceUrl are deliberately NOT accepted here:
+// they are written only by POST /api/sites/:id/company-logo, so no client can
+// point the public site at an arbitrary path.
+export const updateSiteCompanyProfileSchema = z.object({
+  companyHomepageUrl: z.url().max(500).nullable().optional(),
+  companyAbout: z.string().max(4_000).nullable().optional(),
+  companyHqAddress: z.string().max(300).nullable().optional(),
+  companyHqCity: z.string().max(150).nullable().optional(),
+  companyProfileStatus: z.enum(["COMPLETE", "PARTIAL", "FAILED"]).optional(),
+});
+
 export const updateJobLocationSchema = z.object({
   location: z.string().trim().min(1, "Location must not be empty").max(200),
 });

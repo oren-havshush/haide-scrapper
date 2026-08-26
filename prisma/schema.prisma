@@ -86,6 +86,46 @@ model Site {
 
   scrapingPolicyStatus    ScrapingPolicyStatus @default(NOT_CHECKED)
   scrapingPolicyCheckedAt DateTime?
+
+  /// --- Company profile ---------------------------------------------------
+  /// Captured ONCE at onboarding by scripts/company-profile.ts and never
+  /// refreshed. Every field is nullable and additive: the public jobs site
+  /// reads this database directly, so nothing here may become NOT NULL, change
+  /// type, or be renamed. Absence is ALWAYS expressed as NULL, never as "".
+
+  /// Corporate homepage (origin only, no path). Derived from siteUrl by
+  /// stripping the careers subdomain, then header/footer link, then og:url.
+  companyHomepageUrl String?
+
+  /// Plain-text "about the company" copy in the site's own language (usually
+  /// he-IL). TEXT ONLY — never HTML; the reader may render it unescaped.
+  companyAbout String?
+
+  /// Public path of the self-hosted logo, e.g. "/logos/<siteId>.png".
+  /// PATH ONLY, never absolute, so the reader prefixes its own origin.
+  /// NULL means no logo — render nothing, not a placeholder, not a favicon.
+  companyLogoPath String?
+
+  /// Where the logo bytes were downloaded from. Retained ONLY so the file can
+  /// be re-fetched if the `logos` volume is ever lost. Never displayed.
+  companyLogoSourceUrl String?
+
+  /// Full HQ address line as published by the company.
+  companyHqAddress String?
+
+  /// The HQ city, VERBATIM from "CSV files/city.csv". NULL when no city on
+  /// that list matched — never store an off-list value (see the job-location
+  /// gate, which enforces the same discipline for Job.location).
+  companyHqCity String?
+
+  /// Lifecycle marker. TEXT, not an enum, so an unrecognised value can never
+  /// throw in a consumer's Prisma client and so values stay removable.
+  /// NULL (never attempted) | "COMPLETE" | "PARTIAL" | "FAILED".
+  companyProfileStatus String?
+
+  /// When the one-shot capture ran. NULL <=> never attempted. This is the
+  /// field that separates "not attempted" from "attempted, found nothing".
+  companyProfileAt DateTime?
 }
 
 model Job {
