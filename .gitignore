@@ -75,3 +75,18 @@ sites/**/*.pma
 # Windows
 Thumbs.db
 *.log
+
+# npm lockfile — this project installs with pnpm (pnpm-lock.yaml is the tracked
+# one, and the Dockerfile runs `pnpm install --frozen-lockfile`). A
+# package-lock.json only ever appears when someone runs `npm install` by
+# mistake, and committing it would leave two lockfiles disagreeing.
+package-lock.json
+
+# Batch input data under "CSV files/" — per-onboarding link lists and
+# company/URL exports, scratch by nature. city.csv is the exception: it is the
+# canonical city vocabulary the location gate validates against
+# (scripts/lib/city-csv.ts), so it stays tracked. Any future canonical list
+# needs its own negation here, which is deliberate — data files should be
+# opt-in, not swept in.
+CSV files/*.csv
+!CSV files/city.csv
