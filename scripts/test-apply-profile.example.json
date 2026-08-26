@@ -1,0 +1,9 @@
+{
+  "fullName": "Your Full Name",
+  "email": "you@example.com",
+  "phone": "0501234567",
+  "location": "Tel Aviv",
+  "cvPath": ".scratch/cv.pdf",
+  "coverNote": "I am applying for this position. Please find my CV attached.",
+  "extraFields": {}
+}
