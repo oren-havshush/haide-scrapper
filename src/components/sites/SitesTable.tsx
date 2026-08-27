@@ -17,6 +17,9 @@ import { SiteActions } from "@/components/sites/SiteActions";
 import { DeleteSiteDialog } from "@/components/sites/DeleteSiteDialog";
 import { SiteNoteDialog } from "@/components/sites/SiteNoteDialog";
 import { SiteCompanyDialog } from "@/components/sites/SiteCompanyDialog";
+import { SiteCompanyProfileDialog } from "@/components/sites/SiteCompanyProfileDialog";
+import { CompanyLogo } from "@/components/shared/CompanyLogo";
+import { CompanyProfileBadge } from "@/components/shared/CompanyProfileBadge";
 import {
   useUpdateSiteStatus,
   useDeleteSite,
@@ -47,6 +50,16 @@ interface Site {
   latestScrapeRun: LatestScrapeRun | null;
   scrapingPolicyStatus: PolicyStatusValue;
   scrapingPolicyCheckedAt: string | null;
+  // Captured once by scripts/company-profile.ts. Returned by GET /api/sites
+  // already — listSites() selects every scalar — so no extra request.
+  companyHomepageUrl: string | null;
+  companyAbout: string | null;
+  companyLogoPath: string | null;
+  companyLogoSourceUrl: string | null;
+  companyHqAddress: string | null;
+  companyHqCity: string | null;
+  companyProfileStatus: string | null;
+  companyProfileAt: string | null;
 }
 
 type SortableColumn = "createdAt" | "confidenceScore";
@@ -207,6 +220,7 @@ export function SitesTable({
   const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null);
   const [noteTargetId, setNoteTargetId] = useState<string | null>(null);
   const [companyTargetId, setCompanyTargetId] = useState<string | null>(null);
+  const [profileTargetId, setProfileTargetId] = useState<string | null>(null);
   const [scrapingSiteId, setScrapingSiteId] = useState<string | null>(null);
   const updateStatus = useUpdateSiteStatus();
   const updateNote = useUpdateSiteNote();
@@ -374,6 +388,7 @@ export function SitesTable({
         <TableHeader>
           <TableRow>
             <TableHead className="w-[180px]">Company</TableHead>
+            <TableHead className="w-[170px]">Company profile</TableHead>
             <TableHead className="w-auto">URL</TableHead>
             <TableHead className="w-[120px]">Status</TableHead>
             <TableHead
@@ -413,6 +428,34 @@ export function SitesTable({
                     title={site.companyName ?? "Click to add a company name"}
                   >
                     {site.companyName ?? "+ Add"}
+                  </button>
+                </TableCell>
+                <TableCell>
+                  {/*
+                    Whole cell is the trigger, so a row can be reviewed in one
+                    click. Captures are write-once, so this scan is the only
+                    practical way to catch a wrong value across 187 sites.
+                  */}
+                  <button
+                    type="button"
+                    onClick={() => setProfileTargetId(site.id)}
+                    className="flex items-center gap-2 w-full text-left rounded px-1 py-0.5 hover:bg-[#1f1f23] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
+                    title={
+                      site.companyProfileAt
+                        ? "View captured company profile"
+                        : "Not captured yet — click for details"
+                    }
+                  >
+                    <CompanyLogo path={site.companyLogoPath} size={22} />
+                    <span className="flex flex-col min-w-0 gap-0.5">
+                      <span
+                        className="text-[13px] truncate"
+                        style={{ color: site.companyHqCity ? "#e4e4e7" : "#52525b" }}
+                      >
+                        {site.companyHqCity ?? "—"}
+                      </span>
+                      <CompanyProfileBadge status={site.companyProfileStatus as never} />
+                    </span>
                   </button>
                 </TableCell>
                 <TableCell className="font-mono text-[13px]">
@@ -537,6 +580,14 @@ export function SitesTable({
         initialNote={noteTargetSite?.adminNote ?? null}
         onSave={handleSaveNote}
         isSaving={updateNote.isPending}
+      />
+
+      <SiteCompanyProfileDialog
+        open={profileTargetId !== null}
+        onOpenChange={(open) => {
+          if (!open) setProfileTargetId(null);
+        }}
+        site={sites.find((s) => s.id === profileTargetId) ?? null}
       />
 
       <SiteCompanyDialog
