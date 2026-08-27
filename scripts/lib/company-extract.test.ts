@@ -94,6 +94,37 @@ function testHomepageFromLinks() {
     null,
   );
 
+  // Verbatim from natali: its careers page is on an ATS host, so the homepage
+  // falls back to page links — and the "נגיש לי" accessibility widget linked in
+  // the chrome won, dragging that vendor's about copy AND logo in as the
+  // company's own. A vendor host is never the employer.
+  assert.equal(
+    homepageFromLinks(
+      [
+        { href: "http://www.nagish.li", text: "נגישות", inChrome: true },
+        { href: "https://www.userway.org", text: "Accessibility", inChrome: true },
+      ],
+      "https://app.civi.co.il/promos/id=Y5499HHEL5",
+    ),
+    null,
+    "an accessibility-widget vendor must never be taken as the company homepage",
+  );
+
+  // Blocking the widget host alone was NOT enough: natali then picked
+  // localize.co.il, the vendor's parent company, which is an ordinary external
+  // link in the chrome. An external chrome link is not evidence of ownership.
+  assert.equal(
+    homepageFromLinks(
+      [
+        { href: "https://www.localize.co.il/", text: "לוקלייז", inChrome: true },
+        { href: "https://some-partner.example/", text: "שותפים", inChrome: true },
+      ],
+      "https://app.civi.co.il/promos/id=Y5499HHEL5",
+    ),
+    null,
+    "an unrelated external chrome link must not become the company homepage",
+  );
+
   // A careers host that is a subdomain of the link host is the parent company.
   assert.equal(
     homepageFromLinks(
@@ -215,6 +246,18 @@ function testAbout() {
     "שיעור הטעויות במערכות שלנו נמוך מאחוז אחד, והלקוחות מדווחים על שיפור משמעותי.";
   assert.equal(extractAboutText(legitimate), legitimate, "prose mentioning errors must survive");
 
+  // Verbatim from bankhapoalim.co.il: the longest paragraph on a bank homepage
+  // is an OFFER, not a description of the company. It cleared every other
+  // filter and would have become the bank's "about" text on the public site.
+  // Note the boilerplate test needed "תנאי השימוש" with the definite article —
+  // the article-less form alone missed this exact paragraph.
+  const promo =
+    String.raw`עד 20% הנחה באלפי בתי מלון בעולם ועד 20% הנחה על חופשה בארץ ובחול והנחות של מאות ` +
+    String.raw`שקלים בשנה עם במגוון מותגים שווים! ההטבות בהתאם לתקנון שבאפליקציה. הבנק אינו ` +
+    String.raw`אחראי לשירותים באתרים, הכפופים לתנאי השימוש המפורטים בהם.`;
+  assert.equal(extractAboutText(promo), null, "promotional copy is not a company description");
+  assert.equal(extractAboutText([promo, prose].join(NL + NL)), prose);
+
   // Footer legalese, likewise anywhere in the paragraph rather than at its head.
   assert.equal(
     extractAboutText(
@@ -245,6 +288,15 @@ function testAddressAndCity() {
     "רחוב הרצל 12 תל אביב",
   );
   assert.equal(extractAddressLine("8 Hamelacha Street, Rosh Haayin")?.startsWith("8 Hamelacha"), true);
+  // Verbatim from bankhapoalim.co.il. Correct street and city, then a phone
+  // number and an email cut off mid-word — the trailing run in ADDRESS_LINE
+  // swallowed both.
+  assert.equal(
+    extractAddressLine(
+      String.raw`שדרות רוטשילד 50 תל אביב-יפו, מיקוד 6688314, טלפון: 076-8012790 או בדואל: m`,
+    ),
+    "שדרות רוטשילד 50 תל אביב-יפו, מיקוד 6688314",
+  );
   assert.equal(extractAddressLine("no address here at all"), null);
   assert.equal(extractAddressLine(""), null);
 

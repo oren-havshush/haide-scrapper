@@ -212,17 +212,45 @@ export function homepageFromLinks(
     if (url.protocol !== "http:" && url.protocol !== "https:") continue;
 
     const host = url.hostname.toLowerCase();
-    if (host === careersHost || isAtsHost(host) || isSocialHost(host)) continue;
+    // isWidgetHost is as important here as in the logo picker, and was missed:
+    // natali's careers page sits on an ATS host, so the homepage falls back to
+    // page links, and the accessibility widget "נגיש לי" (nagish.li) linked in
+    // the chrome won — which then dragged that vendor's about copy AND logo in
+    // as the company's own. A vendor host is never the employer.
+    if (
+      host === careersHost ||
+      isAtsHost(host) ||
+      isSocialHost(host) ||
+      isWidgetHost(host)
+    ) {
+      continue;
+    }
 
-    let score = 0;
+    // POSITIVE EVIDENCE REQUIRED. Either the link says it points at the
+    // company's own site, or the careers host is a subdomain of it — meaning
+    // the link IS the parent site. Nothing else qualifies.
+    //
+    // "It is an external link sitting in the page chrome" is NOT evidence, and
+    // treating it as such is how natali was captured twice over: its board is
+    // on an ATS host, its only external chrome links belong to its
+    // accessibility vendor, and blocking nagish.li merely promoted that
+    // vendor's parent (localize.co.il) to the win. That board links nothing
+    // belonging to natali at all, so the correct answer is NULL.
+    //
+    // Rejecting a real homepage costs one empty field. Accepting the wrong one
+    // writes another company's identity — name, prose and logo — into this
+    // site's row, permanently.
+    const namedAsHome = HOME_TEXT.test(link.text.trim());
+    const isParentDomain = careersHost.endsWith(`.${host}`);
+    if (!namedAsHome && !isParentDomain) continue;
+
+    let score = isParentDomain ? 5 : 0;
+    if (namedAsHome) score += 4;
+    // Weight only, never sufficient on its own.
     if (link.inChrome) score += 3;
-    if (HOME_TEXT.test(link.text.trim())) score += 4;
     if (url.pathname === "/" || url.pathname === "") score += 2;
-    // A careers host that is a subdomain of the link host means the link IS the
-    // parent company site — the strongest signal available here.
-    if (careersHost.endsWith(`.${host}`)) score += 5;
 
-    if (score > 0) scored.push({ origin: url.origin, score });
+    scored.push({ origin: url.origin, score });
   }
 
   if (scored.length === 0) return null;
@@ -483,7 +511,21 @@ export function pickContactUrl(links: readonly HarvestedLink[], pageUrl: string)
  * reject the paragraph.
  */
 const BOILERPLATE =
-  /cookies?\b|עוגיות|מדיניות הפרטיות|מדיניות פרטיות|privacy policy|terms of (use|service)|תנאי שימוש|כל הזכויות שמורות|all rights reserved|הצהרת נגישות|accessibility statement|חווית גלישה|©|\d{4}\s*©/i;
+  /cookies?|עוגיות|מדיניות ה?פרטיות|privacy policy|terms of (use|service)|תנאי ה?שימוש|כל הזכויות שמורות|all rights reserved|הצהרת נגישות|accessibility statement|חווית גלישה|©|d{4}s*©/i;
+
+/**
+ * Promotional copy and its legal tail. A bank homepage's longest paragraph is an
+ * offer, not a description of the company: bankhapoalim.co.il produced
+ * "עד 20% הנחה באלפי בתי מלון בעולם ... בהתאם לתקנון ... הבנק אינו אחראי",
+ * which cleared every other filter and would have become the bank's "about"
+ * text on the public jobs site.
+ *
+ * Keyed on offer and disclaimer language, neither of which appears in a company
+ * describing itself. Note "תנאי השימוש" above needed the definite article to
+ * match at all — the article-less form alone missed this exact paragraph.
+ */
+const PROMO_COPY =
+  /d+%s*הנחה|הנחה של|מבצע|הטבות|בהתאם לתקנון|כפופ(?:ים|ה)? לתקנון|הכפופים לתנאי|אינו אחראי|בכפוף לתנאי/i;
 
 /**
  * Text that means the page BROKE, not text about a company.
@@ -525,6 +567,7 @@ export function extractAboutText(text: string, maxChars = 1_200): string | null 
     .filter((p) => p.length >= 120)
     .filter((p) => !BOILERPLATE.test(p))
     .filter((p) => !ERROR_PAGE.test(p))
+    .filter((p) => !PROMO_COPY.test(p))
     // A "paragraph" that is really a menu has many short fragments and no
     // sentence punctuation; real prose has terminators.
     .filter((p) => /[.!?׃]/.test(p));
@@ -656,12 +699,35 @@ export function extractLocationLines(text: string, maxLines = 8): string[] {
 }
 
 /** First address-looking line in the text, or null. */
+/**
+ * Contact details that follow an address on the same line and are NOT part of
+ * it. Both address patterns end with a permissive run of trailing characters —
+ * they have to, since what follows a house number varies wildly — and that run
+ * happily swallows whatever comes next.
+ *
+ * bankhapoalim.co.il yielded
+ * "שדרות רוטשילד 50 תל אביב-יפו, מיקוד 6688314, טלפון: 076-8012790 או בדוא״ל: m"
+ * — a correct street and city, then a phone number and an email cut off
+ * mid-word at the character cap.
+ */
+const CONTACT_TAIL =
+  /[,;|]?\s*(?:טלפון|טל['׳]?|פקס|נייד|דוא["״']?ל|דואר אלקטרוני|מייל|tel\.?|phone|fax|mobile|e-?mail|@)/i;
+
 export function extractAddressLine(text: string): string | null {
   if (!text) return null;
   const flat = text.replace(/[ \t]+/g, " ");
   const hit = ADDRESS_LINE.exec(flat) ?? ADDRESS_LINE_EN.exec(flat);
   if (!hit) return null;
-  return hit[1].replace(/\s+/g, " ").trim().slice(0, 300);
+
+  let value = hit[1].replace(/\s+/g, " ").trim();
+
+  const tail = CONTACT_TAIL.exec(value);
+  if (tail && tail.index > 0) value = value.slice(0, tail.index).trim();
+
+  // Trailing separators left behind by the cut.
+  value = value.replace(/[\s,;|.–—-]+$/, "").trim();
+
+  return value.length > 0 ? value.slice(0, 300) : null;
 }
 
 /**
@@ -705,7 +771,12 @@ const SVG_URL = /\.svgz?($|\?|#)/i;
  * discriminator.
  */
 const WIDGET_HOSTS =
-  /(^|\.)(butterfly-button\.web\.app|userway\.org|accessiway\.com|nagich\.co\.il|enable\.co\.il|equalweb\.com|tawk\.to|intercom\.(io|com)|zendesk\.com|hotjar\.com|cookiebot\.com|onetrust\.com|trustpilot\.com|gravatar\.com|googletagmanager\.com|facebook\.com|doubleclick\.net)$/i;
+  /(^|.)(butterfly-button.web.app|userway.org|accessiway.com|nagich.co.il|nagish.li|negishut.com|enable.co.il|equalweb.com|tawk.to|intercom.(io|com)|zendesk.com|hotjar.com|cookiebot.com|onetrust.com|trustpilot.com|gravatar.com|googletagmanager.com|facebook.com|doubleclick.net)$/i;
+
+/** True for a third-party widget/vendor host — never the company itself. */
+export function isWidgetHost(host: string): boolean {
+  return WIDGET_HOSTS.test(host);
+}
 
 /** The registrable-ish domain, for "is this the company's own host" tests. */
 function baseDomain(host: string): string {
