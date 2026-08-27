@@ -158,6 +158,12 @@ interface SiteRow {
   /** Absent from the company-profile sub-resource; only --all supplies it. */
   status?: string;
   companyProfileAt: string | null;
+  /**
+   * Operator-supplied homepage for an ATS-hosted site, set from the dashboard
+   * via PUT /api/sites/:id/company-homepage. Present BEFORE any capture,
+   * because recording it deliberately does not stamp companyProfileAt.
+   */
+  companyHomepageUrl?: string | null;
 }
 
 interface SiteConfigResponse {
@@ -970,7 +976,27 @@ async function captureSite(
   try {
     // --- 1. Homepage ------------------------------------------------------
     let homepage: PageHarvest | null = null;
-    for (const candidate of deriveHomepageCandidates(site.siteUrl)) {
+
+    // An operator-supplied homepage is AUTHORITATIVE and tried first. It exists
+    // precisely for the sites where derivation cannot work — an ATS board whose
+    // URL says nothing about the employer and which links nothing belonging to
+    // them — so second-guessing it with a derived guess would defeat the point
+    // of having asked a human. natali is the worked example: nothing on its
+    // board identifies natali.co.il.
+    const supplied = site.companyHomepageUrl?.trim();
+    if (supplied) {
+      homepage = await harvest(page, supplied, opts.patient);
+      if (homepage) {
+        result.provenance.homepage = `operator-supplied (${supplied})`;
+      } else {
+        (result.warnings ??= []).push(
+          `the supplied homepage ${supplied} could not be loaded`,
+        );
+      }
+    }
+
+    // Only guess when no usable homepage was supplied.
+    for (const candidate of homepage ? [] : deriveHomepageCandidates(site.siteUrl)) {
       homepage = await harvest(page, candidate, opts.patient);
       if (homepage) {
         result.provenance.homepage = `derived from siteUrl (${candidate})`;
@@ -993,12 +1019,53 @@ async function captureSite(
     }
 
     if (!homepage) {
+      // No company site — but the careers page itself may still carry the
+      // employer's LOGO, and on an ATS board it usually does: Civi serves it
+      // from companyfile.php?c=<companyCode>, where the code is the same one in
+      // the site's own URL, so the file belongs to this employer by
+      // construction. natali has no derivable homepage at all and still
+      // publishes a perfectly good 216x98 logo there.
+      //
+      // LOGO ONLY. No about copy and no address are taken from a job board:
+      // its prose is job listings and vendor boilerplate, not a company
+      // describing itself. A logo is a self-contained artefact that the byte
+      // gate validates independently, which is what makes it safe to accept
+      // here when nothing else is.
+      const boardLogo = careers
+        ? await captureLogo(
+            page,
+            site.id,
+            collectLogoCandidates(careers, null),
+            careers.url,
+            opts.dryRun,
+          )
+        : null;
+
+      if (boardLogo?.logoPath) {
+        result.fields.companyLogoPath = boardLogo.logoPath;
+        result.logoAttempts = boardLogo.attempts;
+        result.provenance.logo = `careers board (${boardLogo.sourceUrl || careers?.url})`;
+        result.status = classifyProfileStatus(result.fields);
+        (result.warnings ??= []).push(
+          "no company homepage found — only the logo was captured, from the careers board",
+        );
+
+        if (opts.dryRun) {
+          result.outcome = "DRY_RUN";
+          return result;
+        }
+        await writeProfile(site.id, result, opts.force);
+        result.outcome = "WRITTEN";
+        return result;
+      }
+
       // Deliberately NOT written. Writing FAILED here would stamp
       // companyProfileAt and permanently lock the site out of a later capture —
       // for what is usually a transient reachability problem.
       result.status = "FAILED";
       result.outcome = opts.dryRun ? "DRY_RUN" : "SKIPPED_THIN";
       result.error = "no reachable company homepage";
+      result.logoAttempts = boardLogo?.attempts ?? [];
       if (!opts.dryRun && opts.writeEmpty) {
         await writeProfile(site.id, result, opts.force);
         result.outcome = "WRITTEN";

@@ -1,0 +1,51 @@
+/**
+ * src/lib/ats-hosts.ts
+ *
+ * Hosts that belong to a careers-board vendor rather than to an employer.
+ *
+ * Lives in src/lib so there is exactly ONE list: the dashboard uses it to warn
+ * that a site needs a homepage supplied by hand, and
+ * scripts/lib/company-extract.ts uses it to refuse to derive one. Two copies
+ * would drift, and the failure mode of drift here is silent — a site would stop
+ * being flagged in the UI while the scraper still could not resolve it.
+ *
+ * Why it matters at all: a company hosted on one of these has no relationship
+ * between its careers URL and its own domain, so deriving a homepage from the
+ * hostname would point every employer on that vendor at the vendor itself.
+ *
+ * Kept in sync with fingerprintByHost() in scripts/addsite-batch.ts.
+ */
+
+const ATS_HOSTS: readonly RegExp[] = [
+  /(^|\.)myworkdayjobs\.com$/i,
+  /(^|\.)greenhouse\.io$/i,
+  /(^|\.)lever\.co$/i,
+  /(^|\.)comeet\.(com|co)$/i,
+  /(^|\.)icims\.com$/i,
+  /(^|\.)smartrecruiters\.com$/i,
+  /(^|\.)ashbyhq\.com$/i,
+  /(^|\.)civi\.co\.il$/i,
+  /(^|\.)niloosoft\.co\.il$/i,
+  /(^|\.)drushim\.co\.il$/i,
+  /(^|\.)alljobs\.co\.il$/i,
+  /(^|\.)jobmaster\.co\.il$/i,
+];
+
+export function isAtsHost(host: string): boolean {
+  return ATS_HOSTS.some((re) => re.test(host));
+}
+
+/**
+ * True when this site's careers URL cannot yield the employer's own homepage,
+ * so someone has to supply it. Safe to call with anything: an unparseable URL
+ * counts as needing help rather than throwing.
+ */
+export function needsManualHomepage(siteUrl: string): boolean {
+  try {
+    const { hostname, protocol } = new URL(siteUrl);
+    if (protocol !== "http:" && protocol !== "https:") return true;
+    return isAtsHost(hostname);
+  } catch {
+    return true;
+  }
+}

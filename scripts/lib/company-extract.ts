@@ -16,6 +16,7 @@
  * writes. A candidate is a guess until a gate accepts it.
  */
 
+import { isAtsHost } from "../../src/lib/ats-hosts";
 import {
   getPolicyDocumentType,
   isPolicyLinkText,
@@ -101,29 +102,11 @@ export function emptyHarvest(url: string): PageHarvest {
 // ---------------------------------------------------------------------------
 
 /**
- * Careers-board hosts. A site whose careers URL lives on one of these tells us
- * NOTHING about the company's own domain — deriving a homepage from
- * "comeet.com" or "myworkdayjobs.com" would point every company hosted there at
- * the vendor. Kept in sync with fingerprintByHost() in scripts/addsite-batch.ts.
+ * Careers-board hosts now live in src/lib/ats-hosts.ts so the dashboard and this
+ * script cannot drift — the UI warns that a site needs a homepage supplied by
+ * hand using the very same list this uses to refuse to derive one.
  */
-const ATS_HOSTS = [
-  /(^|\.)myworkdayjobs\.com$/i,
-  /(^|\.)greenhouse\.io$/i,
-  /(^|\.)lever\.co$/i,
-  /(^|\.)comeet\.(com|co)$/i,
-  /(^|\.)icims\.com$/i,
-  /(^|\.)smartrecruiters\.com$/i,
-  /(^|\.)ashbyhq\.com$/i,
-  /(^|\.)civi\.co\.il$/i,
-  /(^|\.)niloosoft\.co\.il$/i,
-  /(^|\.)drushim\.co\.il$/i,
-  /(^|\.)alljobs\.co\.il$/i,
-  /(^|\.)jobmaster\.co\.il$/i,
-];
-
-export function isAtsHost(host: string): boolean {
-  return ATS_HOSTS.some((re) => re.test(host));
-}
+export { isAtsHost } from "../../src/lib/ats-hosts";
 
 const SOCIAL_HOSTS =
   /(^|\.)(facebook|linkedin|twitter|instagram|youtube|tiktok|telegram|waze|pinterest)\.[a-z.]+$/i;

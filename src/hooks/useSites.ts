@@ -112,6 +112,34 @@ export function useUpdateSiteCompanyName() {
   });
 }
 
+/**
+ * Record an operator-supplied company homepage for an ATS-hosted site.
+ *
+ * A HINT, not a capture: the endpoint deliberately leaves companyProfileAt
+ * alone, so the site stays in the --all queue and company-profile.ts will start
+ * from this URL instead of guessing.
+ */
+export function useUpdateSiteCompanyHomepage() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({
+      siteId,
+      companyHomepageUrl,
+    }: {
+      siteId: string;
+      companyHomepageUrl: string | null;
+    }) =>
+      apiFetch(`/api/sites/${siteId}/company-homepage`, {
+        method: "PUT",
+        body: JSON.stringify({ companyHomepageUrl }),
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["sites"] });
+    },
+  });
+}
+
 export function useDeleteSite() {
   const queryClient = useQueryClient();
 

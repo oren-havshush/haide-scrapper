@@ -631,3 +631,32 @@ export async function saveCompanyLogo(
     select: COMPANY_PROFILE_SELECT,
   });
 }
+
+/**
+ * Record an operator-supplied company homepage, WITHOUT marking the site as
+ * captured.
+ *
+ * Some sites host their jobs on a careers-board vendor (app.civi.co.il,
+ * comeet.com, myworkdayjobs.com…), where the careers URL has no relationship to
+ * the employer's own domain and the board links nothing belonging to them.
+ * natali is the worked example: nothing on its board identifies natali.co.il,
+ * and guessing from the page produced an accessibility vendor's identity
+ * instead. For those, a human supplies the URL and the capture starts there.
+ *
+ * The critical difference from saveCompanyProfile(): this does NOT set
+ * companyProfileAt and is NOT subject to the once-only guard. Supplying a hint
+ * is not a capture — stamping the timestamp here would immediately lock the
+ * site out of the very capture the hint exists to enable, and drop it from the
+ * `--all` queue, which selects on companyProfileAt IS NULL.
+ */
+export async function saveCompanyHomepage(siteId: string, homepageUrl: string | null) {
+  const site = await prisma.site.findUnique({ where: { id: siteId } });
+  if (!site) {
+    throw new NotFoundError("Site", siteId);
+  }
+  return prisma.site.update({
+    where: { id: siteId },
+    data: { companyHomepageUrl: homepageUrl?.trim() || null },
+    select: COMPANY_PROFILE_SELECT,
+  });
+}

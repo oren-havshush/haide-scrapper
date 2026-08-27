@@ -18,6 +18,8 @@ import { DeleteSiteDialog } from "@/components/sites/DeleteSiteDialog";
 import { SiteNoteDialog } from "@/components/sites/SiteNoteDialog";
 import { SiteCompanyDialog } from "@/components/sites/SiteCompanyDialog";
 import { SiteCompanyProfileDialog } from "@/components/sites/SiteCompanyProfileDialog";
+import { SiteHomepageDialog } from "@/components/sites/SiteHomepageDialog";
+import { needsManualHomepage } from "@/lib/ats-hosts";
 import { CompanyLogo } from "@/components/shared/CompanyLogo";
 import { CompanyProfileBadge } from "@/components/shared/CompanyProfileBadge";
 import {
@@ -25,6 +27,7 @@ import {
   useDeleteSite,
   useUpdateSiteNote,
   useUpdateSiteCompanyName,
+  useUpdateSiteCompanyHomepage,
   useTriggerPolicyReview,
 } from "@/hooks/useSites";
 import { useTriggerScrape, useClearJobs } from "@/hooks/useScrapeRuns";
@@ -221,10 +224,12 @@ export function SitesTable({
   const [noteTargetId, setNoteTargetId] = useState<string | null>(null);
   const [companyTargetId, setCompanyTargetId] = useState<string | null>(null);
   const [profileTargetId, setProfileTargetId] = useState<string | null>(null);
+  const [homepageTargetId, setHomepageTargetId] = useState<string | null>(null);
   const [scrapingSiteId, setScrapingSiteId] = useState<string | null>(null);
   const updateStatus = useUpdateSiteStatus();
   const updateNote = useUpdateSiteNote();
   const updateCompany = useUpdateSiteCompanyName();
+  const updateHomepage = useUpdateSiteCompanyHomepage();
   const deleteSiteMutation = useDeleteSite();
   const triggerScrape = useTriggerScrape();
   const clearJobs = useClearJobs();
@@ -457,6 +462,26 @@ export function SitesTable({
                       <CompanyProfileBadge status={site.companyProfileStatus as never} />
                     </span>
                   </button>
+
+                  {/*
+                    Jobs on a careers board: the employer's own site cannot be
+                    derived from the careers URL, and the board often links
+                    nothing belonging to them, so a human has to supply it.
+                    Shown until one is set — an uncaptured ATS site is otherwise
+                    indistinguishable from one simply not reached yet.
+                  */}
+                  {needsManualHomepage(site.siteUrl) && !site.companyHomepageUrl && (
+                    <button
+                      type="button"
+                      onClick={() => setHomepageTargetId(site.id)}
+                      className="mt-1 inline-flex items-center gap-1 rounded px-1 py-0.5 text-[11px] hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
+                      style={{ color: "#f59e0b" }}
+                      title="Jobs are on a careers board — set the company homepage so the capture knows where to look"
+                    >
+                      <TriangleAlert className="size-3" />
+                      Set homepage
+                    </button>
+                  )}
                 </TableCell>
                 <TableCell className="font-mono text-[13px]">
                   <a
@@ -580,6 +605,31 @@ export function SitesTable({
         initialNote={noteTargetSite?.adminNote ?? null}
         onSave={handleSaveNote}
         isSaving={updateNote.isPending}
+      />
+
+      <SiteHomepageDialog
+        open={homepageTargetId !== null}
+        onOpenChange={(open) => {
+          if (!open) setHomepageTargetId(null);
+        }}
+        siteUrl={sites.find((s) => s.id === homepageTargetId)?.siteUrl ?? ""}
+        companyName={sites.find((s) => s.id === homepageTargetId)?.companyName ?? null}
+        initialUrl={sites.find((s) => s.id === homepageTargetId)?.companyHomepageUrl ?? null}
+        isSaving={updateHomepage.isPending}
+        onSave={(url) => {
+          const siteId = homepageTargetId;
+          if (!siteId) return;
+          updateHomepage.mutate(
+            { siteId, companyHomepageUrl: url },
+            {
+              onSuccess: () => {
+                toast.success(url ? "Homepage saved — run company-profile to capture" : "Homepage cleared");
+                setHomepageTargetId(null);
+              },
+              onError: (err: Error) => toast.error(err.message),
+            },
+          );
+        }}
       />
 
       <SiteCompanyProfileDialog

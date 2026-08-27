@@ -72,6 +72,13 @@ export const updateSiteCompanyProfileSchema = z.object({
   companyProfileStatus: z.enum(["COMPLETE", "PARTIAL", "FAILED"]).optional(),
 });
 
+// Operator-supplied company homepage for an ATS-hosted site. Separate from
+// updateSiteCompanyProfileSchema because it is a HINT, not a capture — see
+// saveCompanyHomepage() for why it must not stamp companyProfileAt.
+export const updateSiteCompanyHomepageSchema = z.object({
+  companyHomepageUrl: z.url().max(500).nullable(),
+});
+
 export const updateJobLocationSchema = z.object({
   location: z.string().trim().min(1, "Location must not be empty").max(200),
 });
