@@ -22,7 +22,6 @@ import {
   extractAboutText,
   extractAddressLine,
   extractLabelledAddress,
-  extractLocationLines,
   pickPolicyUrl,
   homepageFromLinks,
   isAtsHost,
@@ -370,42 +369,6 @@ function testAddressAndCity() {
     null,
   );
 
-  // Location lines: a city is the field that matters, so it must be findable
-  // without a street and number — but ONLY from lines that state a location.
-  const located = extractLocationLines(
-    ["בית", "מוצרים", "המשרדים שלנו ממוקמים בחיפה ובאזור הצפון.", "צור קשר"].join(NL),
-  );
-  assert.ok(located.some((l) => l.includes("חיפה")), "an HQ sentence must be offered");
-
-  // The bankhapoalim trap: "בניה" is a real city.csv entry AND the ordinary
-  // word for construction. As a bare menu item it carries no location marker,
-  // so it must never even be offered to the gate.
-  assert.deepEqual(
-    extractLocationLines(["בניה ונדל\"ן", "משכנתאות", "פיקדונות"].join(NL)),
-    [],
-    "a menu item must not be treated as a location line",
-  );
-
-  // Verbatim from kley-zemer.co.il. Seven valid city.csv cities in one
-  // sentence, and NONE of them may be stored: they are branches, the column is
-  // companyHqCity, and taking one would mean recording whichever was listed
-  // first. Standing product rule, confirmed 2026-08-26 after a manual check of
-  // that site found it publishes no HQ address at all.
-  const branchList =
-    "כלי זמר, מונה כיום 21 סניפים, 8 בבעלות מלאה (תל אביב, רמת גן, חיפה, " +
-    "ירושלים, ראשון לציון, באר שבע, פתח תקוה ו-KZPRO), ו-13 זכיינים.";
-  assert.deepEqual(
-    extractLocationLines(branchList),
-    [],
-    "a branch list must never be offered as an HQ location",
-  );
-
-  // A head-office sentence outranks a generic labelled line.
-  const ordered = extractLocationLines(
-    ["כתובת: רחוב כלשהו 5, אילת", "המשרד הראשי ממוקם בתל אביב"].join(NL),
-  );
-  assert.ok(ordered[0].includes("הראשי"), "head-office lines come first");
-
   const cities = loadCityList();
 
   // The header row must never be a legal city.
@@ -422,6 +385,12 @@ function testAddressAndCity() {
     // slack against the English table is what separates a city from a NULL.
     ["4 Hasadnaot St, Herzlia 46728 Israel", "הרצליה"],
     ["12 Hamelacha Street, Raanana", "רעננה"],
+    // The city is LAST in an Israeli address; earlier place names are streets.
+    // All four verbatim from the 20-site batch, all four previously wrong.
+    ["רחוב יגאל אלון 53 תל אביב מיקוד 6706206", "תל אביב-יפו"],
+    ["רחוב השפלה 3 תל אביב", "תל אביב-יפו"],
+    ["רח' אבא הלל 14, בית עוז ר״ג 52506", "רמת גן"],
+    ["רחוב היוזמה 41 אזה״ת הצפוני אשדוד", "אשדוד"],
     // Off-list and abroad must be NULL, never a near-miss.
     ["Somewhere, Berlin, Germany", null],
     ["1 Main Street, Boston", null],

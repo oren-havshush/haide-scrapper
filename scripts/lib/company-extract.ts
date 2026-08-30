@@ -618,6 +618,15 @@ export function extractLabelledAddress(text: string, maxCandidates = 5): string[
     // Everything after the label, to the end of the sentence.
     let value = line.slice(hit.index + hit[0].length).trim();
     value = value.split(/(?<=[^\d])\.\s|[|]/)[0].trim();
+
+    // The same contact tail extractAddressLine() cuts, for the same reason. A
+    // labelled address runs to the end of the line and so collects whatever
+    // follows it: sinai-store publishes
+    // "כתובת: … גולומב 32 תל אביב, ישראל, דוא״ל: ram@…", and without this the
+    // stored address carried an email address.
+    const tail = CONTACT_TAIL.exec(value);
+    if (tail && tail.index > 0) value = value.slice(0, tail.index).trim();
+
     value = value.replace(/[.,;\s]+$/, "").trim();
 
     if (value.length < 4 || value.length > 300) continue;
@@ -628,57 +637,6 @@ export function extractLabelledAddress(text: string, maxCandidates = 5): string[
     if (out.length >= maxCandidates) break;
   }
   return out;
-}
-
-/**
- * Lines that state WHERE the company is, for when no street address exists.
- *
- * A city on its own is the useful field — plenty of companies publish
- * "המשרדים ממוקמים בחיפה" and never a street and number. But a bare scan of
- * page text for city names is exactly what produced "בניה" for
- * bankhapoalim.co.il: a real moshav in city.csv that is also the ordinary
- * Hebrew word for construction, lifted out of a banking menu item.
- *
- * The fix is context, not cleverness: only lines that SAY they are about a
- * location are considered, and the city.csv gate still decides. A menu item
- * reading "בניה ונדל״ן" carries no such marker and is never examined.
- *
- * "סניף"/"branch" is deliberately absent, and that is a STANDING PRODUCT RULE
- * (confirmed 2026-08-26): a branch city is not acceptable in companyHqCity.
- *
- * The temptation is real, so it is worth spelling out. kley-zemer.co.il names
- * seven valid city.csv cities in one sentence — "מונה כיום 21 סניפים, 8 בבעלות
- * מלאה (תל אביב, רמת גן, חיפה, ירושלים, ראשון לציון, באר שבע, פתח תקוה)" —
- * and accepting them would lift city coverage across every retail chain at
- * once. It would also mean storing "whichever branch happens to be listed
- * first" in a column named HQ. That site was checked by hand and publishes no
- * HQ address at all, so NULL is the correct answer there, not a coverage gap to
- * close. Do not add branch handling here.
- */
-const HQ_CONTEXT =
-  /משרד(?:נו|ינו|ים)?\s+(?:ה)?(?:ראשי|רשום)|הנהלה\s+ראשית|המטה|משרדינו|המשרדים|ממוקמ(?:ים|ת|נו)|שוכנ(?:ת|ים)|יושבת|מרכז(?:נו)?\s+ב|headquarter|head office|main office|based in|located in|our offices?\s+(?:are|in)/i;
-
-const LOCATION_LABEL = /(?:^|\s)(?:כתובת|מיקום|מען|address|location)\s*[:：]/i;
-
-export function extractLocationLines(text: string, maxLines = 8): string[] {
-  if (!text) return [];
-
-  const strong: string[] = [];
-  const labelled: string[] = [];
-
-  for (const rawLine of text.split(/\n+/)) {
-    const line = rawLine.replace(/\s+/g, " ").trim();
-    if (line.length < 4 || line.length > 400) continue;
-
-    if (HQ_CONTEXT.test(line)) strong.push(line);
-    else if (LOCATION_LABEL.test(line)) labelled.push(line);
-
-    if (strong.length + labelled.length >= maxLines * 2) break;
-  }
-
-  // An explicit "our head office is in X" beats a generic "Address:" line,
-  // which on a multi-site company is as likely to be a branch.
-  return [...strong, ...labelled].slice(0, maxLines);
 }
 
 /** First address-looking line in the text, or null. */

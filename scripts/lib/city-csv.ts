@@ -106,19 +106,19 @@ export function canonicalCity(value: string, cities: CityList): string | null {
 }
 
 /**
- * STREET nouns are stripped; BUILDING nouns drop the whole segment.
+ * Address nouns, stripped from the head of a segment.
  *
- * Both rules exist because city.csv genuinely contains places whose names are
+ * They exist because city.csv genuinely contains places whose names are
  * ordinary address words — "רחוב" is a real moshav in the Beit She'an valley
  * and "אלון" a real settlement — so raw matching invents a city out of
- * "רחוב הרצל 12" and out of "מגדל אלון" every single time.
+ * "רחוב הרצל 12" every single time.
  *
- * The asymmetry is deliberate. A street noun is followed by a STREET NAME, and
- * the city may still follow it in the same segment, so only the noun goes. A
- * building noun is followed by a BUILDING NAME and never by the city, so the
- * segment carries no city and keeping any part of it can only produce a false
- * positive. Verified against the live CSV; re-check those two entries before
- * shortening either list.
+ * Building nouns were once handled by DROPPING the whole segment, on the
+ * reasoning that a building name is never a city. That was wrong in the other
+ * direction: "בית עוז ר״ג" is a building name followed by Ramat Gan, and
+ * discarding it left that address with no city at all. Both kinds are now
+ * stripped, and the last-place-wins rule in matchCityInAddress() is what keeps
+ * the building NAME from being read as the city.
  */
 const STREET_NOUN = /^(רחוב|רח['׳]?|שדרות|שד['׳]?|דרך|שביל|סמטת|סמטה|כיכר|ככר)\s+/;
 const BUILDING_NOUN = /^(מגדלי?|בניין|בנין|בית|קומה|קומת|אזור התעשייה|אזה"ת)\s+/;
@@ -131,8 +131,14 @@ function cleanAddressSegment(segment: string): string | null {
   s = s.replace(/^\s*ת\.?\s*ד\.?\s*/, " "); // PO box marker
   s = s.replace(/\s+/g, " ").trim();
 
-  if (BUILDING_NOUN.test(s)) return null; // never holds the city — see above
+  // Both noun kinds are STRIPPED, not dropped. Dropping a building segment
+  // outright looked safer and silently lost real cities: "בית עוז ר\"ג" is a
+  // building name followed by Ramat Gan, and discarding it left that address
+  // with no city at all. Stripping the noun keeps whatever follows, and the
+  // last-place-wins rule below is what stops the building NAME from being read
+  // as the city.
   s = s.replace(STREET_NOUN, "").trim();
+  s = s.replace(BUILDING_NOUN, "").trim();
   s = s.replace(/[\s,.-]*\d+[\s,.-]*$/, "").trim(); // trailing house number
   return s;
 }
@@ -209,6 +215,18 @@ function cityFromLatinNearMatch(segment: string): string | null {
   return null;
 }
 
+/**
+ * Regions and nationwide markers are legal city.csv entries — the location gate
+ * accepts them for a JOB, which can genuinely be "אזור מרכז". A company HQ is a
+ * place, not a region, so they are refused for companyHqCity.
+ *
+ * Without this, a street called "רחוב השפלה" resolved through the alias table to
+ * "אזור שפלה" and became the HQ region of a Tel Aviv company.
+ */
+function isRegion(city: string): boolean {
+  return /^אזורs/.test(city) || city === "פריסה ארצית";
+}
+
 export function matchCityInAddress(address: string, cities: CityList): string | null {
   if (!address || !address.trim()) return null;
 
@@ -223,14 +241,21 @@ export function matchCityInAddress(address: string, cities: CityList): string | 
     if (flattened !== segments[i]) variants.push(flattened);
 
     for (const variant of variants) {
-      for (const candidate of normalizeLocations(variant)) {
-        const canonical = canonicalCity(candidate, cities);
-        if (canonical) return canonical;
-      }
+      // LAST match wins, not the first. normalizeLocations() returns places in
+      // order of appearance, and an Israeli address ends with the city — so the
+      // EARLIER hits are street names that happen to contain a place name.
+      // "רחוב יגאל אלון 53 תל אביב" yields ["רחוב", "אלון", "תל אביב-יפו"] and
+      // taking the first stored Alon, a real moshav, as the HQ city of a
+      // Tel Aviv company. "רחוב השפלה 3 תל אביב" failed the same way.
+      const gated = normalizeLocations(variant)
+        .map((candidate) => canonicalCity(candidate, cities))
+        .filter((c): c is string => c !== null && !isRegion(c));
+      if (gated.length > 0) return gated[gated.length - 1];
+
       const nearMatch = cityFromLatinNearMatch(variant);
       if (nearMatch) {
         const canonical = canonicalCity(nearMatch, cities);
-        if (canonical) return canonical;
+        if (canonical && !isRegion(canonical)) return canonical;
       }
     }
   }

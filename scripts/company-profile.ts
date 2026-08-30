@@ -63,7 +63,6 @@ import {
   extractAboutText,
   extractAddressLine,
   extractLabelledAddress,
-  extractLocationLines,
   homepageFromLinks,
   parseJsonLdOrganization,
   pickAboutUrl,
@@ -1181,21 +1180,26 @@ async function captureSite(
     // No address means NULL. A city with nothing to anchor it is a guess, and a
     // wrong city is worse than a missing one: it fragments the dashboard's city
     // filter and nothing downstream repairs it (LRN-LOC-4).
-    // The city is the field that actually matters downstream — a street and
-    // number are a bonus — so when no address was found the location-context
-    // lines are tried too. Those still go through the same city.csv gate, and
-    // extractLocationLines() only offers lines that state a location, which is
-    // what keeps this from repeating the "בניה" false positive.
+    // The city comes ONLY from a real address — JSON-LD's addressLocality, or a
+    // matched address line. Scanning loose "our offices are in X" prose was
+    // tried and REMOVED (2026-08-30): across 25 live sites it produced zero
+    // correct cities and two wrong ones.
+    //
+    // It read "כנות", a real moshav, out of the middle of the word "הסוכנות" —
+    // the worker's place scanner tolerates a leading ו so that "וחיפה" resolves,
+    // and הסוכנות happens to put one immediately before the match. And it read
+    // the region "אזור מרכז" off an about page belonging to a company whose own
+    // address says Ramat Gan.
+    //
+    // A city with no address behind it is a guess, and a wrong city is worse
+    // than a missing one: it fragments the dashboard's city filter and nothing
+    // downstream repairs it (LRN-LOC-4).
     const cityAttempts: [string, string | null][] = [
       [
         "JSON-LD addressLocality",
         org?.addressLocality ? canonicalCity(org.addressLocality, cities) : null,
       ],
       ["address line", address ? matchCityInAddress(address, cities) : null],
-      ["contact page location", contactPage ? cityFromLocationLines(contactPage, cities) : null],
-      ["about page location", aboutPage ? cityFromLocationLines(aboutPage, cities) : null],
-      ["homepage location", cityFromLocationLines(homepage, cities)],
-      ["policy page location", policyPage ? cityFromLocationLines(policyPage, cities) : null],
     ];
     const cityHit = cityAttempts.find(([, value]) => value !== null);
     result.fields.companyHqCity = cityHit?.[1] ?? null;
@@ -1322,23 +1326,6 @@ function addressFrom(text: string, cities: CityList): string | null {
 
   for (const candidate of extractLabelledAddress(text)) {
     if (matchCityInAddress(candidate, cities)) return candidate;
-  }
-  return null;
-}
-
-/**
- * First city.csv entry named on a location-stating line of this page.
- *
- * Body text before footer: an "our offices are in X" sentence sits in the page
- * body, while a footer more often carries a branch list or a mailing address
- * for a different entity.
- */
-function cityFromLocationLines(harvested: PageHarvest, cities: CityList): string | null {
-  for (const text of [harvested.bodyText, harvested.footerText]) {
-    for (const line of extractLocationLines(text)) {
-      const city = matchCityInAddress(line, cities);
-      if (city) return city;
-    }
   }
   return null;
 }
