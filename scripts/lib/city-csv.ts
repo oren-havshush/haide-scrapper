@@ -224,7 +224,7 @@ function cityFromLatinNearMatch(segment: string): string | null {
  * "אזור שפלה" and became the HQ region of a Tel Aviv company.
  */
 function isRegion(city: string): boolean {
-  return /^אזורs/.test(city) || city === "פריסה ארצית";
+  return /^אזור\s/.test(city) || city === "פריסה ארצית";
 }
 
 export function matchCityInAddress(address: string, cities: CityList): string | null {

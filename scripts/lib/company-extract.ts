@@ -351,11 +351,24 @@ const ABOUT_TEXT =
 /** Loose keyword test for link text that is close but not an exact label. */
 const ABOUT_LOOSE = /about|אודות|עלינו|מי אנחנו/i;
 
+/**
+ * "Contact" here means any page that exists to tell a visitor how to reach the
+ * company, which includes the DIRECTIONS page. Israeli sites routinely split
+ * the two: "צור קשר" carries a form and a phone number, while the street
+ * address sits on a separate "כתובת ותחבורה" / "דרכי הגעה" page. That split
+ * cost us מוזיאון ישראל, whose address lives at /he/content/כתובת-ותחבורה and
+ * was found only because it was named by hand.
+ *
+ * A directions page is the better of the two sources, not a fallback: it exists
+ * to say where the place IS, so it names the street. A contact form often names
+ * nothing at all — which is exactly how מסוף came back with a phone number and
+ * no address.
+ */
 const CONTACT_HREF =
-  /(contact|contact-us|contactus|reach-us|our-offices)(\/|$|\?|#)|צור-קשר|יצירת-קשר|צרו-קשר/i;
+  /(contact|contact-us|contactus|reach-us|our-offices|directions|find-us|how-to-get-here)(\/|$|\?|#)|צור-קשר|יצירת-קשר|צרו-קשר|כתובת|דרכי-הגעה|איך-מגיעים/i;
 const CONTACT_TEXT =
-  /^(contact|contact us|get in touch|our offices|צור קשר|צרו קשר|יצירת קשר|דברו איתנו)$/i;
-const CONTACT_LOOSE = /contact|צור קשר|צרו קשר|יצירת קשר/i;
+  /^(contact|contact us|get in touch|our offices|directions|find us|how to get here|צור קשר|צרו קשר|יצירת קשר|דברו איתנו|כתובת|כתובת ותחבורה|כתובת והגעה|דרכי הגעה|איך מגיעים)$/i;
+const CONTACT_LOOSE = /contact|צור קשר|צרו קשר|יצירת קשר|כתובת|דרכי הגעה/i;
 
 /**
  * Highest-scoring same-host link matching a label/path keyword pair.
@@ -494,7 +507,7 @@ export function pickContactUrl(links: readonly HarvestedLink[], pageUrl: string)
  * reject the paragraph.
  */
 const BOILERPLATE =
-  /cookies?|עוגיות|מדיניות ה?פרטיות|privacy policy|terms of (use|service)|תנאי ה?שימוש|כל הזכויות שמורות|all rights reserved|הצהרת נגישות|accessibility statement|חווית גלישה|©|d{4}s*©/i;
+  /cookies?\b|עוגיות|מדיניות ה?פרטיות|privacy policy|terms of (use|service)|תנאי ה?שימוש|כל הזכויות שמורות|all rights reserved|הצהרת נגישות|accessibility statement|חווית גלישה|©|\d{4}\s*©/i;
 
 /**
  * Promotional copy and its legal tail. A bank homepage's longest paragraph is an
@@ -508,7 +521,7 @@ const BOILERPLATE =
  * match at all — the article-less form alone missed this exact paragraph.
  */
 const PROMO_COPY =
-  /d+%s*הנחה|הנחה של|מבצע|הטבות|בהתאם לתקנון|כפופ(?:ים|ה)? לתקנון|הכפופים לתנאי|אינו אחראי|בכפוף לתנאי/i;
+  /\d+%\s*הנחה|הנחה של|מבצע|הטבות|בהתאם לתקנון|כפופ(?:ים|ה)? לתקנון|הכפופים לתנאי|אינו אחראי|בכפוף לתנאי/i;
 
 /**
  * Text that means the page BROKE, not text about a company.
@@ -574,8 +587,11 @@ export function extractAboutText(text: string, maxChars = 1_200): string | null 
  */
 const ADDRESS_LINE =
   /((?:רחוב|רח['׳]|שדרות|שד['׳]|דרך|שביל|סמטת|כיכר)\s+[^\n,|]{2,40}\s+\d{1,4}[^\n]{0,60})/;
+// \b after the suffix is load-bearing: without it "St" matched the first two
+// letters of "Statista", and Personetics stored the award caption
+// "2025 by CNBC and Statista" as its head-office address.
 const ADDRESS_LINE_EN =
-  /(\d{1,4}\s+[A-Za-z'’.\- ]{3,40}\s+(?:St\.?|Street|Rd\.?|Road|Ave\.?|Avenue|Blvd\.?)[^\n]{0,60})/;
+  /(\d{1,4}\s+[A-Za-z'’.\- ]{3,40}\s+(?:St|Street|Rd|Road|Ave|Avenue|Blvd)\b\.?[^\n]{0,60})/;
 
 /**
  * An address written after an explicit label — "כתובת: …", "Address: …".
@@ -652,7 +668,122 @@ export function extractLabelledAddress(text: string, maxCandidates = 5): string[
  * mid-word at the character cap.
  */
 const CONTACT_TAIL =
-  /[,;|]?\s*(?:טלפון|טל['׳]?|פקס|נייד|דוא["״']?ל|דואר אלקטרוני|מייל|tel\.?|phone|fax|mobile|e-?mail|@)/i;
+  /[,;|]?\s*(?:טלפון|טל['׳]?|פקס|נייד|דוא["״']?ל|דואר אלקטרוני|מייל|וכן אצל|ב["״]כ |עו["״]ד |tel\.?|phone|fax|mobile|e-?mail|@)/i;
+
+/**
+ * Short lines that could be an address even though they name no street.
+ *
+ * Plenty of real addresses have no street noun at all. Both address misses in
+ * one 20-site batch were this shape, and both were sitting in text already
+ * being read:
+ *   "ספיר 1 הרצליה"                            — globrands, homepage footer
+ *   "פוליכד בע״מ, קיבוץ שפיים, 6099000, ישראל" — polycad, privacy page
+ *
+ * The caller gates every candidate through city.csv, so this only has to be
+ * cheap and roughly right. Three constraints keep prose out: a length cap and a
+ * word-count cap — that same privacy page opens with a 110-character sentence
+ * which also contains "שפיים" — and a required digit, being a house number,
+ * postal code or company number. The digit is also what stops a bare menu entry
+ * like "סניף חיפה" from qualifying, which matters because a branch city must
+ * never become the HQ city.
+ */
+// Two Hebrew traps in one short pattern, both found by test:
+//   - \b is an ASCII word boundary and does not fire between a Hebrew letter
+//     and a space, so /סניף\b/ never matched "סניף באר שבע 3"
+//   - "סניף" ends in FINAL fe (ף, U+05E3) while its plural "סניפים" uses the
+//     regular form (פ, U+05E4), so one spelling alone misses the other
+const BRANCH_LINE = /^\s*(?:סני[פף]|branch(?:es)?\b|showroom\b)/i;
+
+export function extractCompactAddressLines(text: string, maxCandidates = 6): string[] {
+  if (!text) return [];
+
+  const out: string[] = [];
+  for (const rawLine of text.split(/\n+/)) {
+    const line = rawLine.replace(/\s+/g, " ").trim();
+    if (line.length < 8 || line.length > 90) continue;
+    if (!/\d/.test(line)) continue;
+
+    // An address is either COMMA-SEPARATED or very short. A sentence is
+    // neither, and this is what separates them: polycad's homepage says
+    // "ב-3 משמרות להבטחת רציפות יצור" — "in 3 shifts to ensure production
+    // continuity" — where משמרות is both the word for shifts and a real kibbutz
+    // in city.csv. Five words, no comma, and it was being stored as the HQ.
+    const words = line.split(" ").filter(Boolean);
+    if (!line.includes(",") && words.length > 4) continue;
+    if (words.length > 10) continue;
+    if (!/\p{L}/u.test(line)) continue;
+    if (BRANCH_LINE.test(line)) continue;
+    if (CONTACT_TAIL.test(line)) continue;
+
+    if (!out.includes(line)) out.push(line);
+    if (out.length >= maxCandidates) break;
+  }
+  return out;
+}
+
+/**
+ * A single line that is nothing but a place name — "Tel Aviv", "Hong Kong".
+ *
+ * Latin script ONLY. That is not a stylistic choice: scanning Hebrew page text
+ * for city names was tried and removed on 2026-08-30 because Hebrew city names
+ * collide with ordinary words ("כנות" inside "הסוכנות", "משמרות" meaning
+ * shifts). Latin transliterations do not sit inside longer Hebrew words, so the
+ * failure mode that killed the earlier attempt cannot occur here.
+ */
+const OFFICE_NAME_LINE = /^[A-Z][A-Za-z'’.\-]*(?: [A-Z][A-Za-z'’.\-]*){0,2}$/;
+
+/**
+ * Runs of consecutive lines that each hold nothing but a place name.
+ *
+ * This is the "Our Offices" list an international company puts on its contact
+ * page, one office per line:
+ *
+ *   Our Offices
+ *   Singapore        <- run starts
+ *   Tel Aviv
+ *   New York
+ *   Paris            <- ... and so on
+ *
+ * STRUCTURE, not prose. Every entry must be a bare place name on its own line,
+ * so this cannot read a city out of a sentence — which is exactly what the
+ * removed prose scanner did wrong. The caller decides what to do with a run;
+ * its rule is that exactly one entry may be an Israeli city (see officeListCity
+ * in scripts/company-profile.ts).
+ *
+ * A run needs THREE entries. Two adjacent capitalised lines are common in nav
+ * menus and footers ("Careers" above "Contact us"); three consecutive lines
+ * that are each only a place name is a list.
+ */
+export function extractOfficeListRuns(text: string, minRun = 3): string[][] {
+  if (!text) return [];
+
+  const runs: string[][] = [];
+  let current: string[] = [];
+
+  const flush = () => {
+    if (current.length >= minRun) runs.push(current);
+    current = [];
+  };
+
+  for (const rawLine of text.split("\n")) {
+    const line = rawLine.replace(/\s+/g, " ").trim();
+    // A place name carries no digits and no Hebrew, and "Hong Kong" is as long
+    // as these get.
+    if (
+      line.length >= 3 &&
+      line.length <= 24 &&
+      !/[\d\u0590-\u05FF]/.test(line) &&
+      OFFICE_NAME_LINE.test(line)
+    ) {
+      if (!current.includes(line)) current.push(line);
+      continue;
+    }
+    flush();
+  }
+  flush();
+
+  return runs;
+}
 
 export function extractAddressLine(text: string): string | null {
   if (!text) return null;

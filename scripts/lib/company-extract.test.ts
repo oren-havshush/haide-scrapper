@@ -21,12 +21,15 @@ import {
   emptyHarvest,
   extractAboutText,
   extractAddressLine,
+  extractCompactAddressLines,
   extractLabelledAddress,
+  extractOfficeListRuns,
   pickPolicyUrl,
   homepageFromLinks,
   isAtsHost,
   parseJsonLdOrganization,
   pickAboutUrl,
+  pickContactUrl,
   sanitizeModelText,
   type HarvestedLink,
   type PageHarvest,
@@ -196,6 +199,128 @@ function testAbout() {
     null,
   );
 
+  testContactUrl();
+}
+
+/**
+ * The directions page counts as a contact page. Verbatim from מוזיאון ישראל,
+ * which publishes no address on any page matching the old keywords.
+ */
+/**
+ * The office list. Verbatim line shapes from personetics.com/contact-us/, which
+ * publishes no address anywhere and so had no city at all.
+ */
+function testOfficeListRuns() {
+  const contact = [
+    "Contact Us",
+    "hr@personetics.com",
+    "Our Offices",
+    "Singapore",
+    "Tel Aviv",
+    "New York",
+    "Paris",
+    "Berlin",
+    "London",
+    "Sydney",
+    "Hong Kong",
+    "Ready to Take Your Financial Institution to the Next Level?",
+  ].join(NL);
+
+  const runs = extractOfficeListRuns(contact);
+  assert.equal(runs.length, 1, "expected exactly one run of place-name lines");
+  // "Contact Us" is a run of ONE — the email address below it breaks the run —
+  // so it never reaches the three-line floor. The heading "Our Offices" does
+  // ride along with the list; it is not a city, so it costs nothing.
+  assert.deepEqual(runs[0], [
+    "Our Offices",
+    "Singapore",
+    "Tel Aviv",
+    "New York",
+    "Paris",
+    "Berlin",
+    "London",
+    "Sydney",
+    "Hong Kong",
+  ]);
+  // The email breaks the run, and the closing sentence is too long to join it —
+  // which is what keeps the run to lines that are only names.
+  assert.ok(!runs[0].includes("hr@personetics.com"));
+
+  // A nav menu is the same SHAPE and must still be harmless. It yields a run,
+  // and the caller's "exactly one city.csv hit" rule is what rejects it — none
+  // of these is a city, so there is no hit to be had.
+  const nav = ["Products", "Act", "Enrich", "Engage", "Solutions"].join(NL);
+  const navRuns = extractOfficeListRuns(nav);
+  assert.equal(navRuns.length, 1, "a nav menu looks identical and must reach the gate, not bypass it");
+
+  // Fewer than three consecutive names is not a list. Two capitalised lines in
+  // a row is ordinary footer chrome.
+  assert.deepEqual(extractOfficeListRuns(["Careers", "Contact us"].join(NL)), []);
+
+  // Hebrew is refused outright: the Hebrew prose scanner was removed for
+  // reading city names out of the middle of longer words.
+  assert.deepEqual(extractOfficeListRuns(["תל אביב", "חיפה", "ירושלים"].join(NL)), []);
+
+  // Digits mean an address line or a phone number, not a bare place name.
+  assert.deepEqual(extractOfficeListRuns(["Tel Aviv 5", "New York 3", "Paris 1"].join(NL)), []);
+
+  // A run must survive a blank line breaking it in two.
+  assert.deepEqual(
+    extractOfficeListRuns(["Singapore", "Tel Aviv", "", "New York", "Paris"].join(NL)),
+    [],
+    "a blank line ends a run, and neither half reaches three",
+  );
+
+  assert.deepEqual(extractOfficeListRuns(""), []);
+}
+
+function testContactUrl() {
+  const imj = "https://www.imj.org.il/he/";
+  assert.equal(
+    pickContactUrl(
+      [
+        // Percent-encoded exactly as it appears in the harvested href; the
+        // keyword only matches once pickByKeyword decodes the pathname.
+        {
+          href: "https://www.imj.org.il/he/content/%D7%9B%D7%AA%D7%95%D7%91%D7%AA-%D7%95%D7%AA%D7%97%D7%91%D7%95%D7%A8%D7%94",
+          text: "כתובת ותחבורה",
+          inChrome: true,
+        },
+      ],
+      imj,
+    ),
+    "https://www.imj.org.il/he/content/%D7%9B%D7%AA%D7%95%D7%91%D7%AA-%D7%95%D7%AA%D7%97%D7%91%D7%95%D7%A8%D7%94",
+  );
+
+  // The PATH keyword has to stand on its own. A first pass of this test proved
+  // nothing, because the link text was also a keyword and scored the hit by
+  // itself — deleting "כתובת" from CONTACT_HREF left the suite green. Give the
+  // anchor neutral text so only the decoded pathname can match.
+  assert.equal(
+    pickContactUrl(
+      [
+        {
+          href: "https://www.imj.org.il/he/content/%D7%9B%D7%AA%D7%95%D7%91%D7%AA-%D7%95%D7%AA%D7%97%D7%91%D7%95%D7%A8%D7%94",
+          text: "לפרטים נוספים",
+          inChrome: true,
+        },
+      ],
+      imj,
+    ),
+    "https://www.imj.org.il/he/content/%D7%9B%D7%AA%D7%95%D7%91%D7%AA-%D7%95%D7%AA%D7%97%D7%91%D7%95%D7%A8%D7%94",
+  );
+
+  // "כתובת" is a common footer word, and the commonest thing it links to is a
+  // map. Off-host is refused for the same reason it is for "About": a Google
+  // Maps page is not the company's own copy.
+  assert.equal(
+    pickContactUrl(
+      [{ href: "https://maps.google.com/?q=acme", text: "כתובת", inChrome: true }],
+      "https://acme.co.il/",
+    ),
+    null,
+  );
+
   const prose =
     "אקמה בעמ הוקמה בשנת 1998 ומעסיקה כיום כמאתיים עובדים בישראל ובאירופה. " +
     "החברה מפתחת פתרונות תוכנה לניהול שרשרת אספקה עבור לקוחות תעשייתיים. " +
@@ -296,6 +421,60 @@ function testAddressAndCity() {
     ),
     "שדרות רוטשילד 50 תל אביב-יפו, מיקוד 6688314",
   );
+  // "St" without a word boundary matched the first two letters of "Statista",
+  // and Personetics stored this award caption as its head-office address.
+  assert.equal(extractAddressLine("2025 by CNBC and Statista"), null);
+  assert.equal(
+    extractAddressLine("10 Zarhin Street, Raanana, Israel"),
+    "10 Zarhin Street, Raanana, Israel",
+    "a real English address must still match",
+  );
+
+  // Verbatim from tnuva: a legal notice naming counsel ran on past the address.
+  assert.equal(
+    extractAddressLine(String.raw`רח' ויצמן 1 תל אביב, וכן אצל ב״כ המבקשים, עו״ד לירון פרמינגר`),
+    String.raw`רח' ויצמן 1 תל אביב`,
+  );
+
+  // Addresses with NO street noun. Both verbatim from the 20-site batch, both
+  // sitting in text already being read and missed only because every pattern
+  // required a street.
+  assert.deepEqual(extractCompactAddressLines("ספיר 1 הרצליה"), ["ספיר 1 הרצליה"]);
+  assert.equal(
+    extractCompactAddressLines(String.raw`פוליכד בע״מ, קיבוץ שפיים, 6099000, ישראל`).length,
+    1,
+  );
+
+  // A branch list must never qualify — the column is companyHqCity. Two Hebrew
+  // traps live here: \b does not fire after a Hebrew letter, and "סניף" ends in
+  // FINAL fe while "סניפים" uses the regular form.
+  for (const branch of ["סניף חיפה 3", "סניף באר שבע 3", "סניפים: תל אביב 5", "Branch: Haifa 3"]) {
+    assert.deepEqual(extractCompactAddressLines(branch), [], `branch line accepted: ${branch}`);
+  }
+
+  // Prose is excluded by the length and word-count caps, even when it names a
+  // real city — the polycad privacy page opens with exactly such a sentence.
+  assert.deepEqual(
+    extractCompactAddressLines(
+      String.raw`התנאים שלהלן מפרטים את עיקרי מדיניות הפרטיות הנהוגה על ידי פוליכד מוצרי פלסטיק שפיים אגש״ח בע״מ ח.פ. 570046458`,
+    ),
+    [],
+  );
+
+  // Verbatim from polycad: "in 3 shifts to ensure production continuity", where
+  // משמרות is both the word for shifts and a real kibbutz. Five words, no
+  // comma — a sentence, not an address.
+  assert.deepEqual(
+    extractCompactAddressLines(String.raw`ב-3 משמרות להבטחת רציפות יצור`),
+    [],
+    "a sentence containing a place name is not an address",
+  );
+
+  // Contact lines carry digits but are not addresses.
+  assert.deepEqual(extractCompactAddressLines("טל. 03-9483535"), []);
+
+  testOfficeListRuns();
+
   assert.equal(extractAddressLine("no address here at all"), null);
   assert.equal(extractAddressLine(""), null);
 

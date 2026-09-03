@@ -62,7 +62,9 @@ import {
   emptyHarvest,
   extractAboutText,
   extractAddressLine,
+  extractCompactAddressLines,
   extractLabelledAddress,
+  extractOfficeListRuns,
   homepageFromLinks,
   parseJsonLdOrganization,
   pickAboutUrl,
@@ -168,6 +170,47 @@ interface SiteRow {
 interface SiteConfigResponse {
   data?: { fieldMappings?: { _meta?: { browserOverrides?: BrowserOverrides } } };
 }
+
+/**
+ * Facts supplied by an operator for sites no amount of scraping can resolve.
+ *
+ * Keyed by SITE ID, never by host. Two of these three sit on a recruitment
+ * vendor's domain that serves several unrelated employers, so a host key would
+ * hand one employer's city to every other employer on the same board.
+ *
+ * A supplied city is AUTHORITATIVE and wins over anything scraped, for the same
+ * reason a supplied homepage does: it exists because a human looked at a site
+ * the capture could not read, and second-guessing it would defeat the point of
+ * having asked. It is still put through the city.csv gate — an off-list
+ * spelling would fragment the dashboard's city filter exactly like a scraped
+ * one, and a typo here is silent otherwise.
+ *
+ * Prefer the dashboard for a homepage (PUT /api/sites/:id/company-homepage,
+ * which stores it on the site row). The entry below is here only because the
+ * URL was supplied in a session with no dashboard to hand; moving it costs
+ * nothing and the DB value wins automatically.
+ */
+const MANUAL_PROFILE: Record<string, { homepage?: string; city?: string }> = {
+  // מוזיאון ישראל — every URL on imj.org.il returns the same ~101KB obfuscated
+  // JS anti-bot challenge, and headless Chromium renders an empty DOM from it:
+  // no title, no links, no text. Nothing is extractable, address included.
+  cmqymqkbn004101nzck442rnv: { city: "ירושלים" },
+  // TADIRAN GROUP — siteUrl points at careers.topmatch.co.il, a recruitment
+  // vendor's board. The employer's own site (tadiran-group.co.il) is not linked
+  // from it, so the homepage cannot be derived and neither can the address.
+  cmqykv29i003i01nzvw1z5jpw: { city: "פתח תקווה" },
+  // מסוף שירותי לוגיסטיקה — publishes no address anywhere: the צור-קשר page
+  // carries a form, a phone number and an email, and the only iframe on it is
+  // reCAPTCHA, not a map. Its about page is the sole clue, and it describes a
+  // facility rather than a head office ("מרכז תפעול שליטה ובקרה (מרלו״ג) …
+  // הנמצא באזור התעשייה בחולון"), so the city is confirmed by hand rather than
+  // inferred from that sentence.
+  cmqyc59mw001701nzdz2bfcz7: { city: "חולון" },
+  // כפיר מעליות — hosted on app.civi.co.il, an ATS board that links nothing
+  // belonging to the employer. Supplying the homepage lets the capture read the
+  // company's own site for the address, about copy and logo.
+  cmqz4xfcn004o01nzebbuhdfj: { homepage: "https://www.kfir-elevators.com/" },
+};
 
 /**
  * Per-site browser overrides, read from the SAME place the worker reads them
@@ -972,6 +1015,24 @@ async function captureSite(
     await import("../worker/lib/playwright")
   ).createPage(browser, overrides);
 
+  // An operator-supplied city is resolved BEFORE the homepage, because it must
+  // survive the paths that never reach the city step. TADIRAN is exactly that
+  // case: its careers URL is on a recruitment vendor's board, so no homepage can
+  // be derived, and the capture returns early with a board logo — skipping
+  // section 4 entirely. The city a human supplied was being dropped on the floor
+  // for the very sites the table exists to serve.
+  const manualCity = MANUAL_PROFILE[site.id]?.city;
+  const gatedManualCity = manualCity ? canonicalCity(manualCity, cities) : null;
+  if (manualCity && !gatedManualCity) {
+    (result.warnings ??= []).push(
+      `MANUAL_PROFILE city "${manualCity}" is not in city.csv and was ignored`,
+    );
+  }
+  if (gatedManualCity) {
+    result.fields.companyHqCity = gatedManualCity;
+    result.provenance.city = "operator-supplied (gated)";
+  }
+
   try {
     // --- 1. Homepage ------------------------------------------------------
     let homepage: PageHarvest | null = null;
@@ -982,7 +1043,11 @@ async function captureSite(
     // them — so second-guessing it with a derived guess would defeat the point
     // of having asked a human. natali is the worked example: nothing on its
     // board identifies natali.co.il.
-    const supplied = site.companyHomepageUrl?.trim();
+    // The site row wins over the code table: the dashboard is the real channel,
+    // and MANUAL_PROFILE is a stopgap for URLs supplied where no dashboard was
+    // to hand. Once someone records it properly, this line stops using the
+    // hardcoded copy with no further edit.
+    const supplied = site.companyHomepageUrl?.trim() || MANUAL_PROFILE[site.id]?.homepage;
     if (supplied) {
       homepage = await harvest(page, supplied, opts.patient);
       if (homepage) {
@@ -1194,12 +1259,23 @@ async function captureSite(
     // A city with no address behind it is a guess, and a wrong city is worse
     // than a missing one: it fragments the dashboard's city filter and nothing
     // downstream repairs it (LRN-LOC-4).
+    //
+    // Two exceptions to "no address, no city", both added deliberately:
+    //   - an operator-supplied city, which is a human answer, not a guess
+    //   - an office LIST, which is structure rather than prose (officeListCity)
     const cityAttempts: [string, string | null][] = [
+      // Resolved and gated before the homepage step; see the top of captureSite.
+      ["operator-supplied", gatedManualCity],
       [
         "JSON-LD addressLocality",
         org?.addressLocality ? canonicalCity(org.addressLocality, cities) : null,
       ],
       ["address line", address ? matchCityInAddress(address, cities) : null],
+      // Last, and only reachable when no address was found at all.
+      [
+        "office list",
+        contactPage ? officeListCity(contactPage.bodyText, cities) : null,
+      ],
     ];
     const cityHit = cityAttempts.find(([, value]) => value !== null);
     result.fields.companyHqCity = cityHit?.[1] ?? null;
@@ -1321,11 +1397,68 @@ async function writeProfile(siteId: string, result: CaptureResult, force: boolea
  * no such gate because a street noun plus a house number is already specific.
  */
 function addressFrom(text: string, cities: CityList): string | null {
+  // A SCANNED address must name a city.csv city, or it is not an address.
+  //
+  // "רחוב"/"דרך" are ordinary Hebrew words as well as street nouns, so the
+  // structural pattern fires on any prose that happens to put a number after
+  // one. Three of thirteen addresses in one 20-site batch were not addresses:
+  //   "דרך בחר שנה 1969"                      — a year-picker label
+  //   "דרך שהיא. 3. הרשאה לדיוור…"            — "בכל דרך שהיא", legal prose
+  //   "2025 by CNBC and Statista"             — an award caption
+  // None produced a wrong city, because the gate rejected them — which is
+  // exactly the signal. Real addresses in this fleet carry their city; text
+  // that carries none is prose that merely looks like an address.
+  //
+  // JSON-LD addresses skip this: addressFromJsonLd() reads a structured
+  // PostalAddress the company published itself, which needs no corroboration.
   const structural = extractAddressLine(text);
-  if (structural) return structural;
+  if (structural && matchCityInAddress(structural, cities)) return structural;
 
   for (const candidate of extractLabelledAddress(text)) {
     if (matchCityInAddress(candidate, cities)) return candidate;
+  }
+
+  // Last: a short line that names a city but no street. Only reachable once the
+  // two stricter patterns have failed, and still gated, so the risk is a line
+  // that is short, carries a digit AND names a real city yet is not an address.
+  for (const candidate of extractCompactAddressLines(text)) {
+    if (matchCityInAddress(candidate, cities)) return candidate;
+  }
+  return null;
+}
+
+/**
+ * The one Israeli city in an international company's office list.
+ *
+ * Personetics is the worked example. It publishes no address anywhere, but its
+ * contact page lists its offices one per line — Singapore, Tel Aviv, New York,
+ * Paris, Berlin, London, Sydney, Hong Kong — and only one of those is a place
+ * this fleet cares about.
+ *
+ * EXACTLY ONE gated hit is required, and that is the whole safety argument. A
+ * list with two Israeli cities gives no way to tell the head office from a
+ * second site, so it returns null rather than guess; a list with none is a
+ * navigation menu that happened to look like a list of places. The rule can
+ * therefore only ever fire where the answer is unambiguous.
+ *
+ * Restricted to Latin-script lists (see extractOfficeListRuns) because the
+ * Hebrew prose scanner was removed for reading city names out of the middle of
+ * ordinary words. This reads no prose at all: every entry is a whole line that
+ * is nothing but a place name.
+ *
+ * A branch list is still refused everywhere else — extractCompactAddressLines
+ * drops "סניף חיפה 3" on sight. The difference is that a branch line claims to
+ * be an address and is not, while this makes no claim to be an address at all:
+ * it is used ONLY when no address was found, and only for the city.
+ */
+function officeListCity(text: string, cities: CityList): string | null {
+  for (const run of extractOfficeListRuns(text)) {
+    const hits = new Set<string>();
+    for (const name of run) {
+      const city = matchCityInAddress(name, cities);
+      if (city) hits.add(city);
+    }
+    if (hits.size === 1) return [...hits][0];
   }
   return null;
 }

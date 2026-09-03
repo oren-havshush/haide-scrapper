@@ -29,6 +29,21 @@ const ATS_HOSTS: readonly RegExp[] = [
   /(^|\.)drushim\.co\.il$/i,
   /(^|\.)alljobs\.co\.il$/i,
   /(^|\.)jobmaster\.co\.il$/i,
+  // Israeli recruitment vendors that host an employer's board on their OWN
+  // domain, so stripping the "careers." subdomain lands on the vendor:
+  //   careers.topmatch.co.il/tadiran  -> topmatch.co.il
+  //   bdo-career.hunterhrms.com       -> hunterhrms.com  (Niloosoft "Hunter")
+  //   railcareer.adamtotal.co.il      -> adamtotal.co.il (אדם טוטאל, staffing)
+  // Tadiran was captured with Top Solutions' homepage, about copy and logo
+  // before topmatch was listed here. The giveaway in the data: one host serving
+  // several unrelated employers is a vendor by definition.
+  //
+  // Consequence, accepted deliberately: a vendor that is ALSO an employer in
+  // the fleet (Top Match is) can no longer derive its own homepage and must be
+  // given one by hand. One extra manual entry beats storing the wrong company.
+  /(^|\.)topmatch\.co\.il$/i,
+  /(^|\.)hunterhrms\.com$/i,
+  /(^|\.)adamtotal\.co\.il$/i,
 ];
 
 export function isAtsHost(host: string): boolean {
