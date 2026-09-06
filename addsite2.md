@@ -294,7 +294,7 @@ if [ -n "$COMPANY" ]; then
 fi
 ```
 
-> Keep the JSON UTF-8 / BOM-free (§14); Hebrew company names pass through verbatim.
+> Keep the JSON UTF-8 / BOM-free (§15); Hebrew company names pass through verbatim.
 > The `addsite-batch.ts` create path already does this PATCH-after-create — **if you
 > create sites with a custom/hand-rolled script, you MUST replicate the PATCH + verify**,
 > or the dashboard ships nameless. Cite: `LRN-WRK-7`.
@@ -724,7 +724,44 @@ If yes → append to `docs/addsite-learnings.md`:
 
 ---
 
-## 14. Windows gotchas
+## 14. Step 11 — Company profile (ACTIVE sites only)
+
+Onboarding decides whether the site is worth having; this decides **which company**
+its jobs belong to. Hand off to the `/company-profile` skill:
+
+```bash
+npx tsx scripts/company-profile.ts --site $SITE_ID
+```
+
+**Run it LAST, and only on the ACTIVE path.** A site that ended SKIPPED, REVIEW or
+REQUEUE must not be captured — it would spend a browser session on a site whose jobs
+are not shipping, and stamp `companyProfileAt`, dropping it from the backfill queue
+that `--all` feeds.
+
+Gate it on the verdict you already have:
+
+| Verdict from §12 | Company profile |
+|---|---|
+| ACTIVE (after the externalJobId gate passes) | **run it** |
+| SKIP / REVIEW / REQUEUE / ERROR | skip — leave `companyProfileAt` NULL |
+
+This step is **advisory, never a blocker**. The site is already ACTIVE and its jobs
+already ship; a company profile is decoration on top. Outcomes:
+
+- `WRITTEN` — done.
+- `SKIPPED_ALREADY` — already captured. Correct, not an error; do not `--force`.
+- `SKIPPED_THIN` — nothing usable found, after an automatic patient retry. Leave it;
+  the site stays in the `--all` queue. **Do not** mark the onboarding a failure.
+- `ERROR` (exit 2) — retry once. If it fails again, leave it and move on.
+
+If the site sits on an ATS/vendor host, the capture cannot derive a homepage and will
+come back thin. Supply one — `PUT /api/sites/$SITE_ID/company-homepage` — and re-run;
+that usually unlocks the address, about copy and logo together. See `/company-profile`
+§4 for the full diagnosis path, and never let this step hold up the verdict.
+
+---
+
+## 15. Windows gotchas
 
 - Use `npx tsx` not `ts-node` — tsx is warm-started.
 - Write Hebrew JSON via Node (`fs.writeFileSync`), not PowerShell echo (UTF-16 BOM trap).
@@ -739,7 +776,7 @@ If yes → append to `docs/addsite-learnings.md`:
 
 ---
 
-## 15. Recipes (load on signal — do NOT pre-read all)
+## 16. Recipes (load on signal — do NOT pre-read all)
 
 Each recipe is in `addsite2-recipes/` and should be loaded **only when the named signal fires**.
 Pre-reading all recipes defeats the lean-core cost goal.
@@ -756,7 +793,7 @@ Pre-reading all recipes defeats the lean-core cost goal.
 
 ---
 
-## 16. Correctness rules (load-bearing — never drift from these)
+## 17. Correctness rules (load-bearing — never drift from these)
 
 1. **Code wins over prose.** If a script exits 2, the site is not ACTIVE. Not even if the HTML looks good.
 2. **`verify-config` is not optional.** Every PUT must be followed by a successful `verify-config`.

@@ -2,17 +2,20 @@
 /**
  * scripts/sync-addsite2.mjs
  *
- * Keeps addsite2.md (canonical core) and addsite2-recipes/*.md (recipe files)
- * in sync with their Cursor skill copies at ~/.cursor/skills/addsite2/.
+ * Keeps every skill's canonical source in sync with its copies.
  *
  * Usage:
  *   node scripts/sync-addsite2.mjs           # write copies from canonical
  *   node scripts/sync-addsite2.mjs --check   # exit 1 if CI-tracked copies are stale
  *
- * Sync targets:
- *   addsite2.md              → .claude/commands/addsite2.md   (in-repo, CI-checked)
- *                            → ~/.cursor/skills/addsite2/SKILL.md  (local hardlink)
- *   addsite2-recipes/*.md    → ~/.cursor/skills/addsite2/recipes/*.md  (local copies)
+ * Sync targets, per skill:
+ *   <name>.md            → .claude/commands/<name>.md              (in-repo, CI-checked)
+ *                        → ~/.cursor/skills/<name>/SKILL.md        (local hardlink)
+ *   <recipesDir>/*.md    → ~/.cursor/skills/<name>/recipes/*.md    (local copies)
+ *
+ * The filename still says addsite2 because CI invokes `pnpm check:addsite2` and
+ * the docs cite `pnpm sync:addsite2`; `sync:skills` / `check:skills` are aliases
+ * for the same file. Add a skill by adding one entry to SKILLS below.
  */
 
 import { createHash } from 'node:crypto';
@@ -25,12 +28,14 @@ import { homedir } from 'node:os';
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT = resolve(__dirname, '..');
 
-const CANONICAL_CORE   = join(ROOT, 'addsite2.md');
-const COMMAND_COPY     = join(ROOT, '.claude', 'commands', 'addsite2.md');
-const SKILL_ROOT       = join(homedir(), '.cursor', 'skills', 'addsite2');
-const SKILL_LINK       = join(SKILL_ROOT, 'SKILL.md');
-const SKILL_RECIPES    = join(SKILL_ROOT, 'recipes');
-const REPO_RECIPES_DIR = join(ROOT, 'addsite2-recipes');
+/**
+ * Every skill this repo owns. `recipesDir` is optional — only addsite2 splits
+ * its detail across recipe files.
+ */
+const SKILLS = [
+  { name: 'addsite2', recipesDir: 'addsite2-recipes' },
+  { name: 'company-profile' },
+];
 
 const CHECK_MODE = process.argv.includes('--check');
 
@@ -49,87 +54,115 @@ function ensureDir(p) {
   if (!existsSync(p)) mkdirSync(p, { recursive: true });
 }
 
-// ---------------------------------------------------------------------------
-
-if (!existsSync(CANONICAL_CORE)) {
-  console.error(`ERROR: canonical source not found: ${CANONICAL_CORE}`);
-  process.exit(1);
+function pathsFor(skill) {
+  const skillRoot = join(homedir(), '.cursor', 'skills', skill.name);
+  return {
+    canonical: join(ROOT, `${skill.name}.md`),
+    commandCopy: join(ROOT, '.claude', 'commands', `${skill.name}.md`),
+    skillRoot,
+    skillLink: join(skillRoot, 'SKILL.md'),
+    skillRecipes: join(skillRoot, 'recipes'),
+    repoRecipes: skill.recipesDir ? join(ROOT, skill.recipesDir) : null,
+  };
 }
 
+// ---------------------------------------------------------------------------
+
 if (CHECK_MODE) {
-  // ---- CI check: only the in-repo command copy is CI-tracked ---------------
-  if (!existsSync(COMMAND_COPY)) {
-    console.error(`DRIFT: ${COMMAND_COPY} is missing — run 'pnpm sync:addsite2' to create it.`);
-    process.exit(1);
+  // ---- CI check: only the in-repo command copies are CI-tracked ------------
+  let drift = false;
+  for (const skill of SKILLS) {
+    const p = pathsFor(skill);
+    if (!existsSync(p.canonical)) {
+      console.error(`ERROR: canonical source not found: ${p.canonical}`);
+      drift = true;
+      continue;
+    }
+    if (!existsSync(p.commandCopy)) {
+      console.error(
+        `DRIFT: .claude/commands/${skill.name}.md is missing — run 'pnpm sync:skills' to create it.`,
+      );
+      drift = true;
+      continue;
+    }
+    if (!filesMatch(p.canonical, p.commandCopy)) {
+      console.error(`DRIFT: .claude/commands/${skill.name}.md is out of sync with ${skill.name}.md`);
+      console.error(
+        `       Edit ${skill.name}.md (the canonical source), then run 'pnpm sync:skills'.`,
+      );
+      drift = true;
+      continue;
+    }
+    console.log(`OK: .claude/commands/${skill.name}.md matches canonical ${skill.name}.md`);
   }
-  if (!filesMatch(CANONICAL_CORE, COMMAND_COPY)) {
-    console.error(`DRIFT: .claude/commands/addsite2.md is out of sync with addsite2.md`);
-    console.error(`       Edit addsite2.md (the canonical source), then run 'pnpm sync:addsite2'.`);
-    process.exit(1);
-  }
-  console.log('OK: .claude/commands/addsite2.md matches canonical addsite2.md');
-  process.exit(0);
+  process.exit(drift ? 1 : 0);
 }
 
 // ---- Default mode: write copies from canonical ----------------------------
 
-// 1. In-repo command copy (CI-checked)
-if (filesMatch(CANONICAL_CORE, COMMAND_COPY)) {
-  console.log(`SKIP: .claude/commands/addsite2.md already matches canonical`);
-} else {
-  ensureDir(dirname(COMMAND_COPY));
-  copyFileSync(CANONICAL_CORE, COMMAND_COPY);
-  console.log(`WROTE: .claude/commands/addsite2.md`);
-}
+for (const skill of SKILLS) {
+  const p = pathsFor(skill);
 
-// 2. Skill hardlink for the core (local only — best effort)
-if (existsSync(SKILL_LINK)) {
-  if (filesMatch(CANONICAL_CORE, SKILL_LINK)) {
-    console.log(`SKIP: ~/.cursor/skills/addsite2/SKILL.md already matches canonical`);
-  } else {
-    try {
-      unlinkSync(SKILL_LINK);
-      await link(CANONICAL_CORE, SKILL_LINK);
-      console.log(`LINKED: ~/.cursor/skills/addsite2/SKILL.md → addsite2.md`);
-    } catch {
-      copyFileSync(CANONICAL_CORE, SKILL_LINK);
-      console.log(`COPIED (hardlink failed): ~/.cursor/skills/addsite2/SKILL.md`);
-    }
+  if (!existsSync(p.canonical)) {
+    console.error(`ERROR: canonical source not found: ${p.canonical}`);
+    process.exit(1);
   }
-} else {
-  // First-time: create skill dir and link
-  if (existsSync(SKILL_ROOT)) {
-    // Dir exists but SKILL.md is missing — create the hardlink
-    try {
-      await link(CANONICAL_CORE, SKILL_LINK);
-      console.log(`LINKED (new): ~/.cursor/skills/addsite2/SKILL.md → addsite2.md`);
-    } catch {
-      copyFileSync(CANONICAL_CORE, SKILL_LINK);
-      console.log(`COPIED (new): ~/.cursor/skills/addsite2/SKILL.md`);
-    }
-  } else {
-    console.log(`SKIP: ~/.cursor/skills/addsite2/ directory not found (Cursor not installed here)`);
-  }
-}
 
-// 3. Recipe files (local only — plain copies, not CI-checked)
-if (existsSync(REPO_RECIPES_DIR) && existsSync(SKILL_ROOT)) {
-  ensureDir(SKILL_RECIPES);
-  const recipeFiles = readdirSync(REPO_RECIPES_DIR).filter(f => f.endsWith('.md'));
-  for (const file of recipeFiles) {
-    const src  = join(REPO_RECIPES_DIR, file);
-    const dest = join(SKILL_RECIPES, file);
-    if (filesMatch(src, dest)) {
-      console.log(`SKIP: recipes/${file} already matches`);
+  // 1. In-repo command copy (CI-checked)
+  if (filesMatch(p.canonical, p.commandCopy)) {
+    console.log(`SKIP: .claude/commands/${skill.name}.md already matches canonical`);
+  } else {
+    ensureDir(dirname(p.commandCopy));
+    copyFileSync(p.canonical, p.commandCopy);
+    console.log(`WROTE: .claude/commands/${skill.name}.md`);
+  }
+
+  // 2. Skill hardlink for the core (local only — best effort)
+  if (existsSync(p.skillLink)) {
+    if (filesMatch(p.canonical, p.skillLink)) {
+      console.log(`SKIP: ~/.cursor/skills/${skill.name}/SKILL.md already matches canonical`);
     } else {
-      copyFileSync(src, dest);
-      console.log(`WROTE: ~/.cursor/skills/addsite2/recipes/${file}`);
+      try {
+        unlinkSync(p.skillLink);
+        await link(p.canonical, p.skillLink);
+        console.log(`LINKED: ~/.cursor/skills/${skill.name}/SKILL.md → ${skill.name}.md`);
+      } catch {
+        copyFileSync(p.canonical, p.skillLink);
+        console.log(`COPIED (hardlink failed): ~/.cursor/skills/${skill.name}/SKILL.md`);
+      }
+    }
+  } else {
+    // First-time: create the skill dir and link. Unlike the original, the
+    // directory is CREATED rather than skipped — a new skill has no directory
+    // yet, and refusing to make one meant it could never be installed.
+    ensureDir(p.skillRoot);
+    try {
+      await link(p.canonical, p.skillLink);
+      console.log(`LINKED (new): ~/.cursor/skills/${skill.name}/SKILL.md → ${skill.name}.md`);
+    } catch {
+      copyFileSync(p.canonical, p.skillLink);
+      console.log(`COPIED (new): ~/.cursor/skills/${skill.name}/SKILL.md`);
     }
   }
-} else if (!existsSync(REPO_RECIPES_DIR)) {
-  console.log(`SKIP: addsite2-recipes/ directory not found`);
-} else {
-  console.log(`SKIP: ~/.cursor/skills/addsite2/ directory not found — recipes not synced`);
+
+  // 3. Recipe files (local only — plain copies, not CI-checked)
+  if (!p.repoRecipes) continue;
+  if (existsSync(p.repoRecipes) && existsSync(p.skillRoot)) {
+    ensureDir(p.skillRecipes);
+    const recipeFiles = readdirSync(p.repoRecipes).filter((f) => f.endsWith('.md'));
+    for (const file of recipeFiles) {
+      const src = join(p.repoRecipes, file);
+      const dest = join(p.skillRecipes, file);
+      if (filesMatch(src, dest)) {
+        console.log(`SKIP: recipes/${file} already matches`);
+      } else {
+        copyFileSync(src, dest);
+        console.log(`WROTE: ~/.cursor/skills/${skill.name}/recipes/${file}`);
+      }
+    }
+  } else if (!existsSync(p.repoRecipes)) {
+    console.log(`SKIP: ${skill.recipesDir}/ directory not found`);
+  }
 }
 
 console.log('Done.');
