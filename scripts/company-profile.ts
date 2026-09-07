@@ -201,6 +201,27 @@ const MANUAL_PROFILE: Record<string, { homepage?: string; city?: string }> = {
   // vendor's board. The employer's own site (tadiran-group.co.il) is not linked
   // from it, so the homepage cannot be derived and neither can the address.
   cmqykv29i003i01nzvw1z5jpw: { city: "פתח תקווה" },
+  // The four below are the same shape: a healthy capture — homepage, about copy
+  // and logo all found — of a company that simply does not publish a street
+  // address on any page this reads (contact, directions, privacy, footer).
+  // Nothing is broken; there is just nothing to extract, so the city is the one
+  // field a human has to supply.
+  //
+  // טמבור — tambour.co.il/about-us/ describes the company at length, no address.
+  cmqsbl680000501nubg2nwjvz: { city: "נתניה" },
+  // בית חולים אלי״ן — alyn.org.il publishes its about page but no postal address.
+  cmqsble3c000t01nua4el7arg: { city: "ירושלים" },
+  // אליקטרוניקס — eliktronics.com, address nowhere on the site.
+  cmqsblg2p000z01nukjerhzvq: { city: "מודיעין" },
+  // ש.ל.ה שירותי רפואה — clalitsmile.co.il, a clinic network; the site lists
+  // branch clinics but never states a head office, and a branch list must never
+  // become the HQ.
+  cmqo82p3v000x01qpmtxsxv25: { city: "תל אביב-יפו" },
+  // ויסוצקי — the careers page is a civi.co.il board that links nothing
+  // belonging to the employer, so no homepage can be derived and only the board
+  // logo came back. With the company's own site supplied, the capture reads the
+  // address, about copy and logo from it directly.
+  cmqqo9j6m000n01nws0jgqwu7: { homepage: "https://wissotzky-tlab.co.il/" },
   // קבוצת יוניון — unioncareer.co.il carries no address, and the site's own
   // terms link points at union-motors.toyota.co.il, a DIFFERENT host, which the
   // policy hop deliberately refuses to follow (following off-host links is how
