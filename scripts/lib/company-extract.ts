@@ -287,6 +287,34 @@ export function homepageFromOgUrl(ogUrl: string | undefined, careersUrl: string)
   return url.origin;
 }
 
+/**
+ * A bot-check interstitial, as opposed to a refusal.
+ *
+ * The difference decides whether retrying is worth a page load. Cloudflare
+ * challenges the FIRST navigation in a fresh browser context, sets a clearance
+ * cookie, and lets everything after it through — so the challenge is transient
+ * and one retry recovers the page. A 403 that means "you may not have this" is
+ * final, and retrying it only costs time.
+ *
+ * fritz.co.il is the worked example. In one context, in order:
+ *   1. /open-positions/  -> 403, title "רק רגע..."   (challenge)
+ *   2. /                 -> 200, the real page       (cleared)
+ * The capture tries the homepage first, so the homepage always ate the
+ * challenge and was discarded, leaving a PARTIAL capture with only the logo
+ * that the careers page — fetched second, and therefore cleared — gave up.
+ *
+ * Matched on the interstitial's own title, NOT on the status alone: msh.co.il
+ * answers headless Chromium with a 403 titled "הגישה נדחתה" ("access denied"),
+ * which is a refusal and must keep returning null.
+ */
+const BOT_CHALLENGE_TITLE =
+  /just a moment|checking your browser|attention required|enable javascript and cookies|רק רגע/i;
+
+export function isBotChallengePage(status: number, title: string): boolean {
+  if (status !== 403 && status !== 503) return false;
+  return BOT_CHALLENGE_TITLE.test(title || "");
+}
+
 // ---------------------------------------------------------------------------
 // JSON-LD
 // ---------------------------------------------------------------------------

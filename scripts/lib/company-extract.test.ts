@@ -27,6 +27,7 @@ import {
   pickPolicyUrl,
   homepageFromLinks,
   homepageFromOgUrl,
+  isBotChallengePage,
   isAtsHost,
   parseJsonLdOrganization,
   pickAboutUrl,
@@ -79,7 +80,39 @@ function testHomepageDerivation() {
  * og:url as a homepage candidate. This path was UNGATED and let a careers-board
  * vendor be stored as the employer.
  */
+/**
+ * A bot CHALLENGE clears on retry; a REFUSAL does not. Getting this wrong in
+ * either direction costs: retrying a refusal wastes a page load, and not
+ * retrying a challenge discards the page entirely.
+ */
+function testBotChallengePage() {
+  // Verbatim titles. fritz.co.il serves the Hebrew one on the first navigation
+  // in a fresh context, then 200s on the next.
+  assert.equal(isBotChallengePage(403, "רק רגע..."), true);
+  assert.equal(isBotChallengePage(403, "Just a moment..."), true);
+  assert.equal(isBotChallengePage(503, "Just a moment..."), true);
+  assert.equal(isBotChallengePage(403, "Attention Required! | Cloudflare"), true);
+  assert.equal(isBotChallengePage(403, "Checking your browser before accessing"), true);
+
+  // msh.co.il answers headless Chromium with a 403 titled "access denied".
+  // That is a refusal, not a challenge — retrying it must never happen.
+  assert.equal(
+    isBotChallengePage(403, "הגישה נדחתה"),
+    false,
+    "an access-denied page is a refusal, not a clearing challenge",
+  );
+
+  // A real answer is never a challenge, whatever it is titled.
+  assert.equal(isBotChallengePage(404, "Just a moment..."), false);
+  assert.equal(isBotChallengePage(200, "Just a moment..."), false);
+  assert.equal(isBotChallengePage(500, "Just a moment..."), false);
+  assert.equal(isBotChallengePage(403, "Fritz | פריץ"), false);
+  assert.equal(isBotChallengePage(403, ""), false);
+}
+
 function testHomepageFromOgUrl() {
+  testBotChallengePage();
+
   // Verbatim from מנועי בית שמש. The board is hosted BY comeet, so the page's
   // own og:url is the vendor — which was captured as the company's homepage,
   // logo and about copy before this gate existed.

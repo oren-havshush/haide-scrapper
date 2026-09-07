@@ -67,6 +67,7 @@ import {
   extractOfficeListRuns,
   homepageFromLinks,
   homepageFromOgUrl,
+  isBotChallengePage,
   parseJsonLdOrganization,
   pickAboutUrl,
   pickContactUrl,
@@ -446,7 +447,22 @@ async function harvest(page: Page, url: string, patient = false): Promise<PageHa
     // has a <title>, a body and an <img> — enough to look like a successful
     // capture and to put the block notice itself into companyAbout.
     // A null response means a same-document navigation, which is fine.
-    if (response && !response.ok()) return null;
+    if (response && !response.ok()) {
+      // ...unless it is a bot-check interstitial, which is transient: the
+      // challenge sets a clearance cookie on this context and the NEXT request
+      // passes. See isBotChallengePage() for why this is matched on the title
+      // rather than the status, and for the fritz.co.il ordering that made the
+      // homepage — always fetched first — the one page that ate the challenge.
+      const challengeTitle = await page.title().catch(() => "");
+      if (!isBotChallengePage(response.status(), challengeTitle)) return null;
+
+      console.info(`[company-profile] bot-challenge retry: ${url}`);
+      response = await page.goto(url, {
+        waitUntil: "domcontentloaded",
+        timeout: NAV_TIMEOUT_RETRY_MS,
+      });
+      if (response && !response.ok()) return null;
+    }
 
     await settle(page, patient);
   } catch {
