@@ -90,3 +90,7 @@ package-lock.json
 # opt-in, not swept in.
 CSV files/*.csv
 !CSV files/city.csv
+
+# Claude Code git worktrees — nested checkouts of this same repo (registered via
+# `git worktree`), local tooling state that must never be committed into it.
+.claude/worktrees/

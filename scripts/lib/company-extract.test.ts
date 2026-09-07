@@ -370,6 +370,47 @@ function testContactUrl() {
     "שיעור הטעויות במערכות שלנו נמוך מאחוז אחד, והלקוחות מדווחים על שיפור משמעותי.";
   assert.equal(extractAboutText(legitimate), legitimate, "prose mentioning errors must survive");
 
+  // Verbatim shape of colmobil.co.il/about-us/: a company-history timeline.
+  // The description is the LEDE; every block below it is a dated entry, and the
+  // longest of those is a press release about a car brand the company imports.
+  // Unbounded "longest wins" stored that as the company's own description —
+  // which reads as the wrong company entirely.
+  const lede =
+    "להבין ברכבים זה קודם כל להבין באנשים שנוהגים בהם, במה חשוב להם ומה מניע אותם. " +
+    "כבר 120 שנים שאנחנו מבינים שלהיות מקצוענים ובלתי מתפשרים מתחיל ונגמר בהבנת הצרכים שלכם. " +
+    "אנחנו מבטיחים לעשות הכל בשביל שתמצאו את הפתרונות שמתאימים לכם, ולהיות איתכם בכל צעד.";
+  const historyEntry =
+    "חברת מילר ושות' חברה להנדסה בעמ הוקמה בשנת 1906 בידי נחום מילר, שעלה לישראל בסוף המאה " +
+    "ה-19 והקים לפרנסת משפחתו עסק למכונות חקלאיות שהתפתח עם השנים לחברה לתיקון ולייבוא מכונות.";
+  const brandNews =
+    "החברה מתרחבת לאירופה עם קבלת זיכיון לשיווק שני מותגי רכב חדשים באוסטריה! זהו ציון דרך " +
+    "משמעותי בהתפתחותה הבינלאומית. לאחר פחות משנת פעילות, הדגם הוא הנמכר ביותר בישראל השנה " +
+    "עם כ-8,400 מסירות בחצי שנה. שוק הרכב האוסטרי דומה בהיקפו לשוק בישראל ונמצא במגמת צמיחה " +
+    "מתמדת, עם העדפה הולכת וגוברת לטכנולוגיות הנעה מתקדמות מכל הסוגים.";
+  // A second history entry, so the news block sits BELOW the lede window the
+  // way it does on the real page (there it is #32 of 34).
+  const historyEntry2 =
+    "בשנת 1952 השיגה החברה את הזיכיון ליבוא משאיות כבדות משוודיה לישראל, והן זכו להצלחה " +
+    "רבה בשוק המקומי והפכו למובילות בקטגוריה שלהן במשך שנים ארוכות לאחר מכן.";
+  assert.ok(brandNews.length > lede.length, "the brand news must be the longer candidate");
+  assert.equal(
+    extractAboutText([lede, historyEntry, historyEntry2, brandNews].join("\n\n")),
+    lede,
+    "a timeline's dated entries must never outrank the lede",
+  );
+
+  // The window is not "first paragraph": a short hero line above the real
+  // intro must not win just by being first.
+  const heroLine =
+    "כבר יותר מ-120 שנה אנחנו כאן בשבילכם, בכל הדרך, מהרגע הראשון שנכנסתם לאולם התצוגה " +
+    "ועוד הרבה אחרי שיצאתם לדרך החדשה שלכם. זה מה שמניע אותנו כל בוקר מחדש.";
+  assert.ok(heroLine.length >= 120 && heroLine.length < lede.length, "hero must qualify but be shorter");
+  assert.equal(
+    extractAboutText([heroLine, lede, historyEntry, historyEntry2, brandNews].join("\n\n")),
+    lede,
+    "longest still wins WITHIN the lede window",
+  );
+
   // Verbatim from bankhapoalim.co.il: the longest paragraph on a bank homepage
   // is an OFFER, not a description of the company. It cleared every other
   // filter and would have become the bank's "about" text on the public site.

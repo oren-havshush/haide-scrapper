@@ -548,6 +548,17 @@ const ERROR_PAGE =
  * text that reads as broken on the public site. Returns PLAIN TEXT only — the
  * reader may render Site.companyAbout unescaped, so no markup may survive here.
  */
+/**
+ * How many qualifying paragraphs count as the "lede" for extractAboutText().
+ *
+ * Deliberately small. Three is enough to survive a page that opens with a short
+ * hero line or a stat strip before the real intro, and small enough that a
+ * dated timeline entry — which is what sits below the lede on a company-history
+ * page — can never be reached. It is a claim about document structure ("the
+ * description comes first"), NOT a number tuned to one site.
+ */
+const ABOUT_LEDE_PARAGRAPHS = 3;
+
 export function extractAboutText(text: string, maxChars = 1_200): string | null {
   if (!text) return null;
 
@@ -570,9 +581,25 @@ export function extractAboutText(text: string, maxChars = 1_200): string | null 
 
   if (paragraphs.length === 0) return null;
 
-  // Longest wins: on a real about page that is the description, and on a
-  // homepage it is the closest thing to one.
-  const best = paragraphs.sort((a, b) => b.length - a.length)[0];
+  // Longest wins, but only within the LEDE — the first few substantial blocks.
+  //
+  // "Longest" alone is a proxy for "most substantial", and it inverts on an
+  // about page written as a narrative. colmobil.co.il's is a 120-year company
+  // timeline: 34 qualifying paragraphs, of which #0 (455 chars) is the actual
+  // description — "להבין ברכבים זה קודם כל להבין באנשים שנוהגים בהם…" — while
+  // the longest, #32 at 606 chars, is a dated news entry about an OMODA/JAECOO
+  // franchise in Austria. Unbounded, the rule trawls to the bottom of the page
+  // and stores the most recent press release as the company description; worse,
+  // that text is ABOUT A BRAND, so the profile reads as the wrong company.
+  //
+  // A description is the lede. Everything after it is history, news or detail,
+  // and the further down the page a block sits the less likely it is to be the
+  // company describing itself. Keeping "longest" inside that window still
+  // protects the common case a bare "first paragraph" rule would break: a short
+  // hero tagline sitting above the real intro.
+  const best = paragraphs
+    .slice(0, ABOUT_LEDE_PARAGRAPHS)
+    .sort((a, b) => b.length - a.length)[0];
   return best.length > maxChars ? `${best.slice(0, maxChars).trimEnd()}…` : best;
 }
 

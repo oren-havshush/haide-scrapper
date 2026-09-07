@@ -115,6 +115,7 @@ If budget exhausted → emit `SKIPPED` with the last observed failure reason.
 | Apply form on detail page, not captured | Run Step 5b | [form-capture.md] |
 | Jobs load lazily / "load more" button ("טען עוד") / infinite scroll | Prefer native `_meta.loadMoreSelector`; else `pageFlow` / `setupScript` | [pagination-and-loading.md §2] |
 | Known ATS (Workday/Greenhouse/Lever/Comeet/iCIMS/etc.) | Use skeleton from fingerprint + recipe | [spa-frameworks.md] |
+| Jobs saved with the right titles/ids, but EVERY `setupScript`-injected field is 0% | The script ran before the SPA hydrated — make it poll for a stable item count itself. Do **not** reach for `revealSelector` | [setupscript-patterns.md] §6.3, `LRN-SETUP-13` |
 
 ### B2.5 Completeness gate — NEVER activate partial data
 Before marking ACTIVE, all of these must hold:
@@ -367,7 +368,7 @@ curl -s -A "$REAL_UA" "$URL" -o listing.html
 | Field | Strategy |
 |---|---|
 | `title` | Direct text selector inside item. |
-| `externalJobId` | (1) Native job ID attr (`data-job-id`, `data-id`), **or a req number printed in the title** (`"משרה 231: …"` → regex it out). (2) Slug from `detailUrl`. (3) Hash of title+department+location (stable, disambiguated). **Never index-based.** **The worker now backstops this**: when extraction yields no id it synthesises `h-<hash(title|department|detailUrl)>` itself, so 0% fill is no longer possible (`LRN-WRK-17`). A hand-written hash is now an optimisation, not a requirement — a native id is still better, and the run warns `synthesised_external_job_id` when the fallback is used. **CAUTION:** a printed "job number" field (e.g. `numberJob`) can be reused across distinct postings by the same recruiter — verify uniqueness. Prefer the unique record ID (e.g. CMS `_id`) when a printed number collides. If `saved jobs < API count` after scraping, the id field is non-unique. |
+| `externalJobId` | (1) Native job ID attr (`data-job-id`, `data-id`), **or a req number printed in the title** (`"משרה 231: …"` → regex it out). (2) Slug from `detailUrl`. (3) Hash of title+department+location (stable, disambiguated). **Never index-based.** **The worker now backstops this**: when extraction yields no id it synthesises `h-<hash(title|department|detailUrl)>` itself, so 0% fill is no longer possible (`LRN-WRK-17`). A hand-written hash is now an optimisation, not a requirement — a native id is still better, and the run warns `synthesised_external_job_id` when the fallback is used. **CAUTION:** a printed "job number" field (e.g. `numberJob`) can be reused across distinct postings by the same recruiter — verify uniqueness. Prefer the unique record ID (e.g. CMS `_id`) when a printed number collides. If `saved jobs < API count` after scraping, the id field is non-unique. **NAMESPACE a bare numeric req number** (`LRN-ID-11`): `verify-jobids` rejects any id matching `/^(item[-_]?)?\d{1,4}$/` as index-based, and it cannot tell the employer's own `4907` from a row index. Store `<site>-4907`, not `4907` — same stable native key, self-describing, and it clears the gate. Do it on the FIRST config: the id is the dedup key, so prefixing later re-keys every job. Expect `addsite-qa` to then flag the mirror-image suspect (`looks like URL/title slug`) because the code also appears in the detail URL — settle that with evidence (all ids match `^<site>-\d+$`, each code equals its own detail-URL segment, distinct == total) and record it in `adminNote`. |
 | `description` | Often only on the detail page — map `detailUrl` and let worker fetch it. **Locate the body by dumping the FULL visible text** of a detail page (render it, print `innerText`) and finding the prose container — do NOT guess semantic selectors (`.order_description`) and give up when they're absent; the real body may live in a differently-named block (`.job_desc`). **Never substitute metadata (category/area/clinic/department) for a real description** — a 1–2 line metadata string that trips the QA correctness suspect "description present but avg N chars while detail body is >X chars" is a BLOCKER, not shippable (`LRN-SETUP-4`). **If the detail page splits the body into labeled sections (תיאור / דרישות / כישורים / תנאים), the analyzer maps only ONE — merge them all** (setupScript §8). **If the text comes back as one run-on line, preserve block line breaks** via the `structuredText` helper — NEVER `.replace(/\s+/g,' ')` (setupScript §7). **Capture the COMPLETE body — never cherry-pick only the headings you recognise.** A detail-fetch that grabs only `description`+`requirements` silently drops the meta block (employment type, hours, **division/department**) and intro lines that the site shows per job. Route typed meta into its own field, fold the rest into `description` (setupScript §11, `LRN-SETUP-3`). |
 | `detailUrl` | Anchor `href` inside item; must be stable (not JS-generated blob). **Cards with no http href are silently DROPPED** — Navigate Mode builds its output only from collected detail URLs, so a `mailto:`/`tel:`/JS apply target means that job never becomes a row (pac.ac.il: 7 cards, 6 jobs). On a site with mixed apply paths this loses only the odd ones out. Decide deliberately and record it in `adminNote` (`LRN-WRK-16`). |
 | `location` | Direct selector; `setupScript` if embedded in a formatted string or in the title (split on dash); or **hardcode a constant** (inject `.__ai-location`) for a confirmed single-office / nationwide employer — this **overrides the gazetteer** (`locationFallback` only fills when extraction is empty, so it can't fix a wrong gazetteer guess) (`LRN-LOC-1`). |
@@ -402,6 +403,36 @@ Signal: field value is embedded inside formatted text, inside a sibling, or dyna
 - `await` is supported; IIFE not needed.
 - Runs on **both** listing and detail pages — write defensively.
 - Do NOT append to an element that another field selector already reads (corruption risk, `LRN-SETUP-1`).
+- **Wait for the items yourself on any client-rendered listing** (`LRN-SETUP-13`). The
+  worker runs `setupScript` immediately after the body becomes non-empty and **BEFORE**
+  its own `autoScrollUntilStable()`, so on a React/Next/Vue island the script fires
+  against **0 items**. Nothing errors: extraction runs later once the cards exist, so
+  the DOM-sourced fields report 100% and only the injected ones are empty — it reads
+  like a bad selector, not a race. Poll for the items and require the count to be
+  **stable**, so a half-hydrated list isn't half-enriched:
+  ```js
+  var prev = -1, stable = 0;
+  for (var t = 0; t < 60; t++) {            // ≤30s, inside the 90s setupScript budget
+    var n = document.querySelectorAll(ITEM_SEL).length;
+    if (n > 0 && n === prev) { if (++stable >= 2) break; } else { stable = 0; }
+    prev = n;
+    await new Promise(function (r) { setTimeout(r, 500); });
+  }
+  ```
+  **`revealSelector` is NOT the fix here.** It does gate the setupScript (the worker
+  waits up to 20s for it), but extraction ALSO **clicks** it once per item
+  (`findReveal()` → `reveal.click()`). When the item *is* the job anchor
+  (`itemSelector: "a.job-card-wrap"`), that navigates the page away, once per row.
+  Reserve `revealSelector` for a genuine accordion toggle that is not itself the item.
+- **A dry-run that calls `waitForSelector` first cannot reproduce this** — it hands the
+  script a populated DOM the worker never gives it. Mirror the worker instead:
+  `goto(domcontentloaded)` → `waitForFunction(document.body.children.length > 0)` → run
+  the script, and print the item count at entry. `cards at setupScript entry: 0` is the
+  whole bug in one line.
+- **No named functions inside anything `page.evaluate` serialises.** tsx compiles with
+  `keepNames`, which wraps every named function in a `__name(...)` call that does not
+  exist in the page, so the evaluate throws on its first line. If a `catch` returns a
+  default, that surfaces as "found nothing" — silent. Inline the helper.
 
 ---
 

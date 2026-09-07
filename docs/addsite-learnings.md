@@ -1858,3 +1858,140 @@
 - **Generalizes to:** every re-onboard of a site whose old config injected a constant
   location, and any single-HQ employer whose ads mention the city in prose.
   **Home:** Step 4 location / `recipes/setupscript-patterns.md`.
+
+---
+
+## LRN-SETUP-13 — a `setupScript` runs BEFORE the worker's autoscroll, so a client-rendered listing is EMPTY when it fires; make the script wait for itself
+- **Date / site:** 2026-09-06 · colmobil.co.il (`cmtprk0bt000201rwti39frf6`)
+- **Signal:** the config PUT and `verify-config` both pass, the scrape saves the right
+  number of jobs with the right titles and ids — and **every `setupScript`-injected field
+  is 0%** (`description=0`, `department=0`, `location="Unknown"` on 98/100). Nothing errors
+  and nothing warns; the run looks healthy.
+- **Cause:** `worker/jobs/scrape.ts` runs `runSetupScript()` immediately after the body
+  becomes non-empty, and only THEN calls `autoScrollUntilStable()` / extraction. On a
+  React/Next island (colmobil's board hydrates via a server action several seconds after
+  DOMContentLoaded) `document.querySelectorAll(itemSelector)` returns **0** at that moment,
+  so the script enriches nothing. Extraction runs later, once the cards exist, and happily
+  reports 100% on the fields that come straight from the DOM — which is exactly what makes
+  this look like a selector problem rather than a timing one.
+- **The obvious fix is a trap:** `revealSelector` IS the documented setupScript gate (the
+  worker waits up to 20s for it), but it is *also* the per-item reveal that extraction
+  **clicks** (`findReveal(item, revealSelector)` → `reveal.click()`). Pointing it at the
+  item selector on a site whose item **is the job anchor** (`a.job-card-wrap`) would click
+  114 links and navigate the page away. Only use `revealSelector` for a real accordion
+  toggle that is not itself the item.
+- **Fix — make the script gate itself.** Poll for the items and require the count to be
+  *stable*, not merely non-zero, so a partially-hydrated list isn't half-enriched:
+  ```js
+  var prev = -1, stable = 0;
+  for (var t = 0; t < 60; t++) {            // ≤30s, inside the 90s setupScript budget
+    var n = document.querySelectorAll(CARD).length;
+    if (n > 0 && n === prev) { if (++stable >= 2) break; } else { stable = 0; }
+    prev = n;
+    await sleep(500);
+  }
+  ```
+- **How to catch it before shipping:** a dry-run that calls `waitForSelector(item)` first
+  **cannot reproduce this** — it hands the script a populated DOM the worker never gives it.
+  Mirror the worker instead: `goto(domcontentloaded)` → `waitForFunction(body.children.length > 0)`
+  → run the script. On colmobil that prints `cards at setupScript entry: 0`, which is the
+  whole bug in one line.
+- **Generalizes to:** every SPA/Next.js listing enriched by a `setupScript` — and to the
+  concurrency budget too: the same script took **89s** (right at the 90s cap) with 8 fetch
+  lanes and **4.3s** with 24. Partial progress survives a timeout, because the injections
+  are DOM mutations already applied when `page.evaluate` throws.
+  **Home:** Step 4.3 setupScript / `recipes/setupscript-patterns.md`.
+
+---
+
+## LRN-ID-11 — a native 3–4 digit req number is indistinguishable from a row index; namespace it
+- **Date / site:** 2026-09-06 · colmobil.co.il (`cmtprk0bt000201rwti39frf6`)
+- **Signal:** `verify-jobids` exits 2 with `index-based ids (re-key on reorder)` even though
+  the ids are the employer's **own** printed job codes (`div.code` → `4907`, the same number
+  in `h1.job-title` and in the detail URL `/jobs/4907/`), 114 of 114 distinct and stable.
+  The gate's test is `/^(item[-_]?)?\d{1,4}$/`, which no bare integer can pass.
+- **Fix:** inject the code with a site prefix — `colmobil-<code>` — rather than abandoning a
+  perfectly good native id for a hash. It stays the site's own stable key, becomes
+  self-describing, and is unambiguously not an ordinal. Do this on the FIRST config, before
+  any scrape: `externalJobId` is the dedup key, so prefixing it later re-keys every job.
+- **The gate cannot be satisfied by prose, and it has a mirror-image false positive:** with
+  the prefix, `addsite-qa` then flags `externalJobId looks like URL/title slug (15/15 match)`
+  — because the code also appears in the detail URL. Both heuristics are pointing at the same
+  genuinely-native id from opposite sides. Resolve it with evidence, not argument: confirm
+  every id matches `^<site>-\d+$`, that its code equals its own detail-URL segment, and that
+  distinct == total; then record that check in `adminNote` so the next reader doesn't re-open it.
+- **Generalizes to:** any ATS/CMS that prints a short numeric requisition number (dealer
+  groups, WordPress job CPTs, in-house boards) — prefer the native number, namespaced, over
+  a synthesised `h-<hash>`. **Home:** Step 4 `externalJobId` / Step 9 id gate.
+
+---
+
+## LRN-LOGO-1 — an `<img src="*.svg">` logo was unreachable, so the capture stored a COMPETITOR's mark
+- **Date / site:** 2026-09-06 · colmobil.co.il (`cmtprk0bt000201rwti39frf6`)
+- **Signal:** `/company-profile` reports `COMPLETE` with a logo, and the logo is **OMODA** —
+  one of the car brands the company imports. Nothing warns, because every gate it passes
+  is about the *file* (magic bytes, dimensions, not-a-favicon, not-a-widget-host), and the
+  file is a perfectly good 300x300 PNG logo. It is just the wrong company's.
+- **Cause — a gap that turns into a wrong value, not a missing one.** The harvest could see
+  only two kinds of logo: an **inline** `<svg>` in the header (rasterised in-page), and a
+  raster URL. `collectLogoCandidates()` drops every `.svg` URL outright, so a mark shipped
+  as `<img src="…/logo.svg">` was reachable by neither path. The company's own logo being
+  invisible does not end the search — it just leaves whatever else carries `logo`/`לוגו` in
+  a filename or alt, and on an importer's site that is a **footer strip of other companies'
+  brands** (`oralogotrans.png`, `שמיץ-logo.png`, `logoblack-1…png`). Same outcome as the
+  natali/bankhapoalim widget cases behind `isWidgetHost()`, reached by a different road:
+  **when the real logo is unreachable, the runner-up is somebody else's identity.**
+- **Fix:** `scripts/lib/svg-img-logos.ts` — rasterise header/nav/home-link `<img>` whose src
+  is an SVG, in the page, and append to `harvest.inlineLogos` so they compete as the inline
+  marks they effectively are. Scoped to the SAME selector as the inline-svg rasteriser, which
+  is what keeps the footer brand strip out. Runs as its own `page.evaluate` **after** the
+  harvest, deliberately: Playwright serialises the harvest closure, so nothing inside it can
+  call an imported function, and putting the rule (`isSvgSrc`) in a module keeps it unit-testable.
+- **Two traps found while fixing it, both of which fail SILENTLY:**
+  1. **`__name is not defined`.** tsx compiles with `keepNames`, wrapping every named function
+     in a `__name(...)` call that does not exist in the browser. A named arrow inside
+     `page.evaluate` throws on its first line — and a `catch` that returns `[]` reports that
+     as "no logos found". Write evaluate bodies with **no** inner named functions.
+  2. **`pathCount: 0` is not a neutral default.** The ranking is `pathCount desc, then area
+     desc`, precisely so a full lockup beats a bare glyph. An `<img>` exposes no `<path>`
+     count, and leaving it 0 put the real "כלמוביל Colmobil" lockup BELOW the inline circular
+     "O" glyph — right company, lesser mark. Fetch the `.svg` (same-origin, already cached
+     from rendering the `<img>`) and count `<path` for real.
+- **Generalizes to:** every site whose logo is an SVG file rather than inline markup — and as
+  a rule of thumb, **any importer/distributor/dealer-group site**, where a strip of the brands
+  they carry is exactly what a "logo"-shaped search finds. Verify a captured logo by LOOKING
+  at it, not by trusting `withLogo: 1`. **Home:** `/company-profile` §0 logo row.
+
+---
+
+## LRN-ABOUT-1 — "longest paragraph wins" picks the newest PRESS RELEASE on a company-history page
+- **Date / site:** 2026-09-06 · colmobil.co.il (`cmtprk0bt000201rwti39frf6`)
+- **Signal:** `/company-profile` reads the **right** page (`provenance.about` =
+  `about page (…/about-us/)`) and still stores the **wrong** paragraph. The captured text
+  was "כלמוביל מתרחבת לאירופה עם קבלת זיכיון לשיווק OMODA ו- JAECOO באוסטריה!…" — a dated
+  news item about two car brands the company imports. It passes every filter, because it
+  IS real company prose; it just is not a description, and it reads as though the profile
+  belongs to OMODA rather than to Colmobil.
+- **Cause:** `extractAboutText()` sorted all qualifying paragraphs by length and took the
+  longest. "Longest" is a proxy for "most substantial", and it inverts on an about page
+  written as a NARRATIVE. This one is a 120-year timeline: 34 qualifying paragraphs, the
+  description is **#0** at 455 chars, and the longest is **#32** at 606 — the most recent
+  entry. The rule effectively selected "the newest press release on the page", and it gets
+  worse over time, because every new milestone the company adds is another candidate.
+- **Fix:** rank by length **within the lede only** — `paragraphs.slice(0, 3)`. A description
+  is the lede; everything below it is history, news or detail. Keeping "longest" inside that
+  window still beats a bare "first paragraph" rule, which would break on a page that opens
+  with a short hero tagline above the real intro (both cases are now asserted in
+  `company-extract.test.ts`).
+- **Two traps worth repeating:**
+  1. **A fixture too small to exercise a window silently proves nothing.** The first version
+     of the test had 3 paragraphs and a window of 3, so every candidate was inside it and the
+     test failed for the wrong reason. Confirm a new test fails with the fix DISABLED, not
+     merely that it fails before you write the fix.
+  2. **`companyAbout` is write-once.** By the time a human notices the text is wrong, fixing
+     it needs `--force`, which re-captures every other field too. Read the stored about copy
+     once per site while onboarding is still fresh — this one was flagged as "time-bound" in
+     the first pass and shipped anyway, which is the whole mistake.
+- **Generalizes to:** any about page shaped as a timeline, a milestone list, or a news feed —
+  common for long-established companies, importers and groups. **Home:** `/company-profile`
+  §0 about row / `extractAboutText`.

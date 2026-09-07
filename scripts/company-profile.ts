@@ -76,6 +76,7 @@ import {
   type PageHarvest,
 } from "./lib/company-extract";
 import { canonicalCity, loadCityList, matchCityInAddress, type CityList } from "./lib/city-csv";
+import { rasteriseSvgImgLogos } from "./lib/svg-img-logos";
 import { fetchImage, ImageRejected, type FetchedImage } from "./lib/fetch-image";
 import { inspectImage } from "../src/lib/image-validate";
 
@@ -199,6 +200,12 @@ const MANUAL_PROFILE: Record<string, { homepage?: string; city?: string }> = {
   // vendor's board. The employer's own site (tadiran-group.co.il) is not linked
   // from it, so the homepage cannot be derived and neither can the address.
   cmqykv29i003i01nzvw1z5jpw: { city: "פתח תקווה" },
+  // קבוצת יוניון — unioncareer.co.il carries no address, and the site's own
+  // terms link points at union-motors.toyota.co.il, a DIFFERENT host, which the
+  // policy hop deliberately refuses to follow (following off-host links is how
+  // נטלי acquired a vendor's identity). That document is a 1MB PDF in any case,
+  // and it names only an email and a phone number — no street address.
+  cmr0rqk7h005b01nz55mhsr2v: { city: "ראשון לציון" },
   // מסוף שירותי לוגיסטיקה — publishes no address anywhere: the צור-קשר page
   // carries a form, a phone number and an email, and the only iframe on it is
   // reCAPTCHA, not a map. Its about page is the sole clue, and it describes a
@@ -632,7 +639,20 @@ async function harvest(page: Page, url: string, patient = false): Promise<PageHa
       };
     });
 
-    return collected as PageHarvest;
+    const harvested = collected as PageHarvest;
+
+    // A logo shipped as <img src="…/logo.svg"> is invisible to both paths
+    // above: it is not inline markup, and collectLogoCandidates() drops every
+    // .svg URL. Rasterise those here and append them, so they compete as the
+    // inline-svg candidates they effectively are. Runs as its own evaluate —
+    // see scripts/lib/svg-img-logos.ts for why it cannot live inside the
+    // harvest closure.
+    harvested.inlineLogos = [
+      ...harvested.inlineLogos,
+      ...(await rasteriseSvgImgLogos(page)),
+    ];
+
+    return harvested;
   } catch {
     // A page that navigated but refuses to be read (hostile CSP, immediate
     // redirect mid-evaluate) still gives us its URL.

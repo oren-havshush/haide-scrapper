@@ -27,8 +27,8 @@ platform: 'windows-powershell'
 | Field | Source, in order of preference | Gate |
 |---|---|---|
 | `companyHomepageUrl` | operator-supplied → derived from siteUrl → careers-page link → `og:url` | must not be an ATS/vendor/social host |
-| `companyAbout` | JSON-LD `description` → about page → homepage prose | boilerplate / promo / error-page filters |
-| `companyLogoPath` | JSON-LD logo → `<img>` candidates → rasterised inline `<svg>` | magic bytes, size, not an SVG or favicon |
+| `companyAbout` | JSON-LD `description` → about page → homepage prose | boilerplate / promo / error-page filters, then **longest paragraph of the lede only** (§6.8) |
+| `companyLogoPath` | JSON-LD logo → rasterised header `<svg>`, inline or `<img src="*.svg">` → `<img>` candidates | magic bytes, size, not a favicon; an SVG reaches the server only as a rasterised PNG |
 | `companyHqAddress` | JSON-LD `PostalAddress` → labelled address → street line → compact line | a scanned address must name a `city.csv` city |
 | `companyHqCity` | operator-supplied → JSON-LD `addressLocality` → address line → office list | **`CSV files/city.csv` — always** |
 
@@ -100,6 +100,37 @@ A thin capture (no about, no logo, no address) is **retried once automatically w
 longer settle** before being reported, because the commonest cause is a slow page. It
 is never written, so the site stays in the `--all` queue for a later attempt.
 
+### 3.1 Verify the VALUES, never the counts — MANDATORY before a real run
+
+`COMPLETE` and `withLogo: 1` say a field **landed**, not that it is **right**. Every
+gate in this pipeline checks SHAPE — magic bytes, dimensions, city.csv membership,
+boilerplate filters — and none of them can tell whose logo or whose prose it is. Both
+known misfires (§6.7, §6.8) reported `COMPLETE`, passed every gate, and stored another
+company's identity. So the dry run is not a formality: **look at the two fields a
+machine cannot check.**
+
+```bash
+npx tsx scripts/company-profile.ts --site $SITE_ID --dry-run --no-llm \
+  --out /tmp/profile.jsonl
+node -e "const j=JSON.parse(require('fs').readFileSync('/tmp/profile.jsonl','utf8').trim().split('\n')[0]);
+  console.log(j.provenance); console.log(j.fields.companyAbout);
+  const a=(j.logoAttempts||[]).find(x=>/would upload/.test(x.result||''));
+  if(a) require('fs').writeFileSync('/tmp/logo.png', Buffer.from(a.url.split(',')[1],'base64'));"
+# then OPEN /tmp/logo.png and READ the about text before running without --dry-run
+```
+
+Two questions, both answered by eye:
+1. **Is that this company's logo?** Not "is it a logo" — the wrong answer is always a
+   real logo. On an importer, dealer group, franchise or distributor, the runner-up is
+   a brand they carry (§6.7).
+2. **Is that copy the company describing ITSELF, today?** A dated milestone, a product
+   launch or a press release is real company prose and still the wrong field (§6.8).
+
+**Resolve any doubt BEFORE the real run.** `companyAbout`, `companyLogoPath` and
+`companyProfileAt` are write-once (§1.1): noting a reservation and shipping anyway
+costs a full `--force` re-capture of every other field to undo. If it is worth
+mentioning, it is worth checking now.
+
 ---
 
 ## 4. When a site yields nothing
@@ -159,7 +190,33 @@ $TOKEN = Get-Content .claude\scrap-token -Raw | ForEach-Object { $_.Trim() }
    Israeli city — unambiguous by construction.
 5. **Never write an empty capture.** Writing FAILED stamps `companyProfileAt` and
    locks the site out of every later attempt, usually for a transient page timeout.
-6. **Edit the extraction rules with a real editor, never a `node -e` string replace.**
+6. **When the real value is unreachable, the runner-up is somebody else's identity.**
+   This is the shape behind rules 3, 7 and 8: a field going missing does not end the
+   search, it promotes the next candidate — and the next candidate is a vendor, a
+   brand, or a press release. So a gap in extraction is a *wrong-value* risk, never
+   just a coverage one. Never "leave it and move on" without looking at what filled it.
+7. **A logo that passes every gate can still be the wrong company's** (`LRN-LOGO-1`).
+   The gates check the FILE (bytes, size, not-a-favicon, not-a-widget-host); nothing
+   checks whose mark it is. colmobil.co.il ships its own logo as an `<img src="*.svg">`
+   — invisible to the harvest until 2026-09-06 — and a footer strip of the car brands
+   it imports, so the capture stored **OMODA**. Treat any importer / dealer group /
+   distributor / franchise as high-risk and OPEN THE IMAGE (§3.1). If the right logo
+   is not reachable, PARTIAL with no logo beats a competitor's.
+8. **The about text is the LEDE, not the longest paragraph** (`LRN-ABOUT-1`).
+   `extractAboutText` ranks by length within the first 3 qualifying paragraphs for a
+   reason: on a company-history or news-feed about page, the longest block is the most
+   recent press release. colmobil.co.il's timeline has 34 paragraphs — the description
+   is #0, the longest is #32, an OMODA/JAECOO franchise announcement. If a capture's
+   about copy names a product, a brand or a year, you are reading the wrong paragraph.
+9. **Edit the extraction rules with a real editor, never a `node -e` string replace.**
    Escape sequences in these regexes have been eaten twice that way: a `\b` became a
    raw backspace and `\s`/`\d` lost their backslashes, silently disabling a guard.
-   Add a test alongside any rule change — and confirm the test FAILS without it.
+   Add a test alongside any rule change — and confirm the test FAILS **with the fix
+   disabled**, not merely that it failed before you wrote the fix. A fixture too small
+   to exercise the rule (3 paragraphs against a 3-paragraph window) passes both ways
+   and proves nothing.
+10. **Never write JS helpers inside a `page.evaluate` body.** tsx compiles with
+   `keepNames`, which wraps every named function in a `__name(...)` call that does not
+   exist in the page; Playwright serialises the closure, so it throws on the first line.
+   Where a `catch` returns a default, that arrives as "found nothing" and is invisible.
+   Inline the logic instead — see `scripts/lib/svg-img-logos.ts`.
