@@ -246,6 +246,47 @@ export function homepageFromLinks(
   return [...byOrigin.entries()].sort((a, b) => b[1] - a[1])[0][0];
 }
 
+/**
+ * The careers page's own og:url, as a homepage candidate — gated exactly like
+ * homepageFromLinks() gates a link.
+ *
+ * This exists because the gate was missing. og:url was read straight through
+ * originOf(), which validates the protocol and nothing else, so on a board
+ * hosted BY the vendor the vendor walked in through the door its sibling path
+ * keeps shut. מנועי בית שמש is the worked example: its careers page is
+ * comeet.com/jobs/betshemeshengines/…, comeet.com is in ATS_HOSTS so no
+ * homepage can be derived, the board links nothing belonging to the employer —
+ * and the page's own og:url is comeet.com. The capture then stored Comeet's
+ * homepage, Comeet's marketing prose and Comeet's "SH-Recruit" logo as that
+ * company's identity. Exactly the נטלי failure, through a different door.
+ *
+ * A vendor's own og:url is evidence of who HOSTS the board, never of who is
+ * hiring. Refusing it costs nothing: the caller falls through to capturing the
+ * employer's logo off the board itself, which is site-specific by construction.
+ */
+export function homepageFromOgUrl(ogUrl: string | undefined, careersUrl: string): string | null {
+  if (!ogUrl) return null;
+
+  let url: URL;
+  let careersHost: string;
+  try {
+    url = new URL(ogUrl);
+    careersHost = new URL(careersUrl).hostname.toLowerCase();
+  } catch {
+    return null;
+  }
+  if (url.protocol !== "http:" && url.protocol !== "https:") return null;
+
+  const host = url.hostname.toLowerCase();
+  // Same host as the careers page means og:url just points back at the board.
+  // That is not wrong so much as useless — and on a vendor-hosted board it is
+  // precisely how the vendor got in.
+  if (host === careersHost) return null;
+  if (isAtsHost(host) || isSocialHost(host) || isWidgetHost(host)) return null;
+
+  return url.origin;
+}
+
 // ---------------------------------------------------------------------------
 // JSON-LD
 // ---------------------------------------------------------------------------

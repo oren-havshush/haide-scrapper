@@ -26,6 +26,7 @@ import {
   extractOfficeListRuns,
   pickPolicyUrl,
   homepageFromLinks,
+  homepageFromOgUrl,
   isAtsHost,
   parseJsonLdOrganization,
   pickAboutUrl,
@@ -74,7 +75,46 @@ function testHomepageDerivation() {
   assert.equal(isAtsHost("acme.co.il"), false);
 }
 
+/**
+ * og:url as a homepage candidate. This path was UNGATED and let a careers-board
+ * vendor be stored as the employer.
+ */
+function testHomepageFromOgUrl() {
+  // Verbatim from מנועי בית שמש. The board is hosted BY comeet, so the page's
+  // own og:url is the vendor — which was captured as the company's homepage,
+  // logo and about copy before this gate existed.
+  assert.equal(
+    homepageFromOgUrl("https://www.comeet.com", "https://www.comeet.com/jobs/betshemeshengines/1A.002"),
+    null,
+    "a vendor's own og:url must never become the employer's homepage",
+  );
+
+  // Every other refused host class, for the same reason.
+  const careers = "https://acme.comeet.com/jobs/careers";
+  assert.equal(homepageFromOgUrl("https://acme.wd3.myworkdayjobs.com/acme", careers), null);
+  assert.equal(homepageFromOgUrl("https://www.linkedin.com/company/acme", careers), null);
+  assert.equal(homepageFromOgUrl("https://www.nagish.li/", careers), null);
+
+  // Same host as the careers page points back at the board — useless.
+  assert.equal(homepageFromOgUrl("https://acme.comeet.com/about", careers), null);
+
+  // The legitimate case still works, and yields an ORIGIN, not the full URL.
+  assert.equal(
+    homepageFromOgUrl("https://www.acme.co.il/careers/", careers),
+    "https://www.acme.co.il",
+  );
+
+  // Junk in, null out — never a throw.
+  assert.equal(homepageFromOgUrl(undefined, careers), null);
+  assert.equal(homepageFromOgUrl("", careers), null);
+  assert.equal(homepageFromOgUrl("not a url", careers), null);
+  assert.equal(homepageFromOgUrl("javascript:alert(1)", careers), null);
+  assert.equal(homepageFromOgUrl("https://www.acme.co.il/", "not a url"), null);
+}
+
 function testHomepageFromLinks() {
+  testHomepageFromOgUrl();
+
   const careersUrl = "https://acme.comeet.com/jobs/careers";
   const links: HarvestedLink[] = [
     { href: "https://www.facebook.com/acme", text: "Facebook", inChrome: true },

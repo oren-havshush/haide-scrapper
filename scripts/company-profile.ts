@@ -66,6 +66,7 @@ import {
   extractLabelledAddress,
   extractOfficeListRuns,
   homepageFromLinks,
+  homepageFromOgUrl,
   parseJsonLdOrganization,
   pickAboutUrl,
   pickContactUrl,
@@ -1094,7 +1095,9 @@ async function captureSite(
     if (!homepage) {
       careers = await harvest(page, site.siteUrl, opts.patient);
       const fromLinks = careers ? homepageFromLinks(careers.links, careers.url) : null;
-      const fromOg = originOf(careers?.metas["og:url"]);
+      // Gated like every other homepage candidate. An UNGATED og:url let a
+      // vendor become the employer: see homepageFromOgUrl().
+      const fromOg = careers ? homepageFromOgUrl(careers.metas["og:url"], careers.url) : null;
       const target = fromLinks ?? fromOg;
       if (target) {
         homepage = await harvest(page, target, opts.patient);
