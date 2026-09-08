@@ -207,6 +207,13 @@ interface SiteConfigResponse {
  * URL was supplied in a session with no dashboard to hand; moving it costs
  * nothing and the DB value wins automatically.
  */
+/**
+ * Label for the operator entry in the city cascade. Named because two places
+ * must agree on it: the cascade that ranks the attempts, and the branch that
+ * keeps the detailed provenance instead of the generic one.
+ */
+const OPERATOR_CITY_ATTEMPT = "operator-supplied";
+
 const MANUAL_PROFILE: Record<string, { homepage?: string; city?: string }> = {
   // מוזיאון ישראל — every URL on imj.org.il returns the same ~101KB obfuscated
   // JS anti-bot challenge, and headless Chromium renders an empty DOM from it:
@@ -1104,7 +1111,7 @@ async function captureSite(
   const manualCity = authoredCity || MANUAL_PROFILE[site.id]?.city;
   const manualSource = authoredCity
     ? `operator-supplied (${site.companyHqCitySource}, gated)`
-    : "operator-supplied (gated)";
+    : "operator-supplied (MANUAL_PROFILE, gated)";
 
   // Gated exactly like a scraped city, so a typo in a hand-supplied value fails
   // loudly here rather than fragmenting the dashboard's city filter. isRegion is
@@ -1357,7 +1364,7 @@ async function captureSite(
     //   - an office LIST, which is structure rather than prose (officeListCity)
     const cityAttempts: [string, string | null][] = [
       // Resolved and gated before the homepage step; see the top of captureSite.
-      ["operator-supplied", gatedManualCity],
+      [OPERATOR_CITY_ATTEMPT, gatedManualCity],
       [
         "JSON-LD addressLocality",
         org?.addressLocality ? canonicalCity(org.addressLocality, cities) : null,
@@ -1371,7 +1378,15 @@ async function captureSite(
     ];
     const cityHit = cityAttempts.find(([, value]) => value !== null);
     result.fields.companyHqCity = cityHit?.[1] ?? null;
-    if (cityHit) result.provenance.city = `${cityHit[0]} (gated)`;
+    if (cityHit) {
+      // The operator attempt keeps the label built at the top of captureSite,
+      // which names WHICH channel supplied the value — the site row or the
+      // MANUAL_PROFILE fallback. Overwriting it with the generic label made the
+      // two indistinguishable in a run log, which is the one thing the
+      // provenance is for.
+      result.provenance.city =
+        cityHit[0] === OPERATOR_CITY_ATTEMPT ? manualSource : `${cityHit[0]} (gated)`;
+    }
 
     // --- 5. Logo -----------------------------------------------------------
     const candidates = collectLogoCandidates(homepage, org);

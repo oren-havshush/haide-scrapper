@@ -31,22 +31,51 @@ fi
 SETUP
 
 # Sync project files (excluding unnecessary dirs)
+#
+# Two transports, because Git Bash on Windows ships no rsync and a deploy that
+# dies at the sync step is easy to miss: `set -o pipefail` does not apply to the
+# caller's pipeline, so `./deploy.sh host | tail` reported exit 0 while nothing
+# had been transferred at all.
+#
+# .env and .env.local are excluded from BOTH paths. The server's own .env holds
+# POSTGRES_PASSWORD, which the migration step below sources — overwriting it
+# with a local file would break the deploy and the database credentials with it.
+SYNC_EXCLUDES=(
+  '.git'
+  'node_modules'
+  '.next'
+  '.pnpm-store'
+  'dist'
+  'extension/node_modules'
+  'extension/.output'
+  'extension/.wxt'
+  '.env'
+  '.env.local'
+  '.claude/worktrees'
+)
+
 echo "==> Syncing files..."
-rsync -avz --delete \
-  --filter='P .env' \
-  --filter='P .env.local' \
-  --exclude='.git' \
-  --exclude='node_modules' \
-  --exclude='.next' \
-  --exclude='.pnpm-store' \
-  --exclude='dist' \
-  --exclude='extension/node_modules' \
-  --exclude='extension/.output' \
-  --exclude='extension/.wxt' \
-  --exclude='.env' \
-  --exclude='.env.local' \
-  -e "ssh $SSH_OPTS" \
-  ./ "$HOST:$REMOTE_DIR/"
+if command -v rsync >/dev/null 2>&1; then
+  RSYNC_ARGS=(-avz --delete --filter='P .env' --filter='P .env.local')
+  for pattern in "${SYNC_EXCLUDES[@]}"; do
+    RSYNC_ARGS+=(--exclude="$pattern")
+  done
+  rsync "${RSYNC_ARGS[@]}" -e "ssh $SSH_OPTS" ./ "$HOST:$REMOTE_DIR/"
+else
+  # No rsync locally: stream a tar over the ssh connection instead.
+  #
+  # The one behavioural difference is that this does NOT delete files removed
+  # since the last deploy — tar can only add and overwrite. Harmless for the
+  # images, which are built from an explicit Dockerfile, but it does mean a
+  # deleted source file lingers on the box until the next rsync-capable deploy.
+  echo "    (rsync not found locally — streaming a tar instead; no --delete)"
+  TAR_ARGS=()
+  for pattern in "${SYNC_EXCLUDES[@]}"; do
+    TAR_ARGS+=(--exclude="./$pattern")
+  done
+  tar czf - "${TAR_ARGS[@]}" . \
+    | ssh $SSH_OPTS "$HOST" "mkdir -p '$REMOTE_DIR' && tar xzf - -C '$REMOTE_DIR'"
+fi
 
 # Build, migrate, and restart with rollback support
 ssh $SSH_OPTS "$HOST" bash -s "$DEPLOY_TAG" "$REMOTE_DIR" <<'REMOTE'
