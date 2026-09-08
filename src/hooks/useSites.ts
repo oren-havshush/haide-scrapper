@@ -140,6 +140,37 @@ export function useUpdateSiteCompanyHomepage() {
   });
 }
 
+/**
+ * Record an operator-authored HQ city for a company that publishes no address.
+ *
+ * Not a capture: companyProfileAt is left alone so the value stays correctable.
+ * `evidence` says who authored it — the server composes the stored provenance
+ * from it, which is what stops a later re-capture overwriting a human's answer
+ * with the NULL it found.
+ */
+export function useUpdateSiteCompanyHqCity() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({
+      siteId,
+      companyHqCity,
+      evidence,
+    }: {
+      siteId: string;
+      companyHqCity: string | null;
+      evidence: { kind: "operator" | "operator:none" | "skill"; url?: string };
+    }) =>
+      apiFetch(`/api/sites/${siteId}/company-hq-city`, {
+        method: "PUT",
+        body: JSON.stringify({ companyHqCity, evidence }),
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["sites"] });
+    },
+  });
+}
+
 export function useDeleteSite() {
   const queryClient = useQueryClient();
 

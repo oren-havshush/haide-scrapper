@@ -11,14 +11,26 @@
  * real places whose names contain a quote (נתב"ג, בני עי"ש, ביל"ו …).
  *
  * The rule this file exists to enforce: a stored city is VERBATIM from this
- * list or it is NULL. Never a near-miss, never a normalized variant. See
- * docs/addsite-learnings.md LRN-LOC-4 — the worker gazetteer is NOT this list
- * (29 spellings diverge), and nothing downstream repairs a wrong value.
+ * list or it is NULL. Never a near-miss, never a normalized variant — nothing
+ * downstream repairs a wrong value (LRN-LOC-4).
+ *
+ * The worker's gazetteer is a SEPARATE list that happens to agree: LRN-LOC-4
+ * once recorded 29 diverging spellings, re-measured on 2026-08-18 as 1367 =
+ * 1367 with zero divergence either way, and src/lib/locations.test.ts now
+ * asserts set-equality in both directions so the CSV stays the source of truth
+ * without being read at request time. What still differs is normalizeLocations'
+ * OUTPUT, which passes an unresolved string through verbatim — which is why
+ * every caller re-checks isCanonicalLocation on the result rather than trusting
+ * that a normalized value is a legal one.
  */
 
 import { readFileSync } from "node:fs";
 import path from "node:path";
-import { LOCATION_EN, normalizeLocations } from "../../worker/lib/locationNormalize";
+import {
+  LOCATION_EN,
+  isRegionLocation,
+  normalizeLocations,
+} from "../../worker/lib/locationNormalize";
 
 export const CITY_CSV_PATH = path.join("CSV files", "city.csv");
 
@@ -216,16 +228,13 @@ function cityFromLatinNearMatch(segment: string): string | null {
 }
 
 /**
- * Regions and nationwide markers are legal city.csv entries — the location gate
- * accepts them for a JOB, which can genuinely be "אזור מרכז". A company HQ is a
- * place, not a region, so they are refused for companyHqCity.
- *
- * Without this, a street called "רחוב השפלה" resolved through the alias table to
- * "אזור שפלה" and became the HQ region of a Tel Aviv company.
+ * Re-exported so this module stays the one place the capture asks about cities,
+ * but DEFINED in worker/lib/locationNormalize.ts — the dashboard write path
+ * needs the identical rule and cannot import this file (it reads the CSV from
+ * disk, which ENOENTs in the standalone build image).
  */
-function isRegion(city: string): boolean {
-  return /^אזור\s/.test(city) || city === "פריסה ארצית";
-}
+export { isRegionLocation };
+const isRegion = isRegionLocation;
 
 export function matchCityInAddress(address: string, cities: CityList): string | null {
   if (!address || !address.trim()) return null;

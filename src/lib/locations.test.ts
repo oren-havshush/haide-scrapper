@@ -10,7 +10,13 @@
 // two lists must not be allowed to drift apart unnoticed.
 
 import { readFileSync } from "fs";
-import { resolveLocationInput, UNKNOWN_LOCATION } from "./locations";
+import {
+  isCanonicalLocation,
+  isRegionLocation,
+  normalizeLocations,
+  resolveLocationInput,
+  UNKNOWN_LOCATION,
+} from "./locations";
 import { IL_CANONICAL } from "../../worker/data/il-places";
 
 let failures = 0;
@@ -36,6 +42,45 @@ function throws(fn: () => unknown, msg: string) {
   } catch {
     console.log("  ok:", msg);
   }
+}
+
+console.log("\n# a company HQ city is narrower than a job location");
+{
+  // The dashboard's HQ-city endpoint (saveCompanyHqCity) applies the same
+  // canonicalise-then-gate discipline as resolveLocationInput, plus two
+  // constraints a job does not have: exactly one place, and never a region.
+  // These assert the pieces that gate is built from.
+
+  // Regions are legal city.csv entries and legal for a JOB — a job really can
+  // be "אזור מרכז" — but a company is at an address. Without this a street
+  // called "רחוב השפלה" resolved through the alias table to "אזור שפלה" and
+  // became the HQ region of a Tel Aviv company.
+  assert(isRegionLocation("אזור מרכז"), "אזור מרכז is a region");
+  assert(isRegionLocation("אזור הצפון"), "אזור הצפון is a region");
+  assert(isRegionLocation("פריסה ארצית"), "פריסה ארצית is nationwide, not a place");
+  assert(!isRegionLocation("תל אביב-יפו"), "a real city is not a region");
+  assert(!isRegionLocation("אזורים"), "a name merely starting with אזור is not a region");
+
+  // Canonicalise BEFORE gating: a bare membership test would reject every
+  // spelling an operator actually types.
+  eq(normalizeLocations("תל אביב"), ["תל אביב-יפו"], "תל אביב canonicalises");
+  assert(isCanonicalLocation(normalizeLocations("תל אביב")[0]), "and the result is on the list");
+
+  // The gershayim case: ביל"ו is a legal entry, but only squash() unifies the
+  // typographic U+05F4 with the ASCII quote, so gating the raw input would
+  // reject a city that is on the list.
+  const bilu = normalizeLocations("ביל״ו");
+  assert(bilu.length === 1 && isCanonicalLocation(bilu[0]), "ביל״ו with a real gershayim resolves");
+
+  // normalizeLocations passes an unresolved string straight through, which is
+  // why every caller re-checks the OUTPUT rather than trusting it.
+  assert(
+    !isCanonicalLocation(normalizeLocations("Sderot Nowhere")[0]),
+    "an unknown place comes back verbatim and fails the gate",
+  );
+
+  // An HQ is one place; a comma list must not be accepted as one.
+  assert(normalizeLocations("תל אביב, חיפה").length > 1, "a comma list yields several places");
 }
 
 console.log("\n# the approved example");

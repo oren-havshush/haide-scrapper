@@ -1,0 +1,21 @@
+-- AlterTable
+--
+-- Additive only: one nullable column on "Site". No existing column is altered,
+-- no NOT NULL, no DEFAULT, no new enum type, no new index, no new table. In
+-- PostgreSQL 11+ a nullable ADD COLUMN is metadata-only -- no table rewrite, no
+-- lock beyond a brief catalog update.
+--
+-- The public jobs site reads this database directly, so this change must stay
+-- invisible to every query it currently issues; a column its Prisma client does
+-- not know about is never selected. TEXT rather than an enum for the same
+-- reason "companyProfileStatus" is TEXT: an unrecognised enum variant throws in
+-- a consumer's Prisma client, and PostgreSQL enum values can never be removed.
+--
+-- WHY: "companyHqCity" has two possible authors -- the capture, from an address
+-- it extracted, and a human who looked the company up because the capture found
+-- nothing. Without a record of which, a re-capture cannot tell a human's answer
+-- from its own, and a capture that finds no city writes NULL over it.
+--
+-- Rollback (do not automate; run by hand if the feature is reverted):
+--   ALTER TABLE "Site" DROP COLUMN "companyHqCitySource";
+ALTER TABLE "Site" ADD COLUMN "companyHqCitySource" TEXT;

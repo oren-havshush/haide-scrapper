@@ -19,6 +19,7 @@ import { SiteNoteDialog } from "@/components/sites/SiteNoteDialog";
 import { SiteCompanyDialog } from "@/components/sites/SiteCompanyDialog";
 import { SiteCompanyProfileDialog } from "@/components/sites/SiteCompanyProfileDialog";
 import { SiteHomepageDialog } from "@/components/sites/SiteHomepageDialog";
+import { SiteHqCityDialog } from "@/components/sites/SiteHqCityDialog";
 import { needsManualHomepage } from "@/lib/ats-hosts";
 import { CompanyLogo } from "@/components/shared/CompanyLogo";
 import { CompanyProfileBadge } from "@/components/shared/CompanyProfileBadge";
@@ -28,6 +29,7 @@ import {
   useUpdateSiteNote,
   useUpdateSiteCompanyName,
   useUpdateSiteCompanyHomepage,
+  useUpdateSiteCompanyHqCity,
   useTriggerPolicyReview,
 } from "@/hooks/useSites";
 import { useTriggerScrape, useClearJobs } from "@/hooks/useScrapeRuns";
@@ -61,6 +63,8 @@ interface Site {
   companyLogoSourceUrl: string | null;
   companyHqAddress: string | null;
   companyHqCity: string | null;
+  /** Who authored companyHqCity — NULL means the capture derived it. */
+  companyHqCitySource: string | null;
   companyProfileStatus: string | null;
   companyProfileAt: string | null;
 }
@@ -225,11 +229,13 @@ export function SitesTable({
   const [companyTargetId, setCompanyTargetId] = useState<string | null>(null);
   const [profileTargetId, setProfileTargetId] = useState<string | null>(null);
   const [homepageTargetId, setHomepageTargetId] = useState<string | null>(null);
+  const [hqCityTargetId, setHqCityTargetId] = useState<string | null>(null);
   const [scrapingSiteId, setScrapingSiteId] = useState<string | null>(null);
   const updateStatus = useUpdateSiteStatus();
   const updateNote = useUpdateSiteNote();
   const updateCompany = useUpdateSiteCompanyName();
   const updateHomepage = useUpdateSiteCompanyHomepage();
+  const updateHqCity = useUpdateSiteCompanyHqCity();
   const deleteSiteMutation = useDeleteSite();
   const triggerScrape = useTriggerScrape();
   const clearJobs = useClearJobs();
@@ -482,6 +488,35 @@ export function SitesTable({
                       Set homepage
                     </button>
                   )}
+
+                  {/*
+                    No city, and nobody has said why. The capture takes a city
+                    only from a real address, and plenty of companies publish
+                    none — so this asks for the one field a human can always
+                    answer and the scraper often cannot.
+
+                    The companyHqCitySource clause is what makes this converge:
+                    without it a company that genuinely has no published city
+                    stays flagged forever and operators learn to ignore the
+                    badge. The second half of the condition covers the sites
+                    that need a human MOST — a bot-walled site is never
+                    captured, so companyProfileAt alone would show nothing for
+                    exactly those.
+                  */}
+                  {!site.companyHqCity &&
+                    !site.companyHqCitySource &&
+                    (site.companyProfileAt !== null || needsManualHomepage(site.siteUrl)) && (
+                      <button
+                        type="button"
+                        onClick={() => setHqCityTargetId(site.id)}
+                        className="mt-1 inline-flex items-center gap-1 rounded px-1 py-0.5 text-[11px] hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
+                        style={{ color: "#f59e0b" }}
+                        title="No HQ city — set one, or record that this company publishes none"
+                      >
+                        <TriangleAlert className="size-3" />
+                        Set HQ city
+                      </button>
+                    )}
                 </TableCell>
                 <TableCell className="font-mono text-[13px]">
                   <a
@@ -626,6 +661,40 @@ export function SitesTable({
                 toast.success(url ? "Homepage saved — run company-profile to capture" : "Homepage cleared");
                 setHomepageTargetId(null);
               },
+              onError: (err: Error) => toast.error(err.message),
+            },
+          );
+        }}
+      />
+
+      <SiteHqCityDialog
+        open={hqCityTargetId !== null}
+        onOpenChange={(open) => {
+          if (!open) setHqCityTargetId(null);
+        }}
+        siteUrl={sites.find((s) => s.id === hqCityTargetId)?.siteUrl ?? ""}
+        companyName={sites.find((s) => s.id === hqCityTargetId)?.companyName ?? null}
+        initialCity={sites.find((s) => s.id === hqCityTargetId)?.companyHqCity ?? null}
+        initialSource={sites.find((s) => s.id === hqCityTargetId)?.companyHqCitySource ?? null}
+        isSaving={updateHqCity.isPending}
+        onSave={(city, kind) => {
+          const siteId = hqCityTargetId;
+          if (!siteId) return;
+          updateHqCity.mutate(
+            { siteId, companyHqCity: city, evidence: { kind } },
+            {
+              onSuccess: () => {
+                toast.success(
+                  kind === "operator:none"
+                    ? "Recorded — this company publishes no HQ city"
+                    : city
+                      ? "HQ city saved"
+                      : "HQ city cleared",
+                );
+                setHqCityTargetId(null);
+              },
+              // The server's 400 text names the offending value and says why —
+              // an off-list spelling or a region — so it is shown verbatim.
               onError: (err: Error) => toast.error(err.message),
             },
           );

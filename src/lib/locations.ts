@@ -16,9 +16,14 @@ import { ValidationError } from "./errors";
 import {
   normalizeLocations,
   isCanonicalLocation,
+  isRegionLocation,
 } from "../../worker/lib/locationNormalize";
 
-export { normalizeLocations, isCanonicalLocation };
+// isRegionLocation is re-exported for the company-HQ write path, which accepts a
+// narrower vocabulary than a job does: a job may legitimately be "אזור מרכז",
+// a headquarters may not. Defined in the worker module so the capture script and
+// this server share one definition rather than two copies of a regex.
+export { normalizeLocations, isCanonicalLocation, isRegionLocation };
 
 /** Sentinel for a job that states no location at all. */
 export const UNKNOWN_LOCATION = "Unknown";

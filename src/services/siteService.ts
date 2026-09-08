@@ -1,5 +1,12 @@
 import { prisma } from "@/lib/prisma";
-import { ConflictError, DuplicateSiteError, InvalidTransitionError, NotFoundError } from "@/lib/errors";
+import {
+  ConflictError,
+  DuplicateSiteError,
+  InvalidTransitionError,
+  NotFoundError,
+  ValidationError,
+} from "@/lib/errors";
+import { isCanonicalLocation, isRegionLocation, normalizeLocations } from "@/lib/locations";
 import type { PaginationParams } from "@/lib/types";
 import type { SiteStatus } from "@/generated/prisma/enums";
 import { emitEvent } from "@/services/eventService";
@@ -508,6 +515,12 @@ const COMPANY_PROFILE_FIELDS = [
   "companyLogoSourceUrl",
   "companyHqAddress",
   "companyHqCity",
+  // Writable by this path but NOT accepted from its payload — the same split as
+  // companyLogoPath. It is in the allowlist so saveCompanyProfile() may CLEAR a
+  // stale provenance when the city it described changes; it is absent from
+  // updateSiteCompanyProfileSchema so no capture can claim a human authored a
+  // value. Zod strips it from input, so the presence-based loop never sees it.
+  "companyHqCitySource",
   "companyProfileStatus",
   "companyProfileAt",
 ] as const;
@@ -523,6 +536,7 @@ export const COMPANY_PROFILE_SELECT = {
   companyLogoSourceUrl: true,
   companyHqAddress: true,
   companyHqCity: true,
+  companyHqCitySource: true,
   companyProfileStatus: true,
   companyProfileAt: true,
 } as const;
@@ -593,6 +607,23 @@ export async function saveCompanyProfile(
       : value;
   }
 
+  // A provenance must not outlive the value it describes. If this capture is
+  // storing a DIFFERENT city from the one on the row, whoever authored the old
+  // value did not author this one, so the old attribution is cleared rather
+  // than left pointing at a city that is no longer there.
+  //
+  // Only on a real change: a capture that re-derives the same city leaves an
+  // operator's attribution intact, and a capture that found nothing does not
+  // send the key at all (see writeProfile), so it cannot reach here.
+  const incomingCity = data.companyHqCity;
+  if (
+    typeof incomingCity === "string" &&
+    site.companyHqCitySource !== null &&
+    incomingCity !== site.companyHqCity
+  ) {
+    data.companyHqCitySource = null;
+  }
+
   const stray = Object.keys(data).filter(
     (key) => !(COMPANY_PROFILE_FIELDS as readonly string[]).includes(key),
   );
@@ -657,6 +688,99 @@ export async function saveCompanyHomepage(siteId: string, homepageUrl: string | 
   return prisma.site.update({
     where: { id: siteId },
     data: { companyHomepageUrl: homepageUrl?.trim() || null },
+    select: COMPANY_PROFILE_SELECT,
+  });
+}
+
+export type HqCityEvidence = {
+  kind: "operator" | "operator:none" | "skill";
+  url?: string;
+};
+
+/**
+ * Record an operator-authored HQ city, with WHO said so, and without marking the
+ * site as captured.
+ *
+ * Plenty of real companies publish no address anywhere the capture can read —
+ * clalitsmile lists branch clinics and never a head office; imj.org.il answers
+ * headless Chromium with a bot challenge and an empty DOM. For those the city
+ * can only come from a human, or from the /company-profile skill's search with a
+ * human's rules applied.
+ *
+ * WHY THE SOURCE COLUMN IS NOT OPTIONAL. companyHqCity is written by two
+ * different authors, and the sites that need this endpoint are exactly the ones
+ * already captured with no city — companyProfileAt IS NOT NULL. A later
+ * --force re-capture finds no city again, because that is why one was supplied,
+ * and saveCompanyProfile is presence-based, so an explicit null CLEARS. Without
+ * a recorded author the re-capture cannot tell a human's answer from its own
+ * and silently destroys it. Authority is recorded because it cannot be
+ * inferred.
+ *
+ * Like saveCompanyHomepage(): no companyProfileAt stamp and no once-only guard.
+ * Corrections must stay possible — scanning the profile column is the only
+ * practical way to catch a wrong value across 187 sites — and stamping would
+ * lock a never-captured site out of the capture this value exists to enable.
+ *
+ * THE GATE RUNS HERE, not only in the capture script. scripts/lib/city-csv.ts
+ * cannot be imported into a route: it reads "CSV files/city.csv" from disk, and
+ * that file is absent from the `output: "standalone"` image. src/lib/locations
+ * validates against the bundled IL_CANONICAL for that exact reason, and
+ * src/lib/locations.test.ts (now in CI) asserts the two lists stay identical.
+ */
+export async function saveCompanyHqCity(
+  siteId: string,
+  city: string | null,
+  evidence: HqCityEvidence,
+) {
+  const site = await prisma.site.findUnique({ where: { id: siteId } });
+  if (!site) {
+    throw new NotFoundError("Site", siteId);
+  }
+
+  const raw = city?.trim() || null;
+  let stored: string | null = null;
+
+  if (raw !== null) {
+    // Canonicalise BEFORE gating. A bare membership test would reject the
+    // spellings an operator actually types — ת"א, תל אביב — and would also
+    // reject ביל״ו typed with a real gershayim (U+05F4) even though ביל"ו is a
+    // legal entry, because only squash() unifies those characters.
+    const resolved = normalizeLocations(raw);
+
+    // An HQ is one place. normalizeLocations returns several for a comma list
+    // and passes an unresolved string through verbatim, so the result is
+    // re-checked rather than trusted.
+    if (resolved.length !== 1 || !isCanonicalLocation(resolved[0])) {
+      throw new ValidationError(
+        `Not a known city: "${raw}". A company HQ city must be a single entry ` +
+          `in "CSV files/city.csv" — check the spelling.`,
+      );
+    }
+    if (isRegionLocation(resolved[0])) {
+      throw new ValidationError(
+        `"${resolved[0]}" is a region, not a place. A job may be in a region; a ` +
+          `company headquarters is at an address.`,
+      );
+    }
+    // Store the canonical spelling, so a hand-typed "תל אביב" groups with every
+    // scraped "תל אביב-יפו" instead of splitting the dashboard's city filter.
+    stored = resolved[0];
+  }
+
+  // Composed here, never taken from the client, so no caller can claim a
+  // provenance it does not have.
+  const source =
+    evidence.kind === "skill" ? `skill ${evidence.url}` : evidence.kind;
+
+  return prisma.site.update({
+    where: { id: siteId },
+    data: {
+      companyHqCity: stored,
+      // Clearing a city clears its attribution with it; "operator:none" is a
+      // different act — a human looked and there is nothing to record — and
+      // keeps the source so the dashboard stops asking.
+      companyHqCitySource: stored === null && evidence.kind === "operator" ? null : source,
+    },
     select: COMPANY_PROFILE_SELECT,
   });
 }

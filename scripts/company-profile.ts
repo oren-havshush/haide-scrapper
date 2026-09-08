@@ -77,7 +77,13 @@ import {
   type OrganizationLd,
   type PageHarvest,
 } from "./lib/company-extract";
-import { canonicalCity, loadCityList, matchCityInAddress, type CityList } from "./lib/city-csv";
+import {
+  canonicalCity,
+  isRegionLocation,
+  loadCityList,
+  matchCityInAddress,
+  type CityList,
+} from "./lib/city-csv";
 import { rasteriseSvgImgLogos } from "./lib/svg-img-logos";
 import { fetchImage, ImageRejected, type FetchedImage } from "./lib/fetch-image";
 import { inspectImage } from "../src/lib/image-validate";
@@ -168,6 +174,14 @@ interface SiteRow {
    * because recording it deliberately does not stamp companyProfileAt.
    */
   companyHomepageUrl?: string | null;
+  /**
+   * Present before any capture for the same reason companyHomepageUrl is: a
+   * human may have supplied the city through the dashboard. Paired with its
+   * source, which is what says whether the value on the row was authored or
+   * merely captured last time — see the authority test in captureSite().
+   */
+  companyHqCity?: string | null;
+  companyHqCitySource?: string | null;
 }
 
 interface SiteConfigResponse {
@@ -1079,16 +1093,34 @@ async function captureSite(
   // be derived, and the capture returns early with a board logo — skipping
   // section 4 entirely. The city a human supplied was being dropped on the floor
   // for the very sites the table exists to serve.
-  const manualCity = MANUAL_PROFILE[site.id]?.city;
-  const gatedManualCity = manualCity ? canonicalCity(manualCity, cities) : null;
+  //
+  // Authority is RECORDED, never inferred. companyHqCity holds both a captured
+  // value and an authored one, and the sites that get an authored city are
+  // exactly those already captured without one — so "companyProfileAt is NULL"
+  // does not identify a human's answer. companyHqCitySource does. An
+  // unrecognised source still counts as authored: a wrong value is worse than a
+  // missing one, so an unreadable marker must degrade toward NOT overwriting.
+  const authoredCity = site.companyHqCitySource ? site.companyHqCity?.trim() : undefined;
+  const manualCity = authoredCity || MANUAL_PROFILE[site.id]?.city;
+  const manualSource = authoredCity
+    ? `operator-supplied (${site.companyHqCitySource}, gated)`
+    : "operator-supplied (gated)";
+
+  // Gated exactly like a scraped city, so a typo in a hand-supplied value fails
+  // loudly here rather than fragmenting the dashboard's city filter. isRegion is
+  // part of the gate: "אזור מרכז" is a legal city.csv entry and a legal job
+  // location, but a company is at an address, not in a region.
+  const canonicalManualCity = manualCity ? canonicalCity(manualCity, cities) : null;
+  const gatedManualCity =
+    canonicalManualCity && !isRegionLocation(canonicalManualCity) ? canonicalManualCity : null;
   if (manualCity && !gatedManualCity) {
     (result.warnings ??= []).push(
-      `MANUAL_PROFILE city "${manualCity}" is not in city.csv and was ignored`,
+      `operator-supplied city "${manualCity}" is not a usable city.csv place and was ignored`,
     );
   }
   if (gatedManualCity) {
     result.fields.companyHqCity = gatedManualCity;
-    result.provenance.city = "operator-supplied (gated)";
+    result.provenance.city = manualSource;
   }
 
   try {
@@ -1433,7 +1465,17 @@ async function writeProfile(siteId: string, result: CaptureResult, force: boolea
       companyHomepageUrl: result.fields.companyHomepageUrl,
       companyAbout: result.fields.companyAbout,
       companyHqAddress: result.fields.companyHqAddress,
-      companyHqCity: result.fields.companyHqCity,
+      // OMITTED, not sent as null, when this capture found no city. The write
+      // is presence-based — a key present as null CLEARS the column — so
+      // sending null would let a re-run destroy a city a human supplied
+      // precisely because the capture cannot find one. Omission means "I have
+      // nothing to say about this field", which is the truth.
+      //
+      // Second line of defence: the authority test in captureSite() already
+      // re-emits an authored city. This is what holds if that ever fails.
+      ...(result.fields.companyHqCity !== null
+        ? { companyHqCity: result.fields.companyHqCity }
+        : {}),
       companyProfileStatus: result.status ?? "FAILED",
     },
   );

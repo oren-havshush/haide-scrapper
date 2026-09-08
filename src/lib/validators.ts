@@ -79,6 +79,36 @@ export const updateSiteCompanyHomepageSchema = z.object({
   companyHomepageUrl: z.url().max(500).nullable(),
 });
 
+// Operator-authored HQ city. Separate from updateSiteCompanyProfileSchema for
+// the same reason the homepage is — it is not a capture and must not stamp
+// companyProfileAt — plus one of its own: this is the only write path where a
+// human types a city, so it is the only one where the city.csv gate has to be
+// enforced server-side. saveCompanyHqCity() does that; the schema here only
+// checks shape.
+//
+// `evidence` is what the value means, not decoration. The stored provenance
+// string is composed SERVER-side from it so no client can claim a capture
+// authored a value a human typed, or the reverse:
+//   operator       — a human typed this city
+//   operator:none  — a human looked; the company publishes no HQ city (city null)
+//   skill          — the /company-profile search auto-accepted it; url required
+export const updateSiteCompanyHqCitySchema = z
+  .object({
+    companyHqCity: z.string().max(150).nullable(),
+    evidence: z.object({
+      kind: z.enum(["operator", "operator:none", "skill"]),
+      url: z.url().max(500).optional(),
+    }),
+  })
+  .refine((v) => v.evidence.kind !== "skill" || !!v.evidence.url, {
+    message: "An auto-accepted city must cite the evidence it was accepted on.",
+    path: ["evidence", "url"],
+  })
+  .refine((v) => v.evidence.kind !== "operator:none" || v.companyHqCity === null, {
+    message: '"operator:none" records that there is no city, so companyHqCity must be null.',
+    path: ["companyHqCity"],
+  });
+
 export const updateJobLocationSchema = z.object({
   location: z.string().trim().min(1, "Location must not be empty").max(200),
 });

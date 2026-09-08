@@ -27,10 +27,10 @@ platform: 'windows-powershell'
 | Field | Source, in order of preference | Gate |
 |---|---|---|
 | `companyHomepageUrl` | operator-supplied → derived from siteUrl → careers-page link → `og:url` | must not be an ATS/vendor/social host |
-| `companyAbout` | JSON-LD `description` → about page → homepage prose | boilerplate / promo / error-page filters, then **longest paragraph of the lede only** (§6.8) |
+| `companyAbout` | JSON-LD `description` → about page → homepage prose | boilerplate / promo / error-page filters, then **longest paragraph of the lede only** (§7.8) |
 | `companyLogoPath` | JSON-LD logo → rasterised header `<svg>`, inline or `<img src="*.svg">` → `<img>` candidates | magic bytes, size, not a favicon; an SVG reaches the server only as a rasterised PNG |
 | `companyHqAddress` | JSON-LD `PostalAddress` → labelled address → street line → compact line | a scanned address must name a `city.csv` city |
-| `companyHqCity` | operator-supplied → JSON-LD `addressLocality` → address line → office list | **`CSV files/city.csv` — always** |
+| `companyHqCity` | operator-authored (§4.4) → JSON-LD `addressLocality` → address line → office list → web lookup (§5) | **`CSV files/city.csv` — always** |
 
 The deterministic rules live in `scripts/lib/company-extract.ts` (pure, covered by
 `scripts/lib/company-extract.test.ts`). The LLM is a **fallback for fields the rules
@@ -57,7 +57,7 @@ the queue on its own.
 ## 2. Run it
 
 ```bash
-TOKEN=$(cat .claude/scrap-token)          # PowerShell: see §5
+TOKEN=$(cat .claude/scrap-token)          # PowerShell: see §6
 npx tsx scripts/company-profile.ts --site $SITE_ID
 ```
 
@@ -105,7 +105,7 @@ is never written, so the site stays in the `--all` queue for a later attempt.
 `COMPLETE` and `withLogo: 1` say a field **landed**, not that it is **right**. Every
 gate in this pipeline checks SHAPE — magic bytes, dimensions, city.csv membership,
 boilerplate filters — and none of them can tell whose logo or whose prose it is. Both
-known misfires (§6.7, §6.8) reported `COMPLETE`, passed every gate, and stored another
+known misfires (§7.7, §7.8) reported `COMPLETE`, passed every gate, and stored another
 company's identity. So the dry run is not a formality: **look at the two fields a
 machine cannot check.**
 
@@ -122,9 +122,9 @@ node -e "const j=JSON.parse(require('fs').readFileSync('/tmp/profile.jsonl','utf
 Two questions, both answered by eye:
 1. **Is that this company's logo?** Not "is it a logo" — the wrong answer is always a
    real logo. On an importer, dealer group, franchise or distributor, the runner-up is
-   a brand they carry (§6.7).
+   a brand they carry (§7.7).
 2. **Is that copy the company describing ITSELF, today?** A dated milestone, a product
-   launch or a press release is real company prose and still the wrong field (§6.8).
+   launch or a press release is real company prose and still the wrong field (§7.8).
 
 **Resolve any doubt BEFORE the real run.** `companyAbout`, `companyLogoPath` and
 `companyProfileAt` are write-once (§1.1): noting a reservation and shipping anyway
@@ -155,15 +155,130 @@ contact page, the directions page (`כתובת ותחבורה` / `דרכי הג�
 and the footer — the capture already reads all of them. If none carries an address,
 leave the city NULL rather than inferring one from prose.
 
-**4.4 Operator-supplied values** live in `MANUAL_PROFILE` in
-`scripts/company-profile.ts`. Keyed by **site id, never by host** — recruitment
-vendors serve several unrelated employers from one domain, so a host key would hand
-one employer's city to all of them. Supplied cities still pass through the `city.csv`
-gate, so a misspelling warns instead of being stored.
+**4.4 Operator-authored values.** A city a human establishes goes through the API,
+not the code:
+
+```bash
+curl.exe -X PUT "$BASE/api/sites/$SITE_ID/company-hq-city" -H "$AUTH" \
+  -H "Content-Type: application/json" -d "@body.json"
+# body.json: {"companyHqCity":"תל אביב","evidence":{"kind":"operator"}}
+```
+
+The server canonicalises and gates it — `תל אביב` is stored as `תל אביב-יפו`, an
+off-list spelling or a region is a 400 — and records **who authored it** in
+`companyHqCitySource`. That provenance is load-bearing, not bookkeeping: the sites
+needing a hand-supplied city are exactly those already captured without one, so a
+later `--force` re-capture finds no city again and would otherwise write NULL
+straight over the human's answer. Recorded authority is what stops it.
+
+`evidence.kind` is one of:
+
+| kind | meaning |
+|---|---|
+| `operator` | a human established this city |
+| `operator:none` | a human looked; this company publishes no HQ city. City stays NULL and the dashboard stops asking |
+| `skill <url>` | §5 auto-accepted it, citing the evidence |
+
+`operator:none` is worth using. Without it a company that genuinely publishes no
+city is indistinguishable from one nobody has checked, and the dashboard's warning
+never converges.
+
+The older `MANUAL_PROFILE` table in `scripts/company-profile.ts` still works as a
+fallback and keeps the reasoning for the sites already in it. Keyed by **site id,
+never by host** — recruitment vendors serve several unrelated employers from one
+domain, so a host key would hand one employer's city to all of them. Prefer the API
+for anything new: the DB value wins, and it needs no commit or deploy.
 
 ---
 
-## 5. Windows gotchas
+## 5. Looking a city up on the web
+
+The capture takes a city only from an address the company published. When there is
+no such address (§4.3), the answer usually still exists — on a page the capture
+cannot read, or in the corporate registry. Finding it is your job; deciding whether
+it is trustworthy is what this section is for.
+
+**The gate does not protect you here.** `city.csv` checks a city is *real*. It has
+no opinion on whether it is *this company's*. Every safeguard below exists because
+that distinction is the entire risk.
+
+**When.** Only after a capture completed with no city AND the §4 diagnosis shows the
+company publishes no address. Never as a first resort — if the address is on the
+company's own site and we missed it, that is a capture bug worth fixing in the
+extractor, and fixing it helps every site.
+
+**Never overwrite.** If `companyHqCity` or `companyHqCitySource` is already set,
+stop. A human's answer is not second-guessed by a search.
+
+### 5.1 Source order
+
+1. **The company's own domain**, on a page the capture could not use — a PDF, a
+   bot-walled or JS-only page. Its own statement about itself.
+2. **The Israeli corporate registry** (data.gov.il), looked up by **ח.פ. number,
+   never by name**. Treat it as a *confirmer*: a registered address is often the
+   company's accountant or lawyer, and is frequently years stale.
+3. **LinkedIn** — self-declared and decent, but often reports a district rather than
+   a city (which the gate refuses anyway), and the page may belong to a different
+   legal entity than the employer.
+4. **Maps / business listings** — good evidence that a building exists, poor evidence
+   that it is the head office. Franchise branches carry the brand.
+5. **Press, Wikipedia, directories** — tie-breakers only. Aggregators re-scrape each
+   other, so two of them are **one** source, not two.
+
+Get the ח.פ. from the company's own footer, terms or privacy page. That number is
+also the strongest identity binding available.
+
+### 5.2 Auto-accept — all five, or ask
+
+1. **Identity is bound to this site.** The evidence sits on the eTLD+1 of
+   `companyHomepageUrl`, or names a ח.פ. that also appears on that domain. This is
+   the guard against the failure this codebase has hit three separate times: נטלי
+   stored wearing its accessibility vendor's identity; another company's logo and
+   press releases captured for כלמוביל; Comeet's homepage, prose and logo stored as
+   מנועי בית שמש's until the `og:url` gate landed. A plausible address for the wrong
+   company is the specific thing to fear.
+2. **Two independent sources agree** — different eTLD+1, neither quoting the other.
+3. **It is the head office**: the text says `משרד ראשי` / `הנהלה` / `מטה` /
+   "head office", or it is the only address the company publishes anywhere.
+4. **Gate-clean** — canonicalises to exactly one `city.csv` entry, and is not a
+   region.
+5. **Nothing better disagrees.**
+
+Then write it with `evidence: {"kind":"skill","url":"<the primary source>"}` and
+report the city and that URL in your summary. An auto-accepted value must never be
+unattributable.
+
+### 5.3 Ask the human on any of these
+
+- One source only, or every source tracing back to one origin.
+- The address belongs to a staffing agency, an ATS vendor, an accessibility widget
+  or a marketing host — check `src/lib/ats-hosts.ts` before believing an address.
+- The site's own URL is an ATS board and `companyName` is the only identity signal.
+  TADIRAN on `careers.topmatch.co.il` is the worked example; the wrong-legal-entity
+  risk is highest here.
+- **The company name is an ordinary Hebrew word** — מסוף, פריץ, תמונה. The search may
+  have matched a different business entirely. This is the same hazard that made
+  משמרות ("shifts") look like a kibbutz and found כנות inside הסוכנות.
+- **A branch network** — clinics, chains, service networks. ש.ל.ה lists branch
+  clinics and no head office; a branch city must never become the HQ.
+- A group, holding company, importer or franchise, where the search surfaces the
+  brands rather than the employer.
+- The registry city and the company's own site disagree. Do not silently prefer one.
+- Only a region is available.
+
+When you ask, give the proposed city, the source URL, and what specifically is
+uncertain. Do not store anything until answered.
+
+### 5.4 Before trusting this at scale
+
+Calibrate first. The sites already carrying a hand-verified city are a free labelled
+set: run the lookup over them **propose-only** and compare. Enable auto-accept only
+if it reproduces every one with **zero** wrong cities. Missing a few is fine —
+coverage was never the goal (see the header). Getting one wrong is not.
+
+---
+
+## 6. Windows gotchas
 
 ```powershell
 $TOKEN = Get-Content .claude\scrap-token -Raw | ForEach-Object { $_.Trim() }
@@ -174,7 +289,7 @@ $TOKEN = Get-Content .claude\scrap-token -Raw | ForEach-Object { $_.Trim() }
 
 ---
 
-## 6. Correctness rules (load-bearing — never drift from these)
+## 7. Correctness rules (load-bearing — never drift from these)
 
 1. **The city comes only from a real address, an office list, or a human.** Scanning
    loose page text for city names was tried and REMOVED (2026-08-30): across 25 live

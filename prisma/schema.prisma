@@ -118,6 +118,20 @@ model Site {
   /// gate, which enforces the same discipline for Job.location).
   companyHqCity String?
 
+  /// Who authored companyHqCity, and on what evidence. NULL means the capture
+  /// extracted it from a real address, or nobody has set one.
+  ///
+  /// Load-bearing, not documentation: companyHqCity is written both by the
+  /// capture and by a human who looked the company up when the capture found
+  /// nothing. A re-capture of such a site finds no city again — that is why one
+  /// was supplied — and would write NULL straight over the human's answer.
+  /// Authority has to be recorded because it cannot be inferred from the value.
+  ///
+  /// "operator" | "operator:none" (a human looked; the company publishes no HQ
+  /// city) | "skill <evidence-url>" | NULL. TEXT, not an enum, for the reason
+  /// companyProfileStatus is TEXT.
+  companyHqCitySource String?
+
   /// Lifecycle marker. TEXT, not an enum, so an unrecognised value can never
   /// throw in a consumer's Prisma client and so values stay removable.
   /// NULL (never attempted) | "COMPLETE" | "PARTIAL" | "FAILED".

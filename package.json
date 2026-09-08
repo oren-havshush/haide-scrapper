@@ -18,6 +18,7 @@
     "policy:backfill": "tsx scripts/backfill-policy-review.ts",
     "sync:addsite2": "node scripts/sync-addsite2.mjs",
     "check:addsite2": "node scripts/sync-addsite2.mjs --check",
+    "test:locations": "tsx src/lib/locations.test.ts",
     "sync:skills": "node scripts/sync-addsite2.mjs",
     "check:skills": "node scripts/sync-addsite2.mjs --check",
     "postinstall": "prisma generate"

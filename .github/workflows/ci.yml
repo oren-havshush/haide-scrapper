@@ -27,6 +27,14 @@ jobs:
       - name: Check /addsite2 docs are in sync
         run: pnpm check:addsite2
 
+      # Asserts the bundled IL_CANONICAL still equals "CSV files/city.csv".
+      # Production validates city writes against the bundled list because the
+      # CSV is not in the standalone image, so drift between the two would let
+      # an off-list city reach a column the public site reads. The CSV is in the
+      # repo, so CI can compare them even though the runtime cannot.
+      - name: Check the city vocabulary has not drifted
+        run: pnpm test:locations
+
       - run: pnpm lint
 
       - name: Build Next.js

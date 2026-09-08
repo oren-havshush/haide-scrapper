@@ -192,3 +192,20 @@ export function normalizeLocations(raw: string | null | undefined): string[] {
 export function isCanonicalLocation(v: string): boolean {
   return CANONICAL.has(v);
 }
+
+/**
+ * A region or a nationwide marker rather than a single place.
+ *
+ * These are legal city.csv entries and legal for a JOB — a job really can be
+ * "אזור מרכז". A company HQ is a place, so they are refused there: without this,
+ * a street called "רחוב השפלה" resolved through the alias table to "אזור שפלה"
+ * and became the HQ region of a Tel Aviv company.
+ *
+ * Lives here, beside the vocabulary itself, because both sides of the fence
+ * need the identical rule — scripts/lib/city-csv.ts for the capture and
+ * src/lib/locations.ts for the dashboard write path. Two copies of a regex is
+ * the drift src/lib/ats-hosts.ts was created to end.
+ */
+export function isRegionLocation(v: string): boolean {
+  return /^אזור\s/.test(v) || v === "פריסה ארצית";
+}
