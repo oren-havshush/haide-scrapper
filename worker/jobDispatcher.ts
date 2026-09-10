@@ -5,6 +5,7 @@ import { handleAnalysisJob } from "./jobs/analyze";
 import { handleScrapeJob } from "./jobs/scrape";
 import { handlePolicyReviewJob } from "./jobs/policyReview";
 import { emitWorkerEvent } from "./lib/emitEvent";
+import { planFailureCleanup, readScrapeRunId } from "./lib/failureCleanup";
 
 export async function processJob(job: WorkerJob) {
   console.info(`[worker] Processing job ${job.id} (type: ${job.type}, site: ${job.siteId})`);
@@ -70,23 +71,66 @@ export async function processJob(job: WorkerJob) {
       },
     });
 
-    // Update site to FAILED — wipe its scraped jobs (mirror siteService path)
-    await prisma.$transaction([
-      prisma.job.deleteMany({ where: { siteId: job.siteId } }),
-      prisma.site.update({
+    // This catch used to delete every Job row for the site and set it FAILED.
+    // Exceptions reach here from paths that decided nothing — the config
+    // parsers run before handleScrapeJob's own try, and its catch block makes
+    // unguarded DB calls — so a transient DB blip emptied a site. See
+    // worker/lib/failureCleanup.ts for the rule that replaced it.
+
+    // `site` above is a snapshot taken before the handler ran, and the handler
+    // may have moved the site itself (failScrapeRun, the activation gate).
+    // Re-read so the rescue keys off the status that is actually there now.
+    const current = await prisma.site.findUnique({
+      where: { id: job.siteId },
+      select: { status: true },
+    });
+
+    const scrapeRunId = readScrapeRunId(job.payload);
+    const cleanup = planFailureCleanup({
+      siteStatus: current?.status,
+      scrapeRunId,
+    });
+
+    // An escaped exception leaves the ScrapeRun IN_PROGRESS, and createScrapeRun
+    // then refuses the site with a ConflictError until a reaper pass — which is
+    // at worker boot or the next nightly, so potentially a day of being
+    // unscrapeable by hand. Close it here, since the link is right there.
+    //
+    // updateMany with the status in the WHERE clause is deliberate: if the
+    // handler already completed the run and threw afterwards, that COMPLETED run
+    // must not be relabelled FAILED.
+    if (cleanup.closeScrapeRun && scrapeRunId) {
+      await prisma.scrapeRun.updateMany({
+        where: { id: scrapeRunId, status: "IN_PROGRESS" },
+        data: {
+          status: "FAILED",
+          error: errorMessage,
+          failureCategory: "other",
+          completedAt: new Date(),
+        },
+      });
+    }
+
+    // ANALYZING is the only status this may change, and it deletes nothing.
+    // Written directly rather than through updateSiteStatus, which deletes every
+    // Job row on a FAILED transition — the exact wipe being removed here.
+    if (cleanup.rescueSite) {
+      await prisma.site.update({
         where: { id: job.siteId },
         data: {
           status: "FAILED",
           failedAt: new Date(),
         },
-      }),
-    ]);
+      });
+    }
 
-    // Emit SSE event for site status change to FAILED
-    await emitWorkerEvent({
-      type: "site:status-changed",
-      payload: { siteId: job.siteId, status: "FAILED" },
-    });
+    // Only announce a status change that actually happened.
+    if (cleanup.emitStatusChange) {
+      await emitWorkerEvent({
+        type: "site:status-changed",
+        payload: { siteId: job.siteId, status: "FAILED" },
+      });
+    }
 
     console.error(`[worker] Job ${job.id} failed:`, { siteId: job.siteId, error: errorMessage });
   }
