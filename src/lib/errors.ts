@@ -48,11 +48,43 @@ export class InvalidTransitionError extends AppError {
   }
 }
 
+/**
+ * A Prisma unique-constraint violation (P2002).
+ *
+ * Duck-typed rather than checked with `instanceof`, so this file stays free of
+ * a Prisma import — it is reached from route handlers on both sides of the
+ * client/server boundary. `clientVersion` is what separates a real Prisma error
+ * from any object that happens to carry a `code` of "P2002".
+ *
+ * It matters because it is a *conflict*, not a server fault: two writers raced
+ * for the same row. Reported as a 500 it looks like a bug in the dashboard;
+ * reported as 409 it reads as what it is, and the caller can retry. The nightly
+ * sweep is the writer that makes this reachable — it competes with an operator
+ * pressing Scrape on the same site.
+ */
+export function isUniqueConstraintError(error: unknown): boolean {
+  if (typeof error !== "object" || error === null) return false;
+  const e = error as { code?: unknown; clientVersion?: unknown };
+  return e.code === "P2002" && typeof e.clientVersion === "string";
+}
+
 export function formatErrorResponse(error: unknown): NextResponse<ApiErrorResponse> {
   if (error instanceof AppError) {
     return NextResponse.json(
       { error: { code: error.code, message: error.message } },
       { status: error.statusCode },
+    );
+  }
+
+  if (isUniqueConstraintError(error)) {
+    return NextResponse.json(
+      {
+        error: {
+          code: "CONFLICT",
+          message: "That record already exists, or another request created it first.",
+        },
+      },
+      { status: 409 },
     );
   }
 

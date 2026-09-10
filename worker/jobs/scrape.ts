@@ -17,6 +17,28 @@ import { emitWorkerEvent } from "../lib/emitEvent";
 import { DOM_FIELD_EXTRACT_SOURCE } from "../lib/domFieldExtract";
 import { APPLY_LOGIN_SKIP_NOTE, APPLY_LOGIN_FAILURE_CATEGORY } from "../lib/applyGate";
 import { applyJobIdFallback } from "../lib/synthesizeJobId";
+import {
+  ACTIVATION_GATE_NOTE_PREFIX,
+  INSERT_BATCH,
+  TX_MAX_WAIT_MS,
+  TX_TIMEOUT_MS,
+  chunkRows,
+  mayOverwriteAdminNote,
+  planActivationGate,
+  planApplyLoginSkip,
+  planScheduledPersist,
+  planScrapeFailure,
+  readScheduledFlag,
+  type WithheldWrite,
+} from "../lib/scheduledRun";
+import {
+  awaitCommit,
+  beginCommit,
+  createAbortToken,
+  isAborted,
+  requestAbort,
+  type AbortToken,
+} from "../lib/abortToken";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -60,6 +82,22 @@ interface ScrapeResult {
   invalidJobs: number;
   error?: string;
   failureCategory?: string;
+  /** True when this run came from the nightly sweep (`payload.scheduled`). */
+  scheduled?: boolean;
+  /**
+   * Site-mutating writes the scheduled gate withheld — a promotion, a demotion,
+   * a SKIP. Absent on a manual run, which applies them instead. This is how the
+   * night's report says what a human still has to decide.
+   */
+  withheld?: WithheldWrite;
+}
+
+/** Everything the scheduled gate needs, threaded together so neither is forgotten. */
+interface RunMode {
+  /** Suppresses every site-mutating write. See worker/lib/scheduledRun.ts. */
+  scheduled: boolean;
+  /** Decides who may write the run's terminal status. See worker/lib/abortToken.ts. */
+  abort: AbortToken<ScrapeResult>;
 }
 
 /** Scrape execution context for error categorization */
@@ -1188,6 +1226,12 @@ async function extractRawFieldsFromListingPage(
   itemSelector: string | null,
   revealSelector: string | null = null,
   pagination: PaginationConfig | null = null,
+  /**
+   * Cooperative stop. Checked between pages, so a run that has passed its
+   * deadline stops paging instead of racing the timeout handler for another
+   * three minutes of a listing nobody will persist.
+   */
+  abort: AbortToken<unknown> | null = null,
 ): Promise<Record<string, string>[]> {
   // If pagination is configured, repeat extraction per page and merge.
   // We dedupe across pages so the same item from page 1 doesn't double up if
@@ -1203,6 +1247,10 @@ async function extractRawFieldsFromListingPage(
         : null;
     const all: Record<string, string>[] = [];
     for (let pageIdx = 1; pageIdx <= pagination.maxPages; pageIdx++) {
+      if (isAborted(abort)) {
+        console.warn(`[scrape] deadline passed — stopping pagination at page ${pageIdx}`);
+        break;
+      }
       const sig = await firstItemSignature(page, itemSelector);
       const pageResults = await extractRawFieldsFromListingPageOnce(
         page,
@@ -1374,6 +1422,8 @@ async function extractRawFieldsWithPageFlow(
    * pages, so the caller can no longer take the measurement.
    */
   stats?: { listingItemsSeen: number | null },
+  /** Cooperative stop, checked between listing pages. See the sibling extractor. */
+  abort: AbortToken<unknown> | null = null,
 ): Promise<Record<string, string>[]> {
   const rawFieldsList: Record<string, string>[] = [];
 
@@ -1426,6 +1476,7 @@ async function extractRawFieldsWithPageFlow(
       itemSelector,
       revealSelector,
       pagination,
+      abort,
     );
   }
 
@@ -1649,6 +1700,12 @@ async function extractRawFieldsWithPageFlow(
 
     // ---- Pagination: advance to next listing page or stop. ----
     if (!pagination) break;
+    if (isAborted(abort)) {
+      console.warn(
+        `[scrape] deadline passed — stopping listing pagination after page ${listingPageIdx}`,
+      );
+      break;
+    }
     const gainedUrls = detailUrls.length - urlsBefore;
     console.info(
       `[scrape] listing page ${listingPageIdx}: collected ${gainedUrls} detail URLs (running total ${detailUrls.length})`,
@@ -2765,6 +2822,142 @@ function buildLocationWarnings(
 // Main: handleScrapeJob
 // ---------------------------------------------------------------------------
 
+/**
+ * Turn validated records into the exact rows to write.
+ *
+ * Pulled out of the persistence loop for two reasons. It is what lets the
+ * scheduled path precompute every row *before* opening its transaction — all of
+ * this is pure computation (location canonicalisation, the id fallback, the age
+ * bucket) with no awaits, so doing it inside would hold locks during CPU work
+ * for no reason. And it is what makes "manual persistence is unchanged" a fact
+ * rather than a hope: both paths build their rows here, so the values written
+ * cannot drift apart, only the mechanism that writes them.
+ */
+function buildJobRows(args: {
+  records: ValidatedRecord[];
+  /** Positional, from applyJobIdFallback — index i belongs to records[i]. */
+  synthesizedIds: Array<string | null>;
+  locationOverrides: Map<string, string>;
+  locationOverrideLists: Map<string, string[]>;
+  locationFallback: string | null;
+  siteId: string;
+  scrapeRunId: string;
+}): Prisma.JobCreateManyInput[] {
+  return args.records.map(({ normalized, validation }, idx) => {
+    // Deliberately the EXTRACTED id, not the synthesised one, so a manual
+    // location override keyed before this fallback existed still matches.
+    const jobKey = normalized.externalJobId || normalized.url || null;
+    const persistedExternalJobId =
+      args.synthesizedIds[idx] ?? normalized.externalJobId ?? null;
+    const overriddenLocation = (jobKey && args.locationOverrides.get(jobKey)) || null;
+    // Precedence: manual dashboard override → extracted location →
+    // site-level fallback (HQ) → "Unknown". The extracted value can be an
+    // empty string (not null), so test it with trim() rather than ??.
+    const extractedLocation = normalized.location?.trim() || null;
+    const rawLocation =
+      overriddenLocation ?? extractedLocation ?? args.locationFallback ?? "Unknown";
+    // Canonicalise against "CSV files/city.csv" and split multi-place values.
+    // Returns [] only for empty/"Unknown"; otherwise always non-empty (falling
+    // back to the raw string), so a scraped value is never silently dropped.
+    const overrideList = jobKey ? args.locationOverrideLists.get(jobKey) : undefined;
+    const canonicalLocations = overrideList ?? normalizeLocations(rawLocation);
+    // `location` stays the single primary value — the public site reads this
+    // column directly, so its shape must not change.
+    const resolvedLocation = canonicalLocations[0] ?? rawLocation;
+
+    return {
+      title: normalized.title || "Untitled",
+      description: normalized.description || null,
+      requirements: normalized.requirements || null,
+      location: resolvedLocation,
+      locations: canonicalLocations,
+      department: normalized.department || null,
+      externalJobId: persistedExternalJobId || null,
+      publishDate: normalized.publishDate || null,
+      deadline: normalized.deadline || null,
+      ageBucket: computeAgeBucket(normalized.publishDate),
+      applicationInfo: normalized.applicationInfo || null,
+      detailUrl: normalized.url || null,
+      rawData: normalized.rawFields as Prisma.InputJsonValue,
+      validationStatus:
+        validation.warnings.length > 0
+          ? `${validation.status};warn:${validation.warnings.join(",")}`
+          : validation.status,
+      siteId: args.siteId,
+      scrapeRunId: args.scrapeRunId,
+    };
+  });
+}
+
+/**
+ * Run the activation gate and apply its verdict — or, on a scheduled run,
+ * record the verdict and apply nothing.
+ *
+ * The same eight lines used to sit at three call sites (after persistence, in
+ * the PARTIAL catch branch, and in the timeout-partial branch), which is three
+ * places to forget the gate. One function means the rule cannot drift between
+ * them, and the `adminNote` guard reaches all three at once.
+ */
+async function applyActivationGate(args: {
+  siteId: string;
+  fieldMappingsRaw: unknown;
+  scrapeRunId: string;
+  scheduled: boolean;
+  label: string;
+}): Promise<{
+  status: "ACTIVE" | "REVIEW";
+  reason: string;
+  applied: boolean;
+  withheld: WithheldWrite;
+}> {
+  const gate = await decideActivationStatus(args.siteId, args.fieldMappingsRaw, args.scrapeRunId);
+
+  const current = await prisma.site.findUnique({
+    where: { id: args.siteId },
+    select: { status: true, adminNote: true },
+  });
+
+  const decision = planActivationGate({
+    scheduled: args.scheduled,
+    gateStatus: gate.status,
+    gateReason: gate.reason,
+    currentStatus: current?.status ?? "",
+  });
+
+  if (!decision.applySiteWrite) {
+    if (decision.withheld.wouldPromoteTo || decision.withheld.wouldDemoteTo) {
+      console.info(
+        `[scrape] scheduled run withheld a site change for ${args.siteId} (${args.label}): ` +
+          `would ${decision.withheld.wouldPromoteTo ? "promote" : "demote"} ` +
+          `${current?.status} -> ${gate.status} — ${gate.reason}`,
+      );
+    }
+    return { ...gate, applied: false, withheld: decision.withheld };
+  }
+
+  // The gate used to replace whatever an operator had written in adminNote, on
+  // every run. A note the gate wrote itself is fair game; a human's is not.
+  const writeNote = gate.status === "REVIEW" && mayOverwriteAdminNote(current?.adminNote);
+
+  await prisma.site.update({
+    where: { id: args.siteId },
+    data: {
+      status: gate.status,
+      ...(gate.status === "ACTIVE" ? { activeAt: new Date() } : {}),
+      ...(writeNote ? { adminNote: `${ACTIVATION_GATE_NOTE_PREFIX}${gate.reason}` } : {}),
+    },
+  });
+
+  if (gate.status === "REVIEW") {
+    console.warn(`[scrape] activation gate REVIEW for ${args.siteId} (${args.label}): ${gate.reason}`);
+    if (!writeNote) {
+      console.info(`[scrape] kept the existing operator adminNote on ${args.siteId}`);
+    }
+  }
+
+  return { ...gate, applied: true, withheld: decision.withheld };
+}
+
 export async function handleScrapeJob(
   job: WorkerJob,
   site: Site,
@@ -2773,6 +2966,10 @@ export async function handleScrapeJob(
   const payload = job.payload as Record<string, unknown> | null;
   const scrapeRunId = payload?.scrapeRunId as string | undefined;
   const maxJobs = typeof payload?.maxJobs === "number" ? payload.maxJobs : null;
+  // Only the sweep driver sets this; the HTTP route cannot. Everything the
+  // scheduled gate does hangs off it, so it is read once, here.
+  const scheduled = readScheduledFlag(job.payload);
+  const runMode: RunMode = { scheduled, abort: createAbortToken<ScrapeResult>() };
 
   if (!scrapeRunId) {
     console.error("[scrape] No scrapeRunId in job payload:", job.id);
@@ -2783,7 +2980,8 @@ export async function handleScrapeJob(
   }
 
   console.info(
-    `[scrape] Starting scrape for site: ${site.siteUrl} (scrapeRunId: ${scrapeRunId}${maxJobs ? `, maxJobs: ${maxJobs}` : ""})`,
+    `[scrape] Starting ${scheduled ? "SCHEDULED" : "manual"} scrape for site: ${site.siteUrl} ` +
+      `(scrapeRunId: ${scrapeRunId}${maxJobs ? `, maxJobs: ${maxJobs}` : ""})`,
   );
 
   let browser: Browser | null = null;
@@ -2815,7 +3013,7 @@ export async function handleScrapeJob(
     console.info(
       `[scrape] Site ${site.id} flagged applyRequiresLogin — skipping (SKIPPED) without scraping.`,
     );
-    const result = await skipSiteForApplyLogin(scrapeRunId, site.id);
+    const result = await skipSiteForApplyLogin(scrapeRunId, site.id, scheduled);
     return { ...result };
   }
 
@@ -2823,12 +3021,13 @@ export async function handleScrapeJob(
     const result = await failScrapeRun(scrapeRunId, site.id, {
       error: "Site has no field mappings configured",
       failureCategory: "other",
+      scheduled,
     });
     return { ...result };
   }
 
   // Wrap entire scrape execution in a timeout (NFR2: 2 minutes)
-  const timeout = createTimeoutPromise(scrapeRunId, site.id, site.fieldMappings);
+  const timeout = createTimeoutPromise(scrapeRunId, site.id, site.fieldMappings, runMode);
   try {
     const scrapeResult = await Promise.race<ScrapeResult>([
       executeScrape(
@@ -2849,6 +3048,7 @@ export async function handleScrapeJob(
         setupScript,
         loadMoreSelector,
         browserOverrides,
+        runMode,
       ),
       timeout.promise,
     ]);
@@ -2864,6 +3064,24 @@ export async function handleScrapeJob(
       error instanceof Error ? error : new Error(errorMessage),
       context,
     );
+
+    // The transaction is the sole authority on a scheduled run's outcome (N3,
+    // F2). This is the belt to the timeout handler's braces: even if a
+    // rejection reaches here by some other route while the commit is open, this
+    // catch refuses to write terminal state and reports what the transaction
+    // produced. If the transaction instead rolled back, it wrote nothing and
+    // deleted nothing, and the ordinary failure path below is correct.
+    const committed = awaitCommit(runMode.abort);
+    if (committed) {
+      try {
+        return { ...(await committed) };
+      } catch (commitError) {
+        console.warn(
+          "[scrape] scheduled persistence rolled back; listings are untouched:",
+          commitError instanceof Error ? commitError.message : String(commitError),
+        );
+      }
+    }
 
     // Check if jobs were already saved incrementally before the error/timeout
     const run = await prisma.scrapeRun.findUnique({
@@ -2888,8 +3106,15 @@ export async function handleScrapeJob(
       };
     }
 
-    // If we saved some jobs but the timeout handler didn't get to run yet
-    if (savedJobs > 0) {
+    // If we saved some jobs but the timeout handler didn't get to run yet.
+    //
+    // Unreachable on a scheduled run — jobCount is written only inside the
+    // atomic transaction, so a run that reached this catch either committed in
+    // full (handled above) or rolled back to 0. The `!scheduled` is not
+    // redundancy for its own sake: PARTIAL is a promise this path cannot keep
+    // unattended, and an assumption that silently stops holding is exactly how
+    // the wipes this work removes got in.
+    if (savedJobs > 0 && !scheduled) {
       console.warn(
         `[scrape] Scrape errored but ${savedJobs} jobs were already saved — marking PARTIAL`,
       );
@@ -2902,20 +3127,13 @@ export async function handleScrapeJob(
           completedAt: new Date(),
         },
       });
-      {
-        const gate = await decideActivationStatus(site.id, site.fieldMappings, scrapeRunId);
-        await prisma.site.update({
-          where: { id: site.id },
-          data: {
-            status: gate.status,
-            ...(gate.status === "ACTIVE" ? { activeAt: new Date() } : {}),
-            ...(gate.status === "REVIEW" ? { adminNote: `[activation-gate] ${gate.reason}` } : {}),
-          },
-        });
-        if (gate.status === "REVIEW") {
-          console.warn(`[scrape] activation gate REVIEW for ${site.id}: ${gate.reason}`);
-        }
-      }
+      await applyActivationGate({
+        siteId: site.id,
+        fieldMappingsRaw: site.fieldMappings,
+        scrapeRunId,
+        scheduled,
+        label: "error-partial",
+      });
       return {
         success: true,
         scrapeRunId,
@@ -2936,6 +3154,7 @@ export async function handleScrapeJob(
     const result = await failScrapeRun(scrapeRunId, site.id, {
       error: errorMessage,
       failureCategory,
+      scheduled,
     });
 
     return { ...result };
@@ -2964,8 +3183,10 @@ async function executeScrape(
   setupScript: string | null = null,
   loadMoreSelector: string | null = null,
   browserOverrides: BrowserOverrides | null = null,
+  runMode: RunMode = { scheduled: false, abort: createAbortToken<ScrapeResult>() },
 ): Promise<ScrapeResult> {
   const scrapeStartedAt = Date.now();
+  const { scheduled } = runMode;
 
   // Launch browser
   const browser = await launchBrowser();
@@ -3002,6 +3223,7 @@ async function executeScrape(
       setupScript,
       loadMoreSelector,
       listingStats,
+      runMode.abort,
     );
     context.pageLoaded = true;
     context.selectorsMatched = rawFieldsList.length > 0;
@@ -3176,6 +3398,7 @@ async function executeScrape(
       itemSelector,
       revealSelector,
       pagination,
+      runMode.abort,
     );
 
     // If nothing matched, give the page a chance: scroll to bottom to trigger
@@ -3199,6 +3422,7 @@ async function executeScrape(
 
       rawFieldsList = await extractRawFieldsFromListingPage(
         page, fieldMappings, listingSelector, itemSelector, revealSelector, pagination,
+        runMode.abort,
       );
     }
 
@@ -3403,99 +3627,200 @@ async function executeScrape(
     );
   }
 
-  // Save jobs in chunks so progress is preserved even if a timeout occurs.
-  // Delete old jobs first, then insert in batches of CHUNK_SIZE, updating the
-  // ScrapeRun progress after each chunk.
-  const CHUNK_SIZE = 20;
-  await prisma.job.deleteMany({ where: { siteId: site.id } });
+  // The deadline passed while we were still extracting. (R3)
+  //
+  // This is the check that matters, and it is NOT scheduled-specific. Breaking
+  // out of pagination on an abort returns whatever was collected so far and
+  // falls through to here — so without this, an aborted run would delete a good
+  // set of listings and replace it with a partial one, *after* the timeout
+  // handler had already written this run's terminal status. That handler owns
+  // the outcome now; persisting behind its back is the defect, not the fix.
+  //
+  // Today's code reaches the same place by a slower route: it keeps paginating
+  // until the browser is closed underneath it, and whether a late write lands
+  // is a race. Refusing here is what makes it not a race.
+  if (isAborted(runMode.abort)) {
+    console.warn(
+      `[scrape] deadline passed before persistence — writing nothing for ${site.siteUrl}; ` +
+        "the timeout handler owns this run's outcome",
+    );
+    return {
+      success: false,
+      scrapeRunId,
+      jobCount: 0,
+      totalJobs: validatedRecords.length,
+      validJobs: 0,
+      invalidJobs: invalidCount,
+      failureCategory: "timeout",
+      ...(scheduled ? { scheduled: true } : {}),
+    };
+  }
+
+  // Every row value is pure computation, so both paths precompute them here and
+  // neither holds a lock while doing CPU work.
+  const rows = buildJobRows({
+    records: recordsToPersist,
+    synthesizedIds: idFallback.ids,
+    locationOverrides,
+    locationOverrideLists,
+    locationFallback,
+    siteId: site.id,
+    scrapeRunId,
+  });
 
   let savedCount = 0;
-  for (let offset = 0; offset < recordsToPersist.length; offset += CHUNK_SIZE) {
-    const chunk = recordsToPersist.slice(offset, offset + CHUNK_SIZE);
 
-    await prisma.$transaction(async (tx) => {
-      for (const [chunkIdx, { normalized, validation }] of chunk.entries()) {
-        // Deliberately the EXTRACTED id, not the synthesised one, so a manual
-        // location override keyed before this fallback existed still matches.
-        const jobKey = normalized.externalJobId || normalized.url || null;
-        const persistedExternalJobId =
-          idFallback.ids[offset + chunkIdx] ?? normalized.externalJobId ?? null;
-        const overriddenLocation =
-          (jobKey && locationOverrides.get(jobKey)) || null;
-        // Precedence: manual dashboard override → extracted location →
-        // site-level fallback (HQ) → "Unknown". The extracted value can be an
-        // empty string (not null), so test it with trim() rather than ??.
-        const extractedLocation = normalized.location?.trim() || null;
-        const rawLocation =
-          overriddenLocation ?? extractedLocation ?? locationFallback ?? "Unknown";
-        // Canonicalise against "CSV files/city.csv" and split multi-place values.
-        // Returns [] only for empty/"Unknown"; otherwise always non-empty (falling
-        // back to the raw string), so a scraped value is never silently dropped.
-        const overrideList = jobKey ? locationOverrideLists.get(jobKey) : undefined;
-        const canonicalLocations = overrideList ?? normalizeLocations(rawLocation);
-        // `location` stays the single primary value — the public site reads this
-        // column directly, so its shape must not change.
-        const resolvedLocation = canonicalLocations[0] ?? rawLocation;
-        await tx.job.create({
-          data: {
-            title: normalized.title || "Untitled",
-            description: normalized.description || null,
-            requirements: normalized.requirements || null,
-            location: resolvedLocation,
-            locations: canonicalLocations,
-            department: normalized.department || null,
-            externalJobId: persistedExternalJobId || null,
-            publishDate: normalized.publishDate || null,
-            deadline: normalized.deadline || null,
-            ageBucket: computeAgeBucket(normalized.publishDate),
-            applicationInfo: normalized.applicationInfo || null,
-            detailUrl: normalized.url || null,
-            rawData: normalized.rawFields as Prisma.InputJsonValue,
-            validationStatus:
-              validation.warnings.length > 0
-                ? `${validation.status};warn:${validation.warnings.join(",")}`
-                : validation.status,
-            siteId: site.id,
+  if (scheduled) {
+    // ---- Scheduled: one transaction, or nothing. (R1) -------------------
+    //
+    // Nobody is watching, so a half-replaced site would be published to the
+    // public jobs site with no one to notice. Delete and every insert commit
+    // together; a rollback leaves the previous listings completely intact.
+    const plan = planScheduledPersist(rows.length);
+
+    if (plan.mode === "oversize") {
+      // Deliberately refuses rather than truncating. A count this far out means
+      // a pagination loop or a selector matching the whole page, and writing
+      // 5,000 wrong listings over a good set is the failure this cap exists to
+      // prevent. Nothing is deleted.
+      const message =
+        `Refusing to persist ${plan.rowCount} listings (cap ${plan.limit}) — ` +
+        `implausible extraction, previous listings left untouched`;
+      console.error(`[scrape] ${message}`);
+      return await failScrapeRun(scrapeRunId, site.id, {
+        error: message,
+        failureCategory: "oversize",
+        scheduled,
+      });
+    }
+
+    if (plan.mode === "empty") {
+      // Unreachable — recordsToPersist.length === 0 already returned above as
+      // structure_changed. Kept because the cost is one branch and the cost of
+      // being wrong is a deleteMany with nothing to put back.
+      console.warn("[scrape] scheduled run had no rows to persist; wrote nothing");
+      return {
+        success: true,
+        scrapeRunId,
+        jobCount: 0,
+        totalJobs: validatedRecords.length,
+        validJobs: 0,
+        invalidJobs: invalidCount,
+        failureCategory: "empty_results",
+        scheduled,
+      };
+    }
+
+    // Opening the commit window is what stops the timeout handler writing a
+    // terminal status of its own. Null means the deadline already passed, so
+    // the transaction must not START — that refusal is what keeps the listings.
+    const commit = beginCommit(runMode.abort, () =>
+      prisma.$transaction(
+        async (tx) => {
+          await tx.job.deleteMany({ where: { siteId: site.id } });
+          for (const batch of chunkRows(rows, INSERT_BATCH)) {
+            await tx.job.createMany({ data: batch });
+          }
+          await tx.scrapeRun.update({
+            where: { id: scrapeRunId },
+            data: {
+              // COMPLETED or nothing. PARTIAL is not reachable here, which is
+              // the trade this path makes: atomicity over per-chunk progress.
+              status: "COMPLETED",
+              jobCount: rows.length,
+              totalJobs: validatedRecords.length,
+              validJobs: rows.length,
+              invalidJobs: invalidCount,
+              completedAt: new Date(),
+            },
+          });
+
+          const result: ScrapeResult = {
+            success: true,
             scrapeRunId,
+            jobCount: rows.length,
+            totalJobs: validatedRecords.length,
+            validJobs: rows.length,
+            invalidJobs: invalidCount,
+            scheduled,
+          };
+          return result;
+        },
+        // Prisma's defaults are 5s/2s — far too tight for the largest site.
+        { timeout: TX_TIMEOUT_MS, maxWait: TX_MAX_WAIT_MS },
+      ),
+    );
+
+    if (!commit) {
+      // The abort landed between the check above and here. Same rule: the
+      // timeout handler has already written the terminal status, so this path
+      // writes nothing rather than racing it for a second FAILED row.
+      console.warn(
+        "[scrape] deadline passed as persistence was opening; listings untouched",
+      );
+      return {
+        success: false,
+        scrapeRunId,
+        jobCount: 0,
+        totalJobs: validatedRecords.length,
+        validJobs: 0,
+        invalidJobs: invalidCount,
+        failureCategory: "timeout",
+        scheduled,
+      };
+    }
+
+    await commit;
+    savedCount = rows.length;
+    console.info(
+      `[scrape] Committed ${savedCount} listing(s) atomically in ` +
+        `${Math.ceil(rows.length / INSERT_BATCH)} batch(es)`,
+    );
+  } else {
+    // ---- Manual: today's chunked behaviour, unchanged. (B) --------------
+    //
+    // The chunking is deliberate — progress survives a timeout — and with an
+    // operator watching, a partial result is useful.
+    const CHUNK_SIZE = 20;
+    await prisma.job.deleteMany({ where: { siteId: site.id } });
+
+    for (let offset = 0; offset < rows.length; offset += CHUNK_SIZE) {
+      const chunk = rows.slice(offset, offset + CHUNK_SIZE);
+
+      await prisma.$transaction(async (tx) => {
+        for (const row of chunk) {
+          await tx.job.create({ data: row });
+        }
+
+        savedCount += chunk.length;
+
+        // Update ScrapeRun progress after each chunk
+        await tx.scrapeRun.update({
+          where: { id: scrapeRunId },
+          data: {
+            status: savedCount < rows.length ? "IN_PROGRESS" : "COMPLETED",
+            jobCount: savedCount,
+            totalJobs: validatedRecords.length,
+            validJobs: savedCount,
+            invalidJobs: invalidCount,
+            ...(savedCount >= rows.length ? { completedAt: new Date() } : {}),
           },
         });
-      }
-
-      savedCount += chunk.length;
-
-      // Update ScrapeRun progress after each chunk
-      await tx.scrapeRun.update({
-        where: { id: scrapeRunId },
-        data: {
-          status: savedCount < recordsToPersist.length ? "IN_PROGRESS" : "COMPLETED",
-          jobCount: savedCount,
-          totalJobs: validatedRecords.length,
-          validJobs: savedCount,
-          invalidJobs: invalidCount,
-          ...(savedCount >= recordsToPersist.length
-            ? { completedAt: new Date() }
-            : {}),
-        },
       });
-    });
 
-    console.info(
-      `[scrape] Saved chunk: ${savedCount}/${recordsToPersist.length} jobs (${context.itemsFound} found on page)`,
-    );
+      console.info(
+        `[scrape] Saved chunk: ${savedCount}/${rows.length} jobs (${context.itemsFound} found on page)`,
+      );
+    }
   }
 
-  const gate = await decideActivationStatus(site.id, site.fieldMappings, scrapeRunId);
-  await prisma.site.update({
-    where: { id: site.id },
-    data: {
-      status: gate.status,
-      ...(gate.status === "ACTIVE" ? { activeAt: new Date() } : {}),
-      ...(gate.status === "REVIEW" ? { adminNote: `[activation-gate] ${gate.reason}` } : {}),
-    },
+  const gate = await applyActivationGate({
+    siteId: site.id,
+    fieldMappingsRaw: site.fieldMappings,
+    scrapeRunId,
+    scheduled,
+    label: "post-persist",
   });
-  if (gate.status === "REVIEW") {
-    console.warn(`[scrape] activation gate REVIEW for ${site.id}: ${gate.reason}`);
-  }
 
   // Completion-quality check (non-blocking): surface silent regressions without
   // changing the run's success/status. Compares against the previous COMPLETED
@@ -3578,10 +3903,12 @@ async function executeScrape(
   const result: ScrapeResult = {
     success: true,
     scrapeRunId,
-    jobCount: recordsToPersist.length,
+    jobCount: savedCount,
     totalJobs: validatedRecords.length,
-    validJobs: recordsToPersist.length,
+    validJobs: savedCount,
     invalidJobs: invalidCount,
+    ...(scheduled ? { scheduled: true } : {}),
+    ...(Object.keys(gate.withheld).length > 0 ? { withheld: gate.withheld } : {}),
   };
 
   console.info("[scrape] Scrape completed successfully:", {
@@ -3591,6 +3918,7 @@ async function executeScrape(
     validJobs: result.validJobs,
     invalidJobs: result.invalidJobs,
     activationStatus: gate.status,
+    activationApplied: gate.applied,
   });
 
   // Emit SSE event for scrape completion
@@ -3599,10 +3927,15 @@ async function executeScrape(
     payload: { siteId: site.id, jobCount: result.jobCount },
   });
 
-  await emitWorkerEvent({
-    type: "site:status-changed",
-    payload: { siteId: site.id, status: gate.status },
-  });
+  // Only announce a status change that actually happened. A scheduled run moves
+  // nothing, and telling the dashboard otherwise would show 145 sites changing
+  // status on a night when none did.
+  if (gate.applied) {
+    await emitWorkerEvent({
+      type: "site:status-changed",
+      payload: { siteId: site.id, status: gate.status },
+    });
+  }
 
   return result;
 }
@@ -3615,10 +3948,37 @@ function createTimeoutPromise(
   scrapeRunId: string,
   siteId: string,
   fieldMappingsRaw: unknown,
+  runMode: RunMode = { scheduled: false, abort: createAbortToken<ScrapeResult>() },
 ): { promise: Promise<ScrapeResult>; cancel: () => void } {
+  const { scheduled } = runMode;
   let timerId: ReturnType<typeof setTimeout>;
-  const promise = new Promise<ScrapeResult>((_, reject) => {
+  const promise = new Promise<ScrapeResult>((resolve, reject) => {
     timerId = setTimeout(async () => {
+      // Ask before writing anything. If the atomic transaction is already
+      // committing, this handler is not the authority on the outcome: it must
+      // neither write a terminal status nor reject, or the night's log ends up
+      // contradicting the database (N3, F2). It waits for the transaction and
+      // reports whatever that produced.
+      const req = requestAbort(runMode.abort, "scrape deadline");
+      if (req.outcome === "deferred") {
+        const committed = awaitCommit(runMode.abort);
+        console.warn(
+          `[scrape] deadline reached while persistence was committing for ${siteId} — ` +
+            "deferring to the transaction",
+        );
+        try {
+          if (committed) {
+            resolve(await committed);
+            return;
+          }
+        } catch {
+          // The transaction rolled back. Nothing was written and nothing
+          // deleted; let the rejection below take the ordinary failure path.
+        }
+        reject(new Error(`Scrape execution exceeded ${SCRAPE_TIMEOUT_MS / 60_000}-minute timeout`));
+        return;
+      }
+
       try {
         // Check if any jobs were already saved by incremental persistence
         const run = await prisma.scrapeRun.findUnique({
@@ -3629,7 +3989,10 @@ function createTimeoutPromise(
         const savedJobs = run?.jobCount ?? 0;
         const totalJobs = run?.totalJobs ?? null;
 
-        if (savedJobs > 0) {
+        // PARTIAL is not reachable on a scheduled run: jobCount is written only
+        // inside the atomic transaction, and a transaction that opened would
+        // have deferred above. Stated as a condition rather than a comment.
+        if (savedJobs > 0 && !scheduled) {
           // Partial success: jobs were saved before the timeout hit
           console.warn(
             `[scrape] Timeout after saving ${savedJobs}/${totalJobs ?? "?"} jobs — marking as PARTIAL`,
@@ -3644,31 +4007,29 @@ function createTimeoutPromise(
             },
           });
           {
-            const gate = await decideActivationStatus(siteId, fieldMappingsRaw, scrapeRunId);
-            await prisma.site.update({
-              where: { id: siteId },
-              data: {
-                status: gate.status,
-                ...(gate.status === "ACTIVE" ? { activeAt: new Date() } : {}),
-                ...(gate.status === "REVIEW" ? { adminNote: `[activation-gate] ${gate.reason}` } : {}),
-              },
+            const gate = await applyActivationGate({
+              siteId,
+              fieldMappingsRaw,
+              scrapeRunId,
+              scheduled,
+              label: "timeout-partial",
             });
-            if (gate.status === "REVIEW") {
-              console.warn(`[scrape] activation gate REVIEW for ${siteId} (timeout-partial): ${gate.reason}`);
-            }
             await emitWorkerEvent({
               type: "scrape:completed",
               payload: { siteId, jobCount: savedJobs },
             });
-            await emitWorkerEvent({
-              type: "site:status-changed",
-              payload: { siteId, status: gate.status },
-            });
+            if (gate.applied) {
+              await emitWorkerEvent({
+                type: "site:status-changed",
+                payload: { siteId, status: gate.status },
+              });
+            }
           }
         } else {
           await failScrapeRun(scrapeRunId, siteId, {
             error: `Scrape execution exceeded ${SCRAPE_TIMEOUT_MS / 60_000}-minute timeout`,
             failureCategory: "timeout",
+            scheduled,
           });
         }
       } catch (updateError) {
@@ -3695,8 +4056,13 @@ function createTimeoutPromise(
 async function skipSiteForApplyLogin(
   scrapeRunId: string,
   siteId: string,
+  scheduled: boolean,
 ): Promise<ScrapeResult> {
+  const decision = planApplyLoginSkip({ scheduled, note: APPLY_LOGIN_SKIP_NOTE });
+
   try {
+    // The ScrapeRun is closed either way — the finding is recorded. What a
+    // scheduled run withholds is only the change to the *site*.
     await prisma.scrapeRun.update({
       where: { id: scrapeRunId },
       data: {
@@ -3707,22 +4073,32 @@ async function skipSiteForApplyLogin(
       },
     });
 
-    await prisma.site.update({
-      where: { id: siteId },
-      data: {
-        status: "SKIPPED",
-        skippedAt: new Date(),
-        adminNote: APPLY_LOGIN_SKIP_NOTE,
-      },
-    });
+    if (decision.applySiteWrite) {
+      await prisma.site.update({
+        where: { id: siteId },
+        data: {
+          status: "SKIPPED",
+          skippedAt: new Date(),
+          adminNote: APPLY_LOGIN_SKIP_NOTE,
+        },
+      });
+    } else {
+      // The flag was set at onboarding, so rediscovering it tells us nothing
+      // new. SKIPPED is an operator's decision to record, not a nightly's.
+      console.info(
+        `[scrape] scheduled run withheld SKIPPED for ${siteId} (login-gated apply flow)`,
+      );
+    }
   } catch (dbError) {
     console.error("[scrape] Failed to mark site SKIPPED (apply login):", dbError);
   }
 
-  await emitWorkerEvent({
-    type: "site:status-changed",
-    payload: { siteId, status: "SKIPPED" },
-  });
+  if (decision.emitStatusChange) {
+    await emitWorkerEvent({
+      type: "site:status-changed",
+      payload: { siteId, status: "SKIPPED" },
+    });
+  }
 
   // success:true so the WorkerJob completes (no retry) — skipping is the
   // intended terminal outcome, not a transient failure.
@@ -3733,15 +4109,23 @@ async function skipSiteForApplyLogin(
     totalJobs: 0,
     validJobs: 0,
     invalidJobs: 0,
+    ...(scheduled ? { scheduled: true } : {}),
+    ...(Object.keys(decision.withheld).length > 0 ? { withheld: decision.withheld } : {}),
   };
 }
 
 async function failScrapeRun(
   scrapeRunId: string,
   siteId: string,
-  details: { error: string; failureCategory: string },
+  details: { error: string; failureCategory: string; scheduled: boolean },
 ): Promise<ScrapeResult> {
+  const decision = planScrapeFailure({ scheduled: details.scheduled });
+
   try {
+    // The failure is always recorded on the ScrapeRun. What a scheduled run
+    // declines to do is act on it — deleting the listings a *previous* good run
+    // stored publishes an empty company page over a failure that says nothing
+    // about whether those listings are still right.
     await prisma.scrapeRun.update({
       where: { id: scrapeRunId },
       data: {
@@ -3752,30 +4136,42 @@ async function failScrapeRun(
       },
     });
 
-    // Moving a site to FAILED wipes its scraped jobs (mirror siteService path).
-    await prisma.$transaction([
-      prisma.job.deleteMany({ where: { siteId } }),
-      prisma.site.update({
-        where: { id: siteId },
-        data: {
-          status: "FAILED",
-          failedAt: new Date(),
-        },
-      }),
-    ]);
+    if (decision.applySiteWrite) {
+      // Moving a site to FAILED wipes its scraped jobs (mirror siteService path).
+      await prisma.$transaction([
+        ...(decision.deleteListings
+          ? [prisma.job.deleteMany({ where: { siteId } })]
+          : []),
+        prisma.site.update({
+          where: { id: siteId },
+          data: {
+            status: "FAILED",
+            failedAt: new Date(),
+          },
+        }),
+      ]);
+    } else {
+      console.info(
+        `[scrape] scheduled run withheld FAILED for ${siteId} — ` +
+          `listings and status kept (${details.failureCategory})`,
+      );
+    }
   } catch (dbError) {
     console.error("[scrape] Failed to update ScrapeRun/Site on failure:", dbError);
   }
 
-  // Emit SSE events for scrape failure and site status change
+  // The failure itself is always announced; the status change only when one
+  // happened.
   await emitWorkerEvent({
     type: "scrape:failed",
     payload: { siteId, error: details.error, category: details.failureCategory },
   });
-  await emitWorkerEvent({
-    type: "site:status-changed",
-    payload: { siteId, status: "FAILED" },
-  });
+  if (decision.emitStatusChange) {
+    await emitWorkerEvent({
+      type: "site:status-changed",
+      payload: { siteId, status: "FAILED" },
+    });
+  }
 
   return {
     success: false,
@@ -3786,5 +4182,6 @@ async function failScrapeRun(
     invalidJobs: 0,
     error: details.error,
     failureCategory: details.failureCategory,
+    ...(details.scheduled ? { scheduled: true } : {}),
   };
 }

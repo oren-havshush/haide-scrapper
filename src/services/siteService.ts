@@ -383,7 +383,19 @@ export async function saveSiteConfig(
   return updatedSite;
 }
 
-export async function createScrapeRun(siteId: string, options?: { maxJobs?: number }) {
+/**
+ * Queue a scrape.
+ *
+ * `scheduled` marks the run as coming from the nightly sweep, and it is
+ * deliberately NOT readable from the HTTP route: an operator pressing Scrape
+ * must never produce a run that claims to be unattended, because the flag is
+ * what suppresses every site-mutating write (worker/lib/scheduledRun.ts). Only
+ * an in-process caller — the sweep driver — can set it.
+ */
+export async function createScrapeRun(
+  siteId: string,
+  options?: { maxJobs?: number; scheduled?: boolean },
+) {
   const site = await prisma.site.findUnique({ where: { id: siteId } });
   if (!site) {
     throw new NotFoundError("Site", siteId);
@@ -412,24 +424,34 @@ export async function createScrapeRun(siteId: string, options?: { maxJobs?: numb
     throw new ConflictError("A scrape is already in progress for this site");
   }
 
-  // Create ScrapeRun first, then WorkerJob with scrapeRunId in payload
-  const scrapeRun = await prisma.scrapeRun.create({
-    data: {
-      siteId,
-      status: "IN_PROGRESS",
-    },
-  });
-
-  await prisma.workerJob.create({
-    data: {
-      siteId,
-      type: "SCRAPE",
-      status: "PENDING",
-      payload: {
-        scrapeRunId: scrapeRun.id,
-        ...(options?.maxJobs ? { maxJobs: options.maxJobs } : {}),
+  // One transaction, because these two rows are one fact. Un-transacted, a
+  // failure between them left a ScrapeRun IN_PROGRESS with no WorkerJob to ever
+  // finish it — an orphan that blocks the site from being scraped again until a
+  // reaper pass, which is the very state the in-progress check above refuses on.
+  const scrapeRun = await prisma.$transaction(async (tx) => {
+    const run = await tx.scrapeRun.create({
+      data: {
+        siteId,
+        status: "IN_PROGRESS",
       },
-    },
+    });
+
+    await tx.workerJob.create({
+      data: {
+        siteId,
+        type: "SCRAPE",
+        status: "PENDING",
+        payload: {
+          scrapeRunId: run.id,
+          ...(options?.maxJobs ? { maxJobs: options.maxJobs } : {}),
+          // Omitted entirely on a manual run, so every job already in the queue
+          // reads as manual and readScheduledFlag needs no migration.
+          ...(options?.scheduled ? { scheduled: true } : {}),
+        },
+      },
+    });
+
+    return run;
   });
 
   return scrapeRun;
