@@ -2,6 +2,10 @@ import "dotenv/config";
 import { prisma } from "../src/lib/prisma";
 import { processJob } from "./jobDispatcher";
 import { planFailureCleanup, readScrapeRunId } from "./lib/failureCleanup";
+import {
+  BOOT_REAP_OPTIONS,
+  reapOrphanedScrapeRuns,
+} from "../src/services/scrapeRunService";
 
 let isShuttingDown = false;
 let isProcessing = false;
@@ -66,6 +70,37 @@ async function recoverInterruptedJobs() {
   );
 }
 
+/**
+ * Close ScrapeRuns abandoned by a worker that never came back.
+ *
+ * recoverInterruptedJobs above only sees runs whose WorkerJob is still
+ * IN_PROGRESS. A run whose job was already terminal — or which predates the
+ * scrapeRunId column — is invisible to it and blocks its site from ever being
+ * scraped again. This is the pass that catches those.
+ *
+ * BOOT_REAP_OPTIONS, not the sweep's: this process has just started, so nothing
+ * it finds running can actually be running.
+ */
+async function reapOrphansAtBoot() {
+  try {
+    const result = await reapOrphanedScrapeRuns(BOOT_REAP_OPTIONS);
+    if (result.reaped > 0) {
+      console.info(
+        `[worker] Reaped ${result.reaped} orphaned scrape run(s) of ${result.scanned} scanned — sites are scrapeable again`,
+      );
+      for (const d of result.details) {
+        console.info(`[worker]   site ${d.siteId}: ${d.reason}`);
+      }
+    } else if (result.scanned > 0) {
+      console.info(`[worker] ${result.scanned} run(s) IN_PROGRESS, none orphaned`);
+    }
+  } catch (err) {
+    // Never block startup on the reaper. A site that stays blocked is a bad
+    // night; a worker that will not boot is a bad week.
+    console.error("[worker] Orphan reaper failed (continuing):", err);
+  }
+}
+
 async function pollForJobs() {
   if (isShuttingDown || isProcessing) return;
 
@@ -91,6 +126,9 @@ async function main() {
   console.info("[worker] Starting worker process...");
 
   await recoverInterruptedJobs();
+  // After recovery, so runs this boot just closed are already terminal and the
+  // reaper only sees what recovery could not reach.
+  await reapOrphansAtBoot();
 
   const intervalId = setInterval(pollForJobs, POLL_INTERVAL_MS);
 

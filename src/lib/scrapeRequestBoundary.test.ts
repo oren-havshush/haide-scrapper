@@ -30,6 +30,11 @@ const route = strip(
   readFileSync(join(ROOT, "src", "app", "api", "sites", "[id]", "scrape", "route.ts"), "utf8"),
 );
 const service = strip(readFileSync(join(ROOT, "src", "services", "siteService.ts"), "utf8"));
+// The SCRAPE job row moved into its own builder so the indexed `scrapeRunId`
+// column and `payload.scrapeRunId` are written from one argument. The boundary
+// claim is unchanged; it just has a new address, and these checks follow it
+// rather than being relaxed.
+const builder = strip(readFileSync(join(ROOT, "src", "lib", "scrapeJobRow.ts"), "utf8"));
 
 // --- the route reads one field, by name --------------------------------
 
@@ -54,20 +59,30 @@ assert(
 
 assert(
   !/\.\.\.\s*options\b/.test(service),
-  "createScrapeRun never spreads its options object into the payload",
+  "createScrapeRun never spreads its options object into the builder",
 );
 assert(
-  /\.\.\.\(options\?\.scheduled \? \{ scheduled: true \} : \{\}\)/.test(service),
+  !/\.\.\.\s*input\b/.test(builder),
+  "and the builder never spreads its input into the payload either",
+);
+assert(
+  /\.\.\.\(input\.scheduled \? \{ scheduled: true \} : \{\}\)/.test(builder),
   "`scheduled` is written as a literal true from the in-process option only",
+);
+assert(
+  /scheduled\?: boolean/.test(builder),
+  "the builder takes `scheduled` as a typed boolean, not as loose passthrough",
 );
 
 {
   // One SCRAPE creator. A second one is a second boundary to get right, and
-  // nobody would think to come back here for it.
-  const scrapeJobCreators = service.split('type: "SCRAPE"').length - 1;
+  // nobody would think to come back here for it. It now lives in the builder;
+  // the assertion is that there is exactly one, wherever it is.
+  const creators =
+    service.split('type: "SCRAPE"').length - 1 + (builder.split('type: "SCRAPE"').length - 1);
   assert(
-    scrapeJobCreators === 1,
-    `exactly one place creates a SCRAPE WorkerJob (found ${scrapeJobCreators})`,
+    creators === 1,
+    `exactly one place creates a SCRAPE WorkerJob row (found ${creators})`,
   );
 }
 

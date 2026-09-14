@@ -243,8 +243,95 @@ model WorkerJob {
   startedAt   DateTime?
   completedAt DateTime?
 
+  /// The ScrapeRun this job owns, for SCRAPE jobs. NULL on every other type,
+  /// and NULL when the run it named no longer exists.
+  ///
+  /// DELIBERATELY NOT A FOREIGN KEY. `clearSiteJobs` (siteService.ts) deletes a
+  /// site's ScrapeRuns and leaves its WorkerJobs standing, so a payload on the
+  /// box can already name a run that is gone. Every FK action is worse than
+  /// none here: RESTRICT would make `clearSiteJobs` throw, CASCADE would delete
+  /// worker history to tidy up a run, and SET NULL would erase the link the
+  /// reaper needs. The reaper joins and finds nothing, which is correct.
+  ///
+  /// The backfill therefore wrote this only WHERE the run still EXISTS — a dead
+  /// id would assert that a run is there when it is not, and a wrong value is
+  /// worse than a missing one.
+  scrapeRunId String?
+
   @@index([siteId])
   @@index([status, type])
+  /// The reaper's claim query: oldest active jobs first.
+  @@index([status, createdAt])
+  @@index([scrapeRunId])
+}
+
+/// One sweep — a night's scrape pass or policy pass.
+///
+/// `kind`, `status` and `trigger` are TEXT rather than enums, following
+/// `Site.companyProfileStatus`: an unrecognised value can never throw in a
+/// consumer's Prisma client, and values stay removable without a migration.
+///
+///   kind    "SCRAPE" | "POLICY"
+///   status  "RUNNING" | "COMPLETED" | "HALTED" | "FAILED"
+///   trigger "timer" | "manual" | "dry-run"
+model ScrapeSweep {
+  id         String    @id @default(cuid())
+  kind       String
+  startedAt  DateTime  @default(now())
+  finishedAt DateTime?
+  status     String    @default("RUNNING")
+  trigger    String
+
+  selectedCount     Int @default(0)
+  ok                Int @default(0)
+  failed            Int @default(0)
+  silentDrift       Int @default(0)
+  skippedConflict   Int @default(0)
+  wouldHaveDemoted  Int @default(0)
+  wouldHavePromoted Int @default(0)
+  listingsProtected Int @default(0)
+
+  haltedAt   DateTime?
+  haltReason String?
+  /// The rendered report. Held here so the dashboard needs no filesystem
+  /// access — the `web` container cannot see the worker's volumes.
+  logText String?
+
+  items ScrapeSweepItem[]
+
+  @@index([kind, startedAt])
+  @@index([status])
+}
+
+/// One site's result within a sweep. Per-site rows rather than a blob, because
+/// "which sites have been red three nights running" has to be a query.
+///
+/// `siteId` is NOT a foreign key, for the same reason as WorkerJob.scrapeRunId:
+/// `deleteSite` would either fail or take the sweep history with it, and a
+/// night's log should outlive the site it described.
+model ScrapeSweepItem {
+  id      String      @id @default(cuid())
+  sweepId String
+  sweep   ScrapeSweep @relation(fields: [sweepId], references: [id], onDelete: Cascade)
+  siteId  String
+  /// "scrape" | "policy" — a site can appear once per phase per sweep.
+  phase           String
+  scrapeRunId     String?
+  outcome         String
+  failureCategory String?
+  jobsBefore      Int       @default(0)
+  jobsAfter       Int       @default(0)
+  newestJobAt     DateTime?
+  siteStatus      String
+  /// What the scheduled gate withheld. NULL when it withheld nothing.
+  wouldDemoteTo  String?
+  wouldPromoteTo String?
+  startedAt      DateTime?
+  finishedAt     DateTime?
+
+  @@unique([sweepId, siteId, phase])
+  @@index([siteId])
+  @@index([sweepId])
 }
 
 model ScrapingPolicyReview {

@@ -79,9 +79,32 @@ fi
 
 # Build, migrate, and restart with rollback support
 ssh $SSH_OPTS "$HOST" bash -s "$DEPLOY_TAG" "$REMOTE_DIR" <<'REMOTE'
+# The `set -euo pipefail` at the top of this file governs only the LOCAL half.
+# This heredoc is a separate bash, and it used to set no options at all — so a
+# failed `prisma migrate deploy` below did not stop it. It went on to start the
+# new images against the old schema, and because remote bash returns the status
+# of its LAST command, the local `set -e` saw success and the deploy reported OK.
+set -euo pipefail
+
 DEPLOY_TAG="$1"
 REMOTE_DIR="$2"
 cd "$REMOTE_DIR"
+
+# Never restart the worker out from under a running sweep.
+#
+# Probing the container, not the systemd unit: while a Type=oneshot unit's
+# ExecStart runs, the unit sits in `activating`, not `active`, so
+# `systemctl is-active` exits non-zero for the whole sweep and the guard would
+# read "nothing running" every single time. The container probe is also the only
+# one that sees a sweep started by hand with --now, outside systemd.
+#
+# Before `docker compose build`, so a refused deploy costs nothing and never
+# half-builds.
+SWEEP_CONTAINERS=$(docker ps -q -f name=haide-sweep- || true)
+if [ -n "$SWEEP_CONTAINERS" ]; then
+  echo "==> A sweep is running (started $(docker ps --format '{{.RunningFor}}' -f name=haide-sweep- | head -1) ago). Refusing to deploy."
+  exit 1
+fi
 
 COMPOSE_PROJECT=$(basename "$REMOTE_DIR" | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9]/-/g')
 
@@ -105,15 +128,36 @@ for svc in web worker; do
 done
 
 echo "==> Running database migrations..."
-set -a && source .env 2>/dev/null || true && set +a
+set -a
+source .env 2>/dev/null || true
+set +a
 
-NETWORK=$(docker network ls --filter "name=${COMPOSE_PROJECT}" --format '{{.Name}}' | grep default | head -1)
+# Under `set -u` a missing password would abort with "unbound variable" fifteen
+# lines later. Fail here instead, saying what is wrong. Aborting is right: the
+# alternative is building `postgresql://postgres:@db:5432/scrapnew` and letting
+# the migration decide what an empty password means.
+: "${POSTGRES_PASSWORD:?is not set in $REMOTE_DIR/.env — refusing to migrate}"
+
+# `|| true` INSIDE the substitution, not after the assignment. `grep` exits 1
+# when it matches nothing, and under `pipefail` + `set -e` that aborts the
+# deploy — making the `if [ -z ... ]` fallback directly below unreachable, which
+# is the opposite of what it is there for.
+NETWORK=$(docker network ls --filter "name=${COMPOSE_PROJECT}" --format '{{.Name}}' | grep default | head -1 || true)
 if [ -z "$NETWORK" ]; then
   NETWORK="${COMPOSE_PROJECT}-default"
 fi
 
 docker compose up -d db
 sleep 3
+
+# Back up BEFORE migrating. The backup at the end of this script only runs after
+# a successful deploy, so a migration that corrupts or half-applies would have
+# run against a database whose newest backup predates it — possibly by days.
+#
+# Deliberately NOT `|| true`: if we cannot take a backup we must not migrate.
+# The post-deploy backup stays non-fatal; this one is the safety net.
+echo "==> Backing up the database before migrating..."
+docker compose --profile backup run --rm db-backup
 
 docker run --rm --network "$NETWORK" \
   -e DATABASE_URL="postgresql://postgres:${POSTGRES_PASSWORD}@db:5432/scrapnew" \

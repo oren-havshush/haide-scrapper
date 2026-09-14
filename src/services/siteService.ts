@@ -7,6 +7,7 @@ import {
   ValidationError,
 } from "@/lib/errors";
 import { isCanonicalLocation, isRegionLocation, normalizeLocations } from "@/lib/locations";
+import { buildScrapeJobRow } from "@/lib/scrapeJobRow";
 import type { PaginationParams } from "@/lib/types";
 import type { SiteStatus } from "@/generated/prisma/enums";
 import { emitEvent } from "@/services/eventService";
@@ -436,19 +437,20 @@ export async function createScrapeRun(
       },
     });
 
+    // buildScrapeJobRow writes the run id to BOTH the indexed `scrapeRunId`
+    // column and `payload.scrapeRunId`. The column is what the reaper joins on;
+    // without it, every job created after the sweep migration would be
+    // invisible to the structural orphan rule and would sit until the one-hour
+    // age backstop caught it — which is R7 defeated for exactly the runs the
+    // nightly creates. The payload key stays so the worker's readScrapeRunId is
+    // unchanged.
     await tx.workerJob.create({
-      data: {
+      data: buildScrapeJobRow({
         siteId,
-        type: "SCRAPE",
-        status: "PENDING",
-        payload: {
-          scrapeRunId: run.id,
-          ...(options?.maxJobs ? { maxJobs: options.maxJobs } : {}),
-          // Omitted entirely on a manual run, so every job already in the queue
-          // reads as manual and readScheduledFlag needs no migration.
-          ...(options?.scheduled ? { scheduled: true } : {}),
-        },
-      },
+        scrapeRunId: run.id,
+        maxJobs: options?.maxJobs,
+        scheduled: options?.scheduled,
+      }),
     });
 
     return run;
