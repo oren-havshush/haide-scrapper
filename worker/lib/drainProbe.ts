@@ -44,6 +44,15 @@ export type DrainInput = {
   probeAtHeadForMs: number | null;
   /** The probe itself has been claimed — the strongest possible evidence. */
   probeClaimed: boolean;
+  /**
+   * How long the sweep has been waiting in total, across every poll.
+   *
+   * Without this the "busy, wait" verdict has no end: a job wedged IN_PROGRESS
+   * keeps refreshing its own evidence of life on every poll, so the sweep waits
+   * all night on a worker that has not finished anything. Omit it only in
+   * contexts with no clock (the dry-run's single-shot preview).
+   */
+  totalWaitedMs?: number;
 };
 
 export type DrainVerdict = {
@@ -56,14 +65,32 @@ export function assessDrain(
   opts: {
     busyEvidenceWindowMs?: number;
     headOfQueueDeadlineMs?: number;
+    /** Give up waiting after this long in total. Default: the busy window. */
+    busyWaitCapMs?: number;
   } = {},
 ): DrainVerdict {
   const busyWindow = opts.busyEvidenceWindowMs ?? BUSY_EVIDENCE_WINDOW_MS;
   const deadline = opts.headOfQueueDeadlineMs ?? HEAD_OF_QUEUE_DEADLINE_MS;
+  const waitCap = opts.busyWaitCapMs ?? BUSY_EVIDENCE_WINDOW_MS;
 
   // The probe was picked up. Nothing else needs proving.
   if (input.probeClaimed) {
     return { verdict: "draining", reason: "the probe job was claimed" };
+  }
+
+  // The overall cap, checked before anything that could return "waiting".
+  //
+  // A job stuck IN_PROGRESS re-proves the worker "busy" on every single poll,
+  // because its startedAt never moves out of the window while it sits there.
+  // Without a total cap the sweep waits until morning on a worker that has
+  // finished nothing — the exact silence the probe exists to break.
+  if (input.totalWaitedMs !== undefined && input.totalWaitedMs > waitCap) {
+    return {
+      verdict: "wedged",
+      reason:
+        `waited ${Math.round(input.totalWaitedMs / 60_000)}m in total without the probe ` +
+        `being claimed (cap ${Math.round(waitCap / 60_000)}m)`,
+    };
   }
 
   // Rule 1: something else is being worked on, recently enough to believe.

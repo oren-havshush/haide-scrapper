@@ -127,6 +127,71 @@ assert(
   "the deadline allows at least six poll intervals",
 );
 
+// --- the wedged path: "busy" cannot wait for ever -----------------------
+//
+// The nastiest case, because it looks healthy on every single poll. A job stuck
+// IN_PROGRESS keeps its startedAt inside the busy window, so rule 1 returns
+// "busy, wait" for ever and the sweep waits until morning against a worker that
+// has finished nothing. The total cap is what makes the wait terminate.
+
+{
+  const stuckButFresh: DrainInput = {
+    // Nine minutes IN_PROGRESS: inside the busy window, so rule 1 would say
+    // "wait" no matter how many times we ask.
+    newestInProgressAgeMs: 9 * 60_000,
+    probeAtHeadOfQueue: false,
+    probeAtHeadForMs: null,
+    probeClaimed: false,
+  };
+
+  assert(
+    assessDrain({ ...stuckButFresh, totalWaitedMs: 60_000 }).verdict === "waiting",
+    "a minute in, a busy worker is still worth waiting for",
+  );
+  assert(
+    assessDrain({ ...stuckButFresh, totalWaitedMs: BUSY_EVIDENCE_WINDOW_MS }).verdict === "waiting",
+    "exactly at the cap is not yet past it",
+  );
+
+  const over = assessDrain({ ...stuckButFresh, totalWaitedMs: BUSY_EVIDENCE_WINDOW_MS + 1 });
+  assert(
+    over.verdict === "wedged",
+    "past the 20-minute cap the sweep stops waiting, however busy the worker claims to be",
+  );
+  assert(
+    over.reason.includes("in total"),
+    "and says it gave up on the total wait, not on one poll",
+  );
+}
+
+{
+  // The cap must not override real progress. A claimed probe wins whatever the
+  // clock says, or a slow-but-working worker is condemned for being slow.
+  assert(
+    assessDrain({
+      newestInProgressAgeMs: null,
+      probeAtHeadOfQueue: true,
+      probeAtHeadForMs: 0,
+      probeClaimed: true,
+      totalWaitedMs: 10 * BUSY_EVIDENCE_WINDOW_MS,
+    }).verdict === "draining",
+    "a claimed probe beats the cap — the worker demonstrably works",
+  );
+}
+
+{
+  // Omitting totalWaitedMs (the dry-run's single-shot preview) must not
+  // accidentally read as "waited 0ms" in a way that changes the verdict, nor
+  // trip the cap.
+  const noClock = assessDrain({
+    newestInProgressAgeMs: 5 * 60_000,
+    probeAtHeadOfQueue: false,
+    probeAtHeadForMs: null,
+    probeClaimed: false,
+  });
+  assert(noClock.verdict === "waiting", "with no clock supplied, the cap simply does not apply");
+}
+
 if (failures > 0) {
   console.error(`\n${failures} assertion(s) failed`);
   process.exit(1);

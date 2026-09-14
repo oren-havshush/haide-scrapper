@@ -37,7 +37,12 @@ import {
   SWEEP_SITE_STATUSES,
   type SelectableSite,
 } from "../lib/sweepSelection";
-import { assessDrain, BUSY_EVIDENCE_WINDOW_MS, HEAD_OF_QUEUE_DEADLINE_MS } from "../lib/drainProbe";
+import {
+  assessDrain,
+  BUSY_EVIDENCE_WINDOW_MS,
+  HEAD_OF_QUEUE_DEADLINE_MS,
+  type DrainVerdict,
+} from "../lib/drainProbe";
 import { readScheduledFlag } from "../lib/scheduledRun";
 
 // ---------------------------------------------------------------------------
@@ -171,6 +176,52 @@ async function readQueueState(probeJobId: string | null) {
   };
 }
 
+/**
+ * Prove the worker is claiming jobs, using the FIRST site's job as the probe.
+ *
+ * This runs on the real path, not only in --dry-run. Without it a sweep against
+ * a dead worker enqueues one job, waits out the per-site timeout, moves to the
+ * next, and produces a night of perfect silence with a report saying nothing
+ * failed — the failure mode the probe exists for.
+ *
+ * `assessDrain` decides; this only supplies fresh facts and holds the clock.
+ * The busy wait is capped at 20 minutes: a job legitimately IN_PROGRESS keeps
+ * returning `waiting` forever, and "the worker is busy" stops being a reason to
+ * keep waiting once it has been busy longer than the longest scrape can take.
+ */
+async function probeWorkerDraining(
+  probeJobId: string,
+  opts: { busyWaitCapMs: number; pollMs: number },
+): Promise<DrainVerdict> {
+  const started = Date.now();
+  let atHeadSince: number | null = null;
+
+  for (;;) {
+    const q = await readQueueState(probeJobId);
+
+    // The head-of-queue clock starts when the probe gets there, and resets if
+    // something older jumps ahead of it.
+    if (q.probeAtHeadOfQueue && atHeadSince === null) atHeadSince = Date.now();
+    if (!q.probeAtHeadOfQueue) atHeadSince = null;
+
+    const verdict = assessDrain(
+      {
+        newestInProgressAgeMs: q.newestInProgressAgeMs,
+        probeAtHeadOfQueue: q.probeAtHeadOfQueue,
+        probeAtHeadForMs: atHeadSince === null ? null : Date.now() - atHeadSince,
+        probeClaimed: q.probeClaimed,
+        totalWaitedMs: Date.now() - started,
+      },
+      { busyWaitCapMs: opts.busyWaitCapMs },
+    );
+
+    if (verdict.verdict !== "waiting") return verdict;
+
+    log(`[sweep] drain probe: ${verdict.reason}`);
+    await sleep(opts.pollMs);
+  }
+}
+
 // ---------------------------------------------------------------------------
 // Waiting on one site
 // ---------------------------------------------------------------------------
@@ -187,9 +238,18 @@ type SiteResult = {
   siteStatus: string;
   wouldDemoteTo: string | null;
   wouldPromoteTo: string | null;
+  wouldSkip: string | null;
+  /**
+   * The ScrapeRun's raw terminal status, kept because `listingsProtected`
+   * depends on it and `outcome` cannot answer the question — see the counter's
+   * definition in realRun.
+   */
+  runStatus: string;
   startedAt: Date;
   finishedAt: Date;
   defect: string | null;
+  /** Non-null means stop the sweep, with this as the haltReason. */
+  halt: string | null;
 };
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
@@ -300,13 +360,47 @@ async function siteSnapshot(siteId: string) {
   };
 }
 
-async function runOneSite(site: { id: string; siteUrl: string }): Promise<SiteResult> {
+/**
+ * Wait for the WorkerJob itself to reach a terminal state.
+ *
+ * The dispatcher writes `result` AFTER the handler returns, and the handler
+ * closes the ScrapeRun before returning. So a read taken the moment the run goes
+ * terminal can land in that gap and see `result` still null — losing a
+ * `wouldDemoteTo` the gate actually withheld, which would be reported as "the
+ * nightly changed nothing" when in fact it declined to demote a site.
+ */
+async function waitForJobTerminal(
+  scrapeRunId: string,
+  opts: { timeoutMs: number; pollMs: number },
+) {
+  const deadline = Date.now() + opts.timeoutMs;
+  for (;;) {
+    const job = await prisma.workerJob.findFirst({
+      where: { scrapeRunId },
+      select: { status: true, result: true, payload: true },
+    });
+    if (!job) return null;
+    if (job.status === "COMPLETED" || job.status === "FAILED") return job;
+    if (Date.now() > deadline) return job; // report what we have rather than hang
+    await sleep(opts.pollMs);
+  }
+}
+
+async function runOneSite(
+  site: { id: string; siteUrl: string },
+  opts?: { probe?: (workerJobId: string) => Promise<DrainVerdict> },
+): Promise<SiteResult> {
   const startedAt = new Date();
   const before = await siteSnapshot(site.id);
 
+  const base = {
+    siteId: site.id,
+    siteUrl: site.siteUrl,
+    jobsBefore: before.jobCount,
+    startedAt,
+  };
+
   let scrapeRunId: string | null = null;
-  let outcome = "ok";
-  let failureCategory: string | null = null;
   let defect: string | null = null;
 
   try {
@@ -318,23 +412,77 @@ async function runOneSite(site: { id: string; siteUrl: string }): Promise<SiteRe
       // abort the sweep over one busy site.
       const after = await siteSnapshot(site.id);
       return {
-        siteId: site.id,
-        siteUrl: site.siteUrl,
+        ...base,
         scrapeRunId: null,
         outcome: "skipped_conflict",
         failureCategory: null,
-        jobsBefore: before.jobCount,
         jobsAfter: after.jobCount,
         newestJobAt: after.newestJobAt,
         siteStatus: after.status,
         wouldDemoteTo: null,
         wouldPromoteTo: null,
-        startedAt,
+        wouldSkip: null,
+        runStatus: "NOT_STARTED",
         finishedAt: new Date(),
         defect: null,
+        halt: null,
       };
     }
     throw err;
+  }
+
+  // Proof of life, on the first site only. The job is already queued, so this
+  // probes the real queue with the real work rather than a synthetic ping.
+  if (opts?.probe) {
+    const enqueued = await prisma.workerJob.findFirst({
+      where: { scrapeRunId },
+      select: { id: true },
+    });
+    if (enqueued) {
+      const verdict = await opts.probe(enqueued.id);
+      log(`[sweep] drain probe: ${verdict.verdict} — ${verdict.reason}`);
+
+      if (verdict.verdict === "wedged") {
+        // Take back what we queued. Leaving a PENDING job behind would collide
+        // with the partial unique index the next time anything queues for this
+        // site, and leaving the run IN_PROGRESS would block the site entirely.
+        await prisma.workerJob.updateMany({
+          where: { id: enqueued.id, status: "PENDING" },
+          data: {
+            status: "FAILED",
+            error: "sweep cancelled: worker not draining",
+            completedAt: new Date(),
+          },
+        });
+        await prisma.scrapeRun.updateMany({
+          where: { id: scrapeRunId, status: "IN_PROGRESS" },
+          data: {
+            status: "FAILED",
+            error: "sweep cancelled: worker not draining",
+            failureCategory: "other",
+            completedAt: new Date(),
+          },
+        });
+
+        const after = await siteSnapshot(site.id);
+        return {
+          ...base,
+          scrapeRunId,
+          outcome: "worker_not_draining",
+          failureCategory: "other",
+          jobsAfter: after.jobCount,
+          newestJobAt: after.newestJobAt,
+          siteStatus: after.status,
+          wouldDemoteTo: null,
+          wouldPromoteTo: null,
+          wouldSkip: null,
+          runStatus: "FAILED",
+          finishedAt: new Date(),
+          defect: null,
+          halt: "worker not draining",
+        };
+      }
+    }
   }
 
   const waited = await waitForRun(scrapeRunId, {
@@ -342,13 +490,12 @@ async function runOneSite(site: { id: string; siteUrl: string }): Promise<SiteRe
     pollMs: sweepConfig.pollIntervalMs,
   });
   defect = waited.defect;
-  failureCategory = waited.failureCategory;
-  outcome = classifyOutcome({ status: waited.status, failureCategory: waited.failureCategory });
 
-  // What the scheduled gate withheld, as recorded on the WorkerJob result.
-  const job = await prisma.workerJob.findFirst({
-    where: { scrapeRunId },
-    select: { result: true, payload: true },
+  // Only now read the gate's verdict: the dispatcher writes `result` after the
+  // handler has already closed the run.
+  const job = await waitForJobTerminal(scrapeRunId, {
+    timeoutMs: 60_000,
+    pollMs: sweepConfig.pollIntervalMs,
   });
   const result = (job?.result ?? {}) as Record<string, unknown>;
   const withheld = (result.withheld ?? {}) as Record<string, unknown>;
@@ -357,23 +504,29 @@ async function runOneSite(site: { id: string; siteUrl: string }): Promise<SiteRe
     defect = defect ?? "the sweep's own job did not carry scheduled:true";
   }
 
+  const wouldSkip = typeof withheld.wouldSkip === "string" ? withheld.wouldSkip : null;
   const after = await siteSnapshot(site.id);
 
   return {
-    siteId: site.id,
-    siteUrl: site.siteUrl,
+    ...base,
     scrapeRunId,
-    outcome,
-    failureCategory,
-    jobsBefore: before.jobCount,
+    // A withheld SKIP is its own outcome. Selection excludes applyRequiresLogin
+    // sites, so this only fires when the flag was set between selection and the
+    // run — rare, and exactly the kind of thing a report should not swallow.
+    outcome: wouldSkip
+      ? "withheld_skip"
+      : classifyOutcome({ status: waited.status, failureCategory: waited.failureCategory }),
+    failureCategory: waited.failureCategory,
     jobsAfter: after.jobCount,
     newestJobAt: after.newestJobAt,
     siteStatus: after.status,
     wouldDemoteTo: typeof withheld.wouldDemoteTo === "string" ? withheld.wouldDemoteTo : null,
     wouldPromoteTo: typeof withheld.wouldPromoteTo === "string" ? withheld.wouldPromoteTo : null,
-    startedAt,
+    wouldSkip,
+    runStatus: waited.status,
     finishedAt: new Date(),
     defect,
+    halt: null,
   };
 }
 
@@ -536,7 +689,23 @@ async function realRun(mode: Mode): Promise<number> {
     }
 
     log(`[sweep] -> ${site.siteUrl}`);
-    const result = await runOneSite(site);
+
+    // The FIRST site's job is the probe. Nothing else is enqueued until it has
+    // shown the worker is claiming work — otherwise a sweep against a dead
+    // worker times out site after site and reports a quiet, successful night.
+    const isProbe = results.length === 0;
+    const result = await runOneSite(
+      site,
+      isProbe
+        ? {
+            probe: (jobId) =>
+              probeWorkerDraining(jobId, {
+                busyWaitCapMs: BUSY_EVIDENCE_WINDOW_MS,
+                pollMs: sweepConfig.pollIntervalMs,
+              }),
+          }
+        : undefined,
+    );
     results.push(result);
 
     log(
@@ -568,6 +737,22 @@ async function realRun(mode: Mode): Promise<number> {
       },
     });
 
+    if (result.halt) {
+      log(`[sweep] HALT: ${result.halt}`);
+      await prisma.scrapeSweep.update({
+        where: { id: sweep.id },
+        data: {
+          status: "FAILED",
+          haltReason: result.halt,
+          haltedAt: new Date(),
+          finishedAt: new Date(),
+          selectedCount: queue.length,
+        },
+      });
+      log(`[sweep] stopped after the probe; ${queue.length - results.length} site(s) not reached`);
+      return 1;
+    }
+
     // SEAM: the breaker (step 6) consumes `results` here and may halt.
   }
 
@@ -576,8 +761,23 @@ async function realRun(mode: Mode): Promise<number> {
   const failed = results.filter((r) => r.outcome === "hard_failure").length;
   const soft = results.filter((r) => r.outcome === "soft_failure").length;
   const conflicts = results.filter((r) => r.outcome === "skipped_conflict").length;
+
+  // Listings the scheduled gate SAVED.
+  //
+  // Not "would demote or promote" — those are status verdicts and neither
+  // touches a Job row. The wipe lives in failScrapeRun, which runs whenever a
+  // run ends FAILED; on a manual run it deletes every listing the site has.
+  // So a listing set was protected when the run ended FAILED and the site had
+  // listings to lose.
+  //
+  // `apply_requires_login` is excluded: that path is skipSiteForApplyLogin,
+  // which moves the site to SKIPPED and never deletes anything, so counting it
+  // would inflate the number that justifies this whole design.
   const protectedCount = results.filter(
-    (r) => r.wouldDemoteTo || r.wouldPromoteTo,
+    (r) =>
+      r.runStatus === "FAILED" &&
+      r.failureCategory !== "apply_requires_login" &&
+      r.jobsBefore > 0,
   ).length;
 
   await prisma.scrapeSweep.update({
