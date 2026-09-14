@@ -18,8 +18,8 @@
 // SCRAPE only, never ANALYSIS: an ANALYSIS job rewrites a site's config, so a
 // fleet-wide refresh would flatten every hand-built config in one night.
 //
-// Not yet here, and deliberately: the breaker (step 6) and the rendered report
-// (step 7). The seams are marked.
+// Closing the sweep, the drain probe, cancelling a PENDING job and clearing
+// stale RUNNING rows are shared with the policy sweep — see sweepCommon.ts.
 
 import "dotenv/config";
 import { prisma } from "../../src/lib/prisma";
@@ -50,12 +50,15 @@ import {
   shouldAlertSoftFailures,
   SOFT_FAILURE_ALERT_RATIO,
 } from "../lib/sweepBreaker";
+import type { ReportItem } from "../lib/sweepReport";
 import {
-  computeCounters,
-  renderSweepReport,
-  type ReportItem,
-  type ReportSweep,
-} from "../lib/sweepReport";
+  cancelPendingJobById,
+  closeSweep,
+  probeWorkerDraining,
+  readQueueState,
+  resolveStaleSweeps,
+  sleep,
+} from "./sweepCommon";
 
 // ---------------------------------------------------------------------------
 // Arguments
@@ -120,121 +123,6 @@ async function loadSelectableSites(): Promise<SelectableSite[]> {
 }
 
 // ---------------------------------------------------------------------------
-// Pre-flight
-// ---------------------------------------------------------------------------
-
-/**
- * Close any ScrapeSweep left RUNNING by a previous night. Without this the
- * dashboard shows a sweep in progress forever, and "is a sweep running?" stops
- * being answerable.
- */
-async function resolveStaleSweeps(dryRun: boolean): Promise<number> {
-  const stale = await prisma.scrapeSweep.findMany({
-    where: { status: "RUNNING" },
-    select: { id: true, startedAt: true },
-  });
-  if (stale.length === 0) return 0;
-
-  if (dryRun) {
-    for (const s of stale) {
-      log(`  would close stale RUNNING sweep ${s.id} (started ${s.startedAt.toISOString()})`);
-    }
-    return stale.length;
-  }
-
-  await prisma.scrapeSweep.updateMany({
-    where: { id: { in: stale.map((s) => s.id) } },
-    data: {
-      status: "FAILED",
-      haltReason: "abandoned",
-      finishedAt: new Date(),
-    },
-  });
-  return stale.length;
-}
-
-/** Facts the drain probe needs, read fresh each poll. */
-async function readQueueState(probeJobId: string | null) {
-  const now = Date.now();
-
-  const newestInProgress = await prisma.workerJob.findFirst({
-    where: { status: "IN_PROGRESS", startedAt: { not: null } },
-    orderBy: { startedAt: "desc" },
-    select: { startedAt: true },
-  });
-
-  let probeAtHeadOfQueue = false;
-  let probeClaimed = false;
-  if (probeJobId) {
-    const probe = await prisma.workerJob.findUnique({
-      where: { id: probeJobId },
-      select: { status: true, createdAt: true },
-    });
-    probeClaimed = probe != null && probe.status !== "PENDING";
-    if (probe && probe.status === "PENDING") {
-      const older = await prisma.workerJob.count({
-        where: { status: "PENDING", createdAt: { lt: probe.createdAt } },
-      });
-      probeAtHeadOfQueue = older === 0;
-    }
-  }
-
-  return {
-    newestInProgressAgeMs: newestInProgress?.startedAt
-      ? now - newestInProgress.startedAt.getTime()
-      : null,
-    probeAtHeadOfQueue,
-    probeClaimed,
-  };
-}
-
-/**
- * Prove the worker is claiming jobs, using the FIRST site's job as the probe.
- *
- * This runs on the real path, not only in --dry-run. Without it a sweep against
- * a dead worker enqueues one job, waits out the per-site timeout, moves to the
- * next, and produces a night of perfect silence with a report saying nothing
- * failed — the failure mode the probe exists for.
- *
- * `assessDrain` decides; this only supplies fresh facts and holds the clock.
- * The busy wait is capped at 20 minutes: a job legitimately IN_PROGRESS keeps
- * returning `waiting` forever, and "the worker is busy" stops being a reason to
- * keep waiting once it has been busy longer than the longest scrape can take.
- */
-async function probeWorkerDraining(
-  probeJobId: string,
-  opts: { busyWaitCapMs: number; pollMs: number },
-): Promise<DrainVerdict> {
-  const started = Date.now();
-  let atHeadSince: number | null = null;
-
-  for (;;) {
-    const q = await readQueueState(probeJobId);
-
-    // The head-of-queue clock starts when the probe gets there, and resets if
-    // something older jumps ahead of it.
-    if (q.probeAtHeadOfQueue && atHeadSince === null) atHeadSince = Date.now();
-    if (!q.probeAtHeadOfQueue) atHeadSince = null;
-
-    const verdict = assessDrain(
-      {
-        newestInProgressAgeMs: q.newestInProgressAgeMs,
-        probeAtHeadOfQueue: q.probeAtHeadOfQueue,
-        probeAtHeadForMs: atHeadSince === null ? null : Date.now() - atHeadSince,
-        probeClaimed: q.probeClaimed,
-        totalWaitedMs: Date.now() - started,
-      },
-      { busyWaitCapMs: opts.busyWaitCapMs },
-    );
-
-    if (verdict.verdict !== "waiting") return verdict;
-
-    log(`[sweep] drain probe: ${verdict.reason}`);
-    await sleep(opts.pollMs);
-  }
-}
-
-// ---------------------------------------------------------------------------
 // Waiting on one site
 // ---------------------------------------------------------------------------
 
@@ -263,8 +151,6 @@ type SiteResult = {
   /** Non-null means stop the sweep, with this as the haltReason. */
   halt: string | null;
 };
-
-const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 /**
  * Wait for a scheduled run to finish.
@@ -381,12 +267,11 @@ async function siteSnapshot(siteId: string) {
  * the next time anything queues for that site, and a run left IN_PROGRESS
  * blocks the site until the reaper finds it.
  *
- * ONLY a PENDING job is cancelled. If the worker has already claimed it, the
- * handler owns the run's terminal status and will write it when it finishes;
- * closing the run here would be a second writer of terminal state, which is the
- * defect worker/lib/abortToken.ts exists to prevent. The status-scoped
- * updateMany also settles the race where the worker claims the job between the
- * read and the write — count 0 means it was claimed, so the run is left alone.
+ * ONLY a PENDING job is cancelled, through cancelPendingJobById — the same
+ * status-scoped write the policy sweep uses. If the worker has already claimed
+ * it, the handler owns the run's terminal status; closing the run here would be
+ * a second writer of terminal state. So the run is closed only when the job
+ * cancel actually landed.
  */
 async function cancelPendingSiteJob(
   scrapeRunId: string,
@@ -400,13 +285,10 @@ async function cancelPendingSiteJob(
   if (job.status === "IN_PROGRESS") return { cancelled: false, leftRunning: true };
   if (job.status !== "PENDING") return { cancelled: false, leftRunning: false };
 
-  const cancelled = await prisma.workerJob.updateMany({
-    where: { id: job.id, status: "PENDING" },
-    data: { status: "FAILED", error: reason, completedAt: new Date() },
-  });
-  if (cancelled.count === 0) {
-    // Claimed in the gap. The handler owns it now.
-    return { cancelled: false, leftRunning: true };
+  const outcome = await cancelPendingJobById(job.id, reason);
+  if (!outcome.cancelled) {
+    // Claimed (or finished) in the gap. The handler owns it now.
+    return outcome;
   }
 
   await prisma.scrapeRun.updateMany({
@@ -593,38 +475,9 @@ async function runOneSite(
   };
 }
 
-/**
- * Close the sweep: counters, report, and the row — on BOTH paths.
- *
- * Shared deliberately. The halt path used to assemble its own subset inline and
- * wrote zeros for wouldHaveDemoted, wouldHavePromoted and listingsProtected —
- * the three numbers that say what the gate saved, missing from exactly the
- * nights something went wrong. Computing them in one place, from the items,
- * makes that impossible rather than merely fixed.
- */
-async function closeSweep(args: {
-  sweepId: string;
-  trigger: string;
-  startedAt: Date;
-  selectedCount: number;
-  status: "COMPLETED" | "HALTED";
-  haltReason: string | null;
-  results: SiteResult[];
-}): Promise<string> {
-  const finishedAt = new Date();
-
-  const sweepRow: ReportSweep = {
-    id: args.sweepId,
-    kind: "SCRAPE",
-    status: args.status,
-    trigger: args.trigger,
-    startedAt: args.startedAt,
-    finishedAt,
-    selectedCount: args.selectedCount,
-    haltReason: args.haltReason,
-  };
-
-  const items: ReportItem[] = args.results.map((r) => ({
+/** A scrape result as the shared report sees it. Closing is sweepCommon.closeSweep. */
+function toScrapeReportItem(r: SiteResult): ReportItem {
+  return {
     siteId: r.siteId,
     siteUrl: r.siteUrl,
     phase: "scrape",
@@ -636,29 +489,13 @@ async function closeSweep(args: {
     siteStatus: r.siteStatus,
     wouldDemoteTo: r.wouldDemoteTo,
     wouldPromoteTo: r.wouldPromoteTo,
+    policyStatusBefore: null,
+    policyStatusAfter: null,
     // In-memory only. The dashboard re-reads items from the database, which has
     // no defect column — but it displays this stored logText, so the defect
     // lines survive there.
     defect: r.defect,
-  }));
-
-  const counters = computeCounters(sweepRow, items);
-  const logText = renderSweepReport(sweepRow, items, { timeZone: sweepConfig.timezone });
-
-  await prisma.scrapeSweep.update({
-    where: { id: args.sweepId },
-    data: {
-      status: args.status,
-      finishedAt,
-      ...(args.status === "HALTED"
-        ? { haltedAt: finishedAt, haltReason: args.haltReason }
-        : {}),
-      ...counters,
-      logText,
-    },
-  });
-
-  return logText;
+  };
 }
 
 // ---------------------------------------------------------------------------
@@ -685,7 +522,7 @@ async function dryRun(): Promise<number> {
   const orphanCandidates = await prisma.scrapeRun.count({ where: { status: "IN_PROGRESS" } });
   log(`  IN_PROGRESS scrape runs: ${orphanCandidates}  (the reaper would inspect these)`);
 
-  const staleSweeps = await resolveStaleSweeps(true);
+  const staleSweeps = await resolveStaleSweeps("SCRAPE", true, log);
   log(`  stale RUNNING sweeps:    ${staleSweeps}`);
 
   const queue = await readQueueState(null);
@@ -765,7 +602,7 @@ async function realRun(mode: Mode): Promise<number> {
     log(`[sweep] reaped ${reaped.reaped} orphaned run(s) of ${reaped.scanned} scanned`);
     for (const d of reaped.details) log(`[sweep]   ${d.siteId}: ${d.reason}`);
   }
-  const stale = await resolveStaleSweeps(false);
+  const stale = await resolveStaleSweeps("SCRAPE", false, log);
   if (stale > 0) log(`[sweep] closed ${stale} stale RUNNING sweep row(s) as abandoned`);
 
   const sweep = await prisma.scrapeSweep.create({
@@ -784,9 +621,15 @@ async function realRun(mode: Mode): Promise<number> {
     const all = await loadSelectableSites();
     const found = all.find((s) => s.id === single);
     if (!found) {
-      await prisma.scrapeSweep.update({
-        where: { id: sweep.id },
-        data: { status: "FAILED", haltReason: `site ${single} not found or not ACTIVE/REVIEW`, finishedAt: new Date() },
+      await closeSweep({
+        kind: "SCRAPE",
+        sweepId: sweep.id,
+        trigger: sweep.trigger,
+        startedAt: sweep.startedAt,
+        selectedCount: 0,
+        status: "FAILED",
+        haltReason: `site ${single} not found or not ACTIVE/REVIEW`,
+        items: [],
       });
       log(`[sweep] site ${single} is not an ACTIVE/REVIEW site. Nothing to do.`);
       return 1;
@@ -835,6 +678,7 @@ async function realRun(mode: Mode): Promise<number> {
               probeWorkerDraining(jobId, {
                 busyWaitCapMs: BUSY_EVIDENCE_WINDOW_MS,
                 pollMs: sweepConfig.pollIntervalMs,
+                log: (line) => log(`[sweep] ${line}`),
               }),
           }
         : undefined,
@@ -872,17 +716,21 @@ async function realRun(mode: Mode): Promise<number> {
 
     if (result.halt) {
       log(`[sweep] HALT: ${result.halt}`);
-      await prisma.scrapeSweep.update({
-        where: { id: sweep.id },
-        data: {
-          status: "FAILED",
-          haltReason: result.halt,
-          haltedAt: new Date(),
-          finishedAt: new Date(),
-          selectedCount: queue.length,
-        },
-      });
       log(`[sweep] stopped after the probe; ${queue.length - results.length} site(s) not reached`);
+      // Through closeSweep like every other close, so a wedged night has a
+      // report and counters instead of a bare FAILED row.
+      const failedText = await closeSweep({
+        kind: "SCRAPE",
+        sweepId: sweep.id,
+        trigger: sweep.trigger,
+        startedAt: sweep.startedAt,
+        selectedCount: queue.length,
+        status: "FAILED",
+        haltReason: result.halt,
+        items: results.map(toScrapeReportItem),
+      });
+      log("");
+      log(failedText);
       return 1;
     }
 
@@ -920,13 +768,14 @@ async function realRun(mode: Mode): Promise<number> {
 
       log(`[sweep] HALT: ${haltReason}`);
       const haltedText = await closeSweep({
+        kind: "SCRAPE",
         sweepId: sweep.id,
         trigger: sweep.trigger,
         startedAt: sweep.startedAt,
         selectedCount: queue.length,
         status: "HALTED",
         haltReason,
-        results,
+        items: results.map(toScrapeReportItem),
       });
       // Printed last so the journal carries the whole report, verdict line
       // included — `journalctl -u haide-nightly` is the durable copy.
@@ -940,13 +789,14 @@ async function realRun(mode: Mode): Promise<number> {
   // Counters and report both come from closeSweep, so this path and the halt
   // path cannot compute them differently.
   const reportText = await closeSweep({
+    kind: "SCRAPE",
     sweepId: sweep.id,
     trigger: sweep.trigger,
     startedAt: sweep.startedAt,
     selectedCount: queue.length,
     status: "COMPLETED",
     haltReason: null,
-    results,
+    items: results.map(toScrapeReportItem),
   });
 
   if (breaker.hardUnqualified > 0) {

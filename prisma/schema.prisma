@@ -326,6 +326,12 @@ model ScrapeSweepItem {
   /// What the scheduled gate withheld. NULL when it withheld nothing.
   wouldDemoteTo  String?
   wouldPromoteTo String?
+  /// Policy phase only: scrapingPolicyStatus before and after tonight's check,
+  /// which together make "newly RESTRICTED" answerable from the row alone.
+  /// NULL on scrape items. TEXT rather than the enum, like the rest of this
+  /// table, so the sweep log never blocks an enum change.
+  policyStatusBefore String?
+  policyStatusAfter  String?
   startedAt      DateTime?
   finishedAt     DateTime?
 

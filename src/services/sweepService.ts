@@ -68,6 +68,8 @@ export async function getSweeps(opts: { limit?: number } = {}) {
         siteStatus: i.siteStatus,
         wouldDemoteTo: i.wouldDemoteTo,
         wouldPromoteTo: i.wouldPromoteTo,
+        policyStatusBefore: i.policyStatusBefore,
+        policyStatusAfter: i.policyStatusAfter,
         scrapeRunId: i.scrapeRunId,
       })),
     })),

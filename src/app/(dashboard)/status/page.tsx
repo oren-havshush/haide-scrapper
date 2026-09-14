@@ -118,7 +118,7 @@ export default async function StatusPage() {
                           <th className="text-right py-1 pr-3">before</th>
                           <th className="text-right py-1 pr-3">after</th>
                           <th className="text-left py-1 pr-3">status</th>
-                          <th className="text-left py-1">withheld</th>
+                          <th className="text-left py-1">withheld / policy</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -133,11 +133,13 @@ export default async function StatusPage() {
                             <td className="py-1 pr-3 text-right">{item.jobsAfter}</td>
                             <td className="py-1 pr-3">{item.siteStatus}</td>
                             <td className="py-1">
-                              {item.wouldPromoteTo
-                                ? `promote → ${item.wouldPromoteTo}`
-                                : item.wouldDemoteTo
-                                  ? `demote → ${item.wouldDemoteTo}`
-                                  : "—"}
+                              {item.phase === "policy"
+                                ? `${item.policyStatusBefore ?? "?"} → ${item.policyStatusAfter ?? "?"}`
+                                : item.wouldPromoteTo
+                                  ? `promote → ${item.wouldPromoteTo}`
+                                  : item.wouldDemoteTo
+                                    ? `demote → ${item.wouldDemoteTo}`
+                                    : "—"}
                             </td>
                           </tr>
                         ))}

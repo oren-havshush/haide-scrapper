@@ -88,9 +88,12 @@ const ok = (n: number) =>
 }
 
 {
+  // The 24 used to carry outcome "ok", which the driver never writes; it passed
+  // only while "checked" counted attempts. "checked" now counts outcomes whose
+  // job reached COMPLETED, so the fixture uses the outcome the driver writes.
   const items = [
-    item({ siteId: "p1", outcome: "newly_restricted" }),
-    ...ok(24).map((i) => ({ ...i, outcome: "ok" })),
+    item({ siteId: "p1", phase: "policy", outcome: "newly_restricted" }),
+    ...ok(24).map((i) => ({ ...i, phase: "policy", outcome: "success" })),
   ];
   const line = verdictLine(sweep({ kind: "POLICY", selectedCount: 25 }), items, { timeZone: TZ });
   assert(

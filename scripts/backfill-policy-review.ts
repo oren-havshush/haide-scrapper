@@ -15,6 +15,20 @@
  * The script is idempotent and safe to resume: it skips sites that already
  * have a PENDING/IN_PROGRESS POLICY_REVIEW job and (unless --force) sites
  * checked recently.
+ *
+ * ORDERING CHANGED (2026-09-15, nightly sweep step 8). Selection now goes
+ * through selectDuePolicyReviews in src/lib/policySelection.ts, the same rule
+ * the nightly policy sweep uses. Two visible effects:
+ *
+ *   - Order is oldest scrapingPolicyCheckedAt first, never-checked sites
+ *     leading, ties by id. It used to be Site.createdAt ascending.
+ *   - --limit N is applied AFTER that ordering, so it takes the N most overdue
+ *     sites. It used to take the N oldest-created sites via SQL LIMIT.
+ *
+ * And one boundary detail: a site checked exactly --recheck-days ago is now due
+ * (it used to need to be strictly older). --force, --status, --recheck-days,
+ * --delay-ms and --dry-run behave as before; --force still skips only the
+ * interval.
  */
 
 import "dotenv/config";

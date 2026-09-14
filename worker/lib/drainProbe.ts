@@ -124,3 +124,49 @@ export function assessDrain(
       `with nothing IN_PROGRESS — the worker is not claiming jobs`,
   };
 }
+
+/** The facts read fresh from the queue on each poll. */
+export type QueueFacts = {
+  newestInProgressAgeMs: number | null;
+  probeAtHeadOfQueue: boolean;
+  probeClaimed: boolean;
+};
+
+/**
+ * The clocks the verdict depends on, held across polls: total time waited, and
+ * how long the probe has been at the head of the queue.
+ *
+ * One tracker for both sweeps. The scrape sweep's first-site probe and every
+ * policy job still PENDING apply exactly these rules, so they live here rather
+ * than as two loops that could drift apart.
+ */
+export function createDrainTracker(startedAtMs: number, opts: { busyWaitCapMs: number }) {
+  const busyWindow = BUSY_EVIDENCE_WINDOW_MS;
+  let atHeadSince: number | null = null;
+
+  return {
+    observe(q: QueueFacts, nowMs: number): DrainVerdict {
+      // The head-of-queue clock measures "at the head of an EMPTY queue with
+      // nothing IN_PROGRESS", so it runs only while both hold. It resets when
+      // something older jumps ahead, AND while the worker is busy — otherwise a
+      // probe that waited at the head behind a 16-minute scrape has "been at
+      // the head for 16 minutes" when the scrape ends, and the first poll that
+      // lands before the worker's next claim calls a working worker wedged.
+      const busy = q.newestInProgressAgeMs !== null && q.newestInProgressAgeMs <= busyWindow;
+      const idleAtHead = q.probeAtHeadOfQueue && !busy;
+      if (idleAtHead && atHeadSince === null) atHeadSince = nowMs;
+      if (!idleAtHead) atHeadSince = null;
+
+      return assessDrain(
+        {
+          newestInProgressAgeMs: q.newestInProgressAgeMs,
+          probeAtHeadOfQueue: q.probeAtHeadOfQueue,
+          probeAtHeadForMs: atHeadSince === null ? null : nowMs - atHeadSince,
+          probeClaimed: q.probeClaimed,
+          totalWaitedMs: nowMs - startedAtMs,
+        },
+        { busyWaitCapMs: opts.busyWaitCapMs },
+      );
+    },
+  };
+}

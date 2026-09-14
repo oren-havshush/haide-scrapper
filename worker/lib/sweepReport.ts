@@ -40,8 +40,34 @@ export type ReportItem = {
   siteStatus: string;
   wouldDemoteTo: string | null;
   wouldPromoteTo: string | null;
+  /** Policy phase only: the site's scrapingPolicyStatus before and after tonight. */
+  policyStatusBefore?: string | null;
+  policyStatusAfter?: string | null;
   defect?: string | null;
 };
+
+/**
+ * Policy outcomes whose WorkerJob reached COMPLETED — the only ones "checked"
+ * counts. Attempts are not checks: a dead worker produces 25 attempts and zero
+ * checks, and the verdict line must say zero. The mapping from job end to
+ * outcome lives in policyOutcome.ts; policySweepReport.test.ts pins the two
+ * together.
+ */
+export const POLICY_CHECKED_OUTCOMES: readonly string[] = [
+  "success",
+  "newly_restricted",
+  "check_failed",
+];
+
+/** Policy outcomes that are a failure to establish a status tonight. */
+const POLICY_FAILED_OUTCOMES: readonly string[] = [
+  "check_failed",
+  "job_failed",
+  "timed_out",
+  "worker_not_draining",
+];
+
+const RESTRICTING: readonly string[] = ["RESTRICTED", "REQUIRES_WRITTEN_PERMISSION"];
 
 export type SweepCounters = {
   selectedCount: number;
@@ -75,6 +101,20 @@ function protectedListings(i: ReportItem): boolean {
 }
 
 export function computeCounters(sweep: ReportSweep, items: ReportItem[]): SweepCounters {
+  if (sweep.kind === "POLICY") {
+    // Same columns, policy meanings. Without this a night of 25 timeouts wrote
+    // ok 0, failed 0 — the dashboard's counter grid reading as an empty night.
+    return {
+      selectedCount: sweep.selectedCount,
+      ok: items.filter((i) => i.outcome === "success" || i.outcome === "newly_restricted").length,
+      failed: items.filter((i) => POLICY_FAILED_OUTCOMES.includes(i.outcome)).length,
+      silentDrift: 0,
+      skippedConflict: items.filter((i) => i.outcome === "skipped_conflict").length,
+      wouldHaveDemoted: 0,
+      wouldHavePromoted: 0,
+      listingsProtected: 0,
+    };
+  }
   return {
     selectedCount: sweep.selectedCount,
     ok: items.filter((i) => i.outcome === "success").length,
@@ -140,9 +180,17 @@ export function verdictLine(
     return `${label} ${date}: HALTED after ${hard} failures — ${items.length} of ${sweep.selectedCount} done`;
   }
 
+  // A sweep that stopped itself (worker not draining). Without its own shape it
+  // fell through to the clean-night line and read as a quiet night.
+  if (sweep.status === "FAILED") {
+    return `${label} ${date}: FAILED — ${sweep.haltReason ?? "no reason recorded"} — ${items.length} of ${sweep.selectedCount} done`;
+  }
+
   if (sweep.kind === "POLICY") {
+    // "checked" is jobs that reached COMPLETED, never attempts.
+    const checked = items.filter((i) => POLICY_CHECKED_OUTCOMES.includes(i.outcome)).length;
     const restricted = items.filter((i) => i.outcome === "newly_restricted").length;
-    return `${label} ${date}: ${items.length} checked, ${restricted} newly RESTRICTED`;
+    return `${label} ${date}: ${checked} checked, ${restricted} newly RESTRICTED`;
   }
 
   const attention = needsAttention(sweep, items).length;
@@ -176,6 +224,28 @@ export function needsAttention(sweep: ReportSweep, items: ReportItem[]): Attenti
     if (zeroedOut(i)) add(i, `returned 0 listings, had ${i.jobsBefore}`);
     if (i.failureCategory === "oversize") add(i, "oversize: refused an implausible row count");
     if (i.outcome === "hard_failure") add(i, `failed (${i.failureCategory ?? "unknown"})`);
+
+    // --- policy phase ---
+    // Every outcome the verdict line counts, or that means no status was
+    // established tonight, names its site here.
+    const policyMove = `${i.policyStatusBefore ?? "?"} -> ${i.policyStatusAfter ?? "?"}`;
+    if (i.outcome === "newly_restricted") add(i, `newly restricted: ${policyMove}`);
+    if (i.outcome === "check_failed") add(i, "policy check failed: the handler could not establish a status");
+    if (i.outcome === "timed_out") add(i, "policy check timed out after it was claimed");
+    if (i.outcome === "job_failed") add(i, "policy job ended FAILED");
+    if (i.outcome === "worker_not_draining") add(i, "worker not draining — the job was taken back");
+    if (
+      i.phase === "policy" &&
+      i.outcome !== "newly_restricted" &&
+      !RESTRICTING.includes(i.policyStatusBefore ?? "") &&
+      RESTRICTING.includes(i.policyStatusAfter ?? "")
+    ) {
+      // The job did not complete, yet the site's status moved into a
+      // restricting one. Not counted as newly RESTRICTED — the check did not
+      // finish — but never silent either.
+      add(i, `policy status is now restricting (${policyMove}) although the job did not complete`);
+    }
+
     if (i.defect) add(i, `DEFECT: ${i.defect}`);
   }
 

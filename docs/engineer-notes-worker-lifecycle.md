@@ -58,6 +58,25 @@ which only applies migration files). But the next person to run it **locally**
 must refuse that drop, and must not commit a generated migration containing it.
 The same applies to any future partial index.
 
+## `prisma migrate deploy` swallows `RAISE NOTICE`
+
+A migration's `RAISE NOTICE` output does not appear in `./deploy.sh` output —
+`migrate deploy` prints which migrations it applied, not what the server said
+while applying them. So `20260914000000_add_sweep_models_and_scraperun_link`'s
+`sweep migration: superseded N duplicate active WorkerJob row(s)` was never
+visible at deploy time, and no future migration should rely on a NOTICE to
+report anything that matters.
+
+To see what that dedupe did, ask the table (on the box):
+
+```sql
+SELECT count(*) FROM "WorkerJob"
+WHERE error = 'superseded: a newer active job exists for this site and type';
+```
+
+A migration that needs to fail loudly must `RAISE EXCEPTION`, which aborts the
+migration and does reach the deploy output.
+
 ## Operational note
 
 After any deliberate `docker kill`/`docker stop` of the worker — debugging, a

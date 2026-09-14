@@ -5,12 +5,17 @@
 //   npx tsx worker/sweep/policy.ts --now       enqueue and wait, one at a time
 //
 // A separate timer and a separate run from the scrape sweep, which removes the
-// ordering problem between them entirely.
+// ordering problem between them entirely. It does NOT remove the overlap: the
+// scrape sweep can still be running until 08:00 on the same FIFO queue, so a
+// policy job may wait behind a long scrape before it is claimed. See
+// worker/lib/policyJobWait.ts for how the wait is timed.
 //
 // NO BREAKER, deliberately. A policy check that fails writes CHECK_FAILED on
 // that one site; it is a diagnosis about that site's pages, not evidence that
 // the next check would fail. Halting a 25-site pass over three of them would
-// stop the only thing that notices a site has started refusing us.
+// stop the only thing that notices a site has started refusing us. A worker
+// that is not draining is different — that is about the infrastructure — and
+// stops the sweep as FAILED, exactly as the scrape sweep's probe does.
 //
 // NO GATE either. The policy handler writes only `scrapingPolicyStatus` and
 // `scrapingPolicyCheckedAt` — never status, never adminNote, never a listing —
@@ -19,16 +24,25 @@
 import "dotenv/config";
 import { prisma } from "../../src/lib/prisma";
 import { policyConfig, sweepConfig } from "../../src/lib/config";
-import {
-  becameRestricted,
-  selectDuePolicyReviews,
-  type PolicyCandidate,
-} from "../../src/lib/policySelection";
+import { selectDuePolicyReviews, type PolicyCandidate } from "../../src/lib/policySelection";
 import { enqueuePolicyReview } from "../../src/services/policyReviewService";
-import { computeCounters, renderSweepReport, type ReportItem, type ReportSweep } from "../lib/sweepReport";
+import { BUSY_EVIDENCE_WINDOW_MS } from "../lib/drainProbe";
+import { waitForPolicyJob } from "../lib/policyJobWait";
+import {
+  decidePolicyOutcome,
+  toPolicyItemRow,
+  toPolicyReportItem,
+  type PolicySiteResult,
+} from "../lib/policyOutcome";
+import {
+  cancelPendingJobById,
+  closeSweep,
+  readQueueState,
+  resolveStaleSweeps,
+  sleep,
+} from "./sweepCommon";
 
 const log = (line: string) => console.info(line);
-const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 /** The sweep only checks live sites whose company profile has been captured. */
 const SWEEP_STATUSES = ["ACTIVE", "REVIEW"] as const;
@@ -66,6 +80,13 @@ async function dryRun(): Promise<number> {
   log(`time            ${opts.now.toISOString()}  (${sweepConfig.timezone})`);
   log(`recheck after   ${opts.recheckIntervalDays}d`);
   log(`cap per night   ${opts.limit}`);
+  log(`run budget      ${policyConfig.maxPolicyFetchSeconds + 60}s from startedAt`);
+  log("");
+
+  const staleSweeps = await resolveStaleSweeps("POLICY", true, log);
+  log(`stale RUNNING policy sweeps: ${staleSweeps}`);
+  const active = await prisma.workerJob.count({ where: { status: { in: ["PENDING", "IN_PROGRESS"] } } });
+  log(`active worker jobs:          ${active}`);
   log("");
 
   const { selected, excluded, cappedOut } = selectDuePolicyReviews(await loadCandidates(), opts);
@@ -75,7 +96,7 @@ async function dryRun(): Promise<number> {
     const last = s.scrapingPolicyCheckedAt
       ? s.scrapingPolicyCheckedAt.toISOString().slice(0, 10)
       : "never     ";
-    log(`  ${String(i + 1).padStart(3)}  ${last}  ${s.scrapingPolicyStatus.padEnd(26)}  ${s.siteUrl}`);
+    log(`  ${String(i + 1).padStart(3)}  ${last}  ${s.scrapingPolicyStatus.padEnd(26)}  ${s.status.padEnd(6)}  ${s.siteUrl}`);
   });
   if (cappedOut > 0) log(`  (${cappedOut} more were due, past the ${opts.limit}/night cap)`);
 
@@ -99,31 +120,6 @@ async function dryRun(): Promise<number> {
 // The real run
 // ---------------------------------------------------------------------------
 
-type PolicyResult = {
-  siteId: string;
-  siteUrl: string;
-  statusBefore: string;
-  statusAfter: string;
-  outcome: string;
-  startedAt: Date;
-  finishedAt: Date;
-};
-
-/** Wait for the POLICY_REVIEW job itself to be terminal. */
-async function waitForJob(jobId: string, opts: { timeoutMs: number; pollMs: number }) {
-  const deadline = Date.now() + opts.timeoutMs;
-  for (;;) {
-    const job = await prisma.workerJob.findUnique({
-      where: { id: jobId },
-      select: { status: true, error: true },
-    });
-    if (!job) return { status: "MISSING", error: null as string | null };
-    if (job.status === "COMPLETED" || job.status === "FAILED") return job;
-    if (Date.now() > deadline) return { status: "TIMED_OUT", error: null as string | null };
-    await sleep(opts.pollMs);
-  }
-}
-
 async function realRun(): Promise<number> {
   if (!sweepConfig.enabled) {
     log("[policy] SWEEP_ENABLED=false — refusing to run.");
@@ -136,16 +132,14 @@ async function realRun(): Promise<number> {
 
   const opts = selectionOptions();
   const startedAt = opts.now;
+  const runBudgetMs = (policyConfig.maxPolicyFetchSeconds + 60) * 1000;
 
   log("=== policy sweep --now ===");
 
-  // Same stale-RUNNING rule as the scrape sweep: a killed run must not leave
-  // the dashboard showing a sweep in progress for ever.
-  const stale = await prisma.scrapeSweep.updateMany({
-    where: { status: "RUNNING", kind: "POLICY" },
-    data: { status: "FAILED", haltReason: "abandoned", finishedAt: new Date() },
-  });
-  if (stale.count > 0) log(`[policy] closed ${stale.count} stale RUNNING policy sweep(s)`);
+  // Scoped to POLICY inside the shared helper, so it can never close a scrape
+  // sweep that is genuinely running.
+  const stale = await resolveStaleSweeps("POLICY", false, log);
+  if (stale > 0) log(`[policy] closed ${stale} stale RUNNING policy sweep(s)`);
 
   const { selected, cappedOut } = selectDuePolicyReviews(await loadCandidates(), opts);
   log(`[policy] ${selected.length} site(s) due${cappedOut > 0 ? ` (${cappedOut} past the cap)` : ""}`);
@@ -161,7 +155,14 @@ async function realRun(): Promise<number> {
   });
   log(`[policy] sweep row ${sweep.id}`);
 
-  const results: PolicyResult[] = [];
+  const results: PolicySiteResult[] = [];
+  let halt: string | null = null;
+
+  /** Record one site: the row and the report item come from the same result. */
+  const record = async (r: PolicySiteResult) => {
+    results.push(r);
+    await prisma.scrapeSweepItem.create({ data: toPolicyItemRow(r, sweep.id) });
+  };
 
   // One site at a time, same resident pattern as the scrape sweep: the worker
   // stays available for manual work, and each result is recorded before the
@@ -172,119 +173,116 @@ async function realRun(): Promise<number> {
 
     const { jobId, alreadyQueued } = await enqueuePolicyReview(site.id, "nightly_sweep");
     if (alreadyQueued) {
-      log(`[policy] <- already queued, skipping`);
-      results.push({
+      // Someone else's job. Recorded — the row and the report both — and left
+      // alone: never waited on, never cancelled.
+      log(`[policy] <- skipped_conflict: a POLICY_REVIEW job was already queued (${jobId})`);
+      await record({
         siteId: site.id,
         siteUrl: site.siteUrl,
-        statusBefore: site.scrapingPolicyStatus,
-        statusAfter: site.scrapingPolicyStatus,
-        outcome: "skipped_conflict",
+        siteStatus: site.status,
+        policyStatusBefore: site.scrapingPolicyStatus,
+        policyStatusAfter: site.scrapingPolicyStatus,
+        outcome: decidePolicyOutcome({
+          jobEnd: "ALREADY_QUEUED",
+          before: site.scrapingPolicyStatus,
+          after: site.scrapingPolicyStatus,
+        }),
+        defect: null,
         startedAt: itemStart,
         finishedAt: new Date(),
       });
       continue;
     }
 
-    const job = await waitForJob(jobId, {
-      timeoutMs: (policyConfig.maxPolicyFetchSeconds + 60) * 1000,
-      pollMs: sweepConfig.pollIntervalMs,
-    });
+    const waited = await waitForPolicyJob(
+      {
+        readJob: () =>
+          prisma.workerJob.findUnique({
+            where: { id: jobId },
+            select: { status: true, startedAt: true },
+          }),
+        readQueue: () => readQueueState(jobId),
+        now: () => Date.now(),
+        sleep,
+        onWaiting: (reason) => log(`[policy]    waiting: ${reason}`),
+      },
+      {
+        runBudgetMs,
+        busyWaitCapMs: BUSY_EVIDENCE_WINDOW_MS,
+        pollMs: sweepConfig.pollIntervalMs,
+      },
+    );
 
+    let defect: string | null = null;
+
+    // Take back only what is still PENDING, by job id. A claimed job belongs to
+    // its handler, which writes the site's policy status when it finishes.
+    if (waited.end === "WEDGED") {
+      const c = await cancelPendingJobById(jobId, "policy sweep cancelled: worker not draining");
+      log(`[policy]    drain probe: wedged — ${waited.reason}`);
+      if (!c.cancelled) defect = "worker judged not draining, but the job had been claimed; left to its handler";
+      halt = "worker not draining";
+    } else if (waited.end === "TIMED_OUT") {
+      const c = await cancelPendingJobById(
+        jobId,
+        `policy sweep stopped waiting after ${Math.round(waited.ranForMs / 1000)}s`,
+      );
+      if (c.leftRunning) {
+        log(`[policy]    timed out ${Math.round(waited.ranForMs / 1000)}s after startedAt; the job is still running and is left to its handler`);
+      }
+    }
+
+    // One read of the site, used for both statuses the result carries.
     const after = await prisma.site.findUnique({
       where: { id: site.id },
-      select: { scrapingPolicyStatus: true },
+      select: { status: true, scrapingPolicyStatus: true },
     });
-    const statusAfter = after?.scrapingPolicyStatus ?? site.scrapingPolicyStatus;
+    const policyStatusAfter = after?.scrapingPolicyStatus ?? site.scrapingPolicyStatus;
 
-    // "Newly RESTRICTED" is a TRANSITION, not a census: a site already
-    // RESTRICTED last month is not news tonight.
-    const outcome = becameRestricted(site.scrapingPolicyStatus, statusAfter)
-      ? "newly_restricted"
-      : job.status === "COMPLETED"
-        ? "success"
-        : job.status === "TIMED_OUT"
-          ? "timed_out"
-          : "check_failed";
-
-    log(`[policy] <- ${outcome}  ${site.scrapingPolicyStatus} -> ${statusAfter}`);
-
-    results.push({
+    const result: PolicySiteResult = {
       siteId: site.id,
       siteUrl: site.siteUrl,
-      statusBefore: site.scrapingPolicyStatus,
-      statusAfter,
-      outcome,
+      siteStatus: after?.status ?? site.status,
+      policyStatusBefore: site.scrapingPolicyStatus,
+      policyStatusAfter,
+      outcome: decidePolicyOutcome({
+        jobEnd: waited.end,
+        before: site.scrapingPolicyStatus,
+        after: policyStatusAfter,
+      }),
+      defect,
       startedAt: itemStart,
       finishedAt: new Date(),
-    });
+    };
 
-    await prisma.scrapeSweepItem.create({
-      data: {
-        sweepId: sweep.id,
-        siteId: site.id,
-        phase: "policy",
-        outcome,
-        // The resulting policy status, and the one it replaced — together they
-        // make "newly" answerable from the row alone.
-        failureCategory: statusAfter,
-        siteStatus: site.status,
-        wouldDemoteTo: null,
-        wouldPromoteTo: site.scrapingPolicyStatus,
-        jobsBefore: 0,
-        jobsAfter: 0,
-        startedAt: itemStart,
-        finishedAt: new Date(),
-      },
-    });
+    log(`[policy] <- ${result.outcome}  ${result.policyStatusBefore} -> ${result.policyStatusAfter}`);
+    await record(result);
+
+    if (halt) {
+      log(`[policy] HALT: ${halt}; ${selected.length - results.length} site(s) not reached`);
+      break;
+    }
 
     if (policyConfig.jobDelayMs > 0) await sleep(policyConfig.jobDelayMs);
   }
 
-  // Closed through the same renderer as the scrape sweep, so the verdict line,
-  // the stored logText and the journal are one string in all three places.
-  const finishedAt = new Date();
-  const sweepRow: ReportSweep = {
-    id: sweep.id,
+  // Through the shared close, so the verdict line, the stored logText and the
+  // journal are one string, and the counters come from the items.
+  const logText = await closeSweep({
     kind: "POLICY",
-    status: "COMPLETED",
+    sweepId: sweep.id,
     trigger: sweep.trigger,
     startedAt,
-    finishedAt,
     selectedCount: selected.length,
-    haltReason: null,
-  };
-  const items: ReportItem[] = results.map((r) => ({
-    siteId: r.siteId,
-    siteUrl: r.siteUrl,
-    phase: "policy",
-    outcome: r.outcome,
-    failureCategory: r.statusAfter,
-    jobsBefore: 0,
-    jobsAfter: 0,
-    newestJobAt: null,
-    siteStatus: r.statusAfter,
-    wouldDemoteTo: null,
-    wouldPromoteTo: null,
-  }));
-
-  const counters = computeCounters(sweepRow, items);
-  const logText = renderSweepReport(sweepRow, items, { timeZone: sweepConfig.timezone });
-
-  await prisma.scrapeSweep.update({
-    where: { id: sweep.id },
-    data: { status: "COMPLETED", finishedAt, ...counters, logText },
+    status: halt ? "FAILED" : "COMPLETED",
+    haltReason: halt,
+    items: results.map(toPolicyReportItem),
   });
 
-  const newly = results.filter((r) => r.outcome === "newly_restricted");
-  if (newly.length > 0) {
-    log("");
-    log(`[policy] ${newly.length} site(s) newly restricted:`);
-    for (const r of newly) log(`[policy]   ${r.siteUrl}: ${r.statusBefore} -> ${r.statusAfter}`);
-  }
-
+  // Last, so journalctl ends with the whole report.
   log("");
   log(logText);
-  return 0;
+  return halt || results.some((r) => r.defect) ? 1 : 0;
 }
 
 // ---------------------------------------------------------------------------

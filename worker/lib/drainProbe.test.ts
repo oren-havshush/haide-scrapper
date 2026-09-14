@@ -14,6 +14,7 @@ import {
   BUSY_EVIDENCE_WINDOW_MS,
   HEAD_OF_QUEUE_DEADLINE_MS,
   assessDrain,
+  createDrainTracker,
   type DrainInput,
 } from "./drainProbe";
 
@@ -190,6 +191,52 @@ assert(
     probeClaimed: false,
   });
   assert(noClock.verdict === "waiting", "with no clock supplied, the cap simply does not apply");
+}
+
+// --- the tracker: the head-of-queue clock only runs on an idle worker ------
+//
+// Found by policyJobWait.test.ts. The clock used to start the moment the probe
+// reached the head, even while rule 1 was answering "busy". A probe sitting at
+// the head behind a 16-minute IN_PROGRESS scrape had therefore "been at the head
+// for 16 minutes" by the time the scrape finished, and the first poll that
+// caught the gap before the worker's next claim returned wedged.
+
+{
+  const MIN = 60_000;
+  const tracker = createDrainTracker(0, { busyWaitCapMs: BUSY_EVIDENCE_WINDOW_MS });
+  for (let t = 0; t < 16 * MIN; t += 5_000) {
+    const v = tracker.observe(
+      { newestInProgressAgeMs: t + MIN, probeAtHeadOfQueue: true, probeClaimed: false },
+      t,
+    );
+    if (v.verdict !== "waiting") {
+      assert(false, `busy for 16 minutes is waiting throughout (got ${v.verdict} at ${t / 1000}s)`);
+      break;
+    }
+  }
+  const gap = tracker.observe(
+    { newestInProgressAgeMs: null, probeAtHeadOfQueue: true, probeClaimed: false },
+    16 * MIN,
+  );
+  assert(
+    gap.verdict === "waiting",
+    `the first idle poll after a long busy stretch starts the 30s clock, it does not find it expired (got ${gap.verdict}: ${gap.reason})`,
+  );
+  const later = tracker.observe(
+    { newestInProgressAgeMs: null, probeAtHeadOfQueue: true, probeClaimed: false },
+    16 * MIN + HEAD_OF_QUEUE_DEADLINE_MS + 1,
+  );
+  assert(later.verdict === "wedged", "but 30s of idle at the head after that is still wedged");
+}
+
+{
+  // Something older jumping ahead resets the clock.
+  const tracker = createDrainTracker(0, { busyWaitCapMs: BUSY_EVIDENCE_WINDOW_MS });
+  const idleHead = { newestInProgressAgeMs: null, probeAtHeadOfQueue: true, probeClaimed: false };
+  tracker.observe(idleHead, 0);
+  tracker.observe({ ...idleHead, probeAtHeadOfQueue: false }, 20_000);
+  const v = tracker.observe(idleHead, 40_000);
+  assert(v.verdict === "waiting", `losing the head resets its clock (got ${v.verdict})`);
 }
 
 if (failures > 0) {

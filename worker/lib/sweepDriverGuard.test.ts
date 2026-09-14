@@ -32,10 +32,16 @@ const driver = strip(driverRaw);
 
 assert(driver.length > 2000, `the driver was actually read (${driver.length} chars)`);
 
+// What both sweeps share (step 8 fixes): closeSweep, the drain-probe loop,
+// readQueueState, the PENDING-only cancel and the stale-RUNNING resolver.
+const commonPath = join(ROOT, "worker", "sweep", "sweepCommon.ts");
+const common = strip(readFileSync(commonPath, "utf8"));
+assert(common.length > 2000, `the shared sweep module was read (${common.length} chars)`);
+
 /** A named top-level function's body, to the first lone `}` in column 0. */
 function functionBody(src: string, name: string): string {
   const lines = src.split("\n");
-  const start = lines.findIndex((l) => new RegExp(`^(async )?function ${name}\\(`).test(l));
+  const start = lines.findIndex((l) => new RegExp(`^(export )?(async )?function ${name}\\(`).test(l));
   if (start === -1) return "";
   const end = lines.findIndex((l, i) => i > start && l === "}");
   if (end === -1) return "";
@@ -70,12 +76,16 @@ for (const call of WRITE_CALLS) {
 // resolveStaleSweeps is the one shared helper dryRun calls that CAN write, so
 // it must be called in its reporting mode.
 assert(
-  /resolveStaleSweeps\(true\)/.test(dry),
-  "dryRun calls resolveStaleSweeps in report-only mode",
+  /resolveStaleSweeps\("SCRAPE", true, log\)/.test(dry),
+  "dryRun calls resolveStaleSweeps in report-only mode, for its own kind",
 );
 {
-  const resolve = functionBody(driver, "resolveStaleSweeps");
-  assert(resolve.length > 200, "resolveStaleSweeps was extracted");
+  const resolve = functionBody(common, "resolveStaleSweeps");
+  assert(resolve.length > 200, "resolveStaleSweeps was extracted from sweepCommon.ts");
+  assert(
+    /where: \{ status: "RUNNING", kind \}/.test(resolve),
+    "and only ever finds stale rows of the kind it was given — a manual scrape run must not close a running policy sweep",
+  );
   const guardIdx = resolve.indexOf("if (dryRun)");
   const writeIdx = resolve.indexOf("updateMany");
   assert(guardIdx >= 0, "resolveStaleSweeps takes a dryRun flag");
@@ -247,20 +257,37 @@ assert(
     "nor any other counter — they come from computeCounters",
   );
 
-  const closeCalls = real.split("closeSweep({").length - 1;
+  const anyClose = real.split("closeSweep({").length - 1;
+  const scrapeCloses = (real.match(/closeSweep\(\{\s*kind: "SCRAPE"/g) ?? []).length;
   assert(
-    closeCalls === 2,
-    `both the HALTED and COMPLETED paths close through closeSweep (found ${closeCalls})`,
+    anyClose === 4 && scrapeCloses === 4,
+    `site-not-found, wedged, HALTED and COMPLETED all close through closeSweep as SCRAPE (found ${anyClose} calls, ${scrapeCloses} with kind SCRAPE)`,
+  );
+  const inlineUpdates = (real.match(/scrapeSweep\.update\(/g) ?? []).length;
+  assert(
+    inlineUpdates === 1 &&
+      /scrapeSweep\.update\(\{\s*where: \{ id: sweep\.id \},\s*data: \{ selectedCount: queue\.length \},?\s*\}\)/.test(real),
+    `and realRun's only inline sweep update is selectedCount — the wedged path used to write FAILED inline, with no counters and no report (found ${inlineUpdates})`,
   );
 
-  const close = functionBody(driver, "closeSweep");
-  assert(close.length > 500, "closeSweep was extracted");
+  for (const [name, src] of [["nightly.ts", driver]] as const) {
+    for (const fn of ["closeSweep", "readQueueState", "probeWorkerDraining", "resolveStaleSweeps"]) {
+      assert(
+        !new RegExp(`function ${fn}\\(`).test(src),
+        `${name} no longer defines its own ${fn} — it is shared`,
+      );
+    }
+  }
+
+  const close = functionBody(common, "closeSweep");
+  assert(close.length > 500, "closeSweep was extracted from sweepCommon.ts");
+  assert(/kind: SweepKind/.test(close) && /kind: args\.kind/.test(close), "closeSweep takes the kind");
   assert(/computeCounters\(/.test(close), "closeSweep computes counters from the items");
   assert(/renderSweepReport\(/.test(close), "and renders the report from the same items");
   assert(/logText,/.test(close), "and stores it on the sweep row");
   assert(
-    /status === "HALTED"[\s\S]{0,120}haltedAt/.test(close),
-    "setting haltedAt only on the halt path",
+    /status !== "COMPLETED"[\s\S]{0,120}haltedAt/.test(close),
+    "setting haltedAt only on a path that stopped (HALTED or FAILED)",
   );
   assert(
     /\.\.\.counters,/.test(close),
@@ -272,8 +299,10 @@ assert(
   // The report is printed last on both paths, so journalctl ends with it.
   const real = functionBody(driver, "realRun");
   assert(
-    (real.split("log(reportText)").length - 1) + (real.split("log(haltedText)").length - 1) === 2,
-    "both paths print the rendered report to stdout",
+    (real.split("log(reportText)").length - 1) +
+      (real.split("log(haltedText)").length - 1) +
+      (real.split("log(failedText)").length - 1) === 3,
+    "all three close paths print the rendered report to stdout",
   );
 }
 
@@ -331,17 +360,32 @@ assert(
     /status === "IN_PROGRESS"\) return \{ cancelled: false, leftRunning: true \}/.test(cancel),
     "a claimed job is left to its handler rather than raced",
   );
+  const delegateIdx = cancel.indexOf("cancelPendingJobById(");
+  const runCloseIdx = cancel.indexOf("scrapeRun.updateMany");
+  assert(delegateIdx >= 0, "the job cancel goes through the shared cancelPendingJobById");
   assert(
-    /status: "PENDING" \}/.test(cancel),
-    "the job cancel is scoped to PENDING",
-  );
-  assert(
-    /cancelled\.count === 0/.test(cancel),
-    "and a job claimed in the gap is detected by the scoped write returning 0",
+    /if \(!outcome\.cancelled\) \{[\s\S]{0,120}return outcome;/.test(cancel) &&
+      delegateIdx < runCloseIdx,
+    "and the run is closed only after the job cancel actually landed",
   );
   assert(
     /status: "IN_PROGRESS" \}/.test(cancel),
     "the run close is scoped to IN_PROGRESS",
+  );
+
+  const byId = functionBody(common, "cancelPendingJobById");
+  assert(byId.length > 200, "cancelPendingJobById was extracted");
+  assert(
+    /where: \{ id: jobId, status: "PENDING" \}/.test(byId),
+    "the job cancel is by id AND scoped to PENDING, in one write",
+  );
+  assert(
+    /cancelled\.count > 0/.test(byId),
+    "and a job claimed in the gap is detected by the scoped write matching nothing",
+  );
+  assert(
+    !/\.update\(/.test(byId),
+    "with no unscoped update anywhere in it",
   );
   assert(
     /failureCategory: "cancelled"/.test(cancel),
@@ -406,19 +450,108 @@ assert(policy.length > 1500, `the policy driver was read (${policy.length} chars
     "and selects through the shared rule, not its own query",
   );
   assert(
-    /renderSweepReport\(/.test(real) && /computeCounters\(/.test(real),
-    "and closes through the same renderer as the scrape sweep",
+    /closeSweep\(\{\s*kind: "POLICY"/.test(real),
+    "and closes through the shared closeSweep, as POLICY",
+  );
+  assert(
+    !/computeCounters\(/.test(policy) && !/renderSweepReport\(/.test(policy) && !/scrapeSweep\.update\(/.test(policy),
+    "with no inline close of its own left behind",
   );
   assert(/kind: "POLICY"/.test(policy), "the sweep row is kind POLICY");
-  assert(/phase: "policy"/.test(policy), "and its items are phase policy");
   assert(
-    /becameRestricted\(/.test(real),
-    "newly_restricted is decided by a transition, not by the resulting status alone",
+    /scrapeSweepItem\.create\(\{ data: toPolicyItemRow\(/.test(policy) &&
+      /results\.map\(toPolicyReportItem\)/.test(real),
+    "the row and the report item are both built from the same result",
   );
   assert(
-    /status: "RUNNING", kind: "POLICY"/.test(real),
+    /decidePolicyOutcome\(/.test(real),
+    "newly_restricted is decided in policyOutcome.ts (transition asserted in policySweepReport.test.ts)",
+  );
+  assert(
+    /resolveStaleSweeps\("POLICY", false, log\)/.test(real),
     "the stale-RUNNING rule is scoped to POLICY so it cannot close a scrape sweep",
   );
+  assert(
+    /resolveStaleSweeps\("POLICY", true, log\)/.test(functionBody(policy, "dryRun")),
+    "and the dry run calls it in report-only mode",
+  );
+}
+
+{
+  // Gap 3: the before/after policy statuses rode in wouldPromoteTo and
+  // failureCategory. Neither may be written by the policy driver at all.
+  assert(
+    !/wouldPromoteTo/.test(policy) && !/failureCategory/.test(policy),
+    "policy.ts writes neither wouldPromoteTo nor failureCategory",
+  );
+}
+
+{
+  // Gap 5: an already-queued site was counted in the report and never written.
+  const real = functionBody(policy, "realRun");
+  const aq = real.indexOf("if (alreadyQueued)");
+  const cont = real.indexOf("continue;", aq);
+  assert(aq >= 0 && cont > aq, "realRun handles alreadyQueued");
+  assert(
+    /await record\(/.test(real.slice(aq, cont)),
+    "and records the item — row and report — BEFORE continuing",
+  );
+  assert(
+    /const record = async[\s\S]{0,200}scrapeSweepItem\.create/.test(real),
+    "where record is the one function that writes the row",
+  );
+  assert(
+    !/cancelPendingJobById\(/.test(real.slice(aq, cont)),
+    "and never cancels a job the sweep did not queue",
+  );
+}
+
+{
+  // Gaps 7-9: the wait is timed from startedAt with the drain rules while
+  // PENDING (behaviour in policyJobWait.test.ts), and what it walks away from is
+  // taken back only if still PENDING.
+  const real = functionBody(policy, "realRun");
+  assert(/waitForPolicyJob\(/.test(real), "realRun waits through waitForPolicyJob");
+  assert(/readQueue: \(\) => readQueueState\(jobId\)/.test(real), "feeding it the shared queue facts");
+  assert(/busyWaitCapMs: BUSY_EVIDENCE_WINDOW_MS/.test(real), "with the 20-minute busy cap");
+  assert(
+    !/Date\.now\(\) \+/.test(real) && !/function waitForJob\(/.test(policy),
+    "and no deadline computed from enqueue",
+  );
+
+  const timedOut = real.indexOf('waited.end === "TIMED_OUT"');
+  const wedged = real.indexOf('waited.end === "WEDGED"');
+  assert(
+    timedOut >= 0 && /cancelPendingJobById\(\s*jobId/.test(real.slice(timedOut, timedOut + 300)),
+    "a genuine timeout cancels by job id through the PENDING-only helper",
+  );
+  assert(
+    wedged >= 0 && /cancelPendingJobById\(jobId/.test(real.slice(wedged, wedged + 200)),
+    "and so does a wedged worker",
+  );
+  assert(
+    /halt = "worker not draining"/.test(real) && /status: halt \? "FAILED" : "COMPLETED"/.test(real),
+    'a wedged worker stops the sweep as FAILED with "worker not draining"',
+  );
+  assert(
+    !/workerJob\.update/.test(policy),
+    "the policy driver writes no WorkerJob itself",
+  );
+}
+
+{
+  // Gap 1: one definition of "due". The unused service wrapper is gone.
+  const service = strip(readFileSync(join(ROOT, "src", "services", "policyReviewService.ts"), "utf8"));
+  assert(!/selectSitesDuePolicyReview/.test(service), "policyReviewService.ts has no selectSitesDuePolicyReview");
+  const backfill = strip(readFileSync(join(ROOT, "scripts", "backfill-policy-review.ts"), "utf8"));
+  assert(/selectDuePolicyReviews\(/.test(backfill), "the backfill selects through the pure rule");
+}
+
+{
+  // The probe loop is the shared tracker, not a second copy of its clocks.
+  const probe = functionBody(common, "probeWorkerDraining");
+  assert(/createDrainTracker\(/.test(probe), "probeWorkerDraining holds its clocks in createDrainTracker");
+  assert(!/atHeadSince/.test(probe), "and keeps no head-of-queue clock of its own");
 }
 
 {
