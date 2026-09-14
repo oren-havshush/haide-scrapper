@@ -50,6 +50,12 @@ import {
   shouldAlertSoftFailures,
   SOFT_FAILURE_ALERT_RATIO,
 } from "../lib/sweepBreaker";
+import {
+  computeCounters,
+  renderSweepReport,
+  type ReportItem,
+  type ReportSweep,
+} from "../lib/sweepReport";
 
 // ---------------------------------------------------------------------------
 // Arguments
@@ -587,6 +593,74 @@ async function runOneSite(
   };
 }
 
+/**
+ * Close the sweep: counters, report, and the row — on BOTH paths.
+ *
+ * Shared deliberately. The halt path used to assemble its own subset inline and
+ * wrote zeros for wouldHaveDemoted, wouldHavePromoted and listingsProtected —
+ * the three numbers that say what the gate saved, missing from exactly the
+ * nights something went wrong. Computing them in one place, from the items,
+ * makes that impossible rather than merely fixed.
+ */
+async function closeSweep(args: {
+  sweepId: string;
+  trigger: string;
+  startedAt: Date;
+  selectedCount: number;
+  status: "COMPLETED" | "HALTED";
+  haltReason: string | null;
+  results: SiteResult[];
+}): Promise<string> {
+  const finishedAt = new Date();
+
+  const sweepRow: ReportSweep = {
+    id: args.sweepId,
+    kind: "SCRAPE",
+    status: args.status,
+    trigger: args.trigger,
+    startedAt: args.startedAt,
+    finishedAt,
+    selectedCount: args.selectedCount,
+    haltReason: args.haltReason,
+  };
+
+  const items: ReportItem[] = args.results.map((r) => ({
+    siteId: r.siteId,
+    siteUrl: r.siteUrl,
+    phase: "scrape",
+    outcome: r.outcome,
+    failureCategory: r.failureCategory,
+    jobsBefore: r.jobsBefore,
+    jobsAfter: r.jobsAfter,
+    newestJobAt: r.newestJobAt,
+    siteStatus: r.siteStatus,
+    wouldDemoteTo: r.wouldDemoteTo,
+    wouldPromoteTo: r.wouldPromoteTo,
+    // In-memory only. The dashboard re-reads items from the database, which has
+    // no defect column — but it displays this stored logText, so the defect
+    // lines survive there.
+    defect: r.defect,
+  }));
+
+  const counters = computeCounters(sweepRow, items);
+  const logText = renderSweepReport(sweepRow, items, { timeZone: sweepConfig.timezone });
+
+  await prisma.scrapeSweep.update({
+    where: { id: args.sweepId },
+    data: {
+      status: args.status,
+      finishedAt,
+      ...(args.status === "HALTED"
+        ? { haltedAt: finishedAt, haltReason: args.haltReason }
+        : {}),
+      ...counters,
+      logText,
+    },
+  });
+
+  return logText;
+}
+
 // ---------------------------------------------------------------------------
 // Dry run — READ ONLY
 // ---------------------------------------------------------------------------
@@ -845,68 +919,35 @@ async function realRun(mode: Mode): Promise<number> {
       }
 
       log(`[sweep] HALT: ${haltReason}`);
-      await prisma.scrapeSweep.update({
-        where: { id: sweep.id },
-        data: {
-          status: "HALTED",
-          haltReason,
-          haltedAt: new Date(),
-          finishedAt: new Date(),
-          selectedCount: queue.length,
-          ok: results.filter((r) => r.outcome === "success").length,
-          failed: breaker.hardTotal,
-          silentDrift: breaker.softTotal,
-          skippedConflict: results.filter((r) => r.outcome === "skipped_conflict").length,
-        },
+      const haltedText = await closeSweep({
+        sweepId: sweep.id,
+        trigger: sweep.trigger,
+        startedAt: sweep.startedAt,
+        selectedCount: queue.length,
+        status: "HALTED",
+        haltReason,
+        results,
       });
-      log(`[sweep] ${queue.length - results.length} site(s) not reached`);
+      // Printed last so the journal carries the whole report, verdict line
+      // included — `journalctl -u haide-nightly` is the durable copy.
+      log("");
+      log(haltedText);
       return 1;
     }
   }
 
   // --- close out -------------------------------------------------------
-  const ok = results.filter((r) => r.outcome === "success").length;
-  const failed = results.filter((r) => r.outcome === "hard_failure").length;
-  const soft = results.filter((r) => r.outcome === "soft_failure").length;
-  const conflicts = results.filter((r) => r.outcome === "skipped_conflict").length;
-
-  // Listings the scheduled gate SAVED.
-  //
-  // Not "would demote or promote" — those are status verdicts and neither
-  // touches a Job row. The wipe lives in failScrapeRun, which runs whenever a
-  // run ends FAILED; on a manual run it deletes every listing the site has.
-  // So a listing set was protected when the run ended FAILED and the site had
-  // listings to lose.
-  //
-  // `apply_requires_login` is excluded: that path is skipSiteForApplyLogin,
-  // which moves the site to SKIPPED and never deletes anything, so counting it
-  // would inflate the number that justifies this whole design.
-  const protectedCount = results.filter(
-    (r) =>
-      r.runStatus === "FAILED" &&
-      r.failureCategory !== "apply_requires_login" &&
-      r.jobsBefore > 0,
-  ).length;
-
-  await prisma.scrapeSweep.update({
-    where: { id: sweep.id },
-    data: {
-      status: "COMPLETED",
-      finishedAt: new Date(),
-      ok,
-      failed,
-      silentDrift: soft,
-      skippedConflict: conflicts,
-      wouldHaveDemoted: results.filter((r) => r.wouldDemoteTo).length,
-      wouldHavePromoted: results.filter((r) => r.wouldPromoteTo).length,
-      listingsProtected: protectedCount,
-      // SEAM: `logText` is the rendered report (step 7).
-    },
+  // Counters and report both come from closeSweep, so this path and the halt
+  // path cannot compute them differently.
+  const reportText = await closeSweep({
+    sweepId: sweep.id,
+    trigger: sweep.trigger,
+    startedAt: sweep.startedAt,
+    selectedCount: queue.length,
+    status: "COMPLETED",
+    haltReason: null,
+    results,
   });
-
-  log("");
-  log(`=== sweep ${sweep.id} complete ===`);
-  log(`  ok ${ok}  hard ${failed}  soft ${soft}  conflicts ${conflicts}  protected ${protectedCount}`);
 
   if (breaker.hardUnqualified > 0) {
     log(
@@ -924,6 +965,11 @@ async function realRun(mode: Mode): Promise<number> {
         `cause rather than ${breaker.softTotal} separate ones`,
     );
   }
+
+  // Last, so `journalctl -u haide-nightly` ends with the whole report and the
+  // verdict line is the same text the sweep row holds.
+  log("");
+  log(reportText);
 
   return results.some((r) => r.defect) ? 1 : 0;
 }

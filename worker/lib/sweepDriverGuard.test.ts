@@ -232,28 +232,48 @@ assert(
 }
 
 {
-  // listingsProtected counts the wipe that failScrapeRun would have done, not
-  // status verdicts. A demotion changes no Job row; conflating them would report
-  // protected listings on a night where none were at risk.
+  // The counters moved into worker/lib/sweepReport.ts so BOTH close-out paths
+  // compute them from the items — the halt path used to write zeros for the
+  // three that say what the gate saved. Their semantics are asserted
+  // behaviourally in sweepReport.test.ts; what belongs here is that the driver
+  // no longer computes them itself and both paths go through one function.
   const real = functionBody(driver, "realRun");
-  const protIdx = real.indexOf("const protectedCount");
-  assert(protIdx >= 0, "realRun computes listingsProtected");
-  const expr = real.slice(protIdx, protIdx + 500);
   assert(
-    /runStatus === "FAILED"/.test(expr),
-    "counting runs that ended FAILED — the state failScrapeRun wipes on",
+    !/const protectedCount/.test(real),
+    "realRun no longer computes listingsProtected inline",
   );
   assert(
-    /jobsBefore > 0/.test(expr),
-    "and only where there were listings to lose",
+    !/listingsProtected:/.test(real) && !/wouldHaveDemoted:/.test(real),
+    "nor any other counter — they come from computeCounters",
+  );
+
+  const closeCalls = real.split("closeSweep({").length - 1;
+  assert(
+    closeCalls === 2,
+    `both the HALTED and COMPLETED paths close through closeSweep (found ${closeCalls})`,
+  );
+
+  const close = functionBody(driver, "closeSweep");
+  assert(close.length > 500, "closeSweep was extracted");
+  assert(/computeCounters\(/.test(close), "closeSweep computes counters from the items");
+  assert(/renderSweepReport\(/.test(close), "and renders the report from the same items");
+  assert(/logText,/.test(close), "and stores it on the sweep row");
+  assert(
+    /status === "HALTED"[\s\S]{0,120}haltedAt/.test(close),
+    "setting haltedAt only on the halt path",
   );
   assert(
-    /apply_requires_login/.test(expr),
-    "excluding the apply-login skip, which never deletes anything",
+    /\.\.\.counters,/.test(close),
+    "the counters are spread in wholesale, so a new one cannot be forgotten on one path",
   );
+}
+
+{
+  // The report is printed last on both paths, so journalctl ends with it.
+  const real = functionBody(driver, "realRun");
   assert(
-    !/wouldDemoteTo \|\| r\.wouldPromoteTo/.test(expr),
-    "and NOT by demote-or-promote, which touches no Job row",
+    (real.split("log(reportText)").length - 1) + (real.split("log(haltedText)").length - 1) === 2,
+    "both paths print the rendered report to stdout",
   );
 }
 
@@ -290,8 +310,8 @@ assert(
 
   const haltBlock = real.slice(haltIdx, haltIdx + 1600);
   assert(/status: "HALTED"/.test(haltBlock), 'a halt marks the sweep HALTED, not FAILED');
-  assert(/haltedAt/.test(haltBlock), "with haltedAt");
   assert(/haltReason/.test(haltBlock), "and a haltReason");
+  // haltedAt is set inside closeSweep, asserted with the rest of that function.
   assert(
     /cancelPendingSiteJob\(/.test(haltBlock),
     "and cleans up the in-flight job through the shared helper",
