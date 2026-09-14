@@ -44,6 +44,12 @@ import {
   type DrainVerdict,
 } from "../lib/drainProbe";
 import { readScheduledFlag } from "../lib/scheduledRun";
+import {
+  createBreakerState,
+  recordOutcome,
+  shouldAlertSoftFailures,
+  SOFT_FAILURE_ALERT_RATIO,
+} from "../lib/sweepBreaker";
 
 // ---------------------------------------------------------------------------
 // Arguments
@@ -361,6 +367,57 @@ async function siteSnapshot(siteId: string) {
 }
 
 /**
+ * Take back a job the sweep queued but is no longer waiting for.
+ *
+ * Used by the wedged probe, by the per-site timeout, and by a breaker halt —
+ * all three walk away from a job they created, and a job left behind is not
+ * harmless: a PENDING row collides with `worker_job_one_active_per_site_type`
+ * the next time anything queues for that site, and a run left IN_PROGRESS
+ * blocks the site until the reaper finds it.
+ *
+ * ONLY a PENDING job is cancelled. If the worker has already claimed it, the
+ * handler owns the run's terminal status and will write it when it finishes;
+ * closing the run here would be a second writer of terminal state, which is the
+ * defect worker/lib/abortToken.ts exists to prevent. The status-scoped
+ * updateMany also settles the race where the worker claims the job between the
+ * read and the write — count 0 means it was claimed, so the run is left alone.
+ */
+async function cancelPendingSiteJob(
+  scrapeRunId: string,
+  reason: string,
+): Promise<{ cancelled: boolean; leftRunning: boolean }> {
+  const job = await prisma.workerJob.findFirst({
+    where: { scrapeRunId },
+    select: { id: true, status: true },
+  });
+  if (!job) return { cancelled: false, leftRunning: false };
+  if (job.status === "IN_PROGRESS") return { cancelled: false, leftRunning: true };
+  if (job.status !== "PENDING") return { cancelled: false, leftRunning: false };
+
+  const cancelled = await prisma.workerJob.updateMany({
+    where: { id: job.id, status: "PENDING" },
+    data: { status: "FAILED", error: reason, completedAt: new Date() },
+  });
+  if (cancelled.count === 0) {
+    // Claimed in the gap. The handler owns it now.
+    return { cancelled: false, leftRunning: true };
+  }
+
+  await prisma.scrapeRun.updateMany({
+    where: { id: scrapeRunId, status: "IN_PROGRESS" },
+    data: {
+      status: "FAILED",
+      error: reason,
+      // NOT `timeout` or `other`: a job the sweep cancelled is a decision, not
+      // evidence about the infrastructure, and must never feed the breaker.
+      failureCategory: "cancelled",
+      completedAt: new Date(),
+    },
+  });
+  return { cancelled: true, leftRunning: false };
+}
+
+/**
  * Wait for the WorkerJob itself to reach a terminal state.
  *
  * The dispatcher writes `result` AFTER the handler returns, and the handler
@@ -443,33 +500,16 @@ async function runOneSite(
       log(`[sweep] drain probe: ${verdict.verdict} — ${verdict.reason}`);
 
       if (verdict.verdict === "wedged") {
-        // Take back what we queued. Leaving a PENDING job behind would collide
-        // with the partial unique index the next time anything queues for this
-        // site, and leaving the run IN_PROGRESS would block the site entirely.
-        await prisma.workerJob.updateMany({
-          where: { id: enqueued.id, status: "PENDING" },
-          data: {
-            status: "FAILED",
-            error: "sweep cancelled: worker not draining",
-            completedAt: new Date(),
-          },
-        });
-        await prisma.scrapeRun.updateMany({
-          where: { id: scrapeRunId, status: "IN_PROGRESS" },
-          data: {
-            status: "FAILED",
-            error: "sweep cancelled: worker not draining",
-            failureCategory: "other",
-            completedAt: new Date(),
-          },
-        });
+        // Take back what we queued, through the shared helper so the wedged
+        // path, the per-site timeout and a breaker halt cannot drift apart.
+        await cancelPendingSiteJob(scrapeRunId, "sweep cancelled: worker not draining");
 
         const after = await siteSnapshot(site.id);
         return {
           ...base,
           scrapeRunId,
           outcome: "worker_not_draining",
-          failureCategory: "other",
+          failureCategory: "cancelled",
           jobsAfter: after.jobCount,
           newestJobAt: after.newestJobAt,
           siteStatus: after.status,
@@ -490,6 +530,23 @@ async function runOneSite(
     pollMs: sweepConfig.pollIntervalMs,
   });
   defect = waited.defect;
+
+  // The sweep gave up waiting. It used to walk away and leave the job behind —
+  // a PENDING row that blocks the next queue for this site, or a run stuck
+  // IN_PROGRESS. Clean it up on the same terms as everywhere else: cancel only
+  // if still PENDING, and leave a claimed job to its handler.
+  if (waited.status === "TIMED_OUT") {
+    const cleanup = await cancelPendingSiteJob(
+      scrapeRunId,
+      `sweep stopped waiting after ${sweepConfig.perSiteTimeoutMinutes}m`,
+    );
+    if (cleanup.leftRunning) {
+      defect =
+        defect ??
+        "the sweep stopped waiting while the worker was still running the job; " +
+          "its run will be closed by the handler";
+    }
+  }
 
   // Only now read the gate's verdict: the dispatcher writes `result` after the
   // handler has already closed the run.
@@ -680,6 +737,8 @@ async function realRun(mode: Mode): Promise<number> {
 
   // --- the loop --------------------------------------------------------
   const results: SiteResult[] = [];
+  // Per-sweep, so tomorrow starts clean whatever happened tonight.
+  let breaker = createBreakerState();
   const deadline = now.getTime() + sweepConfig.maxRuntimeMinutes * 60_000;
 
   for (const site of queue) {
@@ -753,7 +812,56 @@ async function realRun(mode: Mode): Promise<number> {
       return 1;
     }
 
-    // SEAM: the breaker (step 6) consumes `results` here and may halt.
+    // --- the breaker ---------------------------------------------------
+    //
+    // `lastSuccessAt` is the site's last success BEFORE tonight, which is what
+    // qualifies a hard failure: only a site that worked recently and now fails
+    // is evidence about the infrastructure rather than about itself.
+    breaker = recordOutcome(breaker, {
+      siteUrl: site.siteUrl,
+      outcome: result.outcome,
+      lastSuccessAt: site.lastSuccessAt,
+      now: new Date(),
+    });
+
+    if (breaker.halted) {
+      // The site that tripped it already has its item written above — the night
+      // must keep the row that explains why it stopped.
+      //
+      // Nothing is normally in flight here: the driver waits for each site
+      // before moving on. The exception is a site that TIMED_OUT, where the job
+      // may still be running; cancelPendingSiteJob cancels only a PENDING job
+      // and reports a claimed one instead of racing its handler.
+      let haltReason = breaker.haltReason ?? "breaker tripped";
+      if (result.scrapeRunId) {
+        const cleanup = await cancelPendingSiteJob(
+          result.scrapeRunId,
+          `sweep halted: ${haltReason}`,
+        );
+        if (cleanup.cancelled) haltReason += " — in-flight job cancelled";
+        if (cleanup.leftRunning) {
+          haltReason += " — in-flight job left running to finish";
+        }
+      }
+
+      log(`[sweep] HALT: ${haltReason}`);
+      await prisma.scrapeSweep.update({
+        where: { id: sweep.id },
+        data: {
+          status: "HALTED",
+          haltReason,
+          haltedAt: new Date(),
+          finishedAt: new Date(),
+          selectedCount: queue.length,
+          ok: results.filter((r) => r.outcome === "success").length,
+          failed: breaker.hardTotal,
+          silentDrift: breaker.softTotal,
+          skippedConflict: results.filter((r) => r.outcome === "skipped_conflict").length,
+        },
+      });
+      log(`[sweep] ${queue.length - results.length} site(s) not reached`);
+      return 1;
+    }
   }
 
   // --- close out -------------------------------------------------------
@@ -799,6 +907,24 @@ async function realRun(mode: Mode): Promise<number> {
   log("");
   log(`=== sweep ${sweep.id} complete ===`);
   log(`  ok ${ok}  hard ${failed}  soft ${soft}  conflicts ${conflicts}  protected ${protectedCount}`);
+
+  if (breaker.hardUnqualified > 0) {
+    log(
+      `  ${breaker.hardUnqualified} hard failure(s) on long-broken sites — counted, ` +
+        `never halting; this is the manual-review queue`,
+    );
+  }
+
+  // Never a halt. Above this share the signature stops being per-site config
+  // death and starts looking like a shared ATS re-theme or an IP block.
+  if (shouldAlertSoftFailures(breaker)) {
+    log(
+      `  ALERT: ${breaker.softTotal}/${breaker.attempted} sites returned empty or ` +
+        `unusable results (> ${SOFT_FAILURE_ALERT_RATIO * 100}%) — check for a shared ` +
+        `cause rather than ${breaker.softTotal} separate ones`,
+    );
+  }
+
   return results.some((r) => r.defect) ? 1 : 0;
 }
 

@@ -199,9 +199,12 @@ assert(
   const wedgedIdx = one.indexOf('verdict === "wedged"');
   assert(wedgedIdx >= 0, "runOneSite handles a wedged verdict");
   const tail = one.slice(wedgedIdx);
+  // The cleanup itself now lives in cancelPendingSiteJob, shared with the
+  // per-site timeout and the breaker halt so the three cannot drift apart. Its
+  // PENDING/IN_PROGRESS scoping is asserted where it is defined, below.
   assert(
-    /workerJob\.updateMany/.test(tail) && /scrapeRun\.updateMany/.test(tail),
-    "and cancels both the PENDING job and its run",
+    /cancelPendingSiteJob\(/.test(tail),
+    "and takes back the job it queued, through the shared helper",
   );
   assert(
     /halt: "worker not draining"/.test(tail),
@@ -257,6 +260,93 @@ assert(
 assert(
   /wouldSkip/.test(driver),
   "a withheld SKIP is surfaced rather than swallowed",
+);
+
+// ---------------------------------------------------------------------------
+// 4. the breaker is wired in, and halts cleanly
+// ---------------------------------------------------------------------------
+
+{
+  const real = functionBody(driver, "realRun");
+
+  assert(/recordOutcome\(/.test(real), "realRun folds each result into the breaker");
+  assert(
+    /lastSuccessAt: site\.lastSuccessAt/.test(real),
+    "and passes the site's PRIOR last success, which is what qualifies a hard failure",
+  );
+  assert(
+    /createBreakerState\(\)/.test(real),
+    "the breaker state is per-sweep, so tomorrow starts clean",
+  );
+
+  // Order matters twice over: the item that explains the halt must already be
+  // written, and the breaker must see the result before it can halt on it.
+  const itemIdx = real.indexOf("scrapeSweepItem.create");
+  const recordIdx = real.indexOf("recordOutcome(");
+  const haltIdx = real.indexOf("if (breaker.halted)");
+  assert(haltIdx >= 0, "realRun acts on a halt");
+  assert(itemIdx >= 0 && itemIdx < recordIdx, "the sweep item is written before the breaker runs");
+  assert(recordIdx < haltIdx, "and the breaker runs before the halt is checked");
+
+  const haltBlock = real.slice(haltIdx, haltIdx + 1600);
+  assert(/status: "HALTED"/.test(haltBlock), 'a halt marks the sweep HALTED, not FAILED');
+  assert(/haltedAt/.test(haltBlock), "with haltedAt");
+  assert(/haltReason/.test(haltBlock), "and a haltReason");
+  assert(
+    /cancelPendingSiteJob\(/.test(haltBlock),
+    "and cleans up the in-flight job through the shared helper",
+  );
+  assert(
+    /left running to finish/.test(haltBlock),
+    "recording in the halt reason when a claimed job was left alone",
+  );
+}
+
+{
+  // Only a PENDING job is cancelled. A claimed one belongs to its handler, and
+  // closing its run here would be a second writer of terminal state.
+  const cancel = functionBody(driver, "cancelPendingSiteJob");
+  assert(cancel.length > 400, "cancelPendingSiteJob was extracted");
+  assert(
+    /status === "IN_PROGRESS"\) return \{ cancelled: false, leftRunning: true \}/.test(cancel),
+    "a claimed job is left to its handler rather than raced",
+  );
+  assert(
+    /status: "PENDING" \}/.test(cancel),
+    "the job cancel is scoped to PENDING",
+  );
+  assert(
+    /cancelled\.count === 0/.test(cancel),
+    "and a job claimed in the gap is detected by the scoped write returning 0",
+  );
+  assert(
+    /status: "IN_PROGRESS" \}/.test(cancel),
+    "the run close is scoped to IN_PROGRESS",
+  );
+  assert(
+    /failureCategory: "cancelled"/.test(cancel),
+    'a cancelled run is "cancelled", never "other" — it must not feed the breaker',
+  );
+}
+
+{
+  // The per-site timeout used to walk away from its job.
+  const one = functionBody(driver, "runOneSite");
+  const timeoutIdx = one.indexOf('waited.status === "TIMED_OUT"');
+  assert(timeoutIdx >= 0, "runOneSite handles its own timeout");
+  assert(
+    /cancelPendingSiteJob\(/.test(one.slice(timeoutIdx, timeoutIdx + 600)),
+    "and cleans up the job it stopped waiting for",
+  );
+}
+
+assert(
+  /shouldAlertSoftFailures\(/.test(driver),
+  "the soft-failure ratio is reported in the summary",
+);
+assert(
+  !/soft[\s\S]{0,80}halt/i.test(functionBody(driver, "realRun").replace(/\/\/.*$/gm, "")),
+  "and nothing ties soft failures to a halt",
 );
 
 if (failures > 0) {
