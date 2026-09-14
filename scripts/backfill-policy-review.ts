@@ -18,6 +18,7 @@
  */
 
 import "dotenv/config";
+import { selectDuePolicyReviews } from "../src/lib/policySelection";
 import { PrismaClient } from "../src/generated/prisma/client";
 import { PrismaPg } from "@prisma/adapter-pg";
 import pg from "pg";
@@ -63,31 +64,41 @@ async function main() {
 
   console.log("[backfill-policy] Starting backfill with options:", opts);
 
-  const staleThreshold = new Date(Date.now() - opts.recheckDays * 24 * 60 * 60 * 1000);
-
-  // Find sites that need a policy review
-  const where: Record<string, unknown> = {};
-  if (opts.status) where.status = opts.status;
-  if (!opts.force) {
-    where.OR = [
-      { scrapingPolicyCheckedAt: null },
-      { scrapingPolicyCheckedAt: { lt: staleThreshold } },
-    ];
-  }
-
-  const sites = await prisma.site.findMany({
-    where,
+  // Selection goes through the SAME rule as the nightly policy sweep
+  // (src/lib/policySelection.ts). It used to be a WHERE clause here and a
+  // separate one there, which meant "due for a policy check" could mean two
+  // different things on the same evening.
+  //
+  // The eligibility differences are options, not a different query. This script
+  // deliberately does NOT require a captured company profile and does NOT
+  // restrict to ACTIVE/REVIEW — it is also used to check sites before they are
+  // onboarded, which is exactly what the sweep must not do.
+  const allSites = await prisma.site.findMany({
     select: {
       id: true,
       siteUrl: true,
+      status: true,
       scrapingPolicyStatus: true,
       scrapingPolicyCheckedAt: true,
+      companyProfileAt: true,
     },
-    orderBy: { createdAt: "asc" },
-    take: isFinite(opts.limit) ? opts.limit : undefined,
   });
 
-  console.log(`[backfill-policy] Found ${sites.length} sites to process.`);
+  const selection = selectDuePolicyReviews(allSites, {
+    now: new Date(),
+    recheckIntervalDays: opts.recheckDays,
+    limit: isFinite(opts.limit) ? opts.limit : undefined,
+    force: opts.force,
+    status: opts.status,
+    requireCompanyProfile: false,
+  });
+  const sites = selection.selected;
+
+  console.log(
+    `[backfill-policy] Found ${sites.length} sites to process` +
+      (selection.cappedOut > 0 ? ` (${selection.cappedOut} more were due, past --limit)` : "") +
+      `; ${selection.excluded.length} excluded.`,
+  );
 
   // Check which sites already have an active POLICY_REVIEW job
   const activeJobs = await prisma.workerJob.findMany({

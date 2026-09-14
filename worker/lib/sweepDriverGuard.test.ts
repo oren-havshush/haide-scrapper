@@ -369,6 +369,81 @@ assert(
   "and nothing ties soft failures to a halt",
 );
 
+
+// ---------------------------------------------------------------------------
+// 5. the policy sweep (step 8)
+// ---------------------------------------------------------------------------
+
+const policyRaw = readFileSync(join(ROOT, "worker", "sweep", "policy.ts"), "utf8");
+const policy = strip(policyRaw);
+
+assert(policy.length > 1500, `the policy driver was read (${policy.length} chars)`);
+
+{
+  // --dry-run must be read-only here too. It is the thing an operator runs
+  // against production to see what 06:00 would do.
+  const dry = functionBody(policy, "dryRun");
+  assert(dry.length > 300, `policy dryRun was extracted (${dry.length} chars)`);
+  assert(dry.includes("selectDuePolicyReviews"), "and is the function that prints the selection");
+  for (const call of WRITE_CALLS) {
+    assert(!dry.includes(call), `policy dryRun contains no ${call}`);
+  }
+  assert(
+    !/enqueuePolicyReview\(/.test(dry),
+    "and queues nothing — enqueuePolicyReview is a write however idempotent it is",
+  );
+}
+
+{
+  const real = functionBody(policy, "realRun");
+  assert(real.length > 800, "policy realRun was extracted");
+  assert(
+    /enqueuePolicyReview\(/.test(real),
+    "the real run enqueues through enqueuePolicyReview, which already dedupes",
+  );
+  assert(
+    /selectDuePolicyReviews\(/.test(real),
+    "and selects through the shared rule, not its own query",
+  );
+  assert(
+    /renderSweepReport\(/.test(real) && /computeCounters\(/.test(real),
+    "and closes through the same renderer as the scrape sweep",
+  );
+  assert(/kind: "POLICY"/.test(policy), "the sweep row is kind POLICY");
+  assert(/phase: "policy"/.test(policy), "and its items are phase policy");
+  assert(
+    /becameRestricted\(/.test(real),
+    "newly_restricted is decided by a transition, not by the resulting status alone",
+  );
+  assert(
+    /status: "RUNNING", kind: "POLICY"/.test(real),
+    "the stale-RUNNING rule is scoped to POLICY so it cannot close a scrape sweep",
+  );
+}
+
+{
+  // No breaker on the policy path. A failing policy check is CHECK_FAILED on
+  // that site, not evidence about the infrastructure; halting a 25-site pass
+  // over three of them would stop the only thing that notices a site has
+  // started refusing us.
+  assert(
+    !/recordOutcome\(/.test(policy) && !/createBreakerState\(/.test(policy),
+    "the policy sweep has no breaker",
+  );
+  assert(!/HALTED/.test(policy), "and nothing halts it");
+}
+
+{
+  // The policy handler writes only its two columns, so no gate is threaded —
+  // but the sweep must not start writing site state itself either.
+  assert(
+    !/site\.update\(/.test(policy) && !/scheduled: true/.test(policy),
+    "the policy sweep never writes a Site row and never sets the scrape gate flag",
+  );
+}
+
+// The final check MUST stay last. It was once mid-file, with a later block of
+// assertions appended after it: they printed FAIL and the suite still exited 0.
 if (failures > 0) {
   console.error(`\n${failures} assertion(s) failed`);
   process.exit(1);

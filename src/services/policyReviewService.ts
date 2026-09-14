@@ -1,5 +1,10 @@
 import { prisma } from "@/lib/prisma";
 import type { ScrapingPolicyStatus } from "@/generated/prisma/enums";
+import {
+  selectDuePolicyReviews,
+  type PolicySelection,
+  type PolicySelectionOptions,
+} from "@/lib/policySelection";
 
 export const POLICY_STATUS_LABELS: Record<ScrapingPolicyStatus, string> = {
   NOT_CHECKED: "Not checked yet",
@@ -50,6 +55,34 @@ export async function getPolicyStatusCounts(): Promise<PolicyStatusCounts> {
 
   result.checked = result.total - result.NOT_CHECKED;
   return result;
+}
+
+/**
+ * Sites due a policy check, read from the database and filtered by the shared
+ * rule in src/lib/policySelection.ts.
+ *
+ * Both the nightly policy sweep and scripts/backfill-policy-review.ts call this,
+ * so "how stale is stale" has one definition. The eligibility differences
+ * between them are options, not separate queries — see the module for why.
+ */
+export async function selectSitesDuePolicyReview(
+  opts: PolicySelectionOptions,
+): Promise<PolicySelection> {
+  // Deliberately unfiltered in SQL beyond the columns needed: the rule lives in
+  // one pure function, and a WHERE clause here would be a second copy of it
+  // that no test could compare against the first.
+  const sites = await prisma.site.findMany({
+    select: {
+      id: true,
+      siteUrl: true,
+      status: true,
+      scrapingPolicyStatus: true,
+      scrapingPolicyCheckedAt: true,
+      companyProfileAt: true,
+    },
+  });
+
+  return selectDuePolicyReviews(sites, opts);
 }
 
 /** Enqueue a POLICY_REVIEW WorkerJob for a site (idempotent: skip if one is already PENDING/IN_PROGRESS). */

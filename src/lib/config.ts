@@ -42,6 +42,10 @@ export const sweepConfig = {
   get perSiteTimeoutMinutes(): number {
     return parseInt(process.env.SWEEP_PER_SITE_TIMEOUT_MINUTES || "18", 10);
   },
+  /** Cap on policy checks per night. Steady state is ~2; the cap bites on a catch-up. */
+  get policyMaxPerNight(): number {
+    return parseInt(process.env.SWEEP_POLICY_MAX_PER_NIGHT || "25", 10);
+  },
   /** Poll interval while waiting on a run. Default 5s. */
   get pollIntervalMs(): number {
     return parseInt(process.env.SWEEP_POLL_INTERVAL_MS || "5000", 10);
