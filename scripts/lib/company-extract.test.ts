@@ -684,6 +684,21 @@ function testAddressAndCity() {
     ["רחוב השפלה 3 תל אביב", "תל אביב-יפו"],
     ["רח' אבא הלל 14, בית עוז ר״ג 52506", "רמת גן"],
     ["רחוב היוזמה 41 אזה״ת הצפוני אשדוד", "אשדוד"],
+    // A landmark AFTER the city names a neighbouring place, not the address's
+    // city, and it breaks last-place-wins. Verbatim from ono.ac.il, which stored
+    // Savyon as the HQ of an institution in Kiryat Ono.
+    ["השדרה האקדמית 1 קרית אונו, צומת סביון", "קריית אונו"],
+    ["השדרה האקדמית 1 קרית אונו צומת סביון", "קריית אונו"],
+    ["רחוב העצמאות 10 אשדוד, מחלף יבנה", "אשדוד"],
+    ["רחוב המלאכה 5 ראש העין, ליד פתח תקווה", "ראש העין"],
+    ["רחוב הרצל 12 רחובות, בצומת ביל״ו", "רחובות"],
+    // A landmark alone says where the building is NEAR, never where it is.
+    ["צומת סביון", null],
+    // Kiryat in the other spelling from city.csv, inside a longer line. The scan
+    // only knew the exact spelling, so Ono's address resolved to nothing once
+    // Savyon stopped winning.
+    ["השדרה האקדמית 1 קרית אונו", "קריית אונו"],
+    ["רחוב הרצל 5 קריית גת", "קרית גת"],
     // Off-list and abroad must be NULL, never a near-miss.
     ["Somewhere, Berlin, Germany", null],
     ["1 Main Street, Boston", null],

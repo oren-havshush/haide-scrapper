@@ -135,6 +135,19 @@ export function canonicalCity(value: string, cities: CityList): string | null {
 const STREET_NOUN = /^(רחוב|רח['׳]?|שדרות|שד['׳]?|דרך|שביל|סמטת|סמטה|כיכר|ככר)\s+/;
 const BUILDING_NOUN = /^(מגדלי?|בניין|בנין|בית|קומה|קומת|אזור התעשייה|אזה"ת)\s+/;
 
+/**
+ * A landmark and everything after it, cut from a segment.
+ *
+ * "השדרה האקדמית 1 קרית אונו, צומת סביון" puts a NEIGHBOURING place after the
+ * real city, which is exactly where last-place-wins looks — ono.ac.il stored
+ * Savyon. A place named after one of these words is where the building is NEAR,
+ * so it is never the city: cutting it can only lose a city, never invent one.
+ *
+ * Whole words only, and `(?:^|\s)` rather than `\b`, which does not fire after a
+ * Hebrew letter. None of these words occurs in city.csv.
+ */
+const LANDMARK_TAIL = /(?:^|\s)(?:ב?צומת|ב?מחלף|ליד|סמוך|בסמוך|מול|בקרבת)(?:\s.*)?$/;
+
 /** Strip postal code, house number, PO-box noise and a trailing country name. */
 function cleanAddressSegment(segment: string): string | null {
   let s = segment.trim();
@@ -142,6 +155,7 @@ function cleanAddressSegment(segment: string): string | null {
   s = s.replace(/(ישראל|israel)\.?/gi, " "); // country
   s = s.replace(/^\s*ת\.?\s*ד\.?\s*/, " "); // PO box marker
   s = s.replace(/\s+/g, " ").trim();
+  s = s.replace(LANDMARK_TAIL, "").trim();
 
   // Both noun kinds are STRIPPED, not dropped. Dropping a building segment
   // outright looked safer and silently lost real cities: "בית עוז ר\"ג" is a
@@ -248,6 +262,16 @@ export function matchCityInAddress(address: string, cities: CityList): string | 
     const variants = [segments[i]];
     const flattened = segments[i].replace(/-/g, " ").replace(/\s+/g, " ").trim();
     if (flattened !== segments[i]) variants.push(flattened);
+    // Kiryat is spelled both ways in the wild, and city.csv itself mixes them
+    // ("קרית גת" beside "קריית אונו"). normalizeLocations() swaps the spelling
+    // only when the WHOLE segment is the place name; its scan inside a longer
+    // line matches exact spellings, so "השדרה האקדמית 1 קרית אונו" found nothing.
+    // No place is on the list under both spellings, so the swap cannot pick a
+    // different city — and the result is still gated below.
+    for (const v of [...variants]) {
+      const swapped = /קריית/.test(v) ? v.replace(/קריית/g, "קרית") : v.replace(/קרית/g, "קריית");
+      if (swapped !== v) variants.push(swapped);
+    }
 
     for (const variant of variants) {
       // LAST match wins, not the first. normalizeLocations() returns places in
