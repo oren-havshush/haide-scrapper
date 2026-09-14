@@ -12,6 +12,43 @@ export const config = {
 };
 
 // ---------------------------------------------------------------------------
+// Nightly sweep configuration
+// ---------------------------------------------------------------------------
+//
+// Every var here needs a matching line in the `worker` service's `environment:`
+// block in docker-compose.yml. That block enumerates variables explicitly and
+// there is no `env_file`, so a var set in the server's .env does NOT reach the
+// worker without being listed — and the sweep's systemd units inherit the same
+// block.
+
+export const sweepConfig = {
+  /** The kill switch. Set SWEEP_ENABLED=false to stop the timer doing anything. */
+  get enabled(): boolean {
+    return process.env.SWEEP_ENABLED !== "false";
+  },
+  /** Timezone for the nightly's date label and verdict line. */
+  get timezone(): string {
+    return process.env.SWEEP_TZ || "Asia/Jerusalem";
+  },
+  /** A site is due when its last SUCCESS is older than this. Default 20h. */
+  get freshWindowHours(): number {
+    return parseInt(process.env.SWEEP_FRESH_WINDOW_HOURS || "20", 10);
+  },
+  /** Stop enqueueing after this many minutes of wall clock. Default 5h. */
+  get maxRuntimeMinutes(): number {
+    return parseInt(process.env.SWEEP_MAX_RUNTIME_MINUTES || "300", 10);
+  },
+  /** How long to wait for one site's run to reach a terminal state. Default 18m. */
+  get perSiteTimeoutMinutes(): number {
+    return parseInt(process.env.SWEEP_PER_SITE_TIMEOUT_MINUTES || "18", 10);
+  },
+  /** Poll interval while waiting on a run. Default 5s. */
+  get pollIntervalMs(): number {
+    return parseInt(process.env.SWEEP_POLL_INTERVAL_MS || "5000", 10);
+  },
+};
+
+// ---------------------------------------------------------------------------
 // Policy Review configuration
 // ---------------------------------------------------------------------------
 

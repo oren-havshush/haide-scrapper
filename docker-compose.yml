@@ -70,6 +70,16 @@ services:
       NEXT_PUBLIC_APP_URL: http://web:3000
       OPENAI_API_KEY: ${OPENAI_API_KEY}
       AI_REFINE_MODEL: ${AI_REFINE_MODEL:-gpt-5}
+      # Nightly sweep. This block enumerates variables explicitly and there is
+      # no env_file, so anything absent here does NOT reach the worker however it
+      # is set in the server's .env — and `docker compose run worker …`, which is
+      # how the sweep timers start, inherits exactly this block.
+      SWEEP_ENABLED: ${SWEEP_ENABLED:-true}
+      SWEEP_TZ: ${SWEEP_TZ:-Asia/Jerusalem}
+      SWEEP_FRESH_WINDOW_HOURS: ${SWEEP_FRESH_WINDOW_HOURS:-20}
+      SWEEP_MAX_RUNTIME_MINUTES: ${SWEEP_MAX_RUNTIME_MINUTES:-300}
+      SWEEP_PER_SITE_TIMEOUT_MINUTES: ${SWEEP_PER_SITE_TIMEOUT_MINUTES:-18}
+      SWEEP_POLL_INTERVAL_MS: ${SWEEP_POLL_INTERVAL_MS:-5000}
     healthcheck:
       test: ["CMD-SHELL", "ps aux | grep -v grep | grep 'worker/index.ts' || exit 1"]
       interval: 30s

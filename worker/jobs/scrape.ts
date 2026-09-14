@@ -17,6 +17,7 @@ import { emitWorkerEvent } from "../lib/emitEvent";
 import { DOM_FIELD_EXTRACT_SOURCE } from "../lib/domFieldExtract";
 import { APPLY_LOGIN_SKIP_NOTE, APPLY_LOGIN_FAILURE_CATEGORY } from "../lib/applyGate";
 import { applyJobIdFallback } from "../lib/synthesizeJobId";
+import { getApplyRequiresLogin, isUsableMappingEntry } from "../lib/fieldMappings";
 import {
   ACTIVATION_GATE_NOTE_PREFIX,
   INSERT_BATCH,
@@ -380,13 +381,12 @@ function parseFieldMappings(
   const mappings: Record<string, FieldMappingEntry> = {};
 
   for (const [key, value] of Object.entries(raw)) {
-    // Skip _meta key which contains training data
-    if (key === "_meta") continue;
-    if (!value || typeof value !== "object") continue;
+    // Skips _meta (training data) and anything without a string selector.
+    // Shared with sweep selection so the sweep excludes exactly the sites this
+    // function would reduce to zero — see worker/lib/fieldMappings.ts.
+    if (!isUsableMappingEntry(key, value)) continue;
 
     const entry = value as Record<string, unknown>;
-    if (typeof entry.selector !== "string") continue;
-
     const extractAttrRaw = entry.extractAttr;
     const extractAttr =
       typeof extractAttrRaw === "string" && extractAttrRaw.trim()
@@ -2208,12 +2208,6 @@ async function firstItemSignature(
 // spend scrape budget and marks the site SKIPPED (see skipSiteForApplyLogin).
 // ---------------------------------------------------------------------------
 
-function getApplyRequiresLogin(fieldMappingsRaw: unknown): boolean {
-  if (!fieldMappingsRaw || typeof fieldMappingsRaw !== "object") return false;
-  const raw = fieldMappingsRaw as Record<string, unknown>;
-  const meta = raw["_meta"] as Record<string, unknown> | undefined;
-  return meta?.["applyRequiresLogin"] === true;
-}
 
 // ---------------------------------------------------------------------------
 // Helper: read a site-level default location from fieldMappings._meta.
