@@ -78,7 +78,31 @@ else
 fi
 
 # Build, migrate, and restart with rollback support
-ssh $SSH_OPTS "$HOST" bash -s "$DEPLOY_TAG" "$REMOTE_DIR" <<'REMOTE'
+#
+# The remote script is written to a FILE and run from there — it is deliberately
+# not fed to `bash -s` on stdin.
+#
+# Feeding the script to `ssh host bash -s` via a heredoc makes the remote bash
+# read its own script from stdin, and `docker compose run` attaches stdin by
+# default (unlike `docker run`, which needs -i). The container then
+# swallows the rest of the script, bash reaches EOF, and exits 0 — so the deploy
+# skips every remaining step and reports success. That is not theoretical: on
+# 2026-09-14 the first deploy carrying a pre-migration backup stopped dead after
+# the backup, never migrated, never restarted, and printed "Deployment complete".
+# `set -euo pipefail` cannot catch it, because nothing fails.
+#
+# Reading the script from a file fixes the whole class: `cat` consumes the
+# heredoc, so by the time bash starts, stdin is already at EOF and there is
+# nothing left for any container to eat — including in lines added later by
+# someone who has never heard of this.
+REMOTE_SCRIPT="$REMOTE_DIR/.deploy-remote.sh"
+REMOTE_RUNNER="cat > '$REMOTE_SCRIPT' && bash '$REMOTE_SCRIPT' '$DEPLOY_TAG' '$REMOTE_DIR'"
+
+# Captured as well as shown, so the sentinel check below can read it.
+REMOTE_LOG=$(mktemp)
+trap 'rm -f "$REMOTE_LOG"' EXIT
+
+ssh $SSH_OPTS "$HOST" "$REMOTE_RUNNER" <<'REMOTE' | tee "$REMOTE_LOG"
 # The `set -euo pipefail` at the top of this file governs only the LOCAL half.
 # This heredoc is a separate bash, and it used to set no options at all — so a
 # failed `prisma migrate deploy` below did not stop it. It went on to start the
@@ -157,7 +181,9 @@ sleep 3
 # Deliberately NOT `|| true`: if we cannot take a backup we must not migrate.
 # The post-deploy backup stays non-fatal; this one is the safety net.
 echo "==> Backing up the database before migrating..."
-docker compose --profile backup run --rm db-backup
+# -T belt-and-braces: the file-based invocation above is what actually protects
+# the script, but -T keeps this from allocating a TTY it has no use for.
+docker compose --profile backup run --rm -T db-backup
 
 docker run --rm --network "$NETWORK" \
   -e DATABASE_URL="postgresql://postgres:${POSTGRES_PASSWORD}@db:5432/scrapnew" \
@@ -197,10 +223,26 @@ fi
 
 # Run backup after successful deploy
 echo "==> Running database backup..."
-docker compose --profile backup run --rm db-backup || echo "WARNING: Backup failed (non-fatal)"
+docker compose --profile backup run --rm -T db-backup || echo "WARNING: Backup failed (non-fatal)"
 
 echo "==> Deploy $DEPLOY_TAG complete! Services running:"
 docker compose ps
+
+# The last line, and the only proof the script ran to the end. Exit status 0 is
+# not evidence: a script truncated by a container eating its stdin also exits 0.
+echo "REMOTE_BLOCK_COMPLETE:$DEPLOY_TAG"
 REMOTE
+
+# Refuse to claim success unless the remote block reached its final line.
+if ! grep -q "REMOTE_BLOCK_COMPLETE:$DEPLOY_TAG" "$REMOTE_LOG"; then
+  echo ""
+  echo "==> DEPLOY DID NOT COMPLETE."
+  echo "    The remote block exited without reaching its last line, so some of"
+  echo "    migrate / restart / health-check did not run. The box may be on the"
+  echo "    old images with the old schema, or part-way between."
+  echo "    Check the output above for where it stopped, then inspect the box"
+  echo "    before re-running. Do NOT assume a re-run is safe."
+  exit 1
+fi
 
 echo "==> Deployment complete: $DEPLOY_TAG"
