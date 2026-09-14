@@ -47,20 +47,17 @@ export type ReportItem = {
 };
 
 /**
- * Policy outcomes whose WorkerJob reached COMPLETED — the only ones "checked"
- * counts. Attempts are not checks: a dead worker produces 25 attempts and zero
- * checks, and the verdict line must say zero. The mapping from job end to
- * outcome lives in policyOutcome.ts; policySweepReport.test.ts pins the two
- * together.
+ * Policy outcomes that ESTABLISHED a status tonight — the only ones "checked"
+ * counts. Not attempts (a dead worker produces 25 attempts and zero checks),
+ * and not every COMPLETED job either: the handler completes its own failures
+ * with the site set to CHECK_FAILED, which established nothing. The mapping
+ * from job end to outcome lives in policyOutcome.ts; policySweepReport.test.ts
+ * pins the two together.
  */
-export const POLICY_CHECKED_OUTCOMES: readonly string[] = [
-  "success",
-  "newly_restricted",
-  "check_failed",
-];
+export const POLICY_CHECKED_OUTCOMES: readonly string[] = ["success", "newly_restricted"];
 
 /** Policy outcomes that are a failure to establish a status tonight. */
-const POLICY_FAILED_OUTCOMES: readonly string[] = [
+export const POLICY_FAILED_OUTCOMES: readonly string[] = [
   "check_failed",
   "job_failed",
   "timed_out",
@@ -106,7 +103,8 @@ export function computeCounters(sweep: ReportSweep, items: ReportItem[]): SweepC
     // ok 0, failed 0 — the dashboard's counter grid reading as an empty night.
     return {
       selectedCount: sweep.selectedCount,
-      ok: items.filter((i) => i.outcome === "success" || i.outcome === "newly_restricted").length,
+      // The same list as the verdict line's "checked", so the two cannot drift.
+      ok: items.filter((i) => POLICY_CHECKED_OUTCOMES.includes(i.outcome)).length,
       failed: items.filter((i) => POLICY_FAILED_OUTCOMES.includes(i.outcome)).length,
       silentDrift: 0,
       skippedConflict: items.filter((i) => i.outcome === "skipped_conflict").length,
@@ -187,10 +185,13 @@ export function verdictLine(
   }
 
   if (sweep.kind === "POLICY") {
-    // "checked" is jobs that reached COMPLETED, never attempts.
+    // "checked" is a status established, never an attempt. Failures appear only
+    // when there are some, so a clean night keeps the two-number shape.
     const checked = items.filter((i) => POLICY_CHECKED_OUTCOMES.includes(i.outcome)).length;
+    const failed = items.filter((i) => POLICY_FAILED_OUTCOMES.includes(i.outcome)).length;
     const restricted = items.filter((i) => i.outcome === "newly_restricted").length;
-    return `${label} ${date}: ${checked} checked, ${restricted} newly RESTRICTED`;
+    const failedPart = failed > 0 ? `${failed} failed, ` : "";
+    return `${label} ${date}: ${checked} checked, ${failedPart}${restricted} newly RESTRICTED`;
   }
 
   const attention = needsAttention(sweep, items).length;

@@ -88,9 +88,13 @@ function policySweep(over: Partial<ReportSweep> = {}): ReportSweep {
   const text = renderSweepReport(sweep, items, { timeZone: TZ });
   const verdict = text.split("\n")[0];
 
+  // "checked" is a status established — success and newly_restricted. The
+  // CHECK_FAILED site completed its job but established nothing, so it is one
+  // of the 2 failed, with the timeout, and failed is on the line because it is
+  // non-zero.
   assert(
-    verdict === "Policy sweep 2026-09-10: 4 checked, 1 newly RESTRICTED",
-    `the verdict counts jobs that reached COMPLETED, and the one transition (got "${verdict}")`,
+    verdict === "Policy sweep 2026-09-10: 3 checked, 2 failed, 1 newly RESTRICTED",
+    `the verdict counts statuses established, the failures, and the one transition (got "${verdict}")`,
   );
   assert(
     verdict === verdictLine(sweep, items, { timeZone: TZ }),
@@ -140,8 +144,53 @@ function policySweep(over: Partial<ReportSweep> = {}): ReportSweep {
   const items = results.map(toPolicyReportItem);
   const line = verdictLine(policySweep({ selectedCount: 25 }), items, { timeZone: TZ });
   assert(
-    line === "Policy sweep 2026-09-10: 0 checked, 0 newly RESTRICTED",
-    `25 attempts that never completed are 0 checked (got "${line}")`,
+    line === "Policy sweep 2026-09-10: 0 checked, 25 failed, 0 newly RESTRICTED",
+    `25 attempts that never completed are 0 checked and 25 failed (got "${line}")`,
+  );
+}
+
+{
+  // A night where every job completed but the handler established nothing:
+  // it must not read as "25 checked".
+  const results = Array.from({ length: 25 }, (_, i) =>
+    driverResult(`https://c${i}.test`, "COMPLETED", "NO_EXPLICIT_RESTRICTION", "CHECK_FAILED"),
+  );
+  const line = verdictLine(policySweep({ selectedCount: 25 }), results.map(toPolicyReportItem), {
+    timeZone: TZ,
+  });
+  assert(
+    line === "Policy sweep 2026-09-10: 0 checked, 25 failed, 0 newly RESTRICTED",
+    `25 completed CHECK_FAILED jobs are 0 checked, 25 failed (got "${line}")`,
+  );
+}
+
+{
+  // A clean night keeps the two-number shape — no "0 failed".
+  const results = [
+    ...Array.from({ length: 24 }, (_, i) =>
+      driverResult(`https://ok${i}.test`, "COMPLETED", "NO_EXPLICIT_RESTRICTION", "NO_EXPLICIT_RESTRICTION"),
+    ),
+    driverResult("https://new.test", "COMPLETED", "NO_EXPLICIT_RESTRICTION", "RESTRICTED"),
+  ];
+  const line = verdictLine(policySweep({ selectedCount: 25 }), results.map(toPolicyReportItem), {
+    timeZone: TZ,
+  });
+  assert(
+    line === "Policy sweep 2026-09-10: 25 checked, 1 newly RESTRICTED",
+    `a night with no failures keeps the two-number shape (got "${line}")`,
+  );
+
+  // A skipped_conflict is neither checked nor failed.
+  const withConflict = [
+    ...results.slice(0, 24),
+    driverResult("https://busy.test", "ALREADY_QUEUED", "NOT_CHECKED", "NOT_CHECKED"),
+  ];
+  const line2 = verdictLine(policySweep({ selectedCount: 25 }), withConflict.map(toPolicyReportItem), {
+    timeZone: TZ,
+  });
+  assert(
+    line2 === "Policy sweep 2026-09-10: 24 checked, 0 newly RESTRICTED",
+    `an already-queued site is not a failure (got "${line2}")`,
   );
 }
 
@@ -164,7 +213,7 @@ function policySweep(over: Partial<ReportSweep> = {}): ReportSweep {
 }
 
 // ---------------------------------------------------------------------------
-// "checked" is exactly "the job reached COMPLETED"
+// "checked" is exactly "the job COMPLETED and established a status"
 // ---------------------------------------------------------------------------
 
 {
@@ -173,7 +222,13 @@ function policySweep(over: Partial<ReportSweep> = {}): ReportSweep {
     for (const after of ["NO_EXPLICIT_RESTRICTION", "RESTRICTED", "CHECK_FAILED"]) {
       const items = [driverResult("https://x.test", end, "NOT_CHECKED", after)].map(toPolicyReportItem);
       const line = verdictLine(policySweep({ selectedCount: 1 }), items, { timeZone: TZ });
-      const expected = end === "COMPLETED" ? "1 checked" : "0 checked";
+      const established = end === "COMPLETED" && after !== "CHECK_FAILED";
+      const failed = end !== "ALREADY_QUEUED" && !established;
+      const expected = established
+        ? "1 checked, "
+        : failed
+          ? "0 checked, 1 failed, "
+          : "0 checked, 0 newly";
       assert(line.includes(expected), `${end} with ${after} reads "${expected}" (got "${line}")`);
       if (end !== "COMPLETED" && after === "RESTRICTED") {
         assert(
@@ -218,4 +273,4 @@ if (failures > 0) {
   console.error(`\n${failures} assertion(s) failed`);
   process.exit(1);
 }
-console.info("policySweepReport: the verdict counts what the report lists, and checked means COMPLETED");
+console.info("policySweepReport: the verdict counts what the report lists, and checked means a status was established");
