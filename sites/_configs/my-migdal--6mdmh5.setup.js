@@ -28,6 +28,8 @@ return (async function() {
   root.style.display = 'none';
 
   jobs.forEach(function(job) {
+   // One bad record is skipped and named; it never aborts the list.
+   try {
     // Use the CMS document _id as the unique key: numberJob is NOT unique on
     // this site (the recruiter reuses one requisition number across distinct
     // postings), which collapsed 43 -> 39 when dedup keyed off numberJob.
@@ -45,8 +47,11 @@ return (async function() {
     if (locParts.length > 1) location = locParts[locParts.length - 1].trim();
 
     var area = '';
-    if (Array.isArray(job.jobArea) && job.jobArea.length) {
-      area = (job.jobArea[0].areaTitle || job.jobArea[0]._name || '').trim();
+    // jobArea entries can be null (a deleted CMS area still referenced); one
+    // null used to throw here and abort the whole list.
+    var firstArea = Array.isArray(job.jobArea) ? job.jobArea.filter(Boolean)[0] : null;
+    if (firstArea) {
+      area = (firstArea.areaTitle || firstArea._name || '').trim();
     } else if (typeof job.jobArea === 'string') {
       area = job.jobArea.trim();
     }
@@ -72,6 +77,9 @@ return (async function() {
     mk('__ai-scope', scope);
 
     root.appendChild(el);
+   } catch (e) {
+    console.warn('[setupScript my.migdal] skipped posting _id=' + (job && job._id) + ': ' + (e && e.message));
+   }
   });
 
   document.body.appendChild(root);

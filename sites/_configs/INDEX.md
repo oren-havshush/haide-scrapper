@@ -74,7 +74,7 @@ from top-level params, so a setupScript left only inside `_meta` is dropped.
 | האקדמית רמת גן | ACTIVE | 5 | 1124 | `landing-iac--3cdlhs` |
 | הבנק הבינלאומי | ACTIVE | 6 | 4541 | `fibi--4j7v1x` |
 | החברה לאמנות ותרבות | ACTIVE | 5 | 1559 | `tarbut-herzliya--zvh6d2` |
-| החברה לשירותי איכות הסביבה | ACTIVE | 7 | 2549 | `enviro-services--4z2yxo` |
+| החברה לשירותי איכות הסביבה | ACTIVE | 8 | 5152 | `enviro-services--4z2yxo` |
 | המרכז האקדמי לוינסקי־וינגייט | ACTIVE | 6 | 4210 | `l-w--qajne1` |
 | הספארי | ACTIVE | 5 | 1599 | `safari--6r81oc` |
 | הקריה האקדמית אונו | ACTIVE | 6 | 4051 | `ono--o8qwd8` |
@@ -100,7 +100,7 @@ from top-level params, so a setupScript left only inside `_meta` is dropped.
 | כפר הנוער כנות | ACTIVE | 5 | 1578 | `naamat--3s0g1d` |
 | לילית קוסמטיקה | ACTIVE | 4 | 1091 | `lilit--jrzaf3` |
 | לין ביכלר ראשי | ACTIVE | 6 | — | `l-b--ksvcq8` |
-| מגדל חברה לביטוח | ACTIVE | 6 | 2709 | `my-migdal--6mdmh5` |
+| מגדל חברה לביטוח | ACTIVE | 6 | 3094 | `my-migdal--6mdmh5` |
 | מגדל שוקי הון | ACTIVE | 4 | 3372 | `msh--fdohdt` |
 | מדנס סוכנות לביטוח | ACTIVE | 7 | 4379 | `madanes--1wzqn7` |
 | מוזיאון ישראל | ACTIVE | 6 | 3801 | `imj--442rnv` |

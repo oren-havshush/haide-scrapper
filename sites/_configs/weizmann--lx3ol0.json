@@ -1,5 +1,5 @@
 {
-  "_exportedAt": "2026-09-15T13:33:21.319Z",
+  "_exportedAt": "2026-09-15T15:48:35.877Z",
   "_note": "Mirror of the live config. The DB is authoritative; the worker never reads this file. setupScript lives alongside in <slug>.setup.js.",
   "id": "cmqsblcsy000p01nunllx3ol0",
   "siteUrl": "https://www.weizmann.ac.il/career/jobs",

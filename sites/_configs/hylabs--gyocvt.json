@@ -1,5 +1,5 @@
 {
-  "_exportedAt": "2026-09-15T13:33:29.071Z",
+  "_exportedAt": "2026-09-15T15:48:43.637Z",
   "_note": "Mirror of the live config. The DB is authoritative; the worker never reads this file. setupScript lives alongside in <slug>.setup.js.",
   "id": "cmq6nxfis000e01liwigyocvt",
   "siteUrl": "https://www.hylabs.co.il/careers-grid-page",

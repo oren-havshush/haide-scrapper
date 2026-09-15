@@ -1,5 +1,5 @@
 {
-  "_exportedAt": "2026-09-15T13:33:21.488Z",
+  "_exportedAt": "2026-09-15T15:48:36.039Z",
   "_note": "Mirror of the live config. The DB is authoritative; the worker never reads this file. setupScript lives alongside in <slug>.setup.js.",
   "id": "cmqsblat5000j01nugnrdvk6e",
   "siteUrl": "https://yaelgroup.com/jobs/",
