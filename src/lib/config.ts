@@ -50,7 +50,31 @@ export const sweepConfig = {
   get pollIntervalMs(): number {
     return parseInt(process.env.SWEEP_POLL_INTERVAL_MS || "5000", 10);
   },
+  /**
+   * Undersize guard: only a site with at least this many listings can be
+   * refused for a drop. Default 10. Read by the WORKER (scrape.ts), not only
+   * the sweep driver, so it must be in the worker's compose environment block.
+   */
+  get dropMinPrevious(): number {
+    return strictNumber(process.env.SWEEP_DROP_MIN_PREVIOUS, 10, (n) => Number.isInteger(n) && n >= 1);
+  },
+  /** Undersize guard: refuse a new count below this share of the previous one. Default 0.5. */
+  get dropKeepRatio(): number {
+    return strictNumber(process.env.SWEEP_DROP_KEEP_RATIO, 0.5, (n) => n > 0 && n <= 1);
+  },
 };
+
+/**
+ * A number from the environment, or the default when the value is absent or
+ * anything but a clean, in-range number. Stricter than parseInt/parseFloat on
+ * purpose: "0.5abc" is a typo, not 0.5, and a guard threshold that silently
+ * became NaN would compare false with every count and refuse nothing.
+ */
+function strictNumber(raw: string | undefined, fallback: number, valid: (n: number) => boolean): number {
+  if (raw === undefined || raw.trim() === "") return fallback;
+  const n = Number(raw);
+  return Number.isFinite(n) && valid(n) ? n : fallback;
+}
 
 // ---------------------------------------------------------------------------
 // Policy Review configuration

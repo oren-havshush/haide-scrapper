@@ -16,6 +16,7 @@ function outcomeColour(outcome: string): string {
   if (outcome === "success") return "#4ade80";
   if (outcome === "hard_failure") return "#f87171";
   if (outcome === "soft_failure") return "#fbbf24";
+  if (outcome === "suspicious_drop") return "#fb923c";
   return MUTED;
 }
 
@@ -117,6 +118,8 @@ export default async function StatusPage() {
                           <th className="text-left py-1 pr-3">category</th>
                           <th className="text-right py-1 pr-3">before</th>
                           <th className="text-right py-1 pr-3">after</th>
+                          <th className="text-right py-1 pr-3">scraped</th>
+                          <th className="text-left py-1 pr-3">warnings</th>
                           <th className="text-left py-1 pr-3">status</th>
                           <th className="text-left py-1">withheld / policy</th>
                         </tr>
@@ -131,6 +134,13 @@ export default async function StatusPage() {
                             <td className="py-1 pr-3">{item.failureCategory ?? "—"}</td>
                             <td className="py-1 pr-3 text-right">{item.jobsBefore}</td>
                             <td className="py-1 pr-3 text-right">{item.jobsAfter}</td>
+                            {/* The refused count on a suspicious_drop; blank where the run recorded none. */}
+                            <td className="py-1 pr-3 text-right">{item.scrapedCount ?? ""}</td>
+                            <td className="py-1 pr-3" title={item.warnings.join("\n")}>
+                              {item.warnings.length > 0
+                                ? item.warnings.map((w) => w.split(":", 1)[0]).join(", ")
+                                : ""}
+                            </td>
                             <td className="py-1 pr-3">{item.siteStatus}</td>
                             <td className="py-1">
                               {item.phase === "policy"

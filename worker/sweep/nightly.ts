@@ -50,7 +50,7 @@ import {
   shouldAlertSoftFailures,
   SOFT_FAILURE_ALERT_RATIO,
 } from "../lib/sweepBreaker";
-import type { ReportItem } from "../lib/sweepReport";
+import type { ReportItem, SkippedSite } from "../lib/sweepReport";
 import {
   cancelPendingJobById,
   closeSweep,
@@ -134,6 +134,10 @@ type SiteResult = {
   failureCategory: string | null;
   jobsBefore: number;
   jobsAfter: number;
+  /** The run's ScrapeRun.validJobs — for a refused drop, the count it refused. */
+  scrapedCount: number | null;
+  /** The run's ScrapeRun.warnings, read after the handler has returned. */
+  warnings: string[] | null;
   newestJobAt: Date | null;
   siteStatus: string;
   wouldDemoteTo: string | null;
@@ -362,6 +366,8 @@ async function runOneSite(
         outcome: "skipped_conflict",
         failureCategory: null,
         jobsAfter: after.jobCount,
+        scrapedCount: null,
+        warnings: null,
         newestJobAt: after.newestJobAt,
         siteStatus: after.status,
         wouldDemoteTo: null,
@@ -399,6 +405,8 @@ async function runOneSite(
           outcome: "worker_not_draining",
           failureCategory: "cancelled",
           jobsAfter: after.jobCount,
+          scrapedCount: null,
+          warnings: null,
           newestJobAt: after.newestJobAt,
           siteStatus: after.status,
           wouldDemoteTo: null,
@@ -452,6 +460,17 @@ async function runOneSite(
   const wouldSkip = typeof withheld.wouldSkip === "string" ? withheld.wouldSkip : null;
   const after = await siteSnapshot(site.id);
 
+  // Read after the job is terminal, for the same reason as `result`: the
+  // handler writes ScrapeRun.warnings after the run's status, just before it
+  // returns, so a read taken when the run first went terminal could miss them.
+  const runRow = await prisma.scrapeRun.findUnique({
+    where: { id: scrapeRunId },
+    select: { validJobs: true, warnings: true },
+  });
+  const warnings = Array.isArray(runRow?.warnings)
+    ? runRow.warnings.map((w) => String(w))
+    : null;
+
   return {
     ...base,
     scrapeRunId,
@@ -463,6 +482,8 @@ async function runOneSite(
       : classifyOutcome({ status: waited.status, failureCategory: waited.failureCategory }),
     failureCategory: waited.failureCategory,
     jobsAfter: after.jobCount,
+    scrapedCount: runRow?.validJobs ?? null,
+    warnings,
     newestJobAt: after.newestJobAt,
     siteStatus: after.status,
     wouldDemoteTo: typeof withheld.wouldDemoteTo === "string" ? withheld.wouldDemoteTo : null,
@@ -485,6 +506,8 @@ function toScrapeReportItem(r: SiteResult): ReportItem {
     failureCategory: r.failureCategory,
     jobsBefore: r.jobsBefore,
     jobsAfter: r.jobsAfter,
+    scrapedCount: r.scrapedCount,
+    warnings: r.warnings,
     newestJobAt: r.newestJobAt,
     siteStatus: r.siteStatus,
     wouldDemoteTo: r.wouldDemoteTo,
@@ -617,6 +640,8 @@ async function realRun(mode: Mode): Promise<number> {
 
   // --- what to run -----------------------------------------------------
   let queue: SelectableSite[];
+  /** Selection exclusions, for the report. Undefined in single-site mode: there was no selection. */
+  let skipped: SkippedSite[] | undefined;
   if (single) {
     const all = await loadSelectableSites();
     const found = all.find((s) => s.id === single);
@@ -639,12 +664,13 @@ async function realRun(mode: Mode): Promise<number> {
     queue = [found];
     log(`[sweep] single-site mode: ${found.siteUrl}`);
   } else {
-    const { selected } = selectSitesForSweep(await loadSelectableSites(), {
+    const { selected, excluded } = selectSitesForSweep(await loadSelectableSites(), {
       now,
       freshWindowMs: sweepConfig.freshWindowHours * 3_600_000,
     });
     queue = selected;
-    log(`[sweep] selected ${queue.length} site(s)`);
+    skipped = excluded.map((e) => ({ siteUrl: e.site.siteUrl, reason: e.reason }));
+    log(`[sweep] selected ${queue.length} site(s), skipped ${skipped.length}`);
   }
 
   await prisma.scrapeSweep.update({
@@ -689,6 +715,7 @@ async function realRun(mode: Mode): Promise<number> {
       `[sweep] <- ${result.outcome}` +
         (result.failureCategory ? ` (${result.failureCategory})` : "") +
         ` jobs ${result.jobsBefore} -> ${result.jobsAfter}` +
+        (result.outcome === "suspicious_drop" ? ` REFUSED scraped ${result.scrapedCount ?? "?"}` : "") +
         ` site ${result.siteStatus}` +
         (result.wouldPromoteTo ? ` WOULD PROMOTE -> ${result.wouldPromoteTo}` : "") +
         (result.wouldDemoteTo ? ` WOULD DEMOTE -> ${result.wouldDemoteTo}` : ""),
@@ -705,6 +732,10 @@ async function realRun(mode: Mode): Promise<number> {
         failureCategory: result.failureCategory,
         jobsBefore: result.jobsBefore,
         jobsAfter: result.jobsAfter,
+        scrapedCount: result.scrapedCount,
+        // Omitted rather than null: a Json? column takes Prisma.JsonNull, not null,
+        // and an absent key is already NULL.
+        ...(result.warnings ? { warnings: result.warnings } : {}),
         newestJobAt: result.newestJobAt,
         siteStatus: result.siteStatus,
         wouldDemoteTo: result.wouldDemoteTo,
@@ -728,6 +759,7 @@ async function realRun(mode: Mode): Promise<number> {
         status: "FAILED",
         haltReason: result.halt,
         items: results.map(toScrapeReportItem),
+        skipped,
       });
       log("");
       log(failedText);
@@ -776,6 +808,7 @@ async function realRun(mode: Mode): Promise<number> {
         status: "HALTED",
         haltReason,
         items: results.map(toScrapeReportItem),
+        skipped,
       });
       // Printed last so the journal carries the whole report, verdict line
       // included — `journalctl -u haide-nightly` is the durable copy.
@@ -797,6 +830,7 @@ async function realRun(mode: Mode): Promise<number> {
     status: "COMPLETED",
     haltReason: null,
     items: results.map(toScrapeReportItem),
+    skipped,
   });
 
   if (breaker.hardUnqualified > 0) {

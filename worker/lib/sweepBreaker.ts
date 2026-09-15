@@ -24,6 +24,8 @@
 //   cancelled            the sweep itself stopped the job
 //   empty_results        the site published nothing, or its selectors died
 //   structure_changed    nothing survived validation
+//   suspicious_drop      the run extracted a fraction of the site's listings
+//                        and the undersize guard refused to write them
 //
 // Counting any of them would halt the night for reasons that say nothing about
 // whether the next site would scrape.
@@ -115,7 +117,10 @@ export function recordOutcome(state: BreakerState, event: BreakerEvent): Breaker
     return next;
   }
 
-  if (event.outcome === "soft_failure") {
+  if (event.outcome === "soft_failure" || event.outcome === "suspicious_drop") {
+    // A refused drop is a result the site could not be trusted for, like
+    // drift. One is about that site; many on one night is the shared-cause
+    // signature the soft-failure alert looks for, so it counts toward it.
     next.softTotal = state.softTotal + 1;
     return next; // neither counts nor resets
   }

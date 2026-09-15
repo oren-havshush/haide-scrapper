@@ -64,6 +64,10 @@ export async function getSweeps(opts: { limit?: number } = {}) {
         failureCategory: i.failureCategory,
         jobsBefore: i.jobsBefore,
         jobsAfter: i.jobsAfter,
+        /** Scrape phase: what the run extracted — the refused count on a suspicious_drop. */
+        scrapedCount: i.scrapedCount,
+        /** Scrape phase: the run's own warnings, "type: detail" strings. */
+        warnings: Array.isArray(i.warnings) ? i.warnings.map((w) => String(w)) : [],
         newestJobAt: i.newestJobAt,
         siteStatus: i.siteStatus,
         wouldDemoteTo: i.wouldDemoteTo,

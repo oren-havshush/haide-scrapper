@@ -13,6 +13,7 @@ import {
   renderSweepReport,
   type ReportItem,
   type ReportSweep,
+  type SkippedSite,
 } from "../lib/sweepReport";
 
 export type SweepKind = "SCRAPE" | "POLICY";
@@ -177,6 +178,8 @@ export async function closeSweep(args: {
   status: "COMPLETED" | "HALTED" | "FAILED";
   haltReason: string | null;
   items: ReportItem[];
+  /** Selection exclusions, named in the report's Ran section. Scrape sweep only. */
+  skipped?: SkippedSite[];
 }): Promise<string> {
   const finishedAt = new Date();
 
@@ -192,7 +195,16 @@ export async function closeSweep(args: {
   };
 
   const counters = computeCounters(sweepRow, args.items);
-  const logText = renderSweepReport(sweepRow, args.items, { timeZone: sweepConfig.timezone });
+  const logText = renderSweepReport(sweepRow, args.items, {
+    timeZone: sweepConfig.timezone,
+    skipped: args.skipped,
+    // The thresholds the worker's undersize guard read, so the report's drop
+    // rule is the same rule.
+    dropThresholds: {
+      minPrevious: sweepConfig.dropMinPrevious,
+      keepRatio: sweepConfig.dropKeepRatio,
+    },
+  });
 
   await prisma.scrapeSweep.update({
     where: { id: args.sweepId },

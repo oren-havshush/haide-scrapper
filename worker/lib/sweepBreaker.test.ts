@@ -296,6 +296,29 @@ for (const cat of [
   assert(selected.length === 1, "3. it does not satisfy the 20h window — the site is due");
 }
 
+// ---------------------------------------------------------------------------
+// A refused drop neither halts nor resets, and counts toward the alert
+// ---------------------------------------------------------------------------
+
+{
+  const s = fold([
+    { outcome: "hard_failure" },
+    { outcome: "hard_failure" },
+    { outcome: "suspicious_drop" },
+    { outcome: "hard_failure" },
+  ]);
+  assert(s.halted, "a suspicious_drop between hard failures does not reset the streak");
+
+  const drops = fold(Array.from({ length: 10 }, () => ({ outcome: "suspicious_drop" })));
+  assert(!drops.halted, "ten refused drops never halt");
+  assert(drops.consecutiveHard === 0, "and are not hard failures");
+  assert(
+    drops.softTotal === 10,
+    `but count toward the soft-failure alert — many sites dropping on one night is a shared cause (got ${drops.softTotal})`,
+  );
+  assert(shouldAlertSoftFailures(drops), "which then alerts");
+}
+
 if (failures > 0) {
   console.error(`\n${failures} assertion(s) failed`);
   process.exit(1);

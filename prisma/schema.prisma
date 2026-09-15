@@ -332,6 +332,15 @@ model ScrapeSweepItem {
   /// table, so the sweep log never blocks an enum change.
   policyStatusBefore String?
   policyStatusAfter  String?
+  /// Scrape phase: listings the run extracted and was prepared to write
+  /// (ScrapeRun.validJobs). Equal to jobsAfter when the write committed; when
+  /// the undersize guard (outcome "suspicious_drop") or the oversize cap refused
+  /// it, this is the refused count and jobsAfter is what was kept. NULL when the
+  /// run produced no count.
+  scrapedCount   Int?
+  /// Scrape phase: the run's own ScrapeRun.warnings ("type: detail" strings),
+  /// copied so the item is readable without the run. NULL when it had none.
+  warnings       Json?
   startedAt      DateTime?
   finishedAt     DateTime?
 

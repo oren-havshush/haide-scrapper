@@ -32,6 +32,7 @@ import {
   readScheduledFlag,
   type WithheldWrite,
 } from "../lib/scheduledRun";
+import { sweepConfig } from "../../src/lib/config";
 import {
   awaitCommit,
   beginCommit,
@@ -3670,7 +3671,14 @@ async function executeScrape(
     // Nobody is watching, so a half-replaced site would be published to the
     // public jobs site with no one to notice. Delete and every insert commit
     // together; a rollback leaves the previous listings completely intact.
-    const plan = planScheduledPersist(rows.length);
+    // What a commit would replace. Read outside the transaction: the sweep runs
+    // one site at a time and an operator's manual scrape of the same site is
+    // refused while this run is active, so nothing else writes these rows now.
+    const previousCount = await prisma.job.count({ where: { siteId: site.id } });
+    const plan = planScheduledPersist(rows.length, previousCount, {
+      minPrevious: sweepConfig.dropMinPrevious,
+      keepRatio: sweepConfig.dropKeepRatio,
+    });
 
     if (plan.mode === "oversize") {
       // Deliberately refuses rather than truncating. A count this far out means
@@ -3685,6 +3693,26 @@ async function executeScrape(
         error: message,
         failureCategory: "oversize",
         scheduled,
+        counts: { totalJobs: validatedRecords.length, validJobs: plan.rowCount, invalidJobs: invalidCount },
+      });
+    }
+
+    if (plan.mode === "suspicious_drop") {
+      // The undersize guard (worker/lib/scheduledRun.ts): a fraction of what the
+      // site has is a site made worse, and nobody is watching. Refuse, keep the
+      // listings, and put both counts on the run so the sweep item and the
+      // report can say what was refused. validJobs is the refused count; jobCount
+      // stays 0 because nothing was saved.
+      const message =
+        `Refusing to replace ${plan.previousCount} listings with ${plan.rowCount} — ` +
+        `below ${Math.round(plan.thresholds.keepRatio * 100)}% of the previous count, ` +
+        `previous listings left untouched`;
+      console.error(`[scrape] ${message}`);
+      return await failScrapeRun(scrapeRunId, site.id, {
+        error: message,
+        failureCategory: "suspicious_drop",
+        scheduled,
+        counts: { totalJobs: validatedRecords.length, validJobs: plan.rowCount, invalidJobs: invalidCount },
       });
     }
 
@@ -3703,6 +3731,14 @@ async function executeScrape(
         failureCategory: "empty_results",
         scheduled,
       };
+    }
+
+    if (plan.mode !== "commit") {
+      // Every refusal above returns. A new PersistPlan mode that is not handled
+      // there fails to compile here, instead of falling through to a commit that
+      // deletes the site's listings.
+      const unhandled: never = plan;
+      throw new Error(`unhandled persistence plan: ${JSON.stringify(unhandled)}`);
     }
 
     // Opening the commit window is what stops the timeout handler writing a
@@ -4111,7 +4147,18 @@ async function skipSiteForApplyLogin(
 async function failScrapeRun(
   scrapeRunId: string,
   siteId: string,
-  details: { error: string; failureCategory: string; scheduled: boolean },
+  details: {
+    error: string;
+    failureCategory: string;
+    scheduled: boolean;
+    /**
+     * What the run extracted, when a refusal knows it (oversize,
+     * suspicious_drop). Recorded on the run so the refused count is not lost;
+     * jobCount stays 0 because nothing was saved. Omitted, the columns are
+     * left as they are.
+     */
+    counts?: { totalJobs: number; validJobs: number; invalidJobs: number };
+  },
 ): Promise<ScrapeResult> {
   const decision = planScrapeFailure({ scheduled: details.scheduled });
 
@@ -4127,6 +4174,7 @@ async function failScrapeRun(
         error: details.error,
         failureCategory: details.failureCategory,
         completedAt: new Date(),
+        ...(details.counts ?? {}),
       },
     });
 
@@ -4171,9 +4219,9 @@ async function failScrapeRun(
     success: false,
     scrapeRunId,
     jobCount: 0,
-    totalJobs: 0,
-    validJobs: 0,
-    invalidJobs: 0,
+    totalJobs: details.counts?.totalJobs ?? 0,
+    validJobs: details.counts?.validJobs ?? 0,
+    invalidJobs: details.counts?.invalidJobs ?? 0,
     error: details.error,
     failureCategory: details.failureCategory,
     ...(details.scheduled ? { scheduled: true } : {}),

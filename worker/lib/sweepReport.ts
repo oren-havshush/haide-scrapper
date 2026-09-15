@@ -11,6 +11,8 @@
 // wouldHavePromoted and listingsProtected — the three numbers that say what the
 // gate saved, silently absent from exactly the nights something went wrong.
 
+import { DEFAULT_DROP_THRESHOLDS, isSuspiciousDrop, type DropThresholds } from "./scheduledRun";
+
 /** Anything the report needs about the sweep itself. */
 export type ReportSweep = {
   id: string;
@@ -43,7 +45,26 @@ export type ReportItem = {
   /** Policy phase only: the site's scrapingPolicyStatus before and after tonight. */
   policyStatusBefore?: string | null;
   policyStatusAfter?: string | null;
+  /**
+   * Scrape phase: the listings the run extracted and was prepared to write
+   * (its ScrapeRun.validJobs). Equal to jobsAfter when the write committed; the
+   * refused count when the undersize guard or the oversize cap refused it.
+   */
+  scrapedCount?: number | null;
+  /** Scrape phase: the run's own ScrapeRun.warnings, "type: detail" strings. */
+  warnings?: readonly string[] | null;
   defect?: string | null;
+};
+
+/** A site selection left out of the night, and why. */
+export type SkippedSite = { siteUrl: string; reason: string };
+
+export type ReportOptions = {
+  timeZone: string;
+  /** Selection exclusions. Absent means none were passed, and none are printed. */
+  skipped?: readonly SkippedSite[];
+  /** The undersize guard's thresholds, so the report applies the rule the run did. */
+  dropThresholds?: DropThresholds;
 };
 
 /**
@@ -168,7 +189,7 @@ export function sweepDate(when: Date, timeZone: string): string {
 export function verdictLine(
   sweep: ReportSweep,
   items: ReportItem[],
-  opts: { timeZone: string },
+  opts: ReportOptions,
 ): string {
   const label = sweep.kind === "POLICY" ? "Policy sweep" : "Nightly sweep";
   const date = sweepDate(sweep.startedAt, opts.timeZone);
@@ -194,7 +215,7 @@ export function verdictLine(
     return `${label} ${date}: ${checked} checked, ${failedPart}${restricted} newly RESTRICTED`;
   }
 
-  const attention = needsAttention(sweep, items).length;
+  const attention = needsAttention(sweep, items, opts).length;
   return `${label} ${date}: ${sweep.selectedCount} sites, ${attention} need attention`;
 }
 
@@ -205,8 +226,19 @@ type AttentionLine = { siteUrl: string; why: string };
  *
  * Deduplicated by site, because a site can qualify twice — protected AND
  * zeroed, say — and a count that double-counts makes the verdict line lie.
+ *
+ * It is the remediation queue, so a site is NAMED here, never only counted
+ * elsewhere. The step 9 catch-up run read "0 need attention" over twelve
+ * drifted sites and a 433 -> 8 success, because drift was only a number under
+ * Outcomes and nothing looked at a drop that did not reach zero.
  */
-export function needsAttention(sweep: ReportSweep, items: ReportItem[]): AttentionLine[] {
+export function needsAttention(
+  sweep: ReportSweep,
+  items: ReportItem[],
+  opts: Partial<ReportOptions> = {},
+): AttentionLine[] {
+  const thresholds = opts.dropThresholds ?? DEFAULT_DROP_THRESHOLDS;
+  const timeZone = opts.timeZone ?? "UTC";
   const reasons = new Map<string, string[]>();
   const add = (i: ReportItem, why: string) => {
     const list = reasons.get(i.siteUrl) ?? [];
@@ -218,13 +250,45 @@ export function needsAttention(sweep: ReportSweep, items: ReportItem[]): Attenti
     if (i.wouldPromoteTo) add(i, `would have promoted to ${i.wouldPromoteTo} — a human promotes`);
     if (i.wouldDemoteTo) add(i, `would have demoted to ${i.wouldDemoteTo}`);
     if (i.outcome === WITHHELD_SKIP_OUTCOME) add(i, "would have been SKIPPED (login-gated apply)");
-    if (protectedListings(i)) add(i, `${i.jobsBefore} listing(s) kept that a manual run would have deleted`);
+    // A refused drop protected its listings too, but its own line says so with
+    // both counts; the generic one beside it would only repeat it.
+    if (protectedListings(i) && i.outcome !== "suspicious_drop") {
+      add(i, `${i.jobsBefore} listing(s) kept that a manual run would have deleted`);
+    }
     if (isStaleButGreen(i, sweep.startedAt)) {
       add(i, "reported success but its rows predate this sweep — the run never persisted");
     }
     if (zeroedOut(i)) add(i, `returned 0 listings, had ${i.jobsBefore}`);
     if (i.failureCategory === "oversize") add(i, "oversize: refused an implausible row count");
     if (i.outcome === "hard_failure") add(i, `failed (${i.failureCategory ?? "unknown"})`);
+
+    // --- scrape phase: drift and drops ---
+    if (i.outcome === "soft_failure") {
+      const newest = i.newestJobAt ? sweepDate(i.newestJobAt, timeZone) : "none";
+      add(
+        i,
+        `silent drift (${i.failureCategory ?? "unknown"}): ${i.jobsAfter} listing(s) on the site, newest ${newest}`,
+      );
+    }
+    if (i.outcome === "suspicious_drop") {
+      add(
+        i,
+        `suspicious drop refused: scraped ${i.scrapedCount ?? "?"}, had ${i.jobsBefore} — ` +
+          `nothing written, ${i.jobsAfter} listing(s) kept`,
+      );
+    }
+    // The same rule the undersize guard applies, on what was actually written.
+    // After the guard a scheduled success should never get here; it is how a
+    // night from before it (and any way round it) still reaches this list.
+    // Scrape phase only: a policy item's counts are read, never written.
+    if (
+      i.phase === "scrape" &&
+      i.outcome === "success" &&
+      isSuspiciousDrop(i.jobsBefore, i.jobsAfter, thresholds)
+    ) {
+      const pct = Math.round(((i.jobsAfter - i.jobsBefore) / i.jobsBefore) * 100);
+      add(i, `listings fell ${i.jobsBefore} -> ${i.jobsAfter} (${pct}%) and were written`);
+    }
 
     // --- policy phase ---
     // Every outcome the verdict line counts, or that means no status was
@@ -257,11 +321,11 @@ export function needsAttention(sweep: ReportSweep, items: ReportItem[]): Attenti
 export function renderSweepReport(
   sweep: ReportSweep,
   items: ReportItem[],
-  opts: { timeZone: string },
+  opts: ReportOptions,
 ): string {
   const lines: string[] = [];
   const counters = computeCounters(sweep, items);
-  const attention = needsAttention(sweep, items);
+  const attention = needsAttention(sweep, items, opts);
 
   lines.push(verdictLine(sweep, items, opts));
   lines.push("");
@@ -279,6 +343,12 @@ export function renderSweepReport(
   }
   if (sweep.status === "HALTED") {
     lines.push(`  HALTED    ${sweep.haltReason ?? "(no reason recorded)"}`);
+  }
+  if (opts.skipped) {
+    // Named, with the reason: a site selection left out is a site nobody looked
+    // at tonight, and "no usable fieldMappings" is a fix waiting for someone.
+    lines.push(`  skipped   ${opts.skipped.length} at selection`);
+    for (const s of opts.skipped) lines.push(`    ${s.siteUrl} — ${s.reason}`);
   }
   lines.push("");
 
@@ -328,6 +398,36 @@ export function renderSweepReport(
   lines.push(`  ${counters.listingsProtected} site(s) kept listings a manual run would have deleted`);
   lines.push(`  ${counters.wouldHavePromoted} would have been promoted, ${counters.wouldHaveDemoted} demoted`);
   lines.push(`  ${counters.skippedConflict} skipped (an operator was already scraping)`);
+
+  // --- Warnings ----------------------------------------------------------
+  // Each run's own ScrapeRun.warnings, grouped by type. Surfaced, not counted
+  // as needing attention: on the step 9 night 61 of 140 sites warned, most of
+  // them about location quality, and a queue that long is one nobody reads.
+  // Last, so the report's first screen stays the verdict and the queue.
+  const byType = new Map<string, Array<{ siteUrl: string; detail: string }>>();
+  let warnedSites = 0;
+  for (const i of items) {
+    if (!i.warnings || i.warnings.length === 0) continue;
+    warnedSites++;
+    for (const w of i.warnings) {
+      const text = String(w);
+      const colon = text.indexOf(":");
+      const type = colon > 0 ? text.slice(0, colon).trim() : "other";
+      const detail = colon > 0 ? text.slice(colon + 1).trim() : text.trim();
+      const list = byType.get(type) ?? [];
+      list.push({ siteUrl: i.siteUrl, detail });
+      byType.set(type, list);
+    }
+  }
+  if (warnedSites > 0) {
+    lines.push("");
+    lines.push(`Warnings (${warnedSites} sites)`);
+    const ordered = [...byType.entries()].sort((a, b) => b[1].length - a[1].length || a[0].localeCompare(b[0]));
+    for (const [type, list] of ordered) {
+      lines.push(`  ${type} (${list.length})`);
+      for (const w of list) lines.push(`    ${w.siteUrl} — ${w.detail}`);
+    }
+  }
 
   return lines.join("\n");
 }

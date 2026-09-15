@@ -160,6 +160,43 @@ function countOf(haystack: string, needle: string): number {
   );
 }
 
+// --- the undersize guard sits on the scheduled path, before the delete ----
+
+{
+  // planScheduledPersist can refuse a drop perfectly and protect nothing, if
+  // scrape.ts does not hand it the site's current count, or lets the refusal
+  // fall through to the transaction. And the manual path must not grow the
+  // check: an operator accepts a real drop by scraping by hand.
+  // Comments are stripped from `src`, so the branches are found by code: the
+  // `if (scheduled) {` that opens the plan, and the `} else {` before the
+  // manual path's chunk size.
+  const scheduledStart = src.lastIndexOf("if (scheduled) {", src.indexOf("planScheduledPersist("));
+  const manualStart = src.lastIndexOf("} else {", src.indexOf("const CHUNK_SIZE = 20;"));
+  assert(scheduledStart >= 0 && manualStart > scheduledStart, "the scheduled and manual persistence branches were found");
+  const scheduledBranch = src.slice(scheduledStart, manualStart);
+  const manualBranch = src.slice(manualStart, src.indexOf("const gate = await applyActivationGate", manualStart));
+  assert(manualBranch.length > 200, "the manual branch was extracted");
+
+  const count = scheduledBranch.indexOf("prisma.job.count({ where: { siteId: site.id } })");
+  const plan = scheduledBranch.indexOf("planScheduledPersist(rows.length, previousCount");
+  const refusal = scheduledBranch.indexOf('plan.mode === "suspicious_drop"');
+  const refusalFail = scheduledBranch.indexOf('failureCategory: "suspicious_drop"', refusal);
+  const txDelete = scheduledBranch.indexOf("tx.job.deleteMany(");
+
+  assert(count >= 0, "the scheduled branch reads the site's current listing count");
+  assert(plan > count, "and passes it to planScheduledPersist");
+  assert(refusal > plan, "it handles the suspicious_drop plan");
+  assert(refusalFail > refusal, "by closing the run FAILED with failureCategory suspicious_drop");
+  assert(txDelete > refusalFail, "before the transaction that deletes anything");
+  assert(
+    /const unhandled: never = plan/.test(scheduledBranch),
+    "and every plan mode is handled before the commit, so a new refusal cannot fall through to it",
+  );
+
+  assert(!manualBranch.includes("suspicious_drop"), "the manual path has no undersize guard");
+  assert(!manualBranch.includes("planScheduledPersist"), "nor any scheduled persistence plan");
+}
+
 // --- the atomic path stays atomic ---------------------------------------
 
 assert(

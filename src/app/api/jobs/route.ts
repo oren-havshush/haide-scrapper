@@ -3,6 +3,7 @@ import { listResponse } from "@/lib/api-utils";
 import { formatErrorResponse } from "@/lib/errors";
 import { jobsPaginationSchema, jobsFilterSchema } from "@/lib/validators";
 import { prisma } from "@/lib/prisma";
+import { findListingRunId } from "@/lib/listingRun";
 import type { Prisma } from "@/generated/prisma/client";
 
 /**
@@ -47,14 +48,12 @@ export async function GET(request: NextRequest) {
     if (filters.scrapeRunId) {
       where.scrapeRunId = filters.scrapeRunId;
     } else if (filters.siteId) {
-      // Default to latest scrape run for a site to avoid mixing historical runs.
-      const latestRun = await prisma.scrapeRun.findFirst({
-        where: { siteId: filters.siteId },
-        orderBy: { createdAt: "desc" },
-        select: { id: true },
-      });
-      if (latestRun) {
-        where.scrapeRunId = latestRun.id;
+      // Default to the site's LISTING run — the newest run that owns rows —
+      // not its newest run, which may have written nothing (drift, a refused
+      // drop, a kept failure) and would show the site as empty. See listingRun.ts.
+      const listingRunId = await findListingRunId(prisma, filters.siteId);
+      if (listingRunId) {
+        where.scrapeRunId = listingRunId;
       }
     }
 

@@ -96,6 +96,17 @@ assert(
   "a reaped orphan is not evidence about tonight's infrastructure",
 );
 
+{
+  // The undersize guard's refusal: FAILED, listings kept.
+  const refused = { status: "FAILED", failureCategory: "suspicious_drop" };
+  assert(
+    classifyOutcome(refused) === "suspicious_drop",
+    `a refused drop is its own outcome (got ${classifyOutcome(refused)})`,
+  );
+  assert(!isSuccessfulRun(refused), "and never a success — the site stays due tomorrow");
+  assert(classifyOutcome(refused) !== "hard_failure", "nor a hard failure — it is a decision, not a fault");
+}
+
 // ---------------------------------------------------------------------------
 // Selection
 // ---------------------------------------------------------------------------

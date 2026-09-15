@@ -65,17 +65,65 @@ export const TX_MAX_WAIT_MS = 10_000;
 // Persistence
 // ---------------------------------------------------------------------------
 
+/**
+ * The undersize guard's thresholds: a site with at least `minPrevious` listings
+ * whose new extraction is below `keepRatio` of them is refused.
+ *
+ * Overridable by SWEEP_DROP_MIN_PREVIOUS / SWEEP_DROP_KEEP_RATIO (sweepConfig),
+ * which fall back to these on any malformed value — a NaN ratio would compare
+ * false with every count and switch the guard off without a word.
+ */
+export type DropThresholds = { minPrevious: number; keepRatio: number };
+
+export const DEFAULT_DROP_THRESHOLDS: DropThresholds = { minPrevious: 10, keepRatio: 0.5 };
+
+/**
+ * A new listing count that is a fraction of what the site had.
+ *
+ * 2026-09-15: maccabi4u's scheduled run extracted 8 listings where the site had
+ * 433, and committed them as a success. A scrape returning a fraction of the
+ * previous count is far likelier to be a broken page — a search form that no
+ * longer submits, pagination that stopped — than 425 vacancies filled
+ * overnight. Unattended, that is a site made worse. The manual path does not
+ * ask: an operator who knows a drop is real accepts it by scraping by hand.
+ */
+export function isSuspiciousDrop(
+  previousCount: number,
+  newCount: number,
+  thresholds: DropThresholds = DEFAULT_DROP_THRESHOLDS,
+): boolean {
+  return previousCount >= thresholds.minPrevious && newCount < previousCount * thresholds.keepRatio;
+}
+
 export type PersistPlan =
   /** Nothing to write. Reported as `empty_results`; listings are left alone. */
   | { mode: "empty" }
   /** Implausibly many rows. Nothing is deleted and nothing written. */
   | { mode: "oversize"; rowCount: number; limit: number }
+  /** A fraction of the site's current listings. Nothing is deleted and nothing written. */
+  | {
+      mode: "suspicious_drop";
+      rowCount: number;
+      previousCount: number;
+      thresholds: DropThresholds;
+    }
   /** Delete + insert in one transaction, in this many `createMany` batches. */
   | { mode: "commit"; rowCount: number; batches: number };
 
-export function planScheduledPersist(rowCount: number): PersistPlan {
+/**
+ * @param rowCount       rows this run would write
+ * @param previousCount  the site's listings right now — what a commit would replace
+ */
+export function planScheduledPersist(
+  rowCount: number,
+  previousCount: number,
+  thresholds: DropThresholds = DEFAULT_DROP_THRESHOLDS,
+): PersistPlan {
   if (rowCount <= 0) return { mode: "empty" };
   if (rowCount > MAX_ROWS) return { mode: "oversize", rowCount, limit: MAX_ROWS };
+  if (isSuspiciousDrop(previousCount, rowCount, thresholds)) {
+    return { mode: "suspicious_drop", rowCount, previousCount, thresholds };
+  }
   return { mode: "commit", rowCount, batches: Math.ceil(rowCount / INSERT_BATCH) };
 }
 

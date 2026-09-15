@@ -12,9 +12,11 @@
 
 import {
   ACTIVATION_GATE_NOTE_PREFIX,
+  DEFAULT_DROP_THRESHOLDS,
   INSERT_BATCH,
   MAX_ROWS,
   chunkRows,
+  isSuspiciousDrop,
   mayOverwriteAdminNote,
   planActivationGate,
   planApplyLoginSkip,
@@ -22,11 +24,22 @@ import {
   planScrapeFailure,
   readScheduledFlag,
 } from "./scheduledRun";
+import { sweepConfig } from "../../src/lib/config";
 
 let failures = 0;
 function assert(cond: boolean, msg: string) {
   if (!cond) {
     console.error("FAIL:", msg);
+    failures++;
+  }
+}
+
+/** A block that throws is a failure of that block, not the end of the run. */
+function check(name: string, body: () => void) {
+  try {
+    body();
+  } catch (err) {
+    console.error(`FAIL: ${name} threw: ${(err as Error).message}`);
     failures++;
   }
 }
@@ -157,25 +170,114 @@ assert(
 // Atomic persistence (R1, A)
 // ---------------------------------------------------------------------------
 
-assert(planScheduledPersist(0).mode === "empty", "nothing extracted writes nothing");
-assert(planScheduledPersist(-1).mode === "empty", "and a negative count cannot reach a delete");
+assert(planScheduledPersist(0, 0).mode === "empty", "nothing extracted writes nothing");
+assert(planScheduledPersist(-1, 0).mode === "empty", "and a negative count cannot reach a delete");
+assert(
+  planScheduledPersist(0, 433).mode === "empty",
+  "an empty extraction over a full site is still `empty`, which writes nothing either",
+);
 
 {
   // The largest real site in the fleet (אלביט מערכות, 675 listings).
-  const p = planScheduledPersist(675);
+  const p = planScheduledPersist(675, 675);
   assert(p.mode === "commit", "the largest real site commits");
   assert(p.mode === "commit" && p.batches === 2, "in two batches, inside one transaction");
 }
 
 {
-  const p = planScheduledPersist(MAX_ROWS + 1);
+  const p = planScheduledPersist(MAX_ROWS + 1, 0);
   assert(p.mode === "oversize", "an implausible row count refuses");
   assert(
     p.mode === "oversize" && p.rowCount === MAX_ROWS + 1 && p.limit === MAX_ROWS,
     "and reports both numbers so the report says how far out it was",
   );
 }
-assert(planScheduledPersist(MAX_ROWS).mode === "commit", "the cap itself still commits");
+assert(planScheduledPersist(MAX_ROWS, MAX_ROWS).mode === "commit", "the cap itself still commits");
+
+// ---------------------------------------------------------------------------
+// The undersize guard — a site made worse is not committed
+// ---------------------------------------------------------------------------
+//
+// 2026-09-15: maccabi4u's scheduled run extracted 8 listings where the site had
+// 433, committed them as `success`, and published 8. A scrape that returns a
+// fraction of what the site had is far likelier to be a broken page than 425
+// jobs filled overnight; unattended, the run must refuse. An operator who knows
+// the drop is real accepts it by scraping by hand.
+
+check("the undersize guard", () => {
+  assert(
+    DEFAULT_DROP_THRESHOLDS.minPrevious === 10 && DEFAULT_DROP_THRESHOLDS.keepRatio === 0.5,
+    "the defaults are 10 previous listings and half of them",
+  );
+
+  const p = planScheduledPersist(8, 433);
+  assert(p.mode === "suspicious_drop", `maccabi4u's night — 433 to 8 — refuses (got ${p.mode})`);
+  assert(
+    p.mode === "suspicious_drop" && p.rowCount === 8 && p.previousCount === 433,
+    "and carries both counts, so the item and the report can say what was refused",
+  );
+
+  // The boundaries, both sides of each threshold.
+  assert(planScheduledPersist(4, 10).mode === "suspicious_drop", "10 -> 4 is below half of 10");
+  assert(planScheduledPersist(5, 10).mode === "commit", "10 -> 5 is exactly half, and commits");
+  assert(planScheduledPersist(1, 9).mode === "commit", "9 previous is under the minimum; any drop commits");
+  assert(planScheduledPersist(216, 433).mode === "suspicious_drop", "433 -> 216 is below half");
+  assert(planScheduledPersist(217, 433).mode === "commit", "433 -> 217 is not");
+  assert(planScheduledPersist(900, 433).mode === "commit", "growth is never a drop");
+  assert(planScheduledPersist(3, 0).mode === "commit", "a site with nothing before commits its first listings");
+
+  // Oversize is checked first; the two cannot both apply, but the order is fixed.
+  assert(planScheduledPersist(MAX_ROWS + 1, 20_000).mode === "oversize", "oversize wins over a drop");
+
+  // Thresholds are parameters, so the env override reaches the same rule.
+  assert(
+    planScheduledPersist(8, 12, { minPrevious: 20, keepRatio: 0.5 }).mode === "commit",
+    "a raised minimum lets a small site's drop through",
+  );
+  assert(
+    planScheduledPersist(80, 100, { minPrevious: 10, keepRatio: 0.9 }).mode === "suspicious_drop",
+    "a raised ratio refuses a smaller drop",
+  );
+
+  assert(isSuspiciousDrop(433, 8), "isSuspiciousDrop is the same rule the plan applies");
+  assert(!isSuspiciousDrop(433, 217), "on both sides");
+  assert(!isSuspiciousDrop(9, 0), "including the minimum");
+});
+
+check("SWEEP_DROP_* from the environment", () => {
+  const saved = {
+    min: process.env.SWEEP_DROP_MIN_PREVIOUS,
+    ratio: process.env.SWEEP_DROP_KEEP_RATIO,
+  };
+  const set = (min: string | undefined, ratio: string | undefined) => {
+    if (min === undefined) delete process.env.SWEEP_DROP_MIN_PREVIOUS;
+    else process.env.SWEEP_DROP_MIN_PREVIOUS = min;
+    if (ratio === undefined) delete process.env.SWEEP_DROP_KEEP_RATIO;
+    else process.env.SWEEP_DROP_KEEP_RATIO = ratio;
+  };
+  try {
+    set(undefined, undefined);
+    assert(sweepConfig.dropMinPrevious === 10, "unset minimum is 10");
+    assert(sweepConfig.dropKeepRatio === 0.5, "unset ratio is 0.5");
+
+    set("25", "0.7");
+    assert(sweepConfig.dropMinPrevious === 25, "a valid minimum is read");
+    assert(sweepConfig.dropKeepRatio === 0.7, "a valid ratio is read");
+
+    // A malformed value must never switch the guard off. NaN compares false
+    // with everything, so a NaN ratio would let every drop through silently.
+    for (const bad of ["", "abc", "0.5abc", "0", "-0.2", "1.5", "NaN"]) {
+      set("10", bad);
+      assert(sweepConfig.dropKeepRatio === 0.5, `ratio "${bad}" falls back to 0.5 (got ${sweepConfig.dropKeepRatio})`);
+    }
+    for (const bad of ["", "abc", "0", "-3", "2.5", "10x"]) {
+      set(bad, "0.5");
+      assert(sweepConfig.dropMinPrevious === 10, `minimum "${bad}" falls back to 10 (got ${sweepConfig.dropMinPrevious})`);
+    }
+  } finally {
+    set(saved.min, saved.ratio);
+  }
+});
 
 {
   // 500 rows x ~19 columns is ~9,500 bind parameters, against Postgres's 65,535

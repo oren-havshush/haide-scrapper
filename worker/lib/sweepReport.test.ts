@@ -314,6 +314,140 @@ const ok = (n: number) =>
   );
 }
 
+// ---------------------------------------------------------------------------
+// Drift, drops, skipped sites and warnings are named, not just counted
+// ---------------------------------------------------------------------------
+
+/** A block that throws is a failure of that block, not the end of the run. */
+function check(name: string, body: () => void) {
+  try {
+    body();
+  } catch (err) {
+    console.error(`FAIL: ${name} threw: ${(err as Error).message}`);
+    failures++;
+  }
+}
+
+check("silent drift is named", () => {
+  const drifted = item({
+    siteId: "dr",
+    siteUrl: "https://drift.test",
+    outcome: "soft_failure",
+    failureCategory: "empty_results",
+    jobsBefore: 19,
+    jobsAfter: 19,
+    newestJobAt: new Date("2026-05-26T09:14:32Z"),
+  });
+  const neverHad = item({
+    siteId: "nh",
+    siteUrl: "https://never.test",
+    outcome: "soft_failure",
+    failureCategory: "structure_changed",
+    jobsBefore: 0,
+    jobsAfter: 0,
+    newestJobAt: null,
+    siteStatus: "REVIEW",
+  });
+  const lines = needsAttention(sweep(), [drifted, neverHad, ...ok(2)]);
+  assert(lines.length === 2, `both drifted sites need attention (got ${lines.length})`);
+  assert(
+    lines[0]?.why === "silent drift (empty_results): 19 listing(s) on the site, newest 2026-05-26",
+    `category, count and newest listing date (got "${lines[0]?.why}")`,
+  );
+  assert(
+    lines[1]?.why === "silent drift (structure_changed): 0 listing(s) on the site, newest none",
+    `a site with nothing published says none (got "${lines[1]?.why}")`,
+  );
+  assert(
+    computeCounters(sweep(), [drifted]).silentDrift === 1,
+    "and the silentDrift counter is unchanged",
+  );
+});
+
+check("a refused drop is named with both counts", () => {
+  const refused = item({
+    siteId: "m",
+    siteUrl: "https://maccabi.test",
+    outcome: "suspicious_drop",
+    failureCategory: "suspicious_drop",
+    jobsBefore: 433,
+    jobsAfter: 433,
+    scrapedCount: 8,
+  });
+  const lines = needsAttention(sweep(), [refused]);
+  assert(lines.length === 1, "a refused drop needs attention");
+  assert(
+    lines[0]?.why === "suspicious drop refused: scraped 8, had 433 — nothing written, 433 listing(s) kept",
+    `with both counts (got "${lines[0]?.why}")`,
+  );
+  const c = computeCounters(sweep(), [refused]);
+  assert(c.ok === 0 && c.failed === 0 && c.silentDrift === 0, "it is not ok, not a hard failure, not drift");
+  assert(c.listingsProtected === 1, "and it protected the site's listings");
+  assert(
+    renderSweepReport(sweep(), [refused], { timeZone: TZ }).includes("suspicious_drop"),
+    "its category has its own bucket under Outcomes",
+  );
+});
+
+check("a committed drop is named", () => {
+  // What maccabi4u looked like before the guard: success, 433 -> 8.
+  const committed = item({ siteId: "c", siteUrl: "https://committed.test", jobsBefore: 433, jobsAfter: 8 });
+  const lines = needsAttention(sweep(), [committed]);
+  assert(lines.length === 1, "a success that fell below half of a 10+ site needs attention");
+  assert(
+    lines[0]?.why === "listings fell 433 -> 8 (-98%) and were written",
+    `with both counts (got "${lines[0]?.why}")`,
+  );
+
+  assert(
+    needsAttention(sweep(), [item({ jobsBefore: 433, jobsAfter: 217 })]).length === 0,
+    "433 -> 217 is not below half",
+  );
+  assert(
+    needsAttention(sweep(), [item({ jobsBefore: 9, jobsAfter: 1 })]).length === 0,
+    "a site under the 10-listing minimum is not a drop",
+  );
+  assert(
+    needsAttention(sweep(), [item({ phase: "policy", outcome: "success", jobsBefore: 40, jobsAfter: 4 })])
+      .length === 0,
+    "a policy item's counts are read, not written by the check — never a drop",
+  );
+  assert(
+    needsAttention(sweep(), [committed], { timeZone: TZ, dropThresholds: { minPrevious: 500, keepRatio: 0.5 } })
+      .length === 0,
+    "the thresholds passed in are the ones applied",
+  );
+});
+
+check("skipped sites and warnings are listed", () => {
+  const warned = item({
+    siteId: "w",
+    siteUrl: "https://warned.test",
+    warnings: ["region_over_city: 130 job(s) stored a region", "job_count_drop: 8 saved vs previous 433 (-98%)"],
+  });
+  const text = renderSweepReport(sweep({ selectedCount: 2 }), [warned, ...ok(1)], {
+    timeZone: TZ,
+    skipped: [
+      { siteUrl: "https://fresh.test", reason: "succeeded 8h ago, inside the 20h window" },
+      { siteUrl: "https://nomap.test", reason: "no usable fieldMappings (would fail immediately)" },
+    ],
+  });
+  assert(text.includes("skipped   2 at selection"), `Ran counts the skipped sites\n${text}`);
+  assert(text.includes("https://fresh.test — succeeded 8h ago, inside the 20h window"), "each with its reason");
+  assert(text.includes("https://nomap.test — no usable fieldMappings"), "including a config exclusion");
+  assert(text.includes("Warnings (1 sites)"), "the Warnings header counts sites");
+  assert(text.includes("  job_count_drop (1)"), "warnings are grouped by type");
+  assert(text.includes("https://warned.test — 8 saved vs previous 433 (-98%)"), "with the site and the detail");
+  assert(
+    text.includes("Needs attention (0)"),
+    "a warning alone is surfaced, not counted as needing attention",
+  );
+  assert(
+    !renderSweepReport(sweep(), ok(2), { timeZone: TZ }).includes("at selection"),
+    "a report given no skipped list prints none",
+  );
+});
+
 if (failures > 0) {
   console.error(`\n${failures} assertion(s) failed`);
   process.exit(1);

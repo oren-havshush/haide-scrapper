@@ -8,6 +8,7 @@ import {
 } from "@/lib/errors";
 import { isCanonicalLocation, isRegionLocation, normalizeLocations } from "@/lib/locations";
 import { buildScrapeJobRow } from "@/lib/scrapeJobRow";
+import { findListingRunsBySiteIds } from "@/lib/listingRun";
 import type { PaginationParams } from "@/lib/types";
 import type { SiteStatus } from "@/generated/prisma/enums";
 import { emitEvent } from "@/services/eventService";
@@ -126,12 +127,22 @@ export async function listSites(
     prisma.site.count({ where }),
   ]);
 
-  // Flatten scrapeRuns array to latestScrapeRun for each site
+  // Two runs per site, and they answer different questions. latestScrapeRun is
+  // what is happening (a scrape in progress, the last attempt's status);
+  // listingRun is what is published — the newest run that owns rows, whose
+  // count is the site's listing count. A newer run that wrote nothing must not
+  // show the site as empty. See src/lib/listingRun.ts.
+  const listingRuns = await findListingRunsBySiteIds(
+    prisma,
+    sites.map((s) => s.id),
+  );
+
   const sitesWithScrapeInfo = sites.map((site) => {
     const { scrapeRuns, ...rest } = site;
     return {
       ...rest,
       latestScrapeRun: scrapeRuns[0] ?? null,
+      listingRun: listingRuns.get(site.id) ?? null,
     };
   });
 

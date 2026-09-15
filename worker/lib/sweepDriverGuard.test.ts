@@ -575,6 +575,48 @@ assert(policy.length > 1500, `the policy driver was read (${policy.length} chars
   );
 }
 
+{
+  // The report's skipped list, drop thresholds, refused counts and warnings are
+  // tested in the renderer (sweepReport*.test.ts) — but only reach a stored
+  // report if the DB-bound driver hands them over. Wiring, asserted here.
+  const render = common.slice(common.indexOf("renderSweepReport(sweepRow"));
+  const renderCall = render.slice(0, render.indexOf("});") + 3);
+  assert(renderCall.length > 20, "closeSweep's renderSweepReport call was found");
+  assert(/skipped: args\.skipped/.test(renderCall), "closeSweep passes the skipped list to the report");
+  assert(
+    /minPrevious: sweepConfig\.dropMinPrevious/.test(renderCall) &&
+      /keepRatio: sweepConfig\.dropKeepRatio/.test(renderCall),
+    "and the undersize guard's thresholds, from the same config the worker reads",
+  );
+
+  const realRun = driver.slice(driver.indexOf("async function realRun("), driver.indexOf("async function main("));
+  assert(realRun.length > 1000, "realRun was extracted");
+  assert(
+    /const \{ selected, excluded \} = selectSitesForSweep\(/.test(realRun) &&
+      /skipped = excluded\.map\(/.test(realRun),
+    "the fleet run keeps selection's exclusions",
+  );
+  const closes = realRun.split("closeSweep({").slice(1).map((c) => c.slice(0, c.indexOf("});")));
+  const withItems = closes.filter((c) => /items: results\.map\(toScrapeReportItem\)/.test(c));
+  assert(withItems.length === 3, `three closes report the night's items (found ${withItems.length})`);
+  assert(
+    withItems.every((c) => /\bskipped\b/.test(c)),
+    "and every one of them — completed, halted, wedged — passes the skipped list",
+  );
+
+  const itemCreate = realRun.slice(realRun.indexOf("prisma.scrapeSweepItem.create("));
+  const itemData = itemCreate.slice(0, itemCreate.indexOf("});"));
+  assert(/scrapedCount: result\.scrapedCount/.test(itemData), "the item row records the run's scraped count");
+  assert(/warnings: result\.warnings/.test(itemData), "and its warnings");
+
+  const toItem = driver.slice(driver.indexOf("function toScrapeReportItem("));
+  const toItemBody = toItem.slice(0, toItem.indexOf("\n}"));
+  assert(
+    /scrapedCount: r\.scrapedCount/.test(toItemBody) && /warnings: r\.warnings/.test(toItemBody),
+    "and the report item carries both, so the stored report and the row agree",
+  );
+}
+
 // The final check MUST stay last. It was once mid-file, with a later block of
 // assertions appended after it: they printed FAIL and the suite still exited 0.
 if (failures > 0) {

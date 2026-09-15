@@ -38,13 +38,21 @@ export function isSuccessfulRun(
  */
 export const HARD_FAILURE_CATEGORIES = ["timeout", "other"] as const;
 
-export type Outcome = "success" | "hard_failure" | "soft_failure" | "other";
+/**
+ * The undersize guard's refusal (scheduledRun.ts): the run extracted a fraction
+ * of the site's listings and wrote nothing. Its own outcome, because the report
+ * has to name it with both counts — it is neither a fault nor silent drift.
+ */
+export const SUSPICIOUS_DROP = "suspicious_drop";
+
+export type Outcome = "success" | "hard_failure" | "soft_failure" | "suspicious_drop" | "other";
 
 export function classifyOutcome(run: {
   status: string;
   failureCategory: string | null;
 }): Outcome {
   if (isSuccessfulRun(run)) return "success";
+  if (run.failureCategory === SUSPICIOUS_DROP) return "suspicious_drop";
   if (
     run.status === "FAILED" &&
     run.failureCategory != null &&

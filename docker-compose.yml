@@ -81,6 +81,11 @@ services:
       SWEEP_PER_SITE_TIMEOUT_MINUTES: ${SWEEP_PER_SITE_TIMEOUT_MINUTES:-18}
       SWEEP_POLL_INTERVAL_MS: ${SWEEP_POLL_INTERVAL_MS:-5000}
       SWEEP_POLICY_MAX_PER_NIGHT: ${SWEEP_POLICY_MAX_PER_NIGHT:-25}
+      # The undersize guard, read by the long-lived worker's scrape handler (not
+      # only the sweep driver): a scheduled run refuses to replace at least this
+      # many listings with fewer than this share of them.
+      SWEEP_DROP_MIN_PREVIOUS: ${SWEEP_DROP_MIN_PREVIOUS:-10}
+      SWEEP_DROP_KEEP_RATIO: ${SWEEP_DROP_KEEP_RATIO:-0.5}
     healthcheck:
       test: ["CMD-SHELL", "ps aux | grep -v grep | grep 'worker/index.ts' || exit 1"]
       interval: 30s

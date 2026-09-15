@@ -43,6 +43,14 @@ interface LatestScrapeRun {
   warnings: string[] | null;
 }
 
+/** The newest run that owns rows — what the site is publishing. See src/lib/listingRun.ts. */
+interface ListingRun {
+  id: string;
+  listingCount: number;
+  completedAt: string | null;
+  warnings: string[] | null;
+}
+
 interface Site {
   id: string;
   siteUrl: string;
@@ -53,6 +61,7 @@ interface Site {
   adminNote: string | null;
   createdAt: string;
   latestScrapeRun: LatestScrapeRun | null;
+  listingRun: ListingRun | null;
   scrapingPolicyStatus: PolicyStatusValue;
   scrapingPolicyCheckedAt: string | null;
   // Captured once by scripts/company-profile.ts. Returned by GET /api/sites
@@ -149,14 +158,15 @@ function SortIndicator({ column, sortBy, sortOrder }: {
 
 function ScrapeStatusIndicator({
   scrapeRun,
+  listingRun,
   siteStatus,
 }: {
   scrapeRun: LatestScrapeRun | null;
+  listingRun: ListingRun | null;
   siteStatus: Site["status"];
 }) {
-  if (!scrapeRun) return null;
-
-  if (scrapeRun.status === "IN_PROGRESS") {
+  // The spinner follows the newest run: that is what is happening now.
+  if (scrapeRun?.status === "IN_PROGRESS") {
     return (
       <span
         className="inline-flex items-center gap-1 text-xs ml-2"
@@ -168,20 +178,25 @@ function ScrapeStatusIndicator({
     );
   }
 
-  if (scrapeRun.status === "COMPLETED") {
-    const completedTime = scrapeRun.completedAt
-      ? new Date(scrapeRun.completedAt).toLocaleString([], { month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" })
+  // The count follows the LISTING run, the newest run that owns rows. The newest
+  // run may have written nothing — drift, a refused drop, a failure the
+  // scheduled path kept listings through — and its count would show a
+  // published site as empty. No listing run means nothing is published.
+  if (listingRun) {
+    const completedTime = listingRun.completedAt
+      ? new Date(listingRun.completedAt).toLocaleString([], { month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" })
       : "";
     // Location warnings are advisory and only meaningful for a live site, so
-    // the triangle is limited to ACTIVE. The job count below is unaffected.
+    // the triangle is limited to ACTIVE. They are the listing run's: they
+    // describe the rows being counted.
     const warningTypes =
-      siteStatus === "ACTIVE" ? locationWarningTypes(scrapeRun.warnings) : [];
+      siteStatus === "ACTIVE" ? locationWarningTypes(listingRun.warnings) : [];
     return (
       <span
         className="inline-flex items-center text-xs ml-2"
         style={{ color: "#22c55e" }}
       >
-        {scrapeRun.jobCount} jobs{completedTime ? ` (${completedTime})` : ""}
+        {listingRun.listingCount} jobs{completedTime ? ` (${completedTime})` : ""}
         {warningTypes.length > 0 && (
           <Tooltip>
             <TooltipTrigger
@@ -208,7 +223,7 @@ function ScrapeStatusIndicator({
     );
   }
 
-  // FAILED status indicator is handled by the site's own FAILED status badge
+  // No listings. A FAILED site is shown by its own status badge.
   return null;
 }
 
@@ -534,6 +549,7 @@ export function SitesTable({
                     <StatusBadge status={site.status} />
                     <ScrapeStatusIndicator
                       scrapeRun={site.latestScrapeRun}
+                      listingRun={site.listingRun}
                       siteStatus={site.status}
                     />
                   </div>
