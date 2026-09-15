@@ -74,6 +74,13 @@ export type PolicySiteResult = {
   siteStatus: string;
   policyStatusBefore: string;
   policyStatusAfter: string;
+  /**
+   * The site's listing count, read before the job is queued and again after
+   * the wait. A policy check never touches listings; these are recorded so the
+   * row states the site's real count instead of a 0 that nobody measured.
+   */
+  jobsBefore: number;
+  jobsAfter: number;
   outcome: string;
   /** In-memory only, like the scrape sweep's; reaches logText, not a column. */
   defect: string | null;
@@ -88,8 +95,8 @@ export function toPolicyReportItem(r: PolicySiteResult): ReportItem {
     phase: "policy",
     outcome: r.outcome,
     failureCategory: null,
-    jobsBefore: 0,
-    jobsAfter: 0,
+    jobsBefore: r.jobsBefore,
+    jobsAfter: r.jobsAfter,
     newestJobAt: null,
     siteStatus: r.siteStatus,
     wouldDemoteTo: null,

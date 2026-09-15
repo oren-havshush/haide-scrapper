@@ -42,6 +42,7 @@ function driverResult(
   before: string,
   after: string,
   siteStatus = "ACTIVE",
+  jobs: [number, number] = [7, 7],
 ): PolicySiteResult {
   return {
     siteId: url.replace(/\W/g, ""),
@@ -49,6 +50,8 @@ function driverResult(
     siteStatus,
     policyStatusBefore: before,
     policyStatusAfter: after,
+    jobsBefore: jobs[0],
+    jobsAfter: jobs[1],
     outcome: decidePolicyOutcome({ jobEnd, before, after }),
     defect: null,
     startedAt: STARTED,
@@ -267,6 +270,35 @@ function policySweep(over: Partial<ReportSweep> = {}): ReportSweep {
   assert(row.wouldPromoteTo === null, "wouldPromoteTo is not reused for a policy status");
   assert(row.failureCategory === null, "nor is failureCategory");
   assert(row.outcome === item.outcome && row.phase === "policy", "outcome and phase agree");
+}
+
+// ---------------------------------------------------------------------------
+// A policy item carries the site's real listing count, never a made-up 0
+// ---------------------------------------------------------------------------
+//
+// The first policy sweep on production stored ono.ac.il as "jobs 0 -> 0" and
+// "fleet totals 0 -> 0" while the site had 11 listings. A policy check does not
+// touch listings, but 0 is a claim about the site, and a wrong one.
+
+{
+  const r = driverResult("https://ono.test", "COMPLETED", "NOT_CHECKED", "RESTRICTED", "ACTIVE", [11, 11]);
+  const row = toPolicyItemRow(r, "pol1");
+  const item = toPolicyReportItem(r);
+
+  assert(row.jobsBefore === 11 && row.jobsAfter === 11, `the row records 11 -> 11 (got ${row.jobsBefore} -> ${row.jobsAfter})`);
+  assert(item.jobsBefore === 11 && item.jobsAfter === 11, `and so does the report item (got ${item.jobsBefore} -> ${item.jobsAfter})`);
+
+  const text = renderSweepReport(policySweep({ selectedCount: 1 }), [item], { timeZone: TZ });
+  assert(text.includes("fleet totals  11 -> 11 listing(s)"), `the report's totals are the real count\n${text}`);
+  assert(text.includes("no site changed its listing count"), "and an unchanged count is not reported as a change");
+
+  // A count that moved during the check (an operator's scrape finishing) is
+  // recorded as it was read, not flattened.
+  const moved = toPolicyItemRow(
+    driverResult("https://moved.test", "COMPLETED", "NOT_CHECKED", "NO_EXPLICIT_RESTRICTION", "ACTIVE", [4, 9]),
+    "pol1",
+  );
+  assert(moved.jobsBefore === 4 && moved.jobsAfter === 9, `before and after are read separately (got ${moved.jobsBefore} -> ${moved.jobsAfter})`);
 }
 
 if (failures > 0) {

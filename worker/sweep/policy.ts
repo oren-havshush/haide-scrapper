@@ -170,6 +170,7 @@ async function realRun(): Promise<number> {
   for (const site of selected) {
     const itemStart = new Date();
     log(`[policy] -> ${site.siteUrl} (${site.scrapingPolicyStatus})`);
+    const jobsBefore = await prisma.job.count({ where: { siteId: site.id } });
 
     const { jobId, alreadyQueued } = await enqueuePolicyReview(site.id, "nightly_sweep");
     if (alreadyQueued) {
@@ -182,6 +183,8 @@ async function realRun(): Promise<number> {
         siteStatus: site.status,
         policyStatusBefore: site.scrapingPolicyStatus,
         policyStatusAfter: site.scrapingPolicyStatus,
+        jobsBefore,
+        jobsAfter: jobsBefore,
         outcome: decidePolicyOutcome({
           jobEnd: "ALREADY_QUEUED",
           before: site.scrapingPolicyStatus,
@@ -233,10 +236,13 @@ async function realRun(): Promise<number> {
     }
 
     // One read of the site, used for both statuses the result carries.
-    const after = await prisma.site.findUnique({
-      where: { id: site.id },
-      select: { status: true, scrapingPolicyStatus: true },
-    });
+    const [after, jobsAfter] = await Promise.all([
+      prisma.site.findUnique({
+        where: { id: site.id },
+        select: { status: true, scrapingPolicyStatus: true },
+      }),
+      prisma.job.count({ where: { siteId: site.id } }),
+    ]);
     const policyStatusAfter = after?.scrapingPolicyStatus ?? site.scrapingPolicyStatus;
 
     const result: PolicySiteResult = {
@@ -245,6 +251,8 @@ async function realRun(): Promise<number> {
       siteStatus: after?.status ?? site.status,
       policyStatusBefore: site.scrapingPolicyStatus,
       policyStatusAfter,
+      jobsBefore,
+      jobsAfter,
       outcome: decidePolicyOutcome({
         jobEnd: waited.end,
         before: site.scrapingPolicyStatus,
