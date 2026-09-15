@@ -74,8 +74,10 @@ from top-level params, so a setupScript left only inside `_meta` is dropped.
 | האקדמית רמת גן | ACTIVE | 5 | 1124 | `landing-iac--3cdlhs` |
 | הבנק הבינלאומי | ACTIVE | 6 | 4541 | `fibi--4j7v1x` |
 | החברה לאמנות ותרבות | ACTIVE | 5 | 1559 | `tarbut-herzliya--zvh6d2` |
+| החברה לשירותי איכות הסביבה | ACTIVE | 7 | 2549 | `enviro-services--4z2yxo` |
 | המרכז האקדמי לוינסקי־וינגייט | ACTIVE | 6 | 4210 | `l-w--qajne1` |
 | הספארי | ACTIVE | 5 | 1599 | `safari--6r81oc` |
+| הקריה האקדמית אונו | ACTIVE | 6 | 4051 | `ono--o8qwd8` |
 | ויסוצקי | ACTIVE | 6 | 777 | `app-civi--jgqwu7` |
 | חברת החשמל | ACTIVE | 8 | 3910 | `iec--7d28yg` |
 | חיותא | ACTIVE | 3 | — | `chayuta--6foa66` |
@@ -117,7 +119,6 @@ from top-level params, so a setupScript left only inside `_meta` is dropped.
 | נאות המושבה - גולדנקייר | ACTIVE | 3 | 700 | `gcare--2uvz1w` |
 | נטלי | ACTIVE | 7 | 7964 | `app-civi--ai732i` |
 | נטפים | ACTIVE | 8 | 6573 | `comeet--4q2aga` |
-| נירלט | ACTIVE | 4 | — | `nirlat--xluh8r` |
 | סיני סטור | ACTIVE | 3 | 1002 | `sinaistore--uxgr3o` |
 | סלקום | ACTIVE | 6 | 2255 | `cellcom--ugxfm3` |
 | סמלת | ACTIVE | 8 | — | `samelet--i6xe7r` |
@@ -135,9 +136,10 @@ from top-level params, so a setupScript left only inside `_meta` is dropped.
 | קבוצת טובול | ACTIVE | 6 | 1231 | `tuboul--hvbine` |
 | קבוצת יוניון | ACTIVE | 8 | 5649 | `unioncareer--mhsr2v` |
 | קבוצת כהנא | ACTIVE | 6 | 2074 | `kahane--8cvjyo` |
+| קבוצת כלמוביל | ACTIVE | 6 | 5430 | `colmobil--39frf6` |
 | קבוצת שגריר שרותי רכב בעמ | ACTIVE | 6 | 2367 | `shagrir--i3nkhe` |
 | קדמי ביטוח | ACTIVE | 5 | 1209 | `kedmi770--e2pnpm` |
-| קופת חולים מכבי | ACTIVE | 6 | 2145 | `maccabi4u--eazu8j` |
+| קופת חולים מכבי | ACTIVE | 6 | 2407 | `maccabi4u--eazu8j` |
 | קימאמה | ACTIVE | 6 | 2719 | `campkimama--lz6kls` |
 | קישורית | ACTIVE | 3 | 370 | `kishurit--gjuja3` |
 | רזאל מערכות | ACTIVE | 5 | 1337 | `razel--i12d2f` |

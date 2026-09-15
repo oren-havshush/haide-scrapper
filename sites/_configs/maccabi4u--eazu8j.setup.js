@@ -1,12 +1,14 @@
-(function () {
+return (function () {
   return (async function () {
+    var status = null;
     try {
-      var resp = await fetch('/Umbraco/api/SearchJobsApi/FilterJobs', {
+      var resp = await fetch('/api/maccabi/SearchJobsApi/FilterJobs', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body: 'FreeText=&ResultsPerPage=500&PageNumber=0&AdvertisingDestination=1',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ Areas: [], Professions: [], Jobs: [], FreeText: '', ResultsPerPage: '1000', PageNumber: 0, AdvertisingDestination: '1' }),
         credentials: 'same-origin',
       });
+      status = resp.status;
       var data = await resp.json();
       var container = document.querySelector('.search-jobs-results-cont');
       if (!container || !data || !Array.isArray(data.Results)) return -1;
@@ -39,7 +41,9 @@
 
       var btn = document.querySelector('button.load-more-jobs');
       if (btn && btn.parentElement) btn.parentElement.style.display = 'none';
-    } catch (e) {}
+    } catch (e) {
+      console.warn('[setupScript maccabi4u] POST /api/maccabi/SearchJobsApi/FilterJobs failed, HTTP status ' + status + ': ' + (e && e.message));
+    }
     return document.querySelectorAll('.job-item:not(.job-item-clone)').length;
   })();
 })();

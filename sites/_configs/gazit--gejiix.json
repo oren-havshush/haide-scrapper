@@ -1,5 +1,5 @@
 {
-  "_exportedAt": "2026-08-19T11:02:23.032Z",
+  "_exportedAt": "2026-09-15T13:33:14.053Z",
   "_note": "Mirror of the live config. The DB is authoritative; the worker never reads this file. setupScript lives alongside in <slug>.setup.js.",
   "id": "cmszz0jfd000s01kfclgejiix",
   "siteUrl": "https://www.gazit.co.il/%D7%A7%D7%A8%D7%99%D7%99%D7%A8%D7%94/",
