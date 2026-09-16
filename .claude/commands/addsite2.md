@@ -302,9 +302,15 @@ fi
 
 **Immediately wait for ANALYZING to leave** — the server auto-enqueues an ANALYSIS job that will **overwrite your config** if you PUT before it finishes.
 
+**LANDMINE — there is no `GET /api/sites/:id`.** That route exports **PATCH and DELETE
+only**, so a GET returns **405 with an empty body** and `.data.status` is `undefined` on
+every tick — the loop below runs its full 24 iterations and observes nothing, whatever the
+site is doing. Poll the **list route with an exact-URL filter** instead. Cite: `LRN-API-6`.
+
 ```bash
 for i in $(seq 1 24); do   # max 2 min
-  STATUS=$(curl -s "$BASE/api/sites/$SITE_ID" -H "$AUTH" | jq -r '.data.status')
+  STATUS=$(curl -s "$BASE/api/sites?siteUrl=$(jq -rn --arg u "$URL" '$u|@uri')&pageSize=10" \
+    -H "$AUTH" | jq -r '.data[0].status')
   echo "[$i] status=$STATUS"
   [ "$STATUS" != "ANALYZING" ] && break
   sleep 5
@@ -566,7 +572,8 @@ full field table in `form-capture.md` §9.
     "requirements":  { "selector": "...", "confidence": 0.7, "source": "auto" },
     "publishDate":   { "selector": "...", "confidence": 0.7, "source": "auto" }
   },
-  "formCapture": { ... },          // if captured in §8
+  "pageFlow": [],                  // REQUIRED — [] for a listing-only site
+  "formCapture": null,             // REQUIRED — the captured object from §8, or null
   "browserOverrides": { ... },     // if reachability required UA
   "setupScript": "...",            // if fields required injection
   // minPublishDays / minPublishDate — no longer needed; see §10
@@ -574,6 +581,27 @@ full field table in `form-capture.md` §9.
   "bypassCSP": true                // if setupScript XHRs a different subdomain
 }
 ```
+
+**LANDMINE — `pageFlow` and `formCapture` are REQUIRED, and omitting them 400s opaquely.**
+`updateSiteConfigSchema` (`src/lib/validators.ts`) types `pageFlow` as an array and
+`formCapture` as an object-or-`null`; neither is `.optional()`. A payload without them
+returns `VALIDATION_ERROR: Invalid input: expected array, received undefined, Invalid
+input: expected object, received undefined` — which **names neither key**, so the obvious
+next move is to start guessing at `fieldMappings`. The double-PUT (§9.2) means you see it
+twice, 8 s apart, and `verify-config` then fails because no config was ever written, which
+reads like the analyzer race (`LRN-RACE-2`) it is not. Minimum for a listing-only site:
+`"pageFlow": []` and `"formCapture": null` (`null` is also the correct value for an
+email-apply site, §12 Step 5a). Cite: `LRN-API-6`.
+
+**LANDMINE — a PUT REPLACES the config; every optional key you leave out is CLEARED.**
+`saveSiteConfig()` rebuilds `fieldMappings._meta` from the payload alone, so `formCapture`,
+`setupScript`, `browserOverrides`, `pagination`, `loadMoreSelector` and `locationFallback`
+are each written as "the value you sent, else null". This is not a merge. On **any** later
+PUT — a one-line selector fix, a re-PUT to win the analyzer race — **resend the full
+`formCapture` object and the full `setupScript`**, or the apply path and the injected
+fields vanish silently: extraction still succeeds, the DOM-sourced fields still report
+100%, and only the injected ones go empty. Re-run `verify-config` with
+`--expect-form-fields N` after every PUT, not just the first.
 
 **LANDMINE — honored vs ignored fields:**
 The worker honors **only**: `selector`, `extractAttr`, `confidence`, `source`, `capturedOnUrl`.

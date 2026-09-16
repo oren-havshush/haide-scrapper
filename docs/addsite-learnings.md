@@ -1995,3 +1995,87 @@
 - **Generalizes to:** any about page shaped as a timeline, a milestone list, or a news feed —
   common for long-established companies, importers and groups. **Home:** `/company-profile`
   §0 about row / `extractAboutText`.
+
+---
+
+## LRN-LOC-10 — the gazetteer answering is not the gazetteer being right: diff it against the ad's OWN location statement before trusting it
+
+- **Date / site:** 2026-09-15 · enviro-services.co.il / החברה לשירותי איכות הסביבה
+  (`cmu2pfk1v000101nvmm4z2yxo`) — 8-job in-page accordion (WP CPT `dorsim`), no location
+  element, every ad is free prose.
+- **Signal — LRN-LOC-9 says "check whether the gazetteer resolves it first", and it did
+  resolve, confidently, and two of the eight were WRONG.** Running
+  `extractLocationFromGazetteer(title + description)` over the real ad text returned a
+  canonical non-null value for 6/8. The failure is not a miss, it is a confident hit
+  sourced from the wrong sentence:
+  - job 6648 prints **`מיקום המשרה: תל אביב.`** — its own explicit label. The ad also
+    carries an employer boilerplate paragraph ("מתקן הטיפול המרכזי של החברה ממוקם
+    בפארק האקו-תעשייתי נאות חובב"), and the gazetteer returned **`נאות חובב`** — it
+    contradicted the one sentence in the ad that actually states the workplace.
+  - job 6634 names no workplace at all; the only place in the text is a **commute**
+    ("קיים מערך הסעות מבאר שבע"). The gazetteer returned `null` here, but the same
+    sentence shape one ad over (6652, "הגעה- מערך הסעות מסודר ונוח מבאר שבע") is exactly
+    how a shuttle ORIGIN becomes a stored workplace.
+- **Why the naive reading of LRN-LOC-9 walks into it:** its test is "did the gazetteer
+  return something?" That question is only sound on a board whose ads contain nothing but
+  the ad. A single-employer board repeats the company's own address in every posting, so
+  the gazetteer always has a plausible city to find — it just is not this job's city.
+- **Fix — extract only from an explicit location STATEMENT, and rank the sources.** The
+  injected span is not a blanket constant (LRN-LOC-9's failure mode) and not a prose scan
+  (banned, CLAUDE.md): it is anchored, per job, in this order —
+  1. an explicit label: `/מיקום\s*(?:ה?משרה)?\s*[:：]\s*(…)/` → match places inside that
+     segment only. Wins outright, so boilerplate elsewhere in the ad cannot override it.
+  2. else an anchored workplace phrase — `(מפעלנו|מפעלה|מפעל החברה|משרדי החברה|ממוקם|…)`
+     within 30 chars before the place name. Collect **all** matches in document order, so
+     "נוכחות שוטפת במשרדי החברה בתל אביב ובמפעל החברה בנאות חובב" stays multi-city
+     (LRN-LOC-5) instead of losing one.
+  3. else an explicit nationwide phrase (`בכל רחבי הארץ`) → `פריסה ארצית`, a verbatim
+     city.csv row.
+  4. else the literal string `Unknown` — **injected, not left empty**, because an empty
+     location is precisely what re-arms the gazetteer (`normalizer.ts` only runs it when
+     `location` is blank).
+  Place names come from a 2-entry allowlist of the employer's real sites; anything else
+  falls to `Unknown`. Result: 8 jobs, 3 distinct values, `verify-location-csv` clean,
+  1 honest `Unknown`, 1 multi-city.
+- **The check that makes this auditable — run BOTH and diff them.** Print the injected
+  value beside `extractLocationFromGazetteer()` on the same text, per job, before the PUT.
+  The two disagreeing on 2 of 8 rows is the whole finding in one table, and it is the only
+  way to see a wrong-but-confident location: `verify-config`, `addsite-qa` and
+  `verify-jobids` never read location values, and `verify-location-csv` only proves the
+  value is a real city — `נאות חובב` would have passed it while being the wrong city.
+- **Generalizes to:** every single-employer board (accordion, Elementor loop, CPT archive)
+  where each ad repeats the company's address, and any ad that prints commute/shuttle
+  information. **Amends LRN-LOC-9:** its ordering rule stands, but "the gazetteer resolves
+  it" must be read as "the gazetteer agrees with the ad's own location statement".
+  **Home:** Step 4 location / `recipes/setupscript-patterns.md`.
+
+---
+
+## LRN-API-6 — two shapes in the skill's own curl snippets are wrong: `GET /api/sites/:id` is 405, and `PUT /config` rejects a payload missing `pageFlow`/`formCapture`
+
+- **Date / site:** 2026-09-15 · enviro-services.co.il (`cmu2pfk1v000101nvmm4z2yxo`), first
+  observed on a clean onboarding with no local drift.
+- **Signal 1 — the analyzer wait-loop can never observe anything.** `addsite2.md` §4 polls
+  `curl "$BASE/api/sites/$SITE_ID" | jq -r '.data.status'` for up to 2 minutes. That route
+  (`src/app/api/sites/[id]/route.ts`) exports **PATCH and DELETE only** — a GET returns
+  **405** with an empty body, so `.data.status` is `undefined` on every iteration and the
+  loop always runs its full 24 ticks without ever seeing ANALYZING leave. The skill's own
+  note ("the `/:id` GET can return empty for fresh sites") reads as a race; it is not one,
+  it is a method that does not exist.
+  **Use the list route with an exact URL filter instead:**
+  `GET /api/sites?siteUrl=<encoded>&pageSize=10` → `.data[0].status`. One call showed
+  `status=REVIEW, confidence=0.4` immediately.
+- **Signal 2 — the documented config payload 400s.** §9.1 shows a `PUT /api/sites/:id/config`
+  body of `itemSelector` + `fieldMappings` (+ optional keys). `updateSiteConfigSchema`
+  (`src/lib/validators.ts:134`) makes **`pageFlow` (array) and `formCapture` (nullable
+  object) REQUIRED**. Omitting them returns
+  `VALIDATION_ERROR: Invalid input: expected array, received undefined, Invalid input:
+  expected object, received undefined` — which names neither key, so the natural next move
+  is to start guessing at `fieldMappings`. A listing-only site sends `pageFlow: []` and
+  `formCapture: null` (the latter is also the correct value for an email-apply site).
+- **Cost:** the double-PUT race guard means this 400s **twice**, 8 s apart, and the error
+  text points at nothing; then `verify-config` fails for the real reason (no config was
+  ever written) and reads like the analyzer race (`LRN-RACE-2`) it is not.
+- **Generalizes to:** every onboarding — both traps are in the path each site walks, and
+  neither depends on the site. **Home:** `addsite2.md` §4 (wait-for-analyzer) and §9.1
+  (payload shape); fixing the snippets there removes both.
