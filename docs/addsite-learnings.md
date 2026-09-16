@@ -1714,7 +1714,7 @@
   overlap (LRN-SETUP-7), ids identical across two consecutive scrapes.
 - **Watch the invisible characters.** The "strip the `דרישות התפקיד:` label" pass matched 8
   of 9 rows; the 9th carried a **U+200B** after the colon, so `\s` did not match it and the
-  label shipped. Squash `[ ​-‏﻿]` before testing a Hebrew label regex —
+  label shipped. Squash `[\u00A0\u200B-\u200F\uFEFF]` before testing a Hebrew label regex —
   same family of trap as LRN-SETUP-5 (`\b` is ASCII-only).
 - **The old location was outside the gazetteer.** The 2026-06 config hardcoded
   `כל הארץ`, which is **not** in `CSV files/city.csv`; the canonical nationwide value is
@@ -2138,7 +2138,7 @@
   the whole ad as requirements from line one. Only short, single-line label nodes may switch.
 - **Also — drop a bare job-number line.** `מס' משרה-1118` on a line of its own is metadata; the
   number already ships as `externalJobId`. Drop a node matching
-  `^\*?\s*מס['׳`]?\s*משרה\s*[-–—:]?\s*\d+\s*$` (after squashing ` `); a sentence that merely
+  `^\*?\s*מס['׳`]?\s*משרה\s*[-–—:]?\s*\d+\s*$` (after squashing `\u00A0`); a sentence that merely
   contains the number stays.
 - **Verify with a preservation assert that knows the intended drops:** every original line must land
   in exactly one bucket, and the only lines allowed to disappear are requirements labels, a repeated
