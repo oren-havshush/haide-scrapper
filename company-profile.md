@@ -151,9 +151,38 @@ to extract and no keyword will ever reach it.
 → Operator-supplied city (§4.4).
 
 **4.3 The company simply publishes no address.** Common and legitimate. Check the
-contact page, the directions page (`כתובת ותחבורה` / `דרכי הגעה`), the privacy page
-and the footer — the capture already reads all of them. If none carries an address,
-leave the city NULL rather than inferring one from prose.
+contact page, the directions page (`כתובת ותחבורה` / `דרכי הגעה` / `מפת הגעה`), the
+privacy page and the footer — the capture already reads all of them. If none carries an
+address, leave the city NULL rather than inferring one from prose.
+
+A dedicated directions page is tried **before** the contact page since 2026-09-16
+(`pickDirectionsUrl`). Before that, a site linking both "צור קשר" and "מפת הגעה" always
+read the contact page — heara.co.il's address was only on `/107867/map`. A site captured
+before that date with a directions page and no address is worth a `--dry-run --force`
+(§3.1), then a real `--force` if the preview only adds.
+
+**4.5 The logo is drawn into a header banner.** Symptom: `logo …: rejected` for a
+widget icon (Facebook, accessibility) and no other candidate, while the page visibly
+shows a logo. Check every `<img>`, CSS `background-image` and inline SVG near the top: if
+the only match is one wide banner (heara: `new-top-960-124.jpg`, logo plus four photos),
+the capture is right to refuse it — the banner is not a logo.
+→ Crop the logo from the **original image pixels** (load the image URL, `drawImage` the
+region onto a canvas, export PNG — not a page screenshot), and look at the crop. Upload it:
+
+```bash
+curl.exe -X POST "$BASE/api/sites/$SITE_ID/company-logo" -H "$AUTH" \
+  -H "Content-Type: image/png" -H "x-logo-source-url: <banner URL>" \
+  --data-binary "@logo.png"
+```
+
+The server validates magic bytes and size. **The upload does not recompute
+`companyProfileStatus`** — with homepage, about and logo now present, set it yourself:
+`PUT /api/sites/$SITE_ID/company-profile?force=1` with `{"companyProfileStatus":"COMPLETE"}`
+(presence-based: no other column is touched). A later forced re-capture will not find the
+logo again and recomputes PARTIAL; re-set it after one. Cite: `LRN-LOGO-2`.
+
+While looking at the logo, compare it with `companyName`: the logo carries the company's
+own spelling, the page `<title>` often does not (`addsite2.md` §4).
 
 **4.4 Operator-authored values.** A city a human establishes goes through the API,
 not the code:

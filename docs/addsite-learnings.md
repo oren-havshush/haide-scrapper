@@ -2182,3 +2182,85 @@
 - **Generalizes to:** every ACTIVE site with fewer than 10 jobs, and every site whose ids, locations
   or field split come from a `setupScript`. **Home:** Step 11 (scrape) / `worker/lib/scheduledRun.ts`
   / `worker/jobs/scrape.ts` `runSetupScript`.
+
+---
+
+## LRN-SETUP-16 — a page that prints every job as prose in ONE cell, and the owner's job body rules
+
+- **Date / site:** 2026-09-16 · heara.co.il (`cmu3x5es9000j01nvxaxhar00`), legacy LiveSite table
+  page; 12 jobs from 9 headings. Each rule below was raised or confirmed by the owner.
+- **Signal:** triage YELLOW with a top cluster of ~457 — the menu, not the jobs. The jobs are
+  free text in a single `td`: an underlined `title - משרה NNN` heading, `תיאור-`/`דרישות-`/`שכר -`
+  lines, dash rules between jobs, and one closing section (training pay, travel, terms, how to
+  apply) printed once under all of them. No job pages, no repeating element.
+- **1. Dash rules are not the only boundary.** Jobs 200 and 100 have only the underlined heading
+  between them; splitting on dashes alone shipped them as one job. Mark a sentinel before every
+  `<u>` carrying a job number as well as at every dash line.
+- **2. A group posting is split into its tracks.** `משרה 100` lists `משרה 101 - מדריך טיסנאות` …
+  `משרה 107`; each track is a job with the group's shared text, and 100 itself is not published.
+  The page reused 107 for a separate standalone posting — the standalone one owns the number.
+  `בעלי ניסיון מקצועי בתחום:` introduced the track list, so each track fills it with its own field
+  (strip `מדריך` — final kaf `ך`; a `מדריכ` pattern never matches the singular).
+- **3. `לא זמין בעת זו` on a heading = closed.** Skipped by rule, so it returns on its own when the
+  employer removes the marker.
+- **4. Owner body rules, now fleet-wide** (`addsite2.md` *Job body rules*): requirements only in
+  `requirements`; `תיאור-`/`דרישות-` labels dropped; a `שכר…` tail on a requirements line stays in
+  the description; the shared closing section is appended to every job; the page's email
+  instruction ("בציון מספר משרה, פירוט זיקה מקצועית והדרכה") goes to `applicationInfo` with the job
+  number, and the how-to-apply lines and their link row leave the description.
+- **5. `applicationInfo` is single-line.** `normalizeField` collapses its whitespace, so the
+  format is `mailto:<email> - <instruction>`; `addsite-qa` still reports `EMAIL`.
+- **6. A `\u`-escaped U+00A0 written into the script arrived as the raw character.** The file-writing
+  tool decodes `\uXXXX` escapes. The regex still matched, but an invisible character in a regex is
+  the CLAUDE.md trap; build it with `String.fromCharCode(160)`.
+- **Failure mode on the nightly (LRN-WRK-19):** the whole script is one `try`, and the job root is
+  appended only at the end, so any throw yields 0 items → `empty_results` → the scheduled run keeps
+  the stored listings, rather than re-keying ids to hashes.
+- **Generalizes to:** old municipal, association and small-company sites that type their openings
+  into one CMS text block. **Home:** `recipes/setupscript-patterns.md` §13;
+  `sites/_configs/heara--xhar00.setup.js`.
+
+---
+
+## LRN-API-7 — `setupScript` is capped at 8,000 characters, and `verify-config` passes when the PUT was refused
+
+- **Date / site:** 2026-09-16 · heara.co.il (`cmu3x5es9000j01nvxaxhar00`).
+- **Signal:** a script revision grew to 8,262 characters. Both PUTs of the double-PUT returned
+  `VALIDATION_ERROR: Too big: expected string to have <=8000 characters`; `verify-config` then
+  exited 0 (it checks `itemSelector`, field names and form fields — never the script); the next
+  scrape ran the PREVIOUS script and QA, `verify-jobids` and `verify-location-csv` all passed. The
+  only thing that showed the change had not shipped was comparing the stored
+  `fieldMappings._meta.setupScript` with the local file.
+- **Fix:** after every PUT, read the site back from the list route and compare the stored script
+  byte-for-byte; abort the run when it differs. Shrink by cutting comments and duplicated helpers
+  (8,262 → 5,903 with identical output, proven by diffing the dry-run jobs field by field).
+- **Also:** a manual scrape of a REVIEW site that passes the activation gate promotes it to ACTIVE
+  itself, so a following `PATCH {"status":"ACTIVE"}` returns 400 (no same-status transition). Read
+  the status before patching; a 400 there is not a failure.
+- **Generalizes to:** every site with a `setupScript`, and any config edit that grows one.
+  **Home:** `addsite2.md` §9.1 / §9.3.
+
+---
+
+## LRN-LOGO-2 — the logo is drawn into a header banner: the capture is right to refuse it, a human crops it
+
+- **Date / site:** 2026-09-16 · heara.co.il (`cmu3x5es9000j01nvxaxhar00`).
+- **Signal:** `/company-profile` returned PARTIAL with `logo header-img: rejected` — the only
+  candidate was a Facebook "like" icon — while the owner could see the logo top-right. Every
+  `<img>`, CSS background and inline SVG above the fold was checked: the logo exists only inside
+  `new-top-960-124.jpg`, one banner with four photos beside it. Storing the banner would publish
+  photos of children as the company mark.
+- **Fix:** crop from the original image pixels (canvas `drawImage` of the image URL, PNG export),
+  look at the crop, then `POST /api/sites/:id/company-logo` with the raw bytes and
+  `x-logo-source-url` = the banner. **The upload does not recompute `companyProfileStatus`**; set
+  `COMPLETE` with `PUT …/company-profile?force=1` and only that key. A later forced re-capture
+  recomputes PARTIAL (`classifyProfileStatus` sees no logo of its own) — re-set it.
+- **Also — the company name.** Onboarding took `companyName` from the page title
+  (`הארה תכניות העשרה בעמ`); the logo reads `הארה תוכניות העשרה בע"מ`. The logo or printed legal
+  name is the company's own spelling; a `<title>` is typed by whoever built the site.
+- **Also — the address.** The same capture found no address because it read "צור קשר" (phones
+  only) instead of "מפת הגעה" (`/107867/map`, "ממוקמים ברחוב החשמל 5 בקדימה"): one contact page is
+  read, and the contact link always outscored a directions link the vocabulary did not know. Fixed
+  in code (`pickDirectionsUrl`, tried first, contact page still the fallback; commit `533dfd7`).
+- **Generalizes to:** pre-2015 site builders (LiveSite, Wix classic, table layouts) that ship the
+  header as one image. **Home:** `company-profile.md` §4.3 / §4.5; `addsite2.md` §4.

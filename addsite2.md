@@ -295,6 +295,11 @@ if [ -n "$COMPANY" ]; then
 fi
 ```
 
+> **Where the name comes from when the work-list has none:** the company's own spelling —
+> its logo, or its legal name as printed (`בע"מ`) — **not** the page `<title>`. heara.co.il's
+> title read `הארה תכניות העשרה בעמ`; its logo reads `הארה תוכניות העשרה בע"מ`. The public
+> jobs site shows this string as-is (`LRN-LOGO-2`).
+>
 > Keep the JSON UTF-8 / BOM-free (§15); Hebrew company names pass through verbatim.
 > The `addsite-batch.ts` create path already does this PATCH-after-create — **if you
 > create sites with a custom/hand-rolled script, you MUST replicate the PATCH + verify**,
@@ -375,12 +380,34 @@ curl -s -A "$REAL_UA" "$URL" -o listing.html
 |---|---|
 | `title` | Direct text selector inside item. |
 | `externalJobId` | (1) Native job ID attr (`data-job-id`, `data-id`), **or a req number printed in the title** (`"משרה 231: …"` → regex it out). (2) Slug from `detailUrl`. (3) Hash of title+department+location (stable, disambiguated). **Never index-based.** **The worker now backstops this**: when extraction yields no id it synthesises `h-<hash(title|department|detailUrl)>` itself, so 0% fill is no longer possible (`LRN-WRK-17`). A hand-written hash is now an optimisation, not a requirement — a native id is still better, and the run warns `synthesised_external_job_id` when the fallback is used. **CAUTION:** a printed "job number" field (e.g. `numberJob`) can be reused across distinct postings by the same recruiter — verify uniqueness. Prefer the unique record ID (e.g. CMS `_id`) when a printed number collides. If `saved jobs < API count` after scraping, the id field is non-unique. **NAMESPACE a bare numeric req number** (`LRN-ID-11`): `verify-jobids` rejects any id matching `/^(item[-_]?)?\d{1,4}$/` as index-based, and it cannot tell the employer's own `4907` from a row index. Store `<site>-4907`, not `4907` — same stable native key, self-describing, and it clears the gate. Do it on the FIRST config: the id is the dedup key, so prefixing later re-keys every job. Expect `addsite-qa` to then flag the mirror-image suspect (`looks like URL/title slug`) because the code also appears in the detail URL — settle that with evidence (all ids match `^<site>-\d+$`, each code equals its own detail-URL segment, distinct == total) and record it in `adminNote`. |
-| `description` | Often only on the detail page — map `detailUrl` and let worker fetch it. **Locate the body by dumping the FULL visible text** of a detail page (render it, print `innerText`) and finding the prose container — do NOT guess semantic selectors (`.order_description`) and give up when they're absent; the real body may live in a differently-named block (`.job_desc`). **Never substitute metadata (category/area/clinic/department) for a real description** — a 1–2 line metadata string that trips the QA correctness suspect "description present but avg N chars while detail body is >X chars" is a BLOCKER, not shippable (`LRN-SETUP-4`). **If the detail page splits the body into labeled sections (תיאור / דרישות / כישורים / תנאים), the analyzer maps only ONE — merge them all** (setupScript §8). **If the text comes back as one run-on line, preserve block line breaks** via the `structuredText` helper — NEVER `.replace(/\s+/g,' ')` (setupScript §7). **Capture the COMPLETE body — never cherry-pick only the headings you recognise.** A detail-fetch that grabs only `description`+`requirements` silently drops the meta block (employment type, hours, **division/department**) and intro lines that the site shows per job. Route typed meta into its own field, fold the rest into `description` (setupScript §11, `LRN-SETUP-3`). |
+| `description` | Often only on the detail page — map `detailUrl` and let worker fetch it. **Locate the body by dumping the FULL visible text** of a detail page (render it, print `innerText`) and finding the prose container — do NOT guess semantic selectors (`.order_description`) and give up when they're absent; the real body may live in a differently-named block (`.job_desc`). **Never substitute metadata (category/area/clinic/department) for a real description** — a 1–2 line metadata string that trips the QA correctness suspect "description present but avg N chars while detail body is >X chars" is a BLOCKER, not shippable (`LRN-SETUP-4`). **If the detail page splits the body into labeled sections (תיאור / דרישות / כישורים / תנאים), the analyzer maps only ONE — capture them all**, but split them: requirements-class sections go to `requirements`, the rest merge into `description` (setupScript §8, *Job body rules* below). **If the text comes back as one run-on line, preserve block line breaks** via the `structuredText` helper — NEVER `.replace(/\s+/g,' ')` (setupScript §7). **Capture the COMPLETE body — never cherry-pick only the headings you recognise.** A detail-fetch that grabs only `description`+`requirements` silently drops the meta block (employment type, hours, **division/department**) and intro lines that the site shows per job. Route typed meta into its own field, fold the rest into `description` (setupScript §11, `LRN-SETUP-3`). |
 | `detailUrl` | Anchor `href` inside item; must be stable (not JS-generated blob). **Cards with no http href are silently DROPPED** — Navigate Mode builds its output only from collected detail URLs, so a `mailto:`/`tel:`/JS apply target means that job never becomes a row (pac.ac.il: 7 cards, 6 jobs). On a site with mixed apply paths this loses only the odd ones out. Decide deliberately and record it in `adminNote` (`LRN-WRK-16`). |
 | `location` | Direct selector; `setupScript` if embedded in a formatted string or in the title (split on dash); or **hardcode a constant** (inject `.__ai-location`) for a confirmed single-office / nationwide employer — this **overrides the gazetteer** (`locationFallback` only fills when extraction is empty, so it can't fix a wrong gazetteer guess) (`LRN-LOC-1`). |
 | `publishDate` | If not in item DOM → skip (don't block ACTIVE on a missing Tier-B field). |
 | `deadline` | First-class field (dashboard "Application Deadline"). If the job prints an apply cutoff (e.g. `ניתן להגיש מועמדות עד לתאריך D.M.YYYY`), parse → ISO and map it. To **drop past-deadline jobs**, do it in setupScript (no worker drop-expired exists) — setupScript §12, `LRN-WRK-10`. |
-| `requirements` | Detail-page field; usually merge into `description` (setupScript §8) preserving line breaks (§7). On a **Wix repeater** it's a separate `comp-*__item-<suffix>` the analyzer misses — recover via the shared suffix (`LRN-SPA-6`). |
+| `requirements` | **Its own field, never duplicated in `description`** — owner rule, see *Job body rules* below. Route דרישות / כישורים / Qualifications / Skills sections here, preserving line breaks (§7), and remove them from the description (setupScript §8–9, `LRN-SETUP-10/15`). On a **Wix repeater** it's a separate `comp-*__item-<suffix>` the analyzer misses — recover via the shared suffix (`LRN-SPA-6`). |
+
+**Job body rules — the owner's, apply them on the FIRST config (don't wait to be asked):**
+These were each raised as a correction on a live site (heara.co.il, news.ipvsecurity.com,
+enviro-services.co.il — 2026-09-15/16) and confirmed as fleet-wide. They decide *which field*
+text lands in; they never rewrite the employer's words (publish content as-is).
+1. **Requirements live only in `requirements`.** A דרישות / כישורים / Qualifications line is
+   moved, not copied — the description must not repeat it.
+2. **Drop the section labels themselves** (`תיאור-`, `דרישות-`, `תיאור התפקיד:`). The field
+   already says what the text is.
+3. **A pay sentence on a requirements line stays in `description`.** `דרישות - ניסיון בהדרכה…
+   שכר של 75 ש"ח…` → the requirement moves, the `שכר…` part stays. Pay is not a requirement.
+4. **A closing section shared by every job on the page** (training/travel pay, employment terms,
+   "כל המשרות לנשים וגברים כאחד") **is appended to every job's `description`.** A job page shows
+   one job, so text printed once for all of them must travel with each.
+5. **A group posting with numbered sub-tracks becomes one job per track** (`משרה 100` listing
+   `משרה 101 - מדריך טיסנאות`, `משרה 102 - …`). Each track gets the group's shared text plus its
+   own line; the group itself is not published. A number the page also uses for a standalone
+   posting belongs to the standalone posting.
+6. **How-to-apply lines leave the description.** When the apply path is email, the page's own
+   instruction for that email goes to `applicationInfo` with the job's number (Step 5a).
+
+Recipe for a page that prints every job as one block of prose: setupScript §13, `LRN-SETUP-16`.
 
 **Coverage gate — MANDATORY:**
 Establish the true total before submitting. Never silently ship only page 1.
@@ -603,6 +630,16 @@ fields vanish silently: extraction still succeeds, the DOM-sourced fields still 
 100%, and only the injected ones go empty. Re-run `verify-config` with
 `--expect-form-fields N` after every PUT, not just the first.
 
+**LANDMINE — `setupScript` is capped at 8,000 characters, and `verify-config` cannot see a
+rejected script.** A longer script makes the PUT return `VALIDATION_ERROR: Too big: expected
+string to have <=8000 characters` and writes **nothing** — the previous config stays live.
+`verify-config` then still exits 0, because it checks `itemSelector`, field names and form
+fields, never the script; a scrape triggered next runs the **old** script and passes every gate.
+After every PUT, read `fieldMappings._meta.setupScript` back from the list route and compare it
+byte-for-byte with what you sent; stop if it differs. To get under the cap, cut comments and
+duplicated helpers, and prove the shorter script yields identical jobs in the dry-run before
+re-PUTting. Cite: `LRN-API-7`.
+
 **LANDMINE — honored vs ignored fields:**
 The worker honors **only**: `selector`, `extractAttr`, `confidence`, `source`, `capturedOnUrl`.
 It **ignores** (silently): `regex`, `transform`, `extractRegex`, `postProcess`, `extract`.
@@ -633,6 +670,7 @@ npx tsx scripts/addsite-batch.ts verify-config \
 # Exit 2 = config was clobbered → re-PUT and verify again (max 2 retries, then REVIEW)
 ```
 **LANDMINE:** never mark ACTIVE without passing `verify-config`. Exit 2 means the analyzer race won and your config is gone. Cite: `LRN-RACE-2`.
+**Exit 0 does not prove a `setupScript` was saved** — compare the stored script too (§9.1, `LRN-API-7`).
 
 ---
 
@@ -730,6 +768,15 @@ If `likelyEmailApply === true`:
 - **Skip Step 5b entirely.** Set `formCapture: null` (correct for email apply).
 - Map `applicationInfo` on every item — per-item `mailto:` or inject a site-wide
   address via `setupScript`.
+- **If the page says what to put in that email** ("בציון מספר משרה, פירוט זיקה מקצועית"),
+  that instruction goes into `applicationInfo` after the address, with the job's own number
+  inserted — and the how-to-apply lines are removed from `description` (owner rule, heara.co.il
+  2026-09-16):
+  `mailto:jobs@heara.co.il - בציון מספר משרה 101, פירוט זיקה מקצועית והדרכה.`
+  Read the instruction from the page inside the `setupScript` rather than hardcoding it, so a
+  rewording flows through the nightly scrape. It is **one line**: the normalizer collapses
+  whitespace in `applicationInfo`, so line breaks do not survive. `addsite-qa` still reports
+  `formStatus: EMAIL` (it finds the address anywhere in the field). Cite: `LRN-SETUP-16`.
 - Ensure each job has a stable `externalJobId` (native number, detail URL slug, or hash).
 - `formStatus = EMAIL` → Tier-A pass. Proceed to ACTIVE.
 
