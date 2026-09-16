@@ -2079,3 +2079,106 @@
 - **Generalizes to:** every onboarding — both traps are in the path each site walks, and
   neither depends on the site. **Home:** `addsite2.md` §4 (wait-for-analyzer) and §9.1
   (payload shape); fixing the snippets there removes both.
+
+---
+
+## LRN-SETUP-14 — WordPress list indentation ships as EMPTY BULLETS: the page hides the marker, the worker does not
+
+- **Date / site:** 2026-09-16 · enviro-services.co.il (`cmu2pfk1v000101nvmm4z2yxo`), job 66 —
+  the owner reported "empty bullets under תנאי סף and under עדיפות תינתן ל".
+- **Signal:** the stored `requirements` held bare `•` lines — two directly under each sub-head —
+  while the rendered page shows none. Every gate is blind to it: fill is 1.0, the text has real
+  newlines, and `innerText` of the same node shows nothing wrong, because the browser draws no
+  marker for these items. It is only visible in the stored field.
+- **Cause:** the WordPress editor indents a list by wrapping it, level by level, in
+  `<li style="list-style-type: none;">` items that contain only the next list:
+  `<ol><li style="list-style-type:none"><ol><li style="list-style-type:none"><ul><li>real item…`.
+  `domFieldExtract.ts` prefixes `• ` to **every** `<li>` (the marker logic from `ecb8101`), with no
+  test for `list-style-type` or for the item having any text of its own — so each wrapper becomes
+  a bullet with nothing after it.
+- **Fix (per site, in `setupScript`):** before extraction, unwrap every `<li>` that holds a nested
+  `ul`/`ol` and has **no text of its own** (its non-list child nodes are whitespace only): move its
+  children up in place and remove it. The real items keep their native `<li>` and are bulleted
+  normally. Measure it with the same definition — count `<li>` with no own text inside the mapped
+  node — not with `innerText`, which cannot see the bug.
+- **Proof it is load-bearing:** the same dry-run with the unwrap disabled reported `4` empty
+  `<li>` on job 66 and `0` elsewhere; with it, `0` everywhere and identical text on all four jobs.
+  After re-scrape, no stored line on the site is a bare bullet.
+- **Better home, not yet done:** this is a worker defect, not a site quirk — any WordPress board
+  with an indented list hits it. The general fix is in `domFieldExtract.ts`: skip the marker for an
+  `<li>` whose own text is empty. Until then, every site needs the setupScript unwrap. Before
+  choosing, count how many live sites store a bare `•` line.
+- **Generalizes to:** any WordPress / Gutenberg / Classic-editor job body containing a nested or
+  indented list. **Home:** Step 4 description/requirements / `worker/lib/domFieldExtract.ts`.
+
+---
+
+## LRN-SETUP-15 — a single-container job body needs three more cleanups than LRN-SETUP-10's split
+
+- **Date / site:** 2026-09-15/16 · enviro-services.co.il (`cmu2pfk1v000101nvmm4z2yxo`), 8 then 4
+  jobs in a WP CPT accordion; each rule below was raised by the owner.
+- **1. A REPEATED "description" heading can be the requirements block.** Job 1114 labeled both of
+  its blocks `תיאור התפקיד:`; the second was plainly requirements (`השכלה אקדמית- יתרון משמעותי`,
+  `ניסיון אדמיניסטרטיבי- חובה`) but the ad never printed `דרישות`, so LRN-SETUP-10's machine filed
+  it in description and requirements came back NULL. **Fix:** count `^תיאור` label nodes per job; the
+  first keeps the description bucket, a second switches to requirements and its label is dropped.
+  The board removed job 1114 overnight, so the rule is held by a fixture test with a control
+  (rule stripped → requirements empty, block in description), not by the live page.
+- **2. Sub-heads inside requirements must not switch back.** Job 66 prints `תנאי סף:` and
+  `עדיפות תינתן ל:` inside its requirements. LRN-SETUP-10's refinement holds here: switch back only
+  on a description-class label (`תיאור|מיקום|שעות|תנאי המשרה|הערות|להגשת|יש להגיש|נשמח לקבל`), and
+  test requirements-class labels **first** so `תנאי סף` is not caught by the description-class `תנאי`.
+- **3. The legal block is long, so a short-label rule never sees it.** `*המשרה מנוסחת בלשון נקבה…`
+  is ~200 chars / 3 lines; a `< 60 chars, single line` heading test lets it fall into whatever
+  bucket is active — requirements, on job 1113. **Fix:** match the legal openers
+  (`המשרה מיועדת|המשרה מנוסחת|החברה פועלת|סודיות מובטחת|המודעה מנוסחת`) regardless of length and
+  switch to description.
+- **Also — keep an intro line from triggering a switch.** Job 1111 opens with
+  `לחברה … דרוש/ה: חשמלאי/ת מוסמך/ת`; a `דרוש` trigger (it is in LRN-SETUP-10's list) would file
+  the whole ad as requirements from line one. Only short, single-line label nodes may switch.
+- **Also — drop a bare job-number line.** `מס' משרה-1118` on a line of its own is metadata; the
+  number already ships as `externalJobId`. Drop a node matching
+  `^\*?\s*מס['׳`]?\s*משרה\s*[-–—:]?\s*\d+\s*$` (after squashing ` `); a sentence that merely
+  contains the number stays.
+- **Verify with a preservation assert that knows the intended drops:** every original line must land
+  in exactly one bucket, and the only lines allowed to disappear are requirements labels, a repeated
+  `תיאור` label and the bare job-number line. Anything else missing is content loss.
+- **Generalizes to:** any single-container Hebrew job body — WP CPT accordions, Elementor tabs,
+  in-house boards. **Home:** Step 4 description/requirements / `recipes/setupscript-patterns.md` §8.
+  Reference: `sites/_configs/enviro-services--4z2yxo.setup.js`.
+
+---
+
+## LRN-WRK-19 — the nightly sweep protects small boards from neither a sharp drop nor a failing setupScript
+
+- **Date / site:** 2026-09-16 · enviro-services.co.il (`cmu2pfk1v000101nvmm4z2yxo`) — the board
+  went from 8 jobs to 4 overnight (5 unpublished, 1 new), confirmed against
+  `wp-json/wp/v2/dorsim`, and the author was visibly mid-edit: one probe saw the new job with no
+  department and no apply element; two later loads had both.
+- **1. The drop guard does not cover a board under 10 jobs.** `isSuspiciousDrop`
+  (`worker/lib/scheduledRun.ts`) fires only when `previousCount >= 10` **and**
+  `newCount < previousCount * 0.5` (`SWEEP_DROP_MIN_PREVIOUS` / `SWEEP_DROP_KEEP_RATIO`). The
+  baseline is the site's current `Job` row count (`scrape.ts`, `prisma.job.count`), and the guard
+  runs on scheduled runs only — a manual scrape never checks it. So on a small board, a scrape that
+  lands during a partial render, or while the author is mid-edit, commits the smaller set:
+  scrape is delete-and-recreate, and the missing rows are gone. A genuine 8 → 4 turnover and a
+  half-rendered page are indistinguishable to it.
+- **2. A throwing `setupScript` is logged and ignored, and the run still succeeds.**
+  `runSetupScript` (`scrape.ts`) catches every error and only `console.warn`s. Extraction then runs
+  on the un-enriched DOM: every field the script injects comes back empty, and the worker quietly
+  fills the gaps — `externalJobId` becomes a synthesised `h-<hash>` (every row RE-KEYED; only a
+  `synthesised_external_job_id` warning on the run), `location` falls to the gazetteer (LRN-LOC-10:
+  confidently wrong on this board), and a moved-node description/requirements split collapses back
+  into one field. None of this changes site status on a scheduled run.
+- **What this means when writing a setupScript for a nightly-scanned site:** there is no second
+  chance and no alarm. Guard every `querySelector` result before use, wrap any `fetch` in its own
+  `try`, and never let one item's failure throw out of the loop — the script must degrade per item,
+  not per page. A dry-run against the live page cannot prove this; it only proves today's markup.
+- **Also:** a site scraped manually is skipped by the sweep for `SWEEP_FRESH_WINDOW_HOURS` (20h)
+  after its last success, so onboarding late in the day means its first scheduled scan is the
+  night after next. And sweep history (`/api/dashboard/sweeps`) records every run as `manual` /
+  `manual-single`, even timer-started ones — tell a nightly run apart by `selectedCount`, not
+  `trigger`.
+- **Generalizes to:** every ACTIVE site with fewer than 10 jobs, and every site whose ids, locations
+  or field split come from a `setupScript`. **Home:** Step 11 (scrape) / `worker/lib/scheduledRun.ts`
+  / `worker/jobs/scrape.ts` `runSetupScript`.
