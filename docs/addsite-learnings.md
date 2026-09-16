@@ -2264,3 +2264,87 @@
   in code (`pickDirectionsUrl`, tried first, contact page still the fallback; commit `533dfd7`).
 - **Generalizes to:** pre-2015 site builders (LiveSite, Wix classic, table layouts) that ship the
   header as one image. **Home:** `company-profile.md` §4.3 / §4.5; `addsite2.md` §4.
+
+---
+
+## LRN-HQ-1 — a city with no street behind it beat the company's real street address
+
+- **Date / site:** 2026-09-16 · news.ipvsecurity.com/דרושים (`cmu41l9qd000v01nviy5knkts`),
+  IPV Security. Raised by the owner: "why did you write Tel Aviv if the address is in Raanana?"
+- **Signal:** `/company-profile` returned `WRITTEN COMPLETE … address city=תל אביב-יפו`. Every
+  gate passed. The real address, `זרחין 10 ת.ד. 4330 רעננה`, is printed on
+  `news.ipvsecurity.com/contacts/` — the jobs subdomain — and the phone on both sites is `09-7430130`
+  (a Sharon area code).
+- **How it went wrong — two weak sources, each accepted:**
+  1. **City:** ipvsecurity.com's JSON-LD `PostalAddress` is `{"addressLocality":"Tel Aviv","addressCountry":"IL"}`
+     — no `streetAddress`. The city cascade tries `JSON-LD addressLocality` second, right after an
+     operator value, so a bare locality wins with nothing behind it. The page's visible text never
+     states an address; "Tel Aviv" appears only as a client ("Serving Tel Aviv Municipality").
+  2. **Address:** the rules found no address, so the LLM fallback (`wanted: hq_address`) returned
+     `תל אביב` — a city, not an address — and it was stored as `companyHqAddress`.
+  3. **The street address was never read:** the homepage is derived from the site URL
+     (`news.` stripped → `ipvsecurity.com`), so the contacts page on the jobs subdomain is outside
+     the capture.
+- **Fix (this site):** `PUT /company-profile?force=1` with only `companyHqAddress`, then
+  `PUT /company-hq-city` with `evidence.kind: "operator"`.
+- **Rule:** after a capture, compare the city with every street address the company prints —
+  including pages on the jobs site's own host — and with the phone area code. A JSON-LD locality
+  with no street, or an "address" that is only a city name, is weak evidence; a printed street
+  address beats it. On a conflict, ask the owner rather than ship the capture.
+- **Generalizes to:** companies whose marketing site was rebuilt (JSON-LD filled in by an SEO plugin
+  or template) while an older site — a blog, news or careers subdomain — still carries the real
+  contact page. **Home:** `company-profile.md` §3.1.
+
+---
+
+## LRN-HQ-2 — a hand-corrected address is not protected from a forced re-capture; only the city is
+
+- **Date / site:** 2026-09-16 · news.ipvsecurity.com (`cmu41l9qd000v01nviy5knkts`), after LRN-HQ-1.
+- **Signal (from code, not an incident):** `captureSite` resolves an operator-authored city first
+  (`scripts/company-profile.ts`, `authoredCity` from `companyHqCitySource`), so a `--force`
+  re-capture keeps `רעננה`. `companyHqAddress` has no authorship column: `--force` re-derives it
+  (here, the LLM's `תל אביב` again) and `saveCompanyProfile` writes it because the key is present.
+- **Result:** the corrected pair would split — address `תל אביב`, city `רעננה` — and nothing flags it.
+- **Rule:** before any `--force` re-capture, list the sites whose address was corrected by hand
+  (look for `companyHqCitySource` = `operator`, and check the admin note), and re-apply the address
+  afterwards. The code fix would be an address source column mirroring `companyHqCitySource`;
+  not done.
+- **Generalizes to:** every hand-corrected company field except the city. **Home:**
+  `company-profile.md` §4.4.
+
+---
+
+## LRN-AGE-1 — a page with no job dates publishes years-old jobs as fresh, and no gate notices
+
+- **Date / site:** 2026-09-16 · news.ipvsecurity.com/דרושים (`cmu41l9qd000v01nviy5knkts`).
+- **Signal:** two English jobs (CISO, Head of Ethical Hackers Team) in a WordPress accordion, no
+  dates anywhere. The blog's RSS feed (`/feed/`) has `lastBuildDate` 2020-04-01; the latest post is
+  from 2019–2020; `wp-json` is closed (401); the company's current site, ipvsecurity.com, has no
+  careers page. The page still carries an unrendered `[easy-social-share]` shortcode — a plugin
+  removed long ago.
+- **Why nothing catches it:** `ageBucket` is computed from `publishDate`. With no date it is null,
+  and a null bucket shows no age badge — the same as a job posted today. Triage, QA,
+  `verify-jobids` and `verify-location-csv` all passed, and QA returned ACTIVE.
+- **What to do:** when a site gives no job dates, spend one request on a staleness signal — WordPress
+  `/feed/` `lastBuildDate`, a sitemap `lastmod`, the copyright year, dead shortcodes — and tell the
+  owner before activating. It is the owner's call, not a SKIP rule: here the owner chose ACTIVE,
+  with an admin note asking someone to confirm the roles are still open.
+- **Generalizes to:** "דרושים" pages on company blogs, news subdomains and old WordPress sites.
+  **Home:** `addsite2.md` §10.
+
+---
+
+## LRN-API-8 — `/api/sites?search=` is silently ignored; a same-host duplicate check needs `urlSearch`
+
+- **Date / site:** 2026-09-16 · news.ipvsecurity.com (duplicate check before create).
+- **Signal:** `GET /api/sites?search=ipvsecurity&pageSize=10` returned `total 192` — every site,
+  unfiltered, with no error. `urlSearch` is the parameter the route reads
+  (`src/app/api/sites/route.ts`): `urlSearch=ipvsecurity` → `total 1`, `urlSearch=heara.co.il` →
+  `total 1`. There is also `companyNameSearch`.
+- **Why it matters:** §3 checks only variants of the exact URL (slash, http/https, www). A second
+  jobs page for the same employer on another path or subdomain is invisible to it, and a guessed
+  parameter looks like it worked because it returns rows.
+- **Fix:** add a host-level check: `urlSearch=<registrable domain>`, plus `companyNameSearch` when
+  the company is known. A hit is not automatically a duplicate (one host can serve several employers,
+  and a company can have two boards) — look at it before creating.
+- **Generalizes to:** every onboarding. **Home:** `addsite2.md` §3.

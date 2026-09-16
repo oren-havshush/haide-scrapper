@@ -260,6 +260,17 @@ curl -s "$BASE/api/sites?siteUrl=$(python3 -c 'import urllib.parse,sys; print(ur
 ```
 Also check: trailing-slash variant, http↔https swap, www/no-www prefix.
 
+**Then check the host, not just the URL.** A second jobs page for the same employer on
+another path or subdomain matches none of the variants above. Use `urlSearch` (partial
+match on `siteUrl`) and, when the company is known, `companyNameSearch`:
+```bash
+curl -s "$BASE/api/sites?urlSearch=<registrable-domain>&pageSize=10" -H "$AUTH" | jq '.data[]? | {id, siteUrl, status}'
+```
+**LANDMINE:** `?search=` is not a parameter — it is silently ignored and returns every
+site, which looks like a result. A host hit is not automatically a duplicate (one host
+can serve several employers; a company can run two boards) — look before creating.
+Cite: `LRN-API-8`.
+
 | Result | Action |
 |---|---|
 | Status `ACTIVE` | Report existing site, no action. Log `ACTIVE (already existed)`. |
@@ -681,6 +692,14 @@ The worker keeps every job regardless of age and assigns an `ageBucket` field
 at scrape time: `fresh` / `d90` / `d180` / `d365`. Old jobs surface in the
 dashboard with colored age-counter badges; the Jobs page age-filter lets you
 drill by bucket. You no longer need to gate scrapes on publish age.
+
+**No dates = no bucket = looks fresh.** `ageBucket` comes from `publishDate`; a job
+without one gets no badge, exactly like a job posted today, and no gate notices. When
+a site gives no job dates, spend one request on a staleness signal — WordPress `/feed/`
+`lastBuildDate`, a sitemap `lastmod`, dead shortcodes like `[easy-social-share]` — and
+**tell the owner before activating**. It is the owner's decision, not a SKIP rule; record
+it in `adminNote`. news.ipvsecurity.com: feed last built 2020-04-01, all gates passed,
+owner chose ACTIVE with a note to confirm the roles (`LRN-AGE-1`).
 
 Existing sites that already have `minPublishDate` or `minPublishDays` in their
 config are unaffected — those keys are **silently ignored** at scrape time.

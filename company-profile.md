@@ -125,6 +125,12 @@ Two questions, both answered by eye:
    a brand they carry (§7.7).
 2. **Is that copy the company describing ITSELF, today?** A dated milestone, a product
    launch or a press release is real company prose and still the wrong field (§7.8).
+3. **Does the city agree with every street address the company prints?** Check the jobs
+   site's own host too — a blog, news or careers subdomain is outside the capture — and the
+   phone area code. A JSON-LD `addressLocality` with no `streetAddress`, or an `llm` address
+   that is only a city name, is weak: a printed street address beats it. On a conflict, ask
+   the owner. ipvsecurity.com stored `תל אביב-יפו` from a bare locality while its jobs
+   subdomain printed `זרחין 10, רעננה` (`LRN-HQ-1`).
 
 **Resolve any doubt BEFORE the real run.** `companyAbout`, `companyLogoPath` and
 `companyProfileAt` are write-once (§1.1): noting a reservation and shipping anyway
@@ -199,6 +205,13 @@ off-list spelling or a region is a 400 — and records **who authored it** in
 needing a hand-supplied city are exactly those already captured without one, so a
 later `--force` re-capture finds no city again and would otherwise write NULL
 straight over the human's answer. Recorded authority is what stops it.
+
+**Only the city has that protection.** A hand-corrected address is written with
+`PUT /company-profile?force=1` and only the `companyHqAddress` key, and nothing records
+who wrote it: a later `--force` re-capture re-derives the address and overwrites it,
+while keeping the operator's city — the pair splits silently. Before a forced re-capture,
+find the sites whose address was corrected by hand and re-apply it afterwards
+(`LRN-HQ-2`).
 
 `evidence.kind` is one of:
 
