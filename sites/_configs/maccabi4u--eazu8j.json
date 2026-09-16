@@ -1,5 +1,5 @@
 {
-  "_exportedAt": "2026-08-17T15:34:43.997Z",
+  "_exportedAt": "2026-09-16T14:18:57.036Z",
   "_note": "Mirror of the live config. The DB is authoritative; the worker never reads this file. setupScript lives alongside in <slug>.setup.js.",
   "id": "cmpb717o5002c01ls07eazu8j",
   "siteUrl": "https://www.maccabi4u.co.il/careers/search-job-positions/?",
@@ -9,7 +9,7 @@
   "pageFlow": [],
   "fieldMappings": {
     "_meta": {
-      "savedAt": "2026-06-10T18:57:23.943Z",
+      "savedAt": "2026-09-15T13:29:25.433Z",
       "pagination": null,
       "formCapture": {
         "fields": [
@@ -327,11 +327,14 @@
         "formSelector": "#JoinMaccabiCareerForm"
       },
       "itemSelector": ".job-item:not(.job-item-clone)",
+      "minPublishDate": null,
+      "minPublishDays": null,
       "revealSelector": null,
       "listingSelector": ".search-jobs-results-cont",
       "applyLoginReason": null,
       "browserOverrides": null,
       "loadMoreSelector": null,
+      "locationFallback": null,
       "originalMappings": null,
       "applyRequiresLogin": false
     },

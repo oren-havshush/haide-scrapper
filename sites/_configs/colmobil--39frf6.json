@@ -1,0 +1,97 @@
+{
+  "_exportedAt": "2026-09-16T14:18:38.702Z",
+  "_note": "Mirror of the live config. The DB is authoritative; the worker never reads this file. setupScript lives alongside in <slug>.setup.js.",
+  "id": "cmtprk0bt000201rwti39frf6",
+  "siteUrl": "https://www.colmobil.co.il/career-in-colmobil/jobs/",
+  "companyName": "קבוצת כלמוביל",
+  "status": "ACTIVE",
+  "setupScriptFile": "colmobil--39frf6.setup.js",
+  "pageFlow": [],
+  "fieldMappings": {
+    "_meta": {
+      "savedAt": "2026-09-06T12:17:31.790Z",
+      "pagination": null,
+      "formCapture": {
+        "fields": [
+          {
+            "name": "FirstName",
+            "label": "שם פרטי",
+            "tagName": "input",
+            "required": true,
+            "fieldType": "text"
+          },
+          {
+            "name": "LastName",
+            "label": "שם משפחה",
+            "tagName": "input",
+            "required": true,
+            "fieldType": "text"
+          },
+          {
+            "name": "MobilePhone",
+            "label": "טלפון",
+            "tagName": "input",
+            "required": true,
+            "fieldType": "tel"
+          },
+          {
+            "name": "cvFile",
+            "label": "העלאת קו\"ח",
+            "tagName": "input",
+            "required": true,
+            "fieldType": "file"
+          }
+        ],
+        "method": "post",
+        "actionUrl": "https://www.colmobil.co.il/career-in-colmobil/jobs/",
+        "formSelector": "form.job-cv-form"
+      },
+      "itemSelector": "a.job-card-wrap",
+      "minPublishDate": null,
+      "minPublishDays": null,
+      "revealSelector": null,
+      "listingSelector": null,
+      "applyLoginReason": null,
+      "browserOverrides": {
+        "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+        "extraHeaders": {
+          "accept-language": "he-IL,he;q=0.9,en-US;q=0.8,en;q=0.7"
+        }
+      },
+      "loadMoreSelector": null,
+      "locationFallback": null,
+      "originalMappings": null,
+      "applyRequiresLogin": false
+    },
+    "title": {
+      "source": "auto",
+      "selector": "h3.position",
+      "confidence": 0.95
+    },
+    "location": {
+      "source": "auto",
+      "selector": ".__ai-location",
+      "confidence": 0.9
+    },
+    "detailUrl": {
+      "source": "auto",
+      "selector": ".__ai-detailurl",
+      "confidence": 0.9
+    },
+    "department": {
+      "source": "auto",
+      "selector": ".__ai-department",
+      "confidence": 0.8
+    },
+    "description": {
+      "source": "auto",
+      "selector": ".__ai-description",
+      "confidence": 0.9
+    },
+    "externalJobId": {
+      "source": "auto",
+      "selector": ".__ai-jobid",
+      "confidence": 0.95
+    }
+  }
+}

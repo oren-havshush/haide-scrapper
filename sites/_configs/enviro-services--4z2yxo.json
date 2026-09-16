@@ -1,0 +1,68 @@
+{
+  "_exportedAt": "2026-09-16T14:18:38.385Z",
+  "_note": "Mirror of the live config. The DB is authoritative; the worker never reads this file. setupScript lives alongside in <slug>.setup.js.",
+  "id": "cmu2pfk1v000101nvmm4z2yxo",
+  "siteUrl": "https://enviro-services.co.il/blog/category/job/",
+  "companyName": "החברה לשירותי איכות הסביבה",
+  "status": "ACTIVE",
+  "setupScriptFile": "enviro-services--4z2yxo.setup.js",
+  "pageFlow": [],
+  "fieldMappings": {
+    "_meta": {
+      "savedAt": "2026-09-16T09:29:41.875Z",
+      "pagination": null,
+      "formCapture": null,
+      "itemSelector": "article.dorsim-item",
+      "minPublishDate": null,
+      "minPublishDays": null,
+      "revealSelector": null,
+      "listingSelector": null,
+      "applyLoginReason": null,
+      "browserOverrides": null,
+      "loadMoreSelector": null,
+      "locationFallback": null,
+      "originalMappings": null,
+      "applyRequiresLogin": false
+    },
+    "title": {
+      "source": "auto",
+      "selector": ".dorsim-col--name",
+      "confidence": 0.95
+    },
+    "location": {
+      "source": "auto",
+      "selector": ".__ai-location",
+      "confidence": 0.9
+    },
+    "department": {
+      "source": "auto",
+      "selector": ".dorsim-col--dept",
+      "confidence": 0.9
+    },
+    "description": {
+      "source": "auto",
+      "selector": ".__ai-desc",
+      "confidence": 0.9
+    },
+    "publishDate": {
+      "source": "auto",
+      "selector": ".__ai-publishdate",
+      "confidence": 0.85
+    },
+    "requirements": {
+      "source": "auto",
+      "selector": ".__ai-req",
+      "confidence": 0.85
+    },
+    "externalJobId": {
+      "source": "auto",
+      "selector": ".__ai-jobid",
+      "confidence": 0.95
+    },
+    "applicationInfo": {
+      "source": "auto",
+      "selector": ".dorsim-apply__email",
+      "confidence": 0.9
+    }
+  }
+}
