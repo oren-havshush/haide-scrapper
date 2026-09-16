@@ -72,6 +72,7 @@ from top-level params, so a setupScript left only inside `_meta` is dropped.
 | גילאר | ACTIVE | 6 | — | `gilar--h7463m` |
 | גלוברנדס | ACTIVE | 6 | 1635 | `globrands--5akm6u` |
 | האקדמית רמת גן | ACTIVE | 5 | 1124 | `landing-iac--3cdlhs` |
+| הארה תוכניות העשרה בע"מ | ACTIVE | 6 | 6423 | `heara--xhar00` |
 | הבנק הבינלאומי | ACTIVE | 6 | 4541 | `fibi--4j7v1x` |
 | החברה לאמנות ותרבות | ACTIVE | 5 | 1559 | `tarbut-herzliya--zvh6d2` |
 | המרכז האקדמי לוינסקי־וינגייט | ACTIVE | 6 | 4210 | `l-w--qajne1` |
