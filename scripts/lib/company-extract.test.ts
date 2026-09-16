@@ -32,6 +32,7 @@ import {
   parseJsonLdOrganization,
   pickAboutUrl,
   pickContactUrl,
+  pickDirectionsUrl,
   sanitizeModelText,
   type HarvestedLink,
   type PageHarvest,
@@ -347,6 +348,68 @@ function testOfficeListRuns() {
   assert.deepEqual(extractOfficeListRuns(""), []);
 }
 
+function testDirectionsUrl() {
+  // Verbatim from heara.co.il's navigation. The address lives ONLY on /107867/map;
+  // the contact page lists phone numbers. pickContactUrl() resolved to the contact
+  // page and the capture stored no address.
+  const heara = "https://www.heara.co.il/107867/";
+  const map = "https://www.heara.co.il/107867/map";
+  const sitemap = "https://www.heara.co.il/site/detail/siteMap/index.asp?depart_id=107867";
+  const starMap = "https://www.heara.co.il/107867/%D7%9E%D7%A4%D7%AA-%D7%9B%D7%95%D7%9B%D7%91%D7%99%D7%9D";
+  const links: HarvestedLink[] = [
+    { href: "https://www.heara.co.il/107867/contact", text: "צור קשר", inChrome: true },
+    { href: map, text: "מפת הגעה", inChrome: true },
+    { href: starMap, text: "מפת כוכבים", inChrome: true },
+    { href: sitemap, text: "[מפת האתר]", inChrome: true },
+  ];
+  assert.equal(pickDirectionsUrl(links, heara), map, "the directions page, not the contact page");
+
+  // Each signal must stand alone (see the "כתובת" note in testContactUrl).
+  assert.equal(
+    pickDirectionsUrl([{ href: map, text: "לפרטים נוספים", inChrome: true }], heara),
+    map,
+    "a whole /map path segment is enough",
+  );
+  assert.equal(
+    pickDirectionsUrl(
+      [{ href: "https://www.heara.co.il/107867/page-17", text: "מפת הגעה", inChrome: true }],
+      heara,
+    ),
+    "https://www.heara.co.il/107867/page-17",
+    "the link text 'מפת הגעה' is enough",
+  );
+
+  // Other maps are not directions.
+  assert.equal(
+    pickDirectionsUrl(
+      [
+        { href: sitemap, text: "[מפת האתר]", inChrome: true },
+        { href: starMap, text: "מפת כוכבים", inChrome: true },
+        { href: "https://www.heara.co.il/sitemap.xml", text: "sitemap", inChrome: true },
+      ],
+      heara,
+    ),
+    null,
+    "sitemap / star-map product pages are not directions pages",
+  );
+  // heara's own sitemap path is 4 segments deep, and the depth penalty alone
+  // rejects it — so it cannot prove `map` is matched as a WHOLE segment. A
+  // shallow /sitemap/ (the WordPress default) can.
+  assert.equal(
+    pickDirectionsUrl(
+      [{ href: "https://www.heara.co.il/sitemap/", text: "לכל הדפים", inChrome: true }],
+      heara,
+    ),
+    null,
+    "a shallow /sitemap/ path is not a /map segment",
+  );
+  assert.equal(
+    pickDirectionsUrl([{ href: "https://maps.google.com/?q=heara", text: "מפת הגעה", inChrome: true }], heara),
+    null,
+    "off-host map links are refused",
+  );
+}
+
 function testContactUrl() {
   const imj = "https://www.imj.org.il/he/";
   assert.equal(
@@ -393,6 +456,8 @@ function testContactUrl() {
     ),
     null,
   );
+
+  testDirectionsUrl();
 
   const prose =
     "אקמה בעמ הוקמה בשנת 1998 ומעסיקה כיום כמאתיים עובדים בישראל ובאירופה. " +
