@@ -53,7 +53,7 @@ const LABEL = /^\s*מיקום(\s+המשרה)?\s*:?\s+/;
 export const LOCATION_ALIAS: Readonly<Record<string, string>> = {
   מרכז: "אזור מרכז", המרכז: "אזור מרכז", "אזור המרכז": "אזור מרכז",
   "גוש דן": "אזור מרכז", "מרכז גוש דן": "אזור מרכז", "מרכז-גוש דן": "אזור מרכז",
-  "אזור גוש דן": "אזור מרכז", "אזור תל אביב": "תל אביב-יפו",
+  "אזור גוש דן": "אזור מרכז",
   צפון: "אזור צפון", הצפון: "אזור צפון", "אזור הצפון": "אזור צפון",
   דרום: "אזור דרום", הדרום: "אזור דרום", "אזור הדרום": "אזור דרום", הנגב: "אזור דרום",
   שפלה: "אזור שפלה", השפלה: "אזור שפלה", "אזור השפלה": "אזור שפלה",
@@ -62,7 +62,10 @@ export const LOCATION_ALIAS: Readonly<Record<string, string>> = {
   'ירושלים ויו"ש': "אזור ירושלים",
   "אילת והערבה": "אזור אילת", "אילת והסביבה": "אזור אילת",
   "כל הארץ": "פריסה ארצית", ארצי: "פריסה ארצית", "כלל הארץ": "פריסה ארצית",
-  "חיפה והקריות": "חיפה", "חיפה וקריות": "חיפה",
+  // NOTE: no entry here may map an AREA onto a single city. A region key is
+  // fine when its value is itself a region ("ירושלים יו\"ש" -> "אזור ירושלים"):
+  // that keeps the area the ad actually gave. Removed 2026-09-17 for turning an
+  // area into a city the ad never stated — see AREA_LABEL below.
   // abbreviations
   'ת"א': "תל אביב-יפו", "תל אביב": "תל אביב-יפו", 'ת"א-יפו': "תל אביב-יפו",
   'פ"ת': "פתח תקווה", 'ראשל"צ': "ראשון לציון", 'ב"ש': "באר שבע", 'ר"ג': "רמת גן",
@@ -104,6 +107,30 @@ export const LOCATION_EN: Readonly<Record<string, string>> = {
  * needle first, before the bare word is ever considered.
  */
 const SCAN_DENYLIST: ReadonlySet<string> = new Set(["שדרות", "אזור"]);
+
+/**
+ * Compound labels that name an AREA AROUND a city rather than the city, and
+ * whose area has no entry of its own in city.csv. They resolve to nothing.
+ *
+ * Deleting their alias entries is not enough on its own: "חיפה וקריות" leads
+ * with a real city name, so the scanner below would find "חיפה" at offset 0 and
+ * re-create exactly the collapse the alias removal was meant to stop.
+ *
+ * This is the tikshoov 4082 case. That ad names no place at all — no
+ * "מיקום המשרה:" line, a title ending in the Haifa district צ'ק פוסט — and its
+ * only signal was the board's bucket "חיפה וקריות", which spans Haifa AND
+ * קרית אתא / קרית מוצקין / קרית ביאליק. Publishing "חיפה" asserted a city the
+ * employer never gave, and nothing downstream repairs that (LRN-LOC-1).
+ *
+ * Note these are NOT the same as the region aliases kept above: "אזור מרכז",
+ * "אזור ירושלים" and "פריסה ארצית" ARE city.csv entries, so a bucket that maps
+ * onto one of them loses nothing.
+ */
+const AREA_LABEL: ReadonlySet<string> = new Set([
+  "חיפה וקריות",
+  "חיפה והקריות",
+  "אזור תל אביב",
+]);
 
 function levenshtein1(a: string, b: string): boolean {
   if (Math.abs(a.length - b.length) > 1) return false;
@@ -203,6 +230,9 @@ export function normalizeLocations(raw: string | null | undefined): string[] {
 
   const out: string[] = [];
   for (const part of s.split(/\s*[,|/;]\s*/).map((x) => x.trim()).filter(Boolean)) {
+    // An area-around-a-city label contributes nothing — and must not reach the
+    // scanner, which would pick the city out of its first word.
+    if (AREA_LABEL.has(part)) continue;
     const direct = resolvePart(part);
     if (direct) {
       if (!out.includes(direct)) out.push(direct);

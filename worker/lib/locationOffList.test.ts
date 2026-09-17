@@ -12,6 +12,7 @@
 import {
   normalizeLocations,
   isCanonicalLocation,
+  isRegionLocation,
   LOCATION_ALIAS,
   LOCATION_EN,
 } from "./locationNormalize";
@@ -170,6 +171,74 @@ console.log("# rule 3 — שדרות and אזור are never matched as a bare or
     extractLocationFromGazetteer("מיקום המשרה: שדרות"),
     "שדרות",
     "gazetteer: a labeled שדרות is still the city",
+  );
+}
+
+// ---------------------------------------------------------------------------
+console.log("# rule 4 — a region label never collapses into a city it does not name");
+// ---------------------------------------------------------------------------
+// tikshoov job 4082 (stored as tikshoov-4082 on site cmu5mleu7000c01p950bo7eqx)
+// is the case that found this. Its ad names NO place: the title is
+// "מנהל/ת צוות למוקד חברת חשמל - צ'ק פוסט" (צ'ק פוסט is a Haifa district, not a
+// city.csv row), there is no "מיקום המשרה:" line, and the body names nothing.
+// Its only location signal is the board's own area bucket, "חיפה וקריות" —
+// Haifa AND the Krayot, which spans קרית אתא / קרית מוצקין / קרית ביאליק.
+// The alias table mapped that straight to "חיפה", so the rebuild published a
+// city the employer never stated. A region is not a spelling variant.
+{
+  const areaLabels = ["חיפה וקריות", "חיפה והקריות", "אזור תל אביב"];
+  for (const label of areaLabels) {
+    eq(normalizeLocations(label), [], `the area label ${JSON.stringify(label)} names no single city`);
+    assert(!(label in LOCATION_ALIAS), `${JSON.stringify(label)} is gone from LOCATION_ALIAS`);
+  }
+
+  // 4082's own location signals — the only two the config can read. Its ad has
+  // no "מיקום המשרה:" line at all, so if neither of these yields a city, the
+  // row is honestly Unknown.
+  const j4082 = {
+    title: "מנהל/ת צוות למוקד חברת חשמל  - צ'ק פוסט",
+    jobType: "חיפה וקריות",
+  };
+  eq(normalizeLocations(j4082.jobType), [], "4082: the bucket yields no city");
+  eq(normalizeLocations(j4082.title), [], "4082: the title yields no city");
+  eq(normalizeLocations("צ'ק פוסט"), [], "4082: the district alone is not a city");
+  // NOT asserted here: passing 4082's whole BODY through normalizeLocations
+  // returns ["חניתה"] — the edit-distance-1 tail reads "חניכה" (mentoring) as
+  // the kibbutz חניתה. That is a separate defect of the same family as
+  // LRN-LOC-6's "מיקום"->"יקום", not a region collapse, and no worker path
+  // feeds a whole body to this function. Left for its own change.
+
+  // No alias may map an area onto a single city. A region KEY is fine as long
+  // as it resolves to a region VALUE — "ירושלים יו\"ש" -> "אזור ירושלים" is
+  // honest, because the stored value is still the area the ad gave.
+  const AREAISH = /^(אזור|מרכז|המרכז|צפון|הצפון|דרום|הדרום|הנגב|שפלה|השפלה|שרון|השרון|גוש דן|כל הארץ|כלל הארץ|ארצי)|וה?קריות|והסביבה|יו"ש|והערבה/;
+  for (const [k, v] of Object.entries(LOCATION_ALIAS)) {
+    if (AREAISH.test(k)) {
+      assert(isRegionLocation(v), `alias ${JSON.stringify(k)} is an area, so its value ${JSON.stringify(v)} must be a region`);
+    }
+  }
+
+  // The regions themselves must keep working — this is not a purge of regions.
+  eq(normalizeLocations('ירושלים יו"ש'), ["אזור ירושלים"], "the tikshoov Jerusalem bucket still maps to its region");
+  eq(normalizeLocations("מרכז"), ["אזור מרכז"], "מרכז still maps to אזור מרכז");
+  eq(normalizeLocations("גוש דן"), ["אזור מרכז"], "גוש דן still maps to אזור מרכז");
+  eq(normalizeLocations("כל הארץ"), ["פריסה ארצית"], "כל הארץ still maps to פריסה ארצית");
+  eq(normalizeLocations("הצפון"), ["אזור צפון"], "הצפון still maps to אזור צפון");
+
+  // True spelling variants are untouched.
+  eq(normalizeLocations("תל אביב"), ["תל אביב-יפו"], "תל אביב is a spelling variant, not a region");
+  eq(normalizeLocations('ת"א'), ["תל אביב-יפו"], 'ת"א is an abbreviation, not a region');
+  eq(normalizeLocations("קריית מוצקין"), ["קרית מוצקין"], "קריית -> קרית is a spelling variant");
+  eq(normalizeLocations("פתח תקוה"), ["פתח תקווה"], "פתח תקוה is a spelling variant");
+
+  // And a job that really is in Haifa keeps its city — these are the seven
+  // tikshoov rows whose ads name חיפה outright.
+  eq(normalizeLocations("חיפה"), ["חיפה"], "an exact חיפה is still חיפה");
+  eq(normalizeLocations("חיפה (צ'ק פוסט)."), ["חיפה"], "4938/4024: an ad naming חיפה still resolves");
+  eq(
+    normalizeLocations("חיפה (לב המפרץ - צ'ק פוסט)."),
+    ["חיפה"],
+    "4024: the district in parentheses does not block the city",
   );
 }
 
