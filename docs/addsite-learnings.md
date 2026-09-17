@@ -352,6 +352,40 @@
   WordPress + Contact Form 7 / Elementor sites. **Home:** `addsite2.md` §8 captcha gate /
   `recipes/form-capture.md` §0.
 
+### LRN-APPLY-11 — A Turnstile that guards submission, not the form, is an owner decision (precedent: ACTIVE)
+- **Date / site:** 2026-09-17 · career.adamtotal.co.il, tenant `harel` (`cmu5o7j7b000i01p96jcemdht`).
+  Same platform: railcareer.adamtotal.co.il (`cmovl9bxk000401m71q52najw`).
+- **Signal:** every apply form on the detail page (`#ajax-cv-form`, the refer-a-friend
+  form, the internal-candidate form) holds a `div.cf-turnstile[data-sitekey]` and a hidden
+  `cf-turnstile-response` input, and the page loads `challenges.cloudflare.com/turnstile/v0/api.js`.
+  But no interstitial comes first: clicking "לפרטים והגשת מועמדות" shows every field
+  (`Fname*`, `Lname*`, `Phone*`, `Email`, `CvFile`). In headless Chromium the widget renders no
+  iframe and the token stays empty (length 0).
+- **Why the rules collided:** the §8 gate lists Turnstile as a *blocking challenge* → SKIP, and the
+  success criteria call "apply behind Turnstile" a false ACTIVE. But LRN-APPLY-10 defines blocking as
+  "the fields never render", and here they do. It is neither LRN-APPLY-3 (an interstitial before the
+  form, which skip-classifies) nor v3 reCAPTCHA (whose score runs on its own).
+- **Owner decision:** ship **ACTIVE**. The job data is complete, and a candidate using a real browser
+  can apply. Capture the form statically, add the hidden `cf-turnstile-response` field (marked
+  required) so the gate is visible in `_formData`, and put in `adminNote` that the submission is
+  behind Cloudflare Turnstile, with the real endpoint. AdamTotal:
+  `POST /Jobs/SubmitApplication` (multipart), with `OrderNo`=`data-job-id` and `Token`=the tenant
+  token added by jQuery (neither is a form field).
+- **Rail was not a precedent:** it went ACTIVE with an empty `adminNote`, from a dashboard-built
+  config (all `MANUAL`, saved 2026-05-11) older than this skill and LRN-APPLY-3. Its stored
+  `formSelector` (`#surveyElement1 … form`, GET) no longer exists on the live page, which now carries
+  the same Turnstile form. Before citing an ACTIVE site as precedent, check its `adminNote` and
+  its config dates.
+- **Still SKIP** a Turnstile that shows *before* the fields (interstitial, "verify you are
+  human", Ray ID), per LRN-APPLY-3.
+- **Diagnose in one pass:** on the detail page, open the apply UI and read
+  `form.offsetHeight`, the field list, and `input[name="cf-turnstile-response"].value.length`.
+  Fields visible + widget inside the form = this learning. No fields until the challenge = LRN-APPLY-3.
+- **Generalizes to:** every AdamTotal (`*.adamtotal.co.il`, "Powered by Mida") tenant, and any ATS
+  that embeds Turnstile inside an already-rendered form. The worker has no Turnstile handling, so
+  automated submission of these sites needs a browser-side token. **Home:** `addsite2.md` §8
+  captcha gate / `recipes/form-capture.md` §0.
+
 ---
 
 ## D. externalJobId stability
@@ -1073,6 +1107,12 @@
   and source the value from something the detail page carries (Unitask: the
   `postid-<n>` body class / the printed `מספר משרה` heading rather than the card's
   `post-<id>` class). Re-scrape → 31/31 real ids, 0 synthesised.
+- **Second fix, for a server-rendered listing that already carries the full job** (2026-09-17,
+  career.adamtotal.co.il `harel`): drop `_meta.pagination` and let the setupScript `fetch()` the
+  same-origin `?page=2..N`, `DOMParser` the HTML, and append the new cards (dedup on the card id)
+  to page 1 before it enriches. This avoids a detail fetch per job. The first scrape with
+  `pagination.type: "url"` stored 25 of 83 with injected fields (`synthesised_external_job_id: 58/83`,
+  `unknown_location_rate: 58/83`); after the fix 83/83. Not possible across origins (LRN-WAF-3).
 - **Trap:** the synthesised-id fallback makes this look healthy. `fill=1.00,
   distinct=31` is not evidence the mapping worked — **count the id PREFIXES**
   (`h-` vs your own) before believing an id gate on any paginated site.
@@ -2438,6 +2478,46 @@
   with an admin note asking someone to confirm the roles are still open.
 - **Generalizes to:** "דרושים" pages on company blogs, news subdomains and old WordPress sites.
   **Home:** `addsite2.md` §10.
+
+---
+
+## LRN-HQ-4 — a company name that is also a place becomes the HQ city
+
+- **Date / site:** 2026-09-17 · career.adamtotal.co.il `harel` (`cmu5o7j7b000i01p96jcemdht`),
+  הראל ביטוח ופיננסים, homepage supplied as `https://www.harel-group.co.il/`.
+- **Signal:** `/company-profile` returned `WRITTEN PARTIAL … address city=הראל`, with
+  `companyHqAddress` = `הראל 60+ בע"מ` (the name of a subsidiary, no street) and
+  `companyHqCity` = `הראל`. `הראל` is a real `city.csv` entry (line 876, the kibbutz), so the city
+  gate passed.
+- **Why it matters:** the gate proves only that a city exists (company-profile §5). When the
+  employer's name is also a place name, any line that carries the name can pass as an address.
+  The same word also fooled the worker's `region_over_city` warning on this site's jobs
+  ("אזור צפון -> הראל").
+- **Source (traced):** `--dry-run --force --no-llm --out` prints
+  `provenance: {address: "about page", city: "address line (gated)"}`, so it is deterministic and
+  the LLM plays no part. `/about/harel-group` lists the group's subsidiaries, one per line, each
+  followed by "למידע נוסף": `…בע"מ` / `הראל 60+ בע"מ` / `גמלא – הראל נדל"ן למגורים בע"מ`.
+  `extractCompactAddressLines` (`scripts/lib/company-extract.ts`) accepts a line of 8–90 characters
+  that contains a digit and is either comma-separated or at most 4 words long. `הראל 60+ בע"מ`
+  qualifies (the digit is from "60+"), and `הראל` then passes the city gate. On the same page it
+  also yields shareholder lines (`משפ' המבורגר: כ-42.4%`, `ציבור: כ-57.6%`), which the gate rejects.
+  JSON-LD `Organization` has a name and no address.
+- **What the company does publish:** the service charter (`/about/harel-group/service-charter`)
+  gives "לכתובת אבא הלל 3 ת.ד. 1951 רמת גן 5211802" as a **mailing address**. The accessibility
+  statement names a customer reception centre at "רחוב המרץ 11, פתח תקווה". Neither is stated as
+  the head office, no ח.פ. appears on the pages read, and it is a group whose name is a place name
+  (company-profile §5.3). **Owner decision: HQ address and city stay NULL.**
+- **Fix (this site):** `PUT /company-profile?force=1` with `{"companyHqAddress":null,"companyHqCity":null}`.
+  The city was **not** marked `operator:none`, because nobody has established that Harel publishes
+  no HQ. The job ads say `בית הראל, רמת גן`, but that is a workplace, not an HQ statement
+  (company-profile §7, rule 4). A `--force` re-capture would store the wrong value again, so the
+  site's `adminNote` says not to run one.
+- **Rule:** after a capture, if `companyHqCity` equals `companyName` or a word in it, or the address
+  has no street and no house number, treat it as wrong until proven otherwise. A digit inside a
+  company or product name ("60+") is enough for the compact-line rule.
+- **Not done:** no extractor change (owner: out of scope for onboarding).
+- **Generalizes to:** employers named after places (הראל, כרמל, גלבוע, תבור, ארבל, עדן…).
+  **Home:** `company-profile.md` §3.1; extractor follow-up in `scripts/lib/company-extract.ts`.
 
 ---
 
