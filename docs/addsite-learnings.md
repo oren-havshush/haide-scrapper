@@ -76,6 +76,42 @@
   ceiling applies to every third-party ATS (AdamTotal, Comeet, TopMatch …).
   **Home:** Step 6 browserOverrides / WAF recipe.
 
+### LRN-WAF-4 — ShieldSquare (Radware) hCaptcha wall reads as GRAY, not RED
+- **Date / site:** 2026-09-17 · ayalon-ins.co.il (no site created)
+- **Signal:** `triage` returned `lane: GRAY, reachable: true, topCluster 2`, which
+  looks like a thin listing worth a manual look. It is actually a 302 on the first
+  request to `validate.perfdrive.com/...` serving `<title>ShieldSquare Captcha</title>`
+  with a blocking hCaptcha widget. This happens with a bare headless Playwright **and**
+  with curl using a real desktop Chrome UA. Pages under `/career/*` and
+  `/about-us/career/*` redirect, and so does the site's own JSON API
+  (`/api/careers`); `robots.txt` does not. The redirect target returns 200, so a
+  status-code reachability probe counts it as reachable.
+- **A single 200 got through once.** One bare curl to `/api/careers` returned 200
+  JSON, after this IP had already been challenged several times. Three immediate
+  repeats of the same request were redirected, and so was a retry sending the
+  cookies that response had set. Cause unknown.
+- **Fix:** none within the worker's means. A UA override does not help, and nothing
+  may solve an hCaptcha. **SKIP**, like a blocking Turnstile (`LRN-APPLY-1`). First
+  search for the employer's own board on another host (§2.1). Aggregators such as
+  Jobnet/Drushim are not the employer and don't count.
+- **Diagnose:** `curl -sL -o NUL -w "%{url_effective}"` against the listing. If the
+  final host is `validate.perfdrive.com`, or the title is `ShieldSquare Captcha`, it
+  is this block. Don't spend a build attempt on it.
+  - **One 200 is not access.** Repeat the request a few times before believing it.
+    The worker needs every scheduled scrape to get through, not an occasional one.
+    Don't guess at the cause, and don't change IPs or headers to chase it.
+  - **The site's own API can be behind the same wall** (it was here). Finding the
+    jobs request in the browser's Network tab is worth one check, but don't expect
+    it to get around the block.
+  - **"It works in my browser" does not mean the worker can get in.** A browser that
+    has already passed the challenge gets its later requests allowed. The worker
+    never passes it.
+  - Probe just enough to confirm the block. More requests teach nothing and may
+    make our traffic look worse to the blocker (advice, not verified).
+- **Generalizes to:** any Radware/ShieldSquare-fronted site. The `reach`/`triage`
+  probe should treat a cross-host redirect to a known challenge host as RED.
+  **Home:** Step 3 reachability gate / `reach` script.
+
 ---
 
 ## B. Analyzer race / config persistence
@@ -1714,7 +1750,7 @@
   overlap (LRN-SETUP-7), ids identical across two consecutive scrapes.
 - **Watch the invisible characters.** The "strip the `דרישות התפקיד:` label" pass matched 8
   of 9 rows; the 9th carried a **U+200B** after the colon, so `\s` did not match it and the
-  label shipped. Squash `[ ​-‏﻿]` before testing a Hebrew label regex —
+  label shipped. Squash `[\u00A0\u200B-\u200F\uFEFF]` before testing a Hebrew label regex —
   same family of trap as LRN-SETUP-5 (`\b` is ASCII-only).
 - **The old location was outside the gazetteer.** The 2026-06 config hardcoded
   `כל הארץ`, which is **not** in `CSV files/city.csv`; the canonical nationwide value is
@@ -1995,3 +2031,356 @@
 - **Generalizes to:** any about page shaped as a timeline, a milestone list, or a news feed —
   common for long-established companies, importers and groups. **Home:** `/company-profile`
   §0 about row / `extractAboutText`.
+
+---
+
+## LRN-LOC-10 — the gazetteer answering is not the gazetteer being right: diff it against the ad's OWN location statement before trusting it
+
+- **Date / site:** 2026-09-15 · enviro-services.co.il / החברה לשירותי איכות הסביבה
+  (`cmu2pfk1v000101nvmm4z2yxo`) — 8-job in-page accordion (WP CPT `dorsim`), no location
+  element, every ad is free prose.
+- **Signal — LRN-LOC-9 says "check whether the gazetteer resolves it first", and it did
+  resolve, confidently, and two of the eight were WRONG.** Running
+  `extractLocationFromGazetteer(title + description)` over the real ad text returned a
+  canonical non-null value for 6/8. The failure is not a miss, it is a confident hit
+  sourced from the wrong sentence:
+  - job 6648 prints **`מיקום המשרה: תל אביב.`** — its own explicit label. The ad also
+    carries an employer boilerplate paragraph ("מתקן הטיפול המרכזי של החברה ממוקם
+    בפארק האקו-תעשייתי נאות חובב"), and the gazetteer returned **`נאות חובב`** — it
+    contradicted the one sentence in the ad that actually states the workplace.
+  - job 6634 names no workplace at all; the only place in the text is a **commute**
+    ("קיים מערך הסעות מבאר שבע"). The gazetteer returned `null` here, but the same
+    sentence shape one ad over (6652, "הגעה- מערך הסעות מסודר ונוח מבאר שבע") is exactly
+    how a shuttle ORIGIN becomes a stored workplace.
+- **Why the naive reading of LRN-LOC-9 walks into it:** its test is "did the gazetteer
+  return something?" That question is only sound on a board whose ads contain nothing but
+  the ad. A single-employer board repeats the company's own address in every posting, so
+  the gazetteer always has a plausible city to find — it just is not this job's city.
+- **Fix — extract only from an explicit location STATEMENT, and rank the sources.** The
+  injected span is not a blanket constant (LRN-LOC-9's failure mode) and not a prose scan
+  (banned, CLAUDE.md): it is anchored, per job, in this order —
+  1. an explicit label: `/מיקום\s*(?:ה?משרה)?\s*[:：]\s*(…)/` → match places inside that
+     segment only. Wins outright, so boilerplate elsewhere in the ad cannot override it.
+  2. else an anchored workplace phrase — `(מפעלנו|מפעלה|מפעל החברה|משרדי החברה|ממוקם|…)`
+     within 30 chars before the place name. Collect **all** matches in document order, so
+     "נוכחות שוטפת במשרדי החברה בתל אביב ובמפעל החברה בנאות חובב" stays multi-city
+     (LRN-LOC-5) instead of losing one.
+  3. else an explicit nationwide phrase (`בכל רחבי הארץ`) → `פריסה ארצית`, a verbatim
+     city.csv row.
+  4. else the literal string `Unknown` — **injected, not left empty**, because an empty
+     location is precisely what re-arms the gazetteer (`normalizer.ts` only runs it when
+     `location` is blank).
+  Place names come from a 2-entry allowlist of the employer's real sites; anything else
+  falls to `Unknown`. Result: 8 jobs, 3 distinct values, `verify-location-csv` clean,
+  1 honest `Unknown`, 1 multi-city.
+- **The check that makes this auditable — run BOTH and diff them.** Print the injected
+  value beside `extractLocationFromGazetteer()` on the same text, per job, before the PUT.
+  The two disagreeing on 2 of 8 rows is the whole finding in one table, and it is the only
+  way to see a wrong-but-confident location: `verify-config`, `addsite-qa` and
+  `verify-jobids` never read location values, and `verify-location-csv` only proves the
+  value is a real city — `נאות חובב` would have passed it while being the wrong city.
+- **Generalizes to:** every single-employer board (accordion, Elementor loop, CPT archive)
+  where each ad repeats the company's address, and any ad that prints commute/shuttle
+  information. **Amends LRN-LOC-9:** its ordering rule stands, but "the gazetteer resolves
+  it" must be read as "the gazetteer agrees with the ad's own location statement".
+  **Home:** Step 4 location / `recipes/setupscript-patterns.md`.
+
+---
+
+## LRN-API-6 — two shapes in the skill's own curl snippets are wrong: `GET /api/sites/:id` is 405, and `PUT /config` rejects a payload missing `pageFlow`/`formCapture`
+
+- **Date / site:** 2026-09-15 · enviro-services.co.il (`cmu2pfk1v000101nvmm4z2yxo`), first
+  observed on a clean onboarding with no local drift.
+- **Signal 1 — the analyzer wait-loop can never observe anything.** `addsite2.md` §4 polls
+  `curl "$BASE/api/sites/$SITE_ID" | jq -r '.data.status'` for up to 2 minutes. That route
+  (`src/app/api/sites/[id]/route.ts`) exports **PATCH and DELETE only** — a GET returns
+  **405** with an empty body, so `.data.status` is `undefined` on every iteration and the
+  loop always runs its full 24 ticks without ever seeing ANALYZING leave. The skill's own
+  note ("the `/:id` GET can return empty for fresh sites") reads as a race; it is not one,
+  it is a method that does not exist.
+  **Use the list route with an exact URL filter instead:**
+  `GET /api/sites?siteUrl=<encoded>&pageSize=10` → `.data[0].status`. One call showed
+  `status=REVIEW, confidence=0.4` immediately.
+- **Signal 2 — the documented config payload 400s.** §9.1 shows a `PUT /api/sites/:id/config`
+  body of `itemSelector` + `fieldMappings` (+ optional keys). `updateSiteConfigSchema`
+  (`src/lib/validators.ts:134`) makes **`pageFlow` (array) and `formCapture` (nullable
+  object) REQUIRED**. Omitting them returns
+  `VALIDATION_ERROR: Invalid input: expected array, received undefined, Invalid input:
+  expected object, received undefined` — which names neither key, so the natural next move
+  is to start guessing at `fieldMappings`. A listing-only site sends `pageFlow: []` and
+  `formCapture: null` (the latter is also the correct value for an email-apply site).
+- **Cost:** the double-PUT race guard means this 400s **twice**, 8 s apart, and the error
+  text points at nothing; then `verify-config` fails for the real reason (no config was
+  ever written) and reads like the analyzer race (`LRN-RACE-2`) it is not.
+- **Generalizes to:** every onboarding — both traps are in the path each site walks, and
+  neither depends on the site. **Home:** `addsite2.md` §4 (wait-for-analyzer) and §9.1
+  (payload shape); fixing the snippets there removes both.
+
+---
+
+## LRN-SETUP-14 — WordPress list indentation ships as EMPTY BULLETS: the page hides the marker, the worker does not
+
+- **Date / site:** 2026-09-16 · enviro-services.co.il (`cmu2pfk1v000101nvmm4z2yxo`), job 66 —
+  the owner reported "empty bullets under תנאי סף and under עדיפות תינתן ל".
+- **Signal:** the stored `requirements` held bare `•` lines — two directly under each sub-head —
+  while the rendered page shows none. Every gate is blind to it: fill is 1.0, the text has real
+  newlines, and `innerText` of the same node shows nothing wrong, because the browser draws no
+  marker for these items. It is only visible in the stored field.
+- **Cause:** the WordPress editor indents a list by wrapping it, level by level, in
+  `<li style="list-style-type: none;">` items that contain only the next list:
+  `<ol><li style="list-style-type:none"><ol><li style="list-style-type:none"><ul><li>real item…`.
+  `domFieldExtract.ts` prefixes `• ` to **every** `<li>` (the marker logic from `ecb8101`), with no
+  test for `list-style-type` or for the item having any text of its own — so each wrapper becomes
+  a bullet with nothing after it.
+- **Fix (per site, in `setupScript`):** before extraction, unwrap every `<li>` that holds a nested
+  `ul`/`ol` and has **no text of its own** (its non-list child nodes are whitespace only): move its
+  children up in place and remove it. The real items keep their native `<li>` and are bulleted
+  normally. Measure it with the same definition — count `<li>` with no own text inside the mapped
+  node — not with `innerText`, which cannot see the bug.
+- **Proof it is load-bearing:** the same dry-run with the unwrap disabled reported `4` empty
+  `<li>` on job 66 and `0` elsewhere; with it, `0` everywhere and identical text on all four jobs.
+  After re-scrape, no stored line on the site is a bare bullet.
+- **Better home, not yet done:** this is a worker defect, not a site quirk — any WordPress board
+  with an indented list hits it. The general fix is in `domFieldExtract.ts`: skip the marker for an
+  `<li>` whose own text is empty. Until then, every site needs the setupScript unwrap. Before
+  choosing, count how many live sites store a bare `•` line.
+- **Generalizes to:** any WordPress / Gutenberg / Classic-editor job body containing a nested or
+  indented list. **Home:** Step 4 description/requirements / `worker/lib/domFieldExtract.ts`.
+
+---
+
+## LRN-SETUP-15 — a single-container job body needs three more cleanups than LRN-SETUP-10's split
+
+- **Date / site:** 2026-09-15/16 · enviro-services.co.il (`cmu2pfk1v000101nvmm4z2yxo`), 8 then 4
+  jobs in a WP CPT accordion; each rule below was raised by the owner.
+- **1. A REPEATED "description" heading can be the requirements block.** Job 1114 labeled both of
+  its blocks `תיאור התפקיד:`; the second was plainly requirements (`השכלה אקדמית- יתרון משמעותי`,
+  `ניסיון אדמיניסטרטיבי- חובה`) but the ad never printed `דרישות`, so LRN-SETUP-10's machine filed
+  it in description and requirements came back NULL. **Fix:** count `^תיאור` label nodes per job; the
+  first keeps the description bucket, a second switches to requirements and its label is dropped.
+  The board removed job 1114 overnight, so the rule is held by a fixture test with a control
+  (rule stripped → requirements empty, block in description), not by the live page.
+- **2. Sub-heads inside requirements must not switch back.** Job 66 prints `תנאי סף:` and
+  `עדיפות תינתן ל:` inside its requirements. LRN-SETUP-10's refinement holds here: switch back only
+  on a description-class label (`תיאור|מיקום|שעות|תנאי המשרה|הערות|להגשת|יש להגיש|נשמח לקבל`), and
+  test requirements-class labels **first** so `תנאי סף` is not caught by the description-class `תנאי`.
+- **3. The legal block is long, so a short-label rule never sees it.** `*המשרה מנוסחת בלשון נקבה…`
+  is ~200 chars / 3 lines; a `< 60 chars, single line` heading test lets it fall into whatever
+  bucket is active — requirements, on job 1113. **Fix:** match the legal openers
+  (`המשרה מיועדת|המשרה מנוסחת|החברה פועלת|סודיות מובטחת|המודעה מנוסחת`) regardless of length and
+  switch to description.
+- **Also — keep an intro line from triggering a switch.** Job 1111 opens with
+  `לחברה … דרוש/ה: חשמלאי/ת מוסמך/ת`; a `דרוש` trigger (it is in LRN-SETUP-10's list) would file
+  the whole ad as requirements from line one. Only short, single-line label nodes may switch.
+- **Also — drop a bare job-number line.** `מס' משרה-1118` on a line of its own is metadata; the
+  number already ships as `externalJobId`. Drop a node matching
+  `^\*?\s*מס['׳`]?\s*משרה\s*[-–—:]?\s*\d+\s*$` (after squashing `\u00A0`); a sentence that merely
+  contains the number stays.
+- **Verify with a preservation assert that knows the intended drops:** every original line must land
+  in exactly one bucket, and the only lines allowed to disappear are requirements labels, a repeated
+  `תיאור` label and the bare job-number line. Anything else missing is content loss.
+- **Generalizes to:** any single-container Hebrew job body — WP CPT accordions, Elementor tabs,
+  in-house boards. **Home:** Step 4 description/requirements / `recipes/setupscript-patterns.md` §8.
+  Reference: `sites/_configs/enviro-services--4z2yxo.setup.js`.
+
+---
+
+## LRN-WRK-19 — the nightly sweep protects small boards from neither a sharp drop nor a failing setupScript
+
+- **Date / site:** 2026-09-16 · enviro-services.co.il (`cmu2pfk1v000101nvmm4z2yxo`) — the board
+  went from 8 jobs to 4 overnight (5 unpublished, 1 new), confirmed against
+  `wp-json/wp/v2/dorsim`, and the author was visibly mid-edit: one probe saw the new job with no
+  department and no apply element; two later loads had both.
+- **1. The drop guard does not cover a board under 10 jobs.** `isSuspiciousDrop`
+  (`worker/lib/scheduledRun.ts`) fires only when `previousCount >= 10` **and**
+  `newCount < previousCount * 0.5` (`SWEEP_DROP_MIN_PREVIOUS` / `SWEEP_DROP_KEEP_RATIO`). The
+  baseline is the site's current `Job` row count (`scrape.ts`, `prisma.job.count`), and the guard
+  runs on scheduled runs only — a manual scrape never checks it. So on a small board, a scrape that
+  lands during a partial render, or while the author is mid-edit, commits the smaller set:
+  scrape is delete-and-recreate, and the missing rows are gone. A genuine 8 → 4 turnover and a
+  half-rendered page are indistinguishable to it.
+- **2. A throwing `setupScript` is logged and ignored, and the run still succeeds.**
+  `runSetupScript` (`scrape.ts`) catches every error and only `console.warn`s. Extraction then runs
+  on the un-enriched DOM: every field the script injects comes back empty, and the worker quietly
+  fills the gaps — `externalJobId` becomes a synthesised `h-<hash>` (every row RE-KEYED; only a
+  `synthesised_external_job_id` warning on the run), `location` falls to the gazetteer (LRN-LOC-10:
+  confidently wrong on this board), and a moved-node description/requirements split collapses back
+  into one field. None of this changes site status on a scheduled run.
+- **What this means when writing a setupScript for a nightly-scanned site:** there is no second
+  chance and no alarm. Guard every `querySelector` result before use, wrap any `fetch` in its own
+  `try`, and never let one item's failure throw out of the loop — the script must degrade per item,
+  not per page. A dry-run against the live page cannot prove this; it only proves today's markup.
+- **Also:** a site scraped manually is skipped by the sweep for `SWEEP_FRESH_WINDOW_HOURS` (20h)
+  after its last success, so onboarding late in the day means its first scheduled scan is the
+  night after next. And sweep history (`/api/dashboard/sweeps`) records every run as `manual` /
+  `manual-single`, even timer-started ones — tell a nightly run apart by `selectedCount`, not
+  `trigger`.
+- **Generalizes to:** every ACTIVE site with fewer than 10 jobs, and every site whose ids, locations
+  or field split come from a `setupScript`. **Home:** Step 11 (scrape) / `worker/lib/scheduledRun.ts`
+  / `worker/jobs/scrape.ts` `runSetupScript`.
+
+---
+
+## LRN-SETUP-16 — a page that prints every job as prose in ONE cell, and the owner's job body rules
+
+- **Date / site:** 2026-09-16 · heara.co.il (`cmu3x5es9000j01nvxaxhar00`), legacy LiveSite table
+  page; 12 jobs from 9 headings. Each rule below was raised or confirmed by the owner.
+- **Signal:** triage YELLOW with a top cluster of ~457 — the menu, not the jobs. The jobs are
+  free text in a single `td`: an underlined `title - משרה NNN` heading, `תיאור-`/`דרישות-`/`שכר -`
+  lines, dash rules between jobs, and one closing section (training pay, travel, terms, how to
+  apply) printed once under all of them. No job pages, no repeating element.
+- **1. Dash rules are not the only boundary.** Jobs 200 and 100 have only the underlined heading
+  between them; splitting on dashes alone shipped them as one job. Mark a sentinel before every
+  `<u>` carrying a job number as well as at every dash line.
+- **2. A group posting is split into its tracks.** `משרה 100` lists `משרה 101 - מדריך טיסנאות` …
+  `משרה 107`; each track is a job with the group's shared text, and 100 itself is not published.
+  The page reused 107 for a separate standalone posting — the standalone one owns the number.
+  `בעלי ניסיון מקצועי בתחום:` introduced the track list, so each track fills it with its own field
+  (strip `מדריך` — final kaf `ך`; a `מדריכ` pattern never matches the singular).
+- **3. `לא זמין בעת זו` on a heading = closed.** Skipped by rule, so it returns on its own when the
+  employer removes the marker.
+- **4. Owner body rules, now fleet-wide** (`addsite2.md` *Job body rules*): requirements only in
+  `requirements`; `תיאור-`/`דרישות-` labels dropped; a `שכר…` tail on a requirements line stays in
+  the description; the shared closing section is appended to every job; the page's email
+  instruction ("בציון מספר משרה, פירוט זיקה מקצועית והדרכה") goes to `applicationInfo` with the job
+  number, and the how-to-apply lines and their link row leave the description.
+- **5. `applicationInfo` is single-line.** `normalizeField` collapses its whitespace, so the
+  format is `mailto:<email> - <instruction>`; `addsite-qa` still reports `EMAIL`.
+- **6. A `\u`-escaped U+00A0 written into the script arrived as the raw character.** The file-writing
+  tool decodes `\uXXXX` escapes. The regex still matched, but an invisible character in a regex is
+  the CLAUDE.md trap; build it with `String.fromCharCode(160)`.
+- **Failure mode on the nightly (LRN-WRK-19):** the whole script is one `try`, and the job root is
+  appended only at the end, so any throw yields 0 items → `empty_results` → the scheduled run keeps
+  the stored listings, rather than re-keying ids to hashes.
+- **Generalizes to:** old municipal, association and small-company sites that type their openings
+  into one CMS text block. **Home:** `recipes/setupscript-patterns.md` §13;
+  `sites/_configs/heara--xhar00.setup.js`.
+
+---
+
+## LRN-API-7 — `setupScript` is capped at 8,000 characters, and `verify-config` passes when the PUT was refused
+
+- **Date / site:** 2026-09-16 · heara.co.il (`cmu3x5es9000j01nvxaxhar00`).
+- **Signal:** a script revision grew to 8,262 characters. Both PUTs of the double-PUT returned
+  `VALIDATION_ERROR: Too big: expected string to have <=8000 characters`; `verify-config` then
+  exited 0 (it checks `itemSelector`, field names and form fields — never the script); the next
+  scrape ran the PREVIOUS script and QA, `verify-jobids` and `verify-location-csv` all passed. The
+  only thing that showed the change had not shipped was comparing the stored
+  `fieldMappings._meta.setupScript` with the local file.
+- **Fix:** after every PUT, read the site back from the list route and compare the stored script
+  byte-for-byte; abort the run when it differs. Shrink by cutting comments and duplicated helpers
+  (8,262 → 5,903 with identical output, proven by diffing the dry-run jobs field by field).
+- **Also:** a manual scrape of a REVIEW site that passes the activation gate promotes it to ACTIVE
+  itself, so a following `PATCH {"status":"ACTIVE"}` returns 400 (no same-status transition). Read
+  the status before patching; a 400 there is not a failure.
+- **Generalizes to:** every site with a `setupScript`, and any config edit that grows one.
+  **Home:** `addsite2.md` §9.1 / §9.3.
+
+---
+
+## LRN-LOGO-2 — the logo is drawn into a header banner: the capture is right to refuse it, a human crops it
+
+- **Date / site:** 2026-09-16 · heara.co.il (`cmu3x5es9000j01nvxaxhar00`).
+- **Signal:** `/company-profile` returned PARTIAL with `logo header-img: rejected` — the only
+  candidate was a Facebook "like" icon — while the owner could see the logo top-right. Every
+  `<img>`, CSS background and inline SVG above the fold was checked: the logo exists only inside
+  `new-top-960-124.jpg`, one banner with four photos beside it. Storing the banner would publish
+  photos of children as the company mark.
+- **Fix:** crop from the original image pixels (canvas `drawImage` of the image URL, PNG export),
+  look at the crop, then `POST /api/sites/:id/company-logo` with the raw bytes and
+  `x-logo-source-url` = the banner. **The upload does not recompute `companyProfileStatus`**; set
+  `COMPLETE` with `PUT …/company-profile?force=1` and only that key. A later forced re-capture
+  recomputes PARTIAL (`classifyProfileStatus` sees no logo of its own) — re-set it.
+- **Also — the company name.** Onboarding took `companyName` from the page title
+  (`הארה תכניות העשרה בעמ`); the logo reads `הארה תוכניות העשרה בע"מ`. The logo or printed legal
+  name is the company's own spelling; a `<title>` is typed by whoever built the site.
+- **Also — the address.** The same capture found no address because it read "צור קשר" (phones
+  only) instead of "מפת הגעה" (`/107867/map`, "ממוקמים ברחוב החשמל 5 בקדימה"): one contact page is
+  read, and the contact link always outscored a directions link the vocabulary did not know. Fixed
+  in code (`pickDirectionsUrl`, tried first, contact page still the fallback; commit `533dfd7`).
+- **Generalizes to:** pre-2015 site builders (LiveSite, Wix classic, table layouts) that ship the
+  header as one image. **Home:** `company-profile.md` §4.3 / §4.5; `addsite2.md` §4.
+
+---
+
+## LRN-HQ-1 — a city with no street behind it beat the company's real street address
+
+- **Date / site:** 2026-09-16 · news.ipvsecurity.com/דרושים (`cmu41l9qd000v01nviy5knkts`),
+  IPV Security. Raised by the owner: "why did you write Tel Aviv if the address is in Raanana?"
+- **Signal:** `/company-profile` returned `WRITTEN COMPLETE … address city=תל אביב-יפו`. Every
+  gate passed. The real address, `זרחין 10 ת.ד. 4330 רעננה`, is printed on
+  `news.ipvsecurity.com/contacts/` — the jobs subdomain — and the phone on both sites is `09-7430130`
+  (a Sharon area code).
+- **How it went wrong — two weak sources, each accepted:**
+  1. **City:** ipvsecurity.com's JSON-LD `PostalAddress` is `{"addressLocality":"Tel Aviv","addressCountry":"IL"}`
+     — no `streetAddress`. The city cascade tries `JSON-LD addressLocality` second, right after an
+     operator value, so a bare locality wins with nothing behind it. The page's visible text never
+     states an address; "Tel Aviv" appears only as a client ("Serving Tel Aviv Municipality").
+  2. **Address:** the rules found no address, so the LLM fallback (`wanted: hq_address`) returned
+     `תל אביב` — a city, not an address — and it was stored as `companyHqAddress`.
+  3. **The street address was never read:** the homepage is derived from the site URL
+     (`news.` stripped → `ipvsecurity.com`), so the contacts page on the jobs subdomain is outside
+     the capture.
+- **Fix (this site):** `PUT /company-profile?force=1` with only `companyHqAddress`, then
+  `PUT /company-hq-city` with `evidence.kind: "operator"`.
+- **Rule:** after a capture, compare the city with every street address the company prints —
+  including pages on the jobs site's own host — and with the phone area code. A JSON-LD locality
+  with no street, or an "address" that is only a city name, is weak evidence; a printed street
+  address beats it. On a conflict, ask the owner rather than ship the capture.
+- **Generalizes to:** companies whose marketing site was rebuilt (JSON-LD filled in by an SEO plugin
+  or template) while an older site — a blog, news or careers subdomain — still carries the real
+  contact page. **Home:** `company-profile.md` §3.1.
+
+---
+
+## LRN-HQ-2 — a hand-corrected address is not protected from a forced re-capture; only the city is
+
+- **Date / site:** 2026-09-16 · news.ipvsecurity.com (`cmu41l9qd000v01nviy5knkts`), after LRN-HQ-1.
+- **Signal (from code, not an incident):** `captureSite` resolves an operator-authored city first
+  (`scripts/company-profile.ts`, `authoredCity` from `companyHqCitySource`), so a `--force`
+  re-capture keeps `רעננה`. `companyHqAddress` has no authorship column: `--force` re-derives it
+  (here, the LLM's `תל אביב` again) and `saveCompanyProfile` writes it because the key is present.
+- **Result:** the corrected pair would split — address `תל אביב`, city `רעננה` — and nothing flags it.
+- **Rule:** before any `--force` re-capture, list the sites whose address was corrected by hand
+  (look for `companyHqCitySource` = `operator`, and check the admin note), and re-apply the address
+  afterwards. The code fix would be an address source column mirroring `companyHqCitySource`;
+  not done.
+- **Generalizes to:** every hand-corrected company field except the city. **Home:**
+  `company-profile.md` §4.4.
+
+---
+
+## LRN-AGE-1 — a page with no job dates publishes years-old jobs as fresh, and no gate notices
+
+- **Date / site:** 2026-09-16 · news.ipvsecurity.com/דרושים (`cmu41l9qd000v01nviy5knkts`).
+- **Signal:** two English jobs (CISO, Head of Ethical Hackers Team) in a WordPress accordion, no
+  dates anywhere. The blog's RSS feed (`/feed/`) has `lastBuildDate` 2020-04-01; the latest post is
+  from 2019–2020; `wp-json` is closed (401); the company's current site, ipvsecurity.com, has no
+  careers page. The page still carries an unrendered `[easy-social-share]` shortcode — a plugin
+  removed long ago.
+- **Why nothing catches it:** `ageBucket` is computed from `publishDate`. With no date it is null,
+  and a null bucket shows no age badge — the same as a job posted today. Triage, QA,
+  `verify-jobids` and `verify-location-csv` all passed, and QA returned ACTIVE.
+- **What to do:** when a site gives no job dates, spend one request on a staleness signal — WordPress
+  `/feed/` `lastBuildDate`, a sitemap `lastmod`, the copyright year, dead shortcodes — and tell the
+  owner before activating. It is the owner's call, not a SKIP rule: here the owner chose ACTIVE,
+  with an admin note asking someone to confirm the roles are still open.
+- **Generalizes to:** "דרושים" pages on company blogs, news subdomains and old WordPress sites.
+  **Home:** `addsite2.md` §10.
+
+---
+
+## LRN-API-8 — `/api/sites?search=` is silently ignored; a same-host duplicate check needs `urlSearch`
+
+- **Date / site:** 2026-09-16 · news.ipvsecurity.com (duplicate check before create).
+- **Signal:** `GET /api/sites?search=ipvsecurity&pageSize=10` returned `total 192` — every site,
+  unfiltered, with no error. `urlSearch` is the parameter the route reads
+  (`src/app/api/sites/route.ts`): `urlSearch=ipvsecurity` → `total 1`, `urlSearch=heara.co.il` →
+  `total 1`. There is also `companyNameSearch`.
+- **Why it matters:** §3 checks only variants of the exact URL (slash, http/https, www). A second
+  jobs page for the same employer on another path or subdomain is invisible to it, and a guessed
+  parameter looks like it worked because it returns rows.
+- **Fix:** add a host-level check: `urlSearch=<registrable domain>`, plus `companyNameSearch` when
+  the company is known. A hit is not automatically a duplicate (one host can serve several employers,
+  and a company can have two boards) — look at it before creating.
+- **Generalizes to:** every onboarding. **Home:** `addsite2.md` §3.

@@ -1,5 +1,5 @@
 {
-  "_exportedAt": "2026-09-15T15:48:29.941Z",
+  "_exportedAt": "2026-08-18T12:13:14.048Z",
   "_note": "Mirror of the live config. The DB is authoritative; the worker never reads this file. setupScript lives alongside in <slug>.setup.js.",
   "id": "cmsxdjtz1001m01p8dpwsxup8",
   "siteUrl": "https://www.unitask-inc.com/career/jobs-2/",

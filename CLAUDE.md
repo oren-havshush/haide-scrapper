@@ -71,6 +71,11 @@ nothing until that check was applied.
 - **Never edit a regex through `node -e` string replacement.** It ate `\b` into a raw
   backspace character and dropped `\s`/`\d` backslashes, silently disabling a guard
   that had never fired since. Use a real editor.
+- **The editor tools decode `\u`-escapes too.** A `\u`+hex escape typed into Write/Edit
+  content lands in the file as the raw character — twice on 2026-09-16: a non-breaking space
+  inside a setupScript regex (invisible, still matching), and in the markdown documenting that
+  very bug. In code, build such characters with `String.fromCharCode(n)`; afterwards grep the
+  diff for the raw bytes. `\uXXXX` with non-hex X survives, which is why it looks safe.
 - **A vendor is never the employer.** ATS hosts, accessibility widgets, marketing
   hosts. Deriving identity from a careers board has stored a vendor's homepage, logo
   and prose as the employer's three separate times. `src/lib/ats-hosts.ts` is the one

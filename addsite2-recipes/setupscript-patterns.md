@@ -289,9 +289,12 @@ item.appendChild(span);
 **one** of them, so requirements/qualifications are missing. (naamat.org.il,
 tama.co.il.)
 
-**Fix:** concat every labeled section (preserving the label as a heading, except the
-plain "תיאור" lead-in) into one `__ai-description`, using `structuredText` (§7) per
-section so line breaks survive. On a **detail page** (one job per page) appending to
+**Fix:** capture every labeled section, using `structuredText` (§7) per section so line
+breaks survive — but **split, don't merge, the requirements** (owner rule, `addsite2.md`
+*Job body rules*): דרישות / כישורים / Qualifications / Skills sections go to
+`__ai-requirements` only; everything else concatenates into `__ai-description`. Drop the
+section labels themselves (`תיאור-`, `דרישות-`). The snippet below shows the capture
+loop; route requirements-class rows to their own array before joining. On a **detail page** (one job per page) appending to
 a stable container is fine; map `description → .__ai-description` with
 `capturedOnUrl` = a sample detail URL.
 
@@ -631,3 +634,49 @@ if (deadlineISO) item.appendChild(mk('__ai-deadline', deadlineISO));
 
 **Reference:** imj.org.il (`cmqymqkbn004101nzck442rnv`) — parsed
 `ניתן להגיש מועמדות עד לתאריך`, mapped `deadline`, dropped past-deadline jobs.
+
+---
+
+## 13. Every job as prose in ONE block — split it into jobs yourself
+
+**Signal:** a legacy page (LiveSite / table layout, old WordPress page) prints all openings
+as free text inside a single content cell: an underlined heading per job carrying its number
+(`מדריכים לקייטנות קיץ - משרה 200`), `תיאור-` / `דרישות-` / `שכר -` lines, and rows of dashes
+between jobs. There are no job pages and no repeating element, so triage's cluster is the
+page's menu, not the jobs. Cite: `LRN-SETUP-16`.
+
+**Build (listing-only, `pageFlow: []`, `formCapture: null` for email apply):**
+1. **Find the cell:** the innermost `td` whose text has both a job number and a 20+ dash rule.
+2. **Mark boundaries in a clone, then split the text.** Dash rules are NOT enough — two
+   adjacent jobs may have only a heading between them (heara: 200 → 100 merged into one job on
+   the first try). Insert a sentinel before every `<u>` whose text carries a job number, AND
+   replace each dash line with the sentinel; split on it.
+3. **A block's first line is its heading.** Two shapes: `title - משרה NNN` and
+   `משרה NNN - title - lead text`. A block with no number (intro, closing terms) is not a job.
+4. **Closed postings:** a heading marked `לא זמין` / `לא רלוונטי` is the employer saying the
+   job is closed — skip it; it returns by itself if the marker is removed.
+5. **Group postings** (a heading block that lists ≥2 `משרה NNN - …` track lines): emit one job
+   per track, with the group's shared lines plus the track's own text; don't publish the group.
+   Fill a dangling `בעלי ניסיון מקצועי בתחום:` with the track's field. Build standalone jobs
+   first so a number they use is theirs — a group track reusing it is dropped.
+6. **Apply the owner's job body rules** (`addsite2.md` *Job body rules*): requirements lines →
+   `__ai-requirements` only, labels dropped, a `שכר…` tail on a requirements line stays in the
+   description, the page's shared closing section appended to every description, and the
+   how-to-apply lines moved to `applicationInfo` with the job number (Step 5a).
+7. **Id = the printed number, namespaced:** `<site>-NNN` (`LRN-ID-11`).
+8. **Location only from the job's own text** (an office town, "בכל הארץ", camps/schools →
+   `פריסה ארצית`); nothing stated → `Unknown`. Never scan the shared closing section.
+
+**Keep it under the 8,000-character `setupScript` cap** (`LRN-API-7`) — a script with all of the
+above plus comments landed at 8,262 and the PUT was refused. Short comments, inline helpers.
+
+**Write non-ASCII characters by code, not by `\u` escape.** `String.fromCharCode(160)` for a
+non-breaking space: the file-writing tool decodes a `\u`-escaped U+00A0 into a raw invisible character, which
+still works but is unreadable and uneditable (CLAUDE.md).
+
+**Verify:** run the script twice in a worker-mirror dry-run (one root, no duplicates); check job
+count against the headings on the page minus closed ones; assert no description still contains
+a `דרישות-`/`תיאור-` label, a requirement line, or the apply lines.
+
+**Reference:** heara.co.il (`cmu3x5es9000j01nvxaxhar00`) — 12 jobs from 9 headings (group 100 →
+101–106, closed 600 dropped), `sites/_configs/heara--xhar00.setup.js`.

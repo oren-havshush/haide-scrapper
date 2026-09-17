@@ -85,15 +85,38 @@ if (items.length) {
     // children (LRN-SETUP-10). Nodes are MOVED, never re-rendered as text, so the
     // worker's <br>/<li> handling still sees native markup (LRN-SETUP-11).
     if (content && !content.querySelector('.__ai-desc')) {
+      // WordPress indents a list by wrapping it in <li style="list-style-type:none">
+      // levels. The page hides those markers, but the worker prefixes "•" to every
+      // <li>, so each wrapper ships as an empty bullet. Unwrap an <li> that has no
+      // text of its own and only holds a nested list; its items move up intact.
+      var lis = content.querySelectorAll('li');
+      for (var w = 0; w < lis.length; w++) {
+        var li = lis[w];
+        if (!li.querySelector('ul, ol')) continue;
+        var own = '';
+        for (var cn = 0; cn < li.childNodes.length; cn++) {
+          var node = li.childNodes[cn];
+          if (node.nodeType === 1 && /^(UL|OL)$/.test(node.tagName)) continue;
+          own += node.textContent || '';
+        }
+        if (own.replace(/[\s ​-‏﻿]/g, '') !== '') continue;
+        while (li.firstChild) li.parentNode.insertBefore(li.firstChild, li);
+        li.parentNode.removeChild(li);
+      }
       var kids = [];
       for (var c = 0; c < content.children.length; c++) kids.push(content.children[c]);
       var dDiv = document.createElement('div'); dDiv.className = '__ai-desc';
       var rDiv = document.createElement('div'); rDiv.className = '__ai-req';
       var bucket = 'd';
+      var descHeads = 0;
       for (var x = 0; x < kids.length; x++) {
         var kid = kids[x];
         var kt = ((kid.innerText || kid.textContent || '').replace(/[​-‏﻿]/g, '')).trim();
         if (!kt) { continue; }
+        // A bare "מס' משרה-1118" line is metadata, not description prose — the
+        // number already ships as externalJobId. Dropped wherever it appears;
+        // a line that merely mentions the number is left alone.
+        if (/^\*?\s*מס['׳`]?\s*משרה\s*[-–—:]?\s*\d+\s*$/.test(kt.replace(/ /g, ' ').trim())) { continue; }
         var isShortLabel = kt.length < 60 && kt.indexOf('\n') === -1;
         if (LEGAL.test(kt)) {
           bucket = 'd';
@@ -102,6 +125,13 @@ if (items.length) {
           // sub-head inside the block ("תנאי סף:") is kept, it is real structure.
           if (/^\s*(דרישות|כישורים|מה אנחנו מחפשים|מי מתאים)/.test(kt)) { bucket = 'r'; continue; }
           bucket = 'r';
+        } else if (isShortLabel && /^\s*תיאור/.test(kt)) {
+          // Some ads label the requirements block "תיאור התפקיד:" a SECOND time
+          // (job 1114). The first one opens the description; a repeat opens the
+          // requirements, and the misleading label is dropped with it.
+          descHeads++;
+          if (descHeads >= 2) { bucket = 'r'; continue; }
+          bucket = 'd';
         } else if (isShortLabel && DESC.test(kt)) {
           bucket = 'd';
         }

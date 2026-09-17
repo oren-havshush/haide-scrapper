@@ -71,6 +71,7 @@ import {
   parseJsonLdOrganization,
   pickAboutUrl,
   pickContactUrl,
+  pickDirectionsUrl,
   pickPolicyUrl,
   sanitizeModelText,
   type LogoCandidate,
@@ -1275,15 +1276,32 @@ async function captureSite(
     // The contact page is where an HQ address usually actually lives, so it is
     // worth one more navigation — but ONLY when nothing above found one, since
     // it is a page load spent on a single field.
+    //
+    // A dedicated directions page goes first: it exists to say where the place
+    // is, while "צור קשר" is often a form and phone numbers. It costs a page load
+    // only on sites that have one, and the contact page is still tried after it
+    // when it yields nothing (heara.co.il: address only on /107867/map).
     let contactPage: PageHarvest | null = null;
+    let directionsPage: PageHarvest | null = null;
+    const directionsUrl = !address ? pickDirectionsUrl(homepage.links, homepage.url) : null;
+    if (directionsUrl) {
+      directionsPage = await harvest(page, directionsUrl, opts.patient);
+      if (directionsPage) {
+        address =
+          addressFrom(directionsPage.bodyText, cities) ?? addressFrom(directionsPage.footerText, cities);
+        if (address) result.provenance.address = `directions page (${directionsUrl})`;
+      }
+    }
     const contactUrl = !address ? pickContactUrl(homepage.links, homepage.url) : null;
-    if (contactUrl) {
+    if (contactUrl && contactUrl !== directionsUrl) {
       contactPage = await harvest(page, contactUrl, opts.patient);
       if (contactPage) {
         address =
           addressFrom(contactPage.bodyText, cities) ?? addressFrom(contactPage.footerText, cities);
         if (address) result.provenance.address = `contact page (${contactUrl})`;
       }
+    } else if (contactUrl) {
+      contactPage = directionsPage;
     }
 
     // Last resort: the privacy policy or terms page. An Israeli policy page has
@@ -1310,6 +1328,9 @@ async function captureSite(
     if (opts.useLlm && (!about || !address)) {
       const sources = [{ url: homepage.url, text: homepage.bodyText }];
       if (aboutPage) sources.push({ url: aboutPage.url, text: aboutPage.bodyText });
+      if (directionsPage && directionsPage !== contactPage) {
+        sources.push({ url: directionsPage.url, text: directionsPage.bodyText });
+      }
       if (contactPage) sources.push({ url: contactPage.url, text: contactPage.bodyText });
       if (policyPage) sources.push({ url: policyPage.url, text: policyPage.bodyText });
       if (homepage.footerText) {

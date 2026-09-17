@@ -440,6 +440,23 @@ const CONTACT_TEXT =
 const CONTACT_LOOSE = /contact|צור קשר|צרו קשר|יצירת קשר|כתובת|דרכי הגעה/i;
 
 /**
+ * The DIRECTIONS page on its own, so it can be tried BEFORE the generic contact
+ * page instead of tying with it. pickContactUrl() returns one page, and a site
+ * that links both "צור קשר" and "מפת הגעה" always resolved to "צור קשר": that is
+ * how heara.co.il came back with no address, although /107867/map states
+ * "אנו ממוקמים ברחוב החשמל 5 בקדימה" and its contact page lists only phones.
+ *
+ * "מפת" alone is not enough — the same site links "מפת האתר" (the sitemap) and
+ * "מפת כוכבים" (a product it sells). The path form is a whole `map` segment for
+ * the same reason: /siteMap/ and /sitemap.xml are not directions.
+ */
+const DIRECTIONS_HREF =
+  /(directions|find-us|how-to-get-here|getting-here)(\/|$|\?|#)|(^|\/)map(\/|$|\?|#)|דרכי-הגעה|איך-מגיעים|מפת-הגעה|הוראות-הגעה|כתובת-ותחבורה|כתובת-והגעה/i;
+const DIRECTIONS_TEXT =
+  /^(directions|find us|how to get here|getting here|דרכי הגעה|איך מגיעים|איך להגיע|מפת הגעה|הוראות הגעה|כתובת ותחבורה|כתובת והגעה)$/i;
+const DIRECTIONS_LOOSE = /directions|דרכי הגעה|איך מגיעים|איך להגיע|מפת הגעה|הוראות הגעה/i;
+
+/**
  * Highest-scoring same-host link matching a label/path keyword pair.
  *
  * Off-host links are refused outright: an "About" link pointing at Wikipedia or
@@ -559,6 +576,11 @@ function decodeURIComponentSafe(value: string): string {
  */
 export function pickContactUrl(links: readonly HarvestedLink[], pageUrl: string): string | null {
   return pickByKeyword(links, pageUrl, CONTACT_TEXT, CONTACT_HREF, CONTACT_LOOSE);
+}
+
+/** Best directions ("מפת הגעה" / "דרכי הגעה") page URL, or null. See DIRECTIONS_HREF. */
+export function pickDirectionsUrl(links: readonly HarvestedLink[], pageUrl: string): string | null {
+  return pickByKeyword(links, pageUrl, DIRECTIONS_TEXT, DIRECTIONS_HREF, DIRECTIONS_LOOSE);
 }
 
 /**

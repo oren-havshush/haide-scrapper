@@ -125,6 +125,12 @@ Two questions, both answered by eye:
    a brand they carry (§7.7).
 2. **Is that copy the company describing ITSELF, today?** A dated milestone, a product
    launch or a press release is real company prose and still the wrong field (§7.8).
+3. **Does the city agree with every street address the company prints?** Check the jobs
+   site's own host too — a blog, news or careers subdomain is outside the capture — and the
+   phone area code. A JSON-LD `addressLocality` with no `streetAddress`, or an `llm` address
+   that is only a city name, is weak: a printed street address beats it. On a conflict, ask
+   the owner. ipvsecurity.com stored `תל אביב-יפו` from a bare locality while its jobs
+   subdomain printed `זרחין 10, רעננה` (`LRN-HQ-1`).
 
 **Resolve any doubt BEFORE the real run.** `companyAbout`, `companyLogoPath` and
 `companyProfileAt` are write-once (§1.1): noting a reservation and shipping anyway
@@ -151,9 +157,38 @@ to extract and no keyword will ever reach it.
 → Operator-supplied city (§4.4).
 
 **4.3 The company simply publishes no address.** Common and legitimate. Check the
-contact page, the directions page (`כתובת ותחבורה` / `דרכי הגעה`), the privacy page
-and the footer — the capture already reads all of them. If none carries an address,
-leave the city NULL rather than inferring one from prose.
+contact page, the directions page (`כתובת ותחבורה` / `דרכי הגעה` / `מפת הגעה`), the
+privacy page and the footer — the capture already reads all of them. If none carries an
+address, leave the city NULL rather than inferring one from prose.
+
+A dedicated directions page is tried **before** the contact page since 2026-09-16
+(`pickDirectionsUrl`). Before that, a site linking both "צור קשר" and "מפת הגעה" always
+read the contact page — heara.co.il's address was only on `/107867/map`. A site captured
+before that date with a directions page and no address is worth a `--dry-run --force`
+(§3.1), then a real `--force` if the preview only adds.
+
+**4.5 The logo is drawn into a header banner.** Symptom: `logo …: rejected` for a
+widget icon (Facebook, accessibility) and no other candidate, while the page visibly
+shows a logo. Check every `<img>`, CSS `background-image` and inline SVG near the top: if
+the only match is one wide banner (heara: `new-top-960-124.jpg`, logo plus four photos),
+the capture is right to refuse it — the banner is not a logo.
+→ Crop the logo from the **original image pixels** (load the image URL, `drawImage` the
+region onto a canvas, export PNG — not a page screenshot), and look at the crop. Upload it:
+
+```bash
+curl.exe -X POST "$BASE/api/sites/$SITE_ID/company-logo" -H "$AUTH" \
+  -H "Content-Type: image/png" -H "x-logo-source-url: <banner URL>" \
+  --data-binary "@logo.png"
+```
+
+The server validates magic bytes and size. **The upload does not recompute
+`companyProfileStatus`** — with homepage, about and logo now present, set it yourself:
+`PUT /api/sites/$SITE_ID/company-profile?force=1` with `{"companyProfileStatus":"COMPLETE"}`
+(presence-based: no other column is touched). A later forced re-capture will not find the
+logo again and recomputes PARTIAL; re-set it after one. Cite: `LRN-LOGO-2`.
+
+While looking at the logo, compare it with `companyName`: the logo carries the company's
+own spelling, the page `<title>` often does not (`addsite2.md` §4).
 
 **4.4 Operator-authored values.** A city a human establishes goes through the API,
 not the code:
@@ -170,6 +205,13 @@ off-list spelling or a region is a 400 — and records **who authored it** in
 needing a hand-supplied city are exactly those already captured without one, so a
 later `--force` re-capture finds no city again and would otherwise write NULL
 straight over the human's answer. Recorded authority is what stops it.
+
+**Only the city has that protection.** A hand-corrected address is written with
+`PUT /company-profile?force=1` and only the `companyHqAddress` key, and nothing records
+who wrote it: a later `--force` re-capture re-derives the address and overwrites it,
+while keeping the operator's city — the pair splits silently. Before a forced re-capture,
+find the sites whose address was corrected by hand and re-apply it afterwards
+(`LRN-HQ-2`).
 
 `evidence.kind` is one of:
 
