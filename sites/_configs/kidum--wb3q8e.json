@@ -1,0 +1,117 @@
+{
+  "_exportedAt": "2026-09-17T14:45:00.102Z",
+  "_note": "Mirror of the live config. The DB is authoritative; the worker never reads this file. setupScript lives alongside in <slug>.setup.js.",
+  "id": "cmu5m7fm5000801p9xiwb3q8e",
+  "siteUrl": "https://kidum.com/career/",
+  "companyName": "קידום",
+  "status": "ACTIVE",
+  "setupScriptFile": "kidum--wb3q8e.setup.js",
+  "pageFlow": [],
+  "fieldMappings": {
+    "_meta": {
+      "savedAt": "2026-09-17T14:19:29.853Z",
+      "pagination": null,
+      "formCapture": {
+        "fields": [
+          {
+            "name": "form_fields[career_type]",
+            "label": "בחירת משרה",
+            "tagName": "select",
+            "required": true,
+            "fieldType": "select"
+          },
+          {
+            "name": "form_fields[phone]",
+            "label": "טלפון",
+            "tagName": "input",
+            "required": true,
+            "fieldType": "tel"
+          },
+          {
+            "name": "form_fields[file_upload]",
+            "label": "העלאת קורות חיים",
+            "tagName": "input",
+            "required": true,
+            "fieldType": "file"
+          },
+          {
+            "name": "form_fields[career_name_hidden]",
+            "label": "שם המשרה",
+            "tagName": "input",
+            "required": false,
+            "fieldType": "hidden"
+          },
+          {
+            "name": "post_id",
+            "label": "",
+            "tagName": "input",
+            "required": false,
+            "fieldType": "hidden"
+          },
+          {
+            "name": "form_id",
+            "label": "",
+            "tagName": "input",
+            "required": false,
+            "fieldType": "hidden"
+          }
+        ],
+        "method": "POST",
+        "actionUrl": "https://kidum.com/wp-admin/admin-ajax.php",
+        "formSelector": "form[name=\"send_cv\"]:has(input[name=\"action\"])"
+      },
+      "itemSelector": ".e-loop-item.type-career",
+      "minPublishDate": null,
+      "minPublishDays": null,
+      "revealSelector": null,
+      "listingSelector": null,
+      "applyLoginReason": null,
+      "browserOverrides": null,
+      "loadMoreSelector": null,
+      "locationFallback": null,
+      "originalMappings": null,
+      "applyRequiresLogin": false
+    },
+    "title": {
+      "source": "auto",
+      "selector": ".elementor-widget-theme-post-title .elementor-heading-title",
+      "confidence": 0.95
+    },
+    "location": {
+      "source": "auto",
+      "selector": ".__ai-location",
+      "confidence": 0.85
+    },
+    "detailUrl": {
+      "source": "auto",
+      "selector": "a[href*=\"/career/\"]",
+      "confidence": 0.9,
+      "extractAttr": "href"
+    },
+    "department": {
+      "source": "auto",
+      "selector": ".__ai-department",
+      "confidence": 0.85
+    },
+    "description": {
+      "source": "auto",
+      "selector": ".__ai-description",
+      "confidence": 0.9
+    },
+    "publishDate": {
+      "source": "auto",
+      "selector": ".__ai-publishdate",
+      "confidence": 0.9
+    },
+    "requirements": {
+      "source": "auto",
+      "selector": ".__ai-requirements",
+      "confidence": 0.9
+    },
+    "externalJobId": {
+      "source": "auto",
+      "selector": ".__ai-jobid",
+      "confidence": 0.95
+    }
+  }
+}
