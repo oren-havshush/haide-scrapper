@@ -2350,6 +2350,40 @@
 
 ---
 
+## LRN-HQ-3 — an address printed inside a sentence is stored with the rest of the sentence
+
+- **Date / site:** 2026-09-17 · kidum.com/career (`cmu5m7fm5000801p9xiwb3q8e`), קידום.
+- **Signal:** `/company-profile` returned `WRITTEN COMPLETE … address city=חולון`, and the stored
+  `companyHqAddress` was
+  `רח' המשביר 1 פרימיום סנטר, חולון), הכוללת את מותגי פסיכומטרי, השלמת בגרו` — a stray `)`, a clause
+  that is not part of the address, and a word cut mid-way. The only printed address is inside a
+  parenthesis in the middle of a sentence on `/about/`:
+  `קידום ידע והשכלה בע"מ (משרדי ההנהלה ממוקמים ברח' המשביר 1 פרימיום סנטר, חולון), הכוללת את מותגי …`
+- **Why:** `ADDRESS_LINE` (`scripts/lib/company-extract.ts`) is a street noun + name + house number
+  followed by `[^\n]{0,60}`, and `extractAddressLine` then cuts only a `CONTACT_TAIL`
+  (phone/fax/email) and trailing punctuation. The tail stops at a newline or at 60 characters. A
+  footer address sits on its own line; an address inside prose does not, so the tail ran past `)` into
+  the sentence and stopped at exactly 60 characters. Reproduced by running `extractAddressLine` on the
+  page text: same 72-character value.
+- **Why nothing caught it:** the city gate passed because `חולון` is inside the fragment — it proves a
+  city is named, not where the address ends — and the profile was `COMPLETE`. Only reading the stored
+  value (`company-profile.md` §3.1) showed it.
+- **Fix (this site):** `PUT /company-profile?force=1` with only
+  `{"companyHqAddress":"רח' המשביר 1 פרימיום סנטר, חולון"}` — the verbatim address from the sentence;
+  the profile diff showed no other column changed. Recorded in the site's `adminNote`, because a
+  `--force` re-capture would restore the fragment (LRN-HQ-2). The city here was captured, not
+  operator-authored, so `companyHqCitySource` is null and the admin note is the only record of the
+  correction.
+- **Rule:** after a capture, read `companyHqAddress` for a stray bracket, words that belong to the
+  surrounding sentence, or a truncated last word. Correct it to the address as printed; don't leave
+  it for a re-capture.
+- **Not done:** no change to `extractAddressLine`. A code fix (e.g. end the tail at a `)` with no
+  matching `(`) and a scan of existing stored addresses for the same shape are deferred.
+- **Generalizes to:** any company whose only address is in about-page prose rather than a footer or
+  contact line. **Home:** `company-profile.md` §3.1.
+
+---
+
 ## LRN-AGE-1 — a page with no job dates publishes years-old jobs as fresh, and no gate notices
 
 - **Date / site:** 2026-09-16 · news.ipvsecurity.com/דרושים (`cmu41l9qd000v01nviy5knkts`).
