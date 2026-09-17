@@ -76,6 +76,42 @@
   ceiling applies to every third-party ATS (AdamTotal, Comeet, TopMatch …).
   **Home:** Step 6 browserOverrides / WAF recipe.
 
+### LRN-WAF-4 — ShieldSquare (Radware) hCaptcha wall reads as GRAY, not RED
+- **Date / site:** 2026-09-17 · ayalon-ins.co.il (no site created)
+- **Signal:** `triage` returned `lane: GRAY, reachable: true, topCluster 2`, which
+  looks like a thin listing worth a manual look. It is actually a 302 on the first
+  request to `validate.perfdrive.com/...` serving `<title>ShieldSquare Captcha</title>`
+  with a blocking hCaptcha widget. This happens with a bare headless Playwright **and**
+  with curl using a real desktop Chrome UA. Pages under `/career/*` and
+  `/about-us/career/*` redirect, and so does the site's own JSON API
+  (`/api/careers`); `robots.txt` does not. The redirect target returns 200, so a
+  status-code reachability probe counts it as reachable.
+- **A single 200 got through once.** One bare curl to `/api/careers` returned 200
+  JSON, after this IP had already been challenged several times. Three immediate
+  repeats of the same request were redirected, and so was a retry sending the
+  cookies that response had set. Cause unknown.
+- **Fix:** none within the worker's means. A UA override does not help, and nothing
+  may solve an hCaptcha. **SKIP**, like a blocking Turnstile (`LRN-APPLY-1`). First
+  search for the employer's own board on another host (§2.1). Aggregators such as
+  Jobnet/Drushim are not the employer and don't count.
+- **Diagnose:** `curl -sL -o NUL -w "%{url_effective}"` against the listing. If the
+  final host is `validate.perfdrive.com`, or the title is `ShieldSquare Captcha`, it
+  is this block. Don't spend a build attempt on it.
+  - **One 200 is not access.** Repeat the request a few times before believing it.
+    The worker needs every scheduled scrape to get through, not an occasional one.
+    Don't guess at the cause, and don't change IPs or headers to chase it.
+  - **The site's own API can be behind the same wall** (it was here). Finding the
+    jobs request in the browser's Network tab is worth one check, but don't expect
+    it to get around the block.
+  - **"It works in my browser" does not mean the worker can get in.** A browser that
+    has already passed the challenge gets its later requests allowed. The worker
+    never passes it.
+  - Probe just enough to confirm the block. More requests teach nothing and may
+    make our traffic look worse to the blocker (advice, not verified).
+- **Generalizes to:** any Radware/ShieldSquare-fronted site. The `reach`/`triage`
+  probe should treat a cross-host redirect to a known challenge host as RED.
+  **Home:** Step 3 reachability gate / `reach` script.
+
 ---
 
 ## B. Analyzer race / config persistence
