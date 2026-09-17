@@ -57,6 +57,7 @@ from top-level params, so a setupScript left only inside `_meta` is dropped.
 | אגד | ACTIVE | 7 | 5669 | `egged--4qc6cy` |
 | אדוויס | ACTIVE | 6 | 2334 | `advice--eq0sxw` |
 | אופרייט | ACTIVE | 6 | 7093 | `opl--u03od8` |
+| איי פורס בע"מ | ACTIVE | 9 | 7966 | `iforc--jtz6km` |
 | אלביט מערכות | ACTIVE | 9 | 7741 | `elbitsystemscareer--kjk1e7` |
 | אלובין תעשייות אלומיניום בע״מ | ACTIVE | 6 | 2373 | `alubin--r73xau` |
 | אליקטרוניקס בע''מ | ACTIVE | 4 | 722 | `eliktronics--erhzvq` |
