@@ -112,6 +112,43 @@
   probe should treat a cross-host redirect to a known challenge host as RED.
   **Home:** Step 3 reachability gate / `reach` script.
 
+### LRN-WAF-5 — Incapsula that blocks the SPOOFED Chrome UA and the dev IP, not the worker
+- **Date / site:** 2026-09-17 · tikshoov.co.il (`cmu5mleu7000c01p950bo7eqx`, ACTIVE, 101 jobs)
+- **Signal:** `triage` said YELLOW (topCluster 101), then every local request —
+  curl, bare Playwright, Playwright with a real Chrome UA — got a 914-byte 403
+  `Request unsuccessful. Incapsula incident ID`. The dev IP was flagged after the
+  first load. From inside the worker container the **default headless UA passed 3/3**
+  and the **spoofed desktop-Chrome UA was 403'd** — the inverse of `LRN-WAF-2`,
+  presumably because a Chrome-131 UA on a HeadlessChrome fingerprint is a mismatch.
+- **Fix:** no `browserOverrides`. Run discovery and the setupScript dry-run from the
+  worker container (`docker exec -i -e NODE_PATH=/app/node_modules -w /app
+  haide-scrapper-worker-1 node /tmp/x.cjs`; `/app` is not writable, `/tmp` needs
+  NODE_PATH). In-page `fetch()` of all 101 detail pages passed from there.
+- **Traps:**
+  - `triage`'s `CHALLENGE_RE` has no Incapsula markers, so a blocked page can still
+    be called reachable. `reach` alone does not settle this site class.
+  - `addsite-qa` probes ONE detail page from the local IP and compares every sampled
+    location against its body. A blocked probe yields "location X (and N others) not
+    found in detail page body" — REVIEW on correct data. Tell: X is the probed job's
+    own location. Verify values against worker-fetched bodies instead.
+  - `company-profile` runs locally too, so it reads the block page. It CAN run in the
+    worker: tar `scripts src worker "CSV files/city.csv" package.json tsconfig.json
+    .claude/scrap-token` (exclude node_modules) into `/tmp/cp`, symlink
+    `/app/node_modules`, run `/app/node_modules/.bin/tsx scripts/company-profile.ts
+    --site <id> --dry-run --out /tmp/cp/out.jsonl` with `SCRAP_BASE=http://web:3000`
+    (the public host resolves to 127.0.1.1 inside the container). `rm -rf /tmp/cp`
+    afterwards — it holds the token.
+  - **Look at the logo before any real run.** Here the dry-run's "logo" was an inline
+    `<svg>` rasterised to 530x1000: the **Facebook "f" icon**. The capture has no flag
+    to pick another candidate, so the profile was written by hand —
+    `POST /company-logo` with the footer PNG's bytes, then `PUT /company-profile` with
+    the four text fields and no logo key. A tall, square-ish black glyph from
+    `inline-svg` is a social icon until proven otherwise. Also note the header `<img>`
+    was a 30th-anniversary variant; the footer mark was the real logo.
+- **Generalizes to:** any Imperva site where local and worker results disagree. Test
+  from the worker before SKIPPING, and before adding a UA override.
+  **Home:** Step 3 reachability / §12 QA.
+
 ---
 
 ## B. Analyzer race / config persistence
