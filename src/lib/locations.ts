@@ -59,9 +59,10 @@ export function resolveLocationInput(raw: string): ResolvedLocation {
 
   for (const part of trimmed.split(/\s*,\s*/).map((s) => s.trim()).filter(Boolean)) {
     const resolved = normalizeLocations(part);
-    // normalizeLocations passes an unresolved string straight through
-    // (`return out.length ? out : [original]`), so a bad token comes back
-    // verbatim — that is exactly the case this gate has to catch.
+    // normalizeLocations drops whatever it cannot place, so a bad token comes
+    // back as an EMPTY list — that is the case this gate has to catch. The
+    // canonical re-check is kept as a belt-and-braces assertion on a contract
+    // this file does not own.
     if (resolved.length === 0 || resolved.some((v) => !isCanonicalLocation(v))) {
       rejected.push(part);
       continue;

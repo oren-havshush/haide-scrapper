@@ -511,6 +511,7 @@ const BARE_PREFIX_MIN_LEN = 4;
 const BARE_PREFIX_DENYLIST = new Set<string>([
   "משמרות", // "במשמרות" = in shifts (shift work), not the moshav משמרות
   "אזור", // "באזור צומת שוקת" = in the area of — not the town אזור
+  "שדרות", // "בשדרות רוטשילד 15" = on Rothschild Blvd — not the city שדרות
 ]);
 
 const passesBarePrefix = (name: string) =>

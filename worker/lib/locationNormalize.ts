@@ -10,9 +10,15 @@
  * ones not yet onboarded.
  *
  * Contract:
- *   - NEVER blanks a value. If nothing matches, the raw string is returned as-is
- *     so no information is lost. "Unknown" stays reserved for jobs that printed
- *     no location at all.
+ *   - NEVER returns a value outside the vocabulary. If nothing matches, the
+ *     result is EMPTY. This reverses the original "never blank a value" rule:
+ *     the raw-string passthrough (`out.length ? out : [original]`) was the leak
+ *     LRN-LOC-5 names, and it is how tikshoov stored 49 values that are in
+ *     neither list ("חיפה וקריות", "צ'ק פוסט", "תקשוב מהבית"). A wrong value is
+ *     worse than a missing one: nothing downstream repairs a wrong location,
+ *     while an empty one is filled by the gazetteer or locationFallback.
+ *     Genuinely-abroad postings ("new york", "remote") are off-list too, so
+ *     they now come back empty rather than as a foreign city.
  *   - Returns a LIST. 926 jobs genuinely name several places
  *     ("חולון ובת-ים, ת\"א, מודיעין"); callers that need one value take [0].
  *
@@ -84,9 +90,20 @@ export const LOCATION_EN: Readonly<Record<string, string>> = {
   israel: "פריסה ארצית",
 };
 
-/** Genuinely-abroad postings — not Israeli cities, and not a data defect. */
-const ABROAD =
-  /^(new york|singapore|canada|uk|united kingdom|usa|us|apac|emea|europe|germany|france|india|china|japan|australia|poland|romania|brazil|mexico|spain|italy|netherlands|belgium|remote)$/i;
+/**
+ * Names that ARE city.csv entries but read as an ordinary Hebrew noun whenever
+ * they turn up inside a longer string, so scanning for them manufactures places:
+ *   שדרות = "boulevard" — "שדרות רוטשילד 15" is a Tel Aviv street, not Sderot.
+ *   אזור  = "the area of" — "אזור גבעת התחמושת" is a Jerusalem district, not Azor.
+ * Same class as LRN-LOC-2's "במשמרות" (= in shifts) resolving to the moshav
+ * משמרות, and the mirror of normalizer.ts's BARE_PREFIX_DENYLIST.
+ *
+ * This gates the SCANNER only. An exact value still resolves through the
+ * canonical/alias path above, so a job really located in שדרות or אזור is
+ * unaffected — and the "אזור <region>" entries are consumed whole, longest
+ * needle first, before the bare word is ever considered.
+ */
+const SCAN_DENYLIST: ReadonlySet<string> = new Set(["שדרות", "אזור"]);
 
 function levenshtein1(a: string, b: string): boolean {
   if (Math.abs(a.length - b.length) > 1) return false;
@@ -110,8 +127,9 @@ const isHeb = (ch: string) => /[֐-׿]/.test(ch);
 function scanPlaces(raw: string): string[] {
   const hay = squash(raw);
   const candidates: Array<[string, string]> = [];
-  for (const c of BY_LEN) if (c.length >= 3) candidates.push([c, c]);
-  for (const [k, v] of Object.entries(LOCATION_ALIAS)) if (k.length >= 3) candidates.push([k, v]);
+  for (const c of BY_LEN) if (c.length >= 3 && !SCAN_DENYLIST.has(c)) candidates.push([c, c]);
+  for (const [k, v] of Object.entries(LOCATION_ALIAS))
+    if (k.length >= 3 && !SCAN_DENYLIST.has(k)) candidates.push([k, v]);
   candidates.sort((a, b) => b[0].length - a[0].length);
 
   const taken: Array<[number, number]> = [];
@@ -144,7 +162,11 @@ function resolvePart(part: string): string | null {
   if (CANONICAL.has(p)) return p;
   if (LOCATION_ALIAS[p]) return LOCATION_ALIAS[p];
 
-  const lower = p.toLowerCase().replace(/,?\s*(israel|il)\.?$/i, "").trim();
+  // "Tel Aviv, Israel" -> "tel aviv". Keep the unstripped form when the suffix
+  // IS the whole value, or a bare "Israel" would strip to nothing and miss its
+  // own LOCATION_EN entry (-> פריסה ארצית).
+  const lowerRaw = p.toLowerCase();
+  const lower = lowerRaw.replace(/,?\s*(israel|il)\.?$/i, "").trim() || lowerRaw;
   if (LOCATION_EN[lower]) return LOCATION_EN[lower];
   if (/^[a-z]/i.test(p))
     for (const [en, he] of Object.entries(LOCATION_EN))
@@ -164,8 +186,12 @@ function resolvePart(part: string): string | null {
 
 /**
  * Normalise a raw location into canonical values.
- * Returns [] only when the input is empty/"Unknown"; otherwise always non-empty
- * (falling back to the raw string), so a value is never silently destroyed.
+ *
+ * Returns [] whenever nothing in the input resolves — empty input, the
+ * "Unknown" sentinel, prose, a district, a street, or a foreign city. Every
+ * value it DOES return is guaranteed to be in the vocabulary; the final filter
+ * is the single gate, and it runs AFTER the whole cascade so the alias and
+ * abbreviation spellings that employers actually write still land.
  */
 export function normalizeLocations(raw: string | null | undefined): string[] {
   const original = (raw ?? "").trim();
@@ -173,8 +199,7 @@ export function normalizeLocations(raw: string | null | undefined): string[] {
   if (CANONICAL.has(original)) return [original];
 
   const s = squash(original).replace(LABEL, "").trim();
-  if (!s) return [original];
-  if (ABROAD.test(s)) return [s];
+  if (!s) return [];
 
   const out: string[] = [];
   for (const part of s.split(/\s*[,|/;]\s*/).map((x) => x.trim()).filter(Boolean)) {
@@ -185,7 +210,9 @@ export function normalizeLocations(raw: string | null | undefined): string[] {
     }
     for (const v of scanPlaces(part)) if (!out.includes(v)) out.push(v);
   }
-  return out.length ? out : [original];
+  // The gate. Nothing leaves this function that city.csv does not contain —
+  // a caller can trust the output instead of re-checking it.
+  return out.filter((v) => CANONICAL.has(v));
 }
 
 /** True when every value belongs to the canonical vocabulary. */

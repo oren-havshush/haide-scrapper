@@ -72,11 +72,12 @@ console.log("\n# a company HQ city is narrower than a job location");
   const bilu = normalizeLocations("ביל״ו");
   assert(bilu.length === 1 && isCanonicalLocation(bilu[0]), "ביל״ו with a real gershayim resolves");
 
-  // normalizeLocations passes an unresolved string straight through, which is
-  // why every caller re-checks the OUTPUT rather than trusting it.
+  // normalizeLocations now drops anything it cannot place in the vocabulary
+  // rather than handing the raw string back, so an unknown place yields [].
+  eq(normalizeLocations("Sderot Nowhere"), [], "an unknown place yields no value at all");
   assert(
-    !isCanonicalLocation(normalizeLocations("Sderot Nowhere")[0]),
-    "an unknown place comes back verbatim and fails the gate",
+    normalizeLocations("Sderot Nowhere").every(isCanonicalLocation),
+    "and nothing off-list can survive the call",
   );
 
   // An HQ is one place; a comma list must not be accepted as one.
@@ -118,7 +119,8 @@ console.log("\n# whitespace and sloppy separators");
 
 console.log("\n# values outside the vocabulary are rejected");
 {
-  // הגליל normalises to itself and is in neither list — the passthrough case.
+  // הגליל is in neither list, so it now normalises to nothing at all — the
+  // gate below catches it as an empty resolution rather than a raw passthrough.
   throws(() => resolveLocationInput("הגליל"), "rejects הגליל (not in city.csv)");
   throws(() => resolveLocationInput("תל אביב-יפו, הגליל"),
     "rejects the whole edit when one city is unknown");
