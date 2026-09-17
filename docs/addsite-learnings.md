@@ -2384,3 +2384,113 @@
   the company is known. A hit is not automatically a duplicate (one host can serve several employers,
   and a company can have two boards) — look at it before creating.
 - **Generalizes to:** every onboarding. **Home:** `addsite2.md` §3.
+
+---
+
+## LRN-WRK-20 — cloned listing cards that share an href collapse into one job at extraction
+
+- **Date / site:** 2026-09-17 · iforc.co.il/jobs (`cmu5adrwg001501nvfmjtz6km`), staffing agency, 110 jobs.
+- **Signal:** splitting three group postings into one job per track (owner rule 5) meant cloning the
+  listing card per track in `setupScript`. The dry-run showed 110 items and 110 distinct ids, but a
+  scrape would have saved 106: the three garage tracks, two diesel tracks and two warehouse tracks
+  each shared one card.
+- **Why:** `dedupeAndCapRawFields` (`worker/jobs/scrape.ts`) keys each item on
+  `title_href || _detailUrl || externalJobId`. `title_href` is not the mapped `detailUrl`: for every
+  mapped field the item extractor records the **closest `<a>` ancestor's href** as `<field>_href`, and
+  when the item *is* the card anchor (`itemSelector: "a.post-card"`) every clone reports the same URL.
+  A distinct `externalJobId` does not help — the URL wins the fingerprint.
+- **Fix:** give each extra clone a distinct card href — `a.href + '#' + trackNo` — and keep the
+  published link on a separate injected anchor mapped as `detailUrl` (`.__ai-url`, plain URL), so no
+  stored link carries the fragment. Mirror the fingerprint in the dry-run
+  (`distinct(title_href || id)`), not just `distinct(id)`: it printed `106 of 110` before the fix and
+  `110 of 110` after.
+- **Generalizes to:** any listing-only site where one card becomes several jobs — group postings,
+  multi-branch cards, a card listing several roles. **Home:** `addsite2.md` *Job body rules* 5.
+
+---
+
+## LRN-SETUP-17 — a staffing agency prints its own office block in the ads: remove only lines proven to be the agency's
+
+- **Date / site:** 2026-09-17 · iforc.co.il (איי פורס בע"מ).
+- **Signal:** 15 of 110 job bodies ended with `"איי פורס בע"מ"` / `טל’: 03-9503184/5` /
+  `פקס: 03-9503169` / `רכזת מטפלת: קארין`, or a bare office number. It is the recruiter's contact
+  block, not job content — but two ads also printed mobiles (`052-7381515`, `057-7898260`) that could
+  belong to the hiring company.
+- **Fix:** attribute before removing. The site's own contact page listed only its *current* number
+  (03-9699334); the ad numbers were confirmed as the agency's via public business listings
+  (NetPage, B144). Then, in `setupScript`, drop a line only when it contains nothing but agency identity:
+  the name, `טל/פקס/אור/פרטים נוספים בטל’` followed only by the agency's numbers, or the recruiter
+  line. If the job prints **any** number not proven to be the agency's, leave that job's contact lines
+  untouched — a half-removed block strips the context a hiring company's number needs. Remove after
+  the requirements split (these lines also end a `דרישות` section), and diff: 38 lines left 15
+  descriptions, nothing else moved.
+- **Keep:** job meta that sits in the same block (`סוג משרה:`, `מגורי מועמדים:`, `מיקום המשרה:`).
+- **Generalizes to:** staffing/placement boards (tigbur, Avivim, I Force). **Home:**
+  `addsite2.md` *Job body rules* 6.
+
+---
+
+## LRN-SETUP-18 — requirements without a `דרישות` heading: classify the line, and know what must stay
+
+- **Date / site:** 2026-09-17 · iforc.co.il. Owner correction: "ניסיון-חובה / ידע בקריאת
+  שרטוטים-חובה" is a requirement even with no heading. Requirements went from 30 to 75 of 106 jobs.
+- **Rule that held across all ~760 body lines** (read in full before writing it): a line is a
+  requirement when it contains `חובה` or `יתרון`, or **starts** with a requirement word — ניסיון/נסיון,
+  ידע, רישיון/רשיון, תעודה/תעודת, בעל/ת, יכולת, נכונות, זמינות, שליטה, הכרה/הכרת, מגורים,
+  דובר/ת, עדיפות, נדרש/ת, יוצא/י, רצוי, גישה, `עם ידע/ניסיון`, `ראש גדול`. A bullet run (`* ▪ – •`)
+  where at least half the bullets qualify moves as a block (catches trait bullets like
+  "טיפוס ייצוגי, מכירתי…").
+- **What must stay in the description** — each was a real misclassification first:
+  - the role/intro line, even with a requirement inside: anything containing `דרוש`, and
+    `X – חובה <3+ more words>` ("מנהלת חשבונות סוג 3 – חובה ידע בחשבשבת…");
+  - a line stating working hours (`\d:\d\d`): "נכונות למשרה מלאה: 7:00-16:00" is the schedule;
+  - pay and terms — but match pay narrowly: `שכר` inside the **role name** "חשבת שכר" hid that job's
+    requirement bullets, and `תנאים` anywhere hid "בעלת תנאים סוציאליים טובים" under a real
+    `דרישות:` heading. Strip `חשב\S*\s+שכר` first; treat `תנאים` as pay only at line start or beside `+`;
+  - lines longer than ~150 chars.
+- **Group postings first:** in a posting with numbered tracks the requirement lines belong to one
+  track; split per track (rule 5) before classifying, or they merge into one misleading list.
+- **Verify:** the multiset of description+requirements lines must be identical before and after —
+  only the field may change — and read every moved line, not the count.
+- **Generalizes to:** agency and small-employer boards that write ads as free lines. **Home:**
+  `recipes/setupscript-patterns.md` §9.
+
+---
+
+## LRN-LOC-11 — "אזור" the town vs "the area of": a narrow context rule, and why the gazetteer can't be used
+
+- **Date / site:** 2026-09-17 · iforc.co.il, job "חשבת שכר" — empty location field; the only place
+  is prose: "לחברה מובילה בתחומה בארץ **הממוקמת באזור**, דרושה…".
+- **The worker's contextual gazetteer is not the answer here.** With the location left empty it
+  returned **`רווחה`** from "טיפול **ברווחה**" (welfare) in the duties — the same word LRN-LOC-8
+  lists for site scripts, still unguarded in `extractLocationFromGazetteer`'s bare-`ב` pattern — and
+  it never reads "באזור" as the town (`BARE_PREFIX_DENYLIST`, by design). So inject a value; never
+  leave the field empty to "let the gazetteer decide" (LRN-LOC-10 step 4).
+- **Evidence for the rule:** this employer writes `הממוקמת ב<place>` ten times; the other nine are
+  followed by a real place. "Area" usage always names the area after `אזור` ("באזור המרכז",
+  "באזור רמלה והסביבה").
+- **Rule (script-local, empty field only):** `ממוק(ם|מ\S*)\s+באזור\s*([,.](?!\s*(ליד|סמוך|בקרבת))|$)`
+  → `אזור`. Any word after `אזור`, or a comma leading into "near X", is the area.
+- **Two traps the unit cases caught before deploy:** `ממוקמ\S*` does not match masculine **`ממוקם`**
+  — final mem `ם` is a different letter (CLAUDE.md); and "ממוקם באזור, ליד ראשון לציון" is the
+  area, not the town. Write the negative cases first and break-test them.
+- **Related, same site:** a card area `צומת כנות` is the junction next to the industrial zone —
+  mapped to `אזור תעשיה כנות` (single yod, verbatim city.csv) by exact whole-field alias, never to
+  `כנות` (the youth village), which is what the worker's own scanner returns for it.
+- **Generalizes to:** any Hebrew place name that is also a common noun (אזור, שדרות, משמרות, רווחה).
+  **Home:** `recipes/setupscript-patterns.md` §6; worker follow-up for the gazetteer.
+
+---
+
+## LRN-API-9 — `adminNote` is capped at 2,000 characters; a longer PATCH is a bare 400
+
+- **Date / site:** 2026-09-17 · iforc.co.il.
+- **Signal:** appending one more paragraph to a 1,791-character note returned `400` and left the note
+  unchanged; the response names nothing useful. `updateSiteAdminNoteSchema` has
+  `adminNote: z.string().max(2_000)` (`src/lib/validators.ts`).
+- **Fix:** check `note.length <= 2000` before the PATCH and re-read the note after it. When a site's
+  history outgrows the cap, rewrite the whole note compactly (keep every fact, drop narration) rather
+  than truncating the oldest part. Since `setupScript` comments are the first thing cut under its own
+  8,000-char cap (LRN-API-7), the admin note is where the *why* of a heavy script has to live — budget
+  for it.
+- **Generalizes to:** every site with a long remediation history. **Home:** `addsite2.md` §0.2.

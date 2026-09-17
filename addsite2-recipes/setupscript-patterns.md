@@ -222,6 +222,11 @@ Hebrew location strings often contain extra content: `"מיקום: תל אביב
 
 The worker has a built-in IL gazetteer normalizer — it extracts the city name from freeform Hebrew text if `location` is mapped. You do NOT need a setupScript just to clean Hebrew location strings.
 
+> **Check what the gazetteer returns before relying on it for an empty field.** It reads common
+> nouns as places ("ברווחה" → `רווחה`) and deliberately never reads "באזור" as the town. For a
+> place that is also a noun (אזור, שדרות), use a narrow, anchored script rule and inject the value
+> (`LRN-LOC-11`, `LRN-LOC-10`).
+
 **Only use setupScript for location if:**
 - The city name is embedded inside a non-dedicated element (part of a larger string).
 - The city name needs to be split from a `<br>`-separated multi-value string.
@@ -335,6 +340,11 @@ want to populate a separate `requirements` field. If you don't need a separate
 
 **Signal:** single `.job-body` or `.jobPosition` block with description prose +
 requirements bullets/list all mixed in, and the site has a `requirements` field.
+
+> **Plain-line boards with no requirements heading at all** (agency ads: "ניסיון-חובה",
+> "רישיון מלגזה יתרון") need line classification rather than a heading split — the word list,
+> the bullet-run rule and what must stay in the description (intro/role line, hours, narrowly
+> matched pay) are in `LRN-SETUP-18`.
 
 ### Guardrails (learned from calanit.co.il — applied + verified 2026-06-21)
 
