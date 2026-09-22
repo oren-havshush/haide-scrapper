@@ -2813,3 +2813,69 @@
   populated before reusing another Comeet site's mappings — and to any ATS that exposes
   both coarse wrappers and per-section title/content pairs. The per-section pairs are the
   reliable source; the wrappers are customer-configurable.
+
+---
+
+## LRN-LOC-12 — the gazetteer's second stage reads the TITLE; and how to take a city from the ad body without a generic scan
+
+- **Date / site:** 2026-09-22 · careers.nirlat.com (rebuild).
+- **Signal:** `normalizer.ts`'s second-stage fallback fires when `location` is empty and joins
+  **`[title, description, requirements]`** before running `extractLocationFromGazetteer`. Left empty it
+  would have stored `נתניה` for JB-828 purely from its **title** ("לבורנט/ית מעבדה אוניברקול אתר נתניה").
+  LRN-LOC-10/11 frame this fallback as a prose scanner; the title sits in the same string, which is what
+  makes it bite a site whose titles name a branch.
+- **Always inject a value, for every item.** A non-empty value is what skips the fallback — the literal
+  `Unknown` sentinel when nothing is stated. Verify through `rawData`: the normalizer stamps
+  `_enrichedFromDescription_location` whenever the fallback fires, so "no job carries that key" is direct
+  proof, far cheaper than reading values back and guessing their provenance.
+- **Taking the city from the ad body, safely — three parts, all load-bearing:**
+  1. **A closed vocabulary, not the gazetteer.** This employer prints its own site list on the page
+     ("אתרי ייצור והפצה : ניר עוז, באר שבע, אופקים, בני ברק, נתניה ונשר") — six names, each an exact
+     `city.csv` entry. Two are ordinary nouns (`נשר` eagle, `אופקים` horizons), which is exactly why a
+     general scan cannot be used here.
+  2. **A cue, not a bare mention.** Only `מקום-` or `אתר...ב` / `בקיבוץ` followed **within 45 chars** by a
+     listed city counts. A city named anywhere else in the prose is ignored.
+  3. **A Hebrew-suffix guard.** `\b` does not fire after a Hebrew letter, so test the character after the
+     match: without it `בנשרף` yields `נשר` and `נתניהו` yields `נתניה`. Break-test this one — the obvious
+     negative ("העובד נשרף") never reaches the guard, because it contains no cue, so it passes with the
+     guard removed and proves nothing. The case that bites is **cue + glued city**: "לאתר החברה בנשרף המפעל".
+- **Precedence that came out of it:** explicit body statement -> region-id map -> `Unknown`; the title is
+  never read. A multi-site ad joins with `/` and `normalizeLocations` splits it (JB-812 -> באר שבע + ניר עוז).
+- **Region vocabularies map region-to-region only:** 1=אזור צפון 2=אזור דרום 3=אזור השרון 4=אזור מרכז
+  5=אזור שפלה 7(באר שבע וצפון הנגב)=אזור דרום 8=אזור ירושלים, all verbatim `city.csv`. Never resolve a
+  region id to a city it contains — region 7 is not `באר שבע`.
+- **A manual `JobLocationOverride` outranks all of it** and persists across scrapes (keyed by
+  `externalJobId ?? detailUrl`, written by `PATCH /api/jobs/:id`). A stored value that extraction cannot
+  reproduce is therefore not necessarily a bug — check the override before "fixing" the config. JB-828 is
+  exactly that case: extraction yields `Unknown`, the stored `נתניה` is an operator's override.
+- **Two run warnings disappear once cities are stored:** `unknown_location_rate` and `region_over_city`
+  ("stored a region while the ad names a city"). While they are present and deliberate, say so in the
+  `adminNote` or the next person will undo the rule.
+- **Generalizes to:** any employer that publishes a fixed list of its own sites (the closed vocabulary comes
+  free), and any site whose titles carry a branch name.
+  **Home:** `addsite2.md` §12 location gate; `recipes/setupscript-patterns.md` §6.
+
+---
+
+## LRN-WP-4 — a listing that renders 0 jobs to a visitor until a filter is submitted, while every row is already in the HTML
+
+- **Date / site:** 2026-09-22 · careers.nirlat.com.
+- **Signal:** the page looks empty. `triage` still said YELLOW (top cluster ~28) and the raw HTML
+  holds all 8 `.career-row` rows fully populated, but a rendered probe showed every one at
+  `display: none` and `#jobs` innerText containing only the filter. The theme script
+  (`hello-elementor-child/js/careers.js`) ends with a literal `// hide all jobs at startup`
+  → `jQuery('.career-row').hide()`, and its submit handler returns early when no filter is
+  chosen — so a human sees nothing until they pick a region, and any count taken from the
+  rendered page is 0.
+- **Why it is not a blocker:** `domFieldExtract` clones the node and reads `textContent`, which
+  is indifferent to `display:none`, and item collection has no visibility filter (only
+  `clickLoadMoreUntilStable` checks `offsetParent`). Hidden rows extract at full fill.
+- **Fix:** take ground truth from the server HTML, not the rendered page, and have `setupScript`
+  append a `.career-row{display:block !important}` rule — an author `!important` rule beats the
+  inline `display:none` that jQuery `.hide()` writes, so it works whether the script runs before
+  or after the theme's `document.ready`. Keeps QA screenshots and any later human check honest.
+- **Watch for the non-job row:** these hand-rolled boards often carry an evergreen "didn't find a
+  suitable job?" CV-drop entry among the real ones (here `JB-717`, dated 2025). It has a job id
+  and a date like any other row. Remove it in `setupScript`; do not publish it.
+- **Generalizes to:** any hand-rolled WordPress/Elementor jobs board with a client-side filter.
+  **Home:** `addsite2.md` §2.2.
