@@ -1,5 +1,5 @@
 {
-  "_exportedAt": "2026-09-22T10:43:29.146Z",
+  "_exportedAt": "2026-09-22T12:55:29.703Z",
   "_note": "Mirror of the live config. The DB is authoritative; the worker never reads this file. setupScript lives alongside in <slug>.setup.js.",
   "id": "cmuciga0w000b01rxtllfseiu",
   "siteUrl": "https://www.comeet.com/jobs/mentee_robotics/6A.002",

@@ -86,7 +86,6 @@ from top-level params, so a setupScript left only inside `_meta` is dropped.
 | ויסוצקי | ACTIVE | 6 | 777 | `app-civi--jgqwu7` |
 | חברת החשמל | ACTIVE | 8 | 3910 | `iec--7d28yg` |
 | חיותא | ACTIVE | 3 | — | `chayuta--6foa66` |
-| חלילית | ACTIVE | 5 | 1006 | `halilit--0vwgee` |
 | חמת | ACTIVE | 7 | 3390 | `hamat-group--4ris60` |
 | טכניון | ACTIVE | 10 | — | `technion--8nqtph` |
 | טלכלל | ACTIVE | 6 | 4062 | `teleclalcc--n6k1yl` |
@@ -148,6 +147,7 @@ from top-level params, so a setupScript left only inside `_meta` is dropped.
 | קישורית | ACTIVE | 3 | 370 | `kishurit--gjuja3` |
 | רזאל מערכות | ACTIVE | 5 | 1337 | `razel--i12d2f` |
 | רכבת ישראל | ACTIVE | 6 | — | `railcareer-adamtotal--52najw` |
+| רנואר | ACTIVE | 6 | 6535 | `renuar--vjy3cn` |
 | רשות שדות התעופה | ACTIVE | 5 | 761 | `iaa--676m0e` |
 | ש.ב שמירה וביטחון | ACTIVE | 3 | — | `sbisrael--u0j3bu` |
 | ש.ל.ה שירותי רפואה | ACTIVE | 6 | 2199 | `clalitsmile--xsxv25` |

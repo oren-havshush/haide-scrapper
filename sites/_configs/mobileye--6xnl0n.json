@@ -1,5 +1,5 @@
 {
-  "_exportedAt": "2026-09-22T11:54:59.755Z",
+  "_exportedAt": "2026-09-22T12:55:29.862Z",
   "_note": "Mirror of the live config. The DB is authoritative; the worker never reads this file. setupScript lives alongside in <slug>.setup.js.",
   "id": "cmucf79tu000301rxfj6xnl0n",
   "siteUrl": "https://careers.mobileye.com/jobs",

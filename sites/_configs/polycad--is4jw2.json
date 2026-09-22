@@ -1,5 +1,5 @@
 {
-  "_exportedAt": "2026-09-22T11:55:08.054Z",
+  "_exportedAt": "2026-09-22T12:55:40.330Z",
   "_note": "Mirror of the live config. The DB is authoritative; the worker never reads this file. setupScript lives alongside in <slug>.setup.js.",
   "id": "cmqygos3z002f01nzevis4jw2",
   "siteUrl": "https://polycad.co.il/about/",

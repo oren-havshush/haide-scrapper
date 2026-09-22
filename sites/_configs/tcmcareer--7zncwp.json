@@ -1,5 +1,5 @@
 {
-  "_exportedAt": "2026-09-22T11:55:12.097Z",
+  "_exportedAt": "2026-09-22T12:55:45.266Z",
   "_note": "Mirror of the live config. The DB is authoritative; the worker never reads this file. setupScript lives alongside in <slug>.setup.js.",
   "id": "cmqo82ozg000v01qpkz7zncwp",
   "siteUrl": "https://tcmcareer.com/find-a-job/",
