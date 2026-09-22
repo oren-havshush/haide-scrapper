@@ -124,7 +124,7 @@ detailUrl:    a.positionItem [attr: href]
 selectors query *descendants* of the item, so an `<a>` item can't yield its own `href`.
 `li:has(> a.positionItem)` isolates exactly the position rows.
 
-### Three fields need a `setupScript` (not plain CSS)
+### Four fields need a `setupScript` (not plain CSS)
 
 1. **`externalJobId` = the LAST path segment of the item `href`** (the Comeet position
    UID, e.g. `9C.354`, `F3.961`). **The separator varies per item** (`/--/`, `/---/`,
@@ -135,15 +135,30 @@ selectors query *descendants* of the item, so an `<a>` item can't yield its own 
    groups positions under `<h2 class="positionsGroupTitle">` (MRO, אגף ייצור, …) followed
    by a `ul.two-column-grid` of items. Walk `.positionsGroupTitle, a.positionItem` in
    **document order**, carrying the current heading, and inject it per item.
-3. **`description` = merge the labeled detail-page blocks.** Each detail page splits the
-   body into `[data-qa='requirementFieldContent']` blocks (Description + Requirements),
-   each preceded by an `[data-qa='requirementFieldTitle']` h3. Map description via a
-   **2-step `pageFlow`** (listing → detail) and a detail-scope `setupScript` that merges
-   all blocks with `structuredText` (setupscript-patterns.md §7–8). Tag listing fields
-   `capturedOnUrl: <listingUrl>` and `description` `capturedOnUrl: <a real detail URL>`.
+3. **`description` + `requirements` = the labeled detail-page blocks, ROUTED BY LABEL.**
+   Each detail page splits the body into `[data-qa='requirementFieldContent']` blocks, each
+   preceded by an `[data-qa='requirementFieldTitle']` h3 (Description, Responsibilities,
+   Requirements, Advantages — the set varies per customer). Map them via a **2-step
+   `pageFlow`** (listing → detail) and a detail-scope `setupScript` that reads each block
+   with `structuredText` (setupscript-patterns.md §7–8). Tag listing fields
+   `capturedOnUrl: <listingUrl>` and the detail fields `capturedOnUrl: <a real detail URL>`.
+
+   **Do NOT merge every block into `description`** — requirements-class sections belong in
+   `requirements`, moved not copied (owner job-body rule 1, `addsite2.md` §6.2). Drop a label
+   that only restates the field name (`Description`, `Requirements`); KEEP one that
+   distinguishes content inside a merged field (`Responsibilities`, and especially
+   `Advantages` — dropping it publishes a preferred item as a hard requirement).
+
+   > **Do NOT reuse another Comeet site's `[data-qa='position*']` wrappers.** Which wrapper
+   > is populated is customer-configurable: on mentee_robotics `positionDescription` is
+   > **empty** and `positionRequirements` holds **every** section, so the netafim-shaped
+   > selector pair silently ships an empty description and the whole body — intro prose
+   > included — as `requirements`. Both fields still report fill 1.00 and `addsite-qa` reads
+   > length, not meaning, so nothing flags it. The per-section title/content pairs are the
+   > reliable source. (`LRN-SPA-13`.)
 
 ```js
-// setupScript — combines all three (listing-scope ids+dept, detail-scope description)
+// setupScript — listing-scope ids+dept, detail-scope description+requirements
 function structuredText(el){ if(!el) return ''; const c=el.cloneNode(true);
   c.querySelectorAll('style,script,link,meta').forEach(n=>n.remove());
   c.querySelectorAll('p,div,ul,ol,li,br,h1,h2,h3,h4,h5,h6,tr').forEach(e=>e.insertAdjacentText('afterend','\n'));
@@ -160,14 +175,19 @@ for (const a of document.querySelectorAll('a.positionItem')) {
   for (const n of nodes){ if(n.classList.contains('positionsGroupTitle')){dept=n.textContent.trim();continue;}
     const li=n.closest('li'); if(!li||!dept||li.querySelector('.__ai-department')) continue;
     const s=document.createElement('span'); s.className='__ai-department'; s.style.display='none'; s.textContent=dept; li.appendChild(s); } }
-// DETAIL: merge Description + Requirements
-if (!document.querySelector('.__ai-description')) {
-  const secs=document.querySelectorAll('[data-qa="requirementFieldContent"]'); const parts=[];
+// DETAIL: route each labeled block by its own heading — requirements-class sections to
+// __ai-requirements, everything else to __ai-description. NOT one merged blob.
+if (!document.querySelector('.__ai-description') && !document.querySelector('.__ai-requirements')) {
+  const secs=document.querySelectorAll('[data-qa="requirementFieldContent"]'); const desc=[], req=[];
   for (const sec of secs){ const h=sec.parentElement&&sec.parentElement.querySelector('[data-qa="requirementFieldTitle"], h3');
     const label=h?h.textContent.trim():''; const body=structuredText(sec); if(!body) continue;
-    parts.push((/description/i.test(label)||!label)?body:(label+':\n'+body)); }
-  if (parts.length){ const d=document.createElement('div'); d.className='__ai-description'; d.style.display='none';
-    d.textContent=parts.join('\n\n'); document.body.appendChild(d); } }
+    const isReq=/requirement|qualification|skill|advantage|nice to have|דרישות|כישורים|יתרון/i.test(label);
+    // a label that only restates the field name is dropped; one that distinguishes content is kept
+    const restates=/^(description|job description|requirements|qualifications|skills)$/i.test(label);
+    (isReq?req:desc).push(label&&!restates?(label+':\n'+body):body); }
+  const add=(cls,parts)=>{ if(!parts.length) return; const d=document.createElement('div');
+    d.className=cls; d.style.display='none'; d.textContent=parts.join('\n\n'); document.body.appendChild(d); };
+  add('__ai-description',desc); add('__ai-requirements',req); }
 ```
 
 `pageFlow`:
