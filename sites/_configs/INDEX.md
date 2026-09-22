@@ -32,6 +32,8 @@ from top-level params, so a setupScript left only inside `_meta` is dropped.
 | Hylabs | ACTIVE | 4 | 502 | `hylabs--gyocvt` |
 | IPV Security | ACTIVE | 6 | 3307 | `news-ipvsecurity--5knkts` |
 | LEASE4U | ACTIVE | 8 | 6532 | `freesbe--6cznyg` |
+| Mentee Robotics | ACTIVE | 8 | 7617 | `comeet--lfseiu` |
+| Mobileye | ACTIVE | 9 | 6318 | `mobileye--6xnl0n` |
 | Ness-Tech | ACTIVE | 12 | 2989 | `ness-tech--w43uor` |
 | Novilis Software Systems | ACTIVE | 4 | 905 | `novilis--1u1jp3` |
 | On Line | ACTIVE | 4 | 857 | `oneline--dqdxkb` |

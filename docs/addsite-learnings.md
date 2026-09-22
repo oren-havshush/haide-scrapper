@@ -2783,3 +2783,33 @@
   is no parent/owner field on `Site`, and one must not be invented.
 - **Generalizes to:** any careers board mixing ATS hosts — post-acquisition groups, holding companies,
   staffing arms, multi-brand employers. **Home:** `addsite2.md` §2.1 / CLAUDE.md vendor rule.
+
+## LRN-SPA-13 — a Comeet board can leave `positionDescription` EMPTY and stuff the whole body into `positionRequirements`
+- Date: 2026-09-22
+- Site: comeet.com/jobs/mentee_robotics/6A.002 (Mentee Robotics)
+- **Signal:** the netafim-shaped selector pair is a silent field-swap on this board.
+  `[data-qa="positionDescription"]` exists but its text is **empty string**, while
+  `[data-qa="positionRequirements"]` holds **every** section — Description,
+  Responsibilities, Requirements, Advantages — as one blob. Mapping them the way
+  `comeet--4q2aga` does would have shipped `description` empty and the entire job body,
+  intro prose included, inside `requirements`. Both fields would still report fill 1.00
+  once a fallback filled one of them, and `addsite-qa` reads length, not meaning, so
+  nothing downstream flags it. The two boards are the same vendor and the same markup
+  version; only the customer's field layout differs.
+- **Fix:** do not map the two `position*` wrappers. Walk the per-section pairs instead —
+  `[data-qa="requirementFieldTitle"]` (an h3) and its sibling
+  `[data-qa="requirementFieldContent"]` — and route each block **by its own label**:
+  requirements-class labels (`requirement|qualification|skill|advantage|nice to have|
+  דרישות|כישורים|יתרון`) to `.__ai-requirements`, everything else to `.__ai-description`.
+  Drop a label that only restates the field name (`Description`, `Requirements`); keep one
+  that distinguishes content inside the merged field (`Responsibilities`, and especially
+  `Advantages` — dropping it publishes a preferred item as a hard requirement).
+- **Note the recipe snippet is not this.** `addsite2-recipes/spa-frameworks.md#comeet`
+  currently merges *all* blocks into `description`, which violates the owner's job-body
+  rule 1 (requirements live only in `requirements`, moved not copied). Anyone following
+  that snippet verbatim ships every Comeet site with requirements duplicated in the
+  description. Prefer the label-routing above until the recipe is corrected.
+- **Generalizes to:** every Comeet board — check which `data-qa` wrapper is actually
+  populated before reusing another Comeet site's mappings — and to any ATS that exposes
+  both coarse wrappers and per-section title/content pairs. The per-section pairs are the
+  reliable source; the wrappers are customer-configurable.
