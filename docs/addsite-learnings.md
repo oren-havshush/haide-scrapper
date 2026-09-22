@@ -2714,3 +2714,72 @@
   8,000-char cap (LRN-API-7), the admin note is where the *why* of a heavy script has to live — budget
   for it.
 - **Generalizes to:** every site with a long remediation history. **Home:** `addsite2.md` §0.2.
+
+---
+
+## LRN-FORM-9 — OneTrust's cookie banner fakes `modalApplyButton`, forcing a false REVIEW
+
+- **Date / site:** 2026-09-22 · careers.mobileye.com.
+- **Signal:** `addsite-qa` returned `formStatus: NEEDS_MANUAL` → `REVIEW` ("apply form exists on page
+  but isn't captured") on a page that has **zero `<form>` elements**, listing and detail alike. Tier-A
+  was complete and `applyRate` was `1.00`, which is what makes it look like a real gap rather than a
+  probe artefact.
+- **Cause:** the probe's `modalApplyButton` flags any `a`/`button` matching `/apply|הגש|.../i` that is
+  a `BUTTON` or has an empty/`#` href. OneTrust's consent UI ships
+  `button#filter-apply-handler` ("Apply") inside `section#ot-fltr-modal` — the cookie-preferences
+  *filter* dialog. It is permanently hidden (`0x0`, `offsetParent === null`), but the probe never
+  checks visibility, and `modalApplyButton` is tested **before** `anyUrlApply || probe.externalApply`,
+  so it masks a perfectly good per-item URL apply path.
+- **Fix / arbitration:** confirm `probe.formCount === 0` and that the only APPLY matches with a real
+  `href` are external, then classify as `URL` and record the evidence in `adminNote`. Identify the
+  offending element rather than assuming: dump the matched `a`/`button` list with tag, class, href and
+  `getBoundingClientRect()` — `button#filter-apply-handler` inside `#ot-fltr-modal` is the tell.
+  Do **not** "fix" this by capturing the off-site ATS form (see below).
+- **Do not capture a Lever apply form statically:** its custom questions are **per posting**
+  (`cards[<uuid>][field0]`), so one capture is wrong for every other job on the board; `action` is
+  `null` (JS submit); and it is hCaptcha-gated. The per-job apply URL in `applicationInfo` is the
+  honest apply path.
+- **Generalizes to:** every site running OneTrust consent (very common on Israeli enterprise careers
+  pages) — and to any consent/filter UI with an "Apply" button. Suspect it whenever `NEEDS_MANUAL`
+  coexists with `formCount: 0`. **Home:** `addsite2.md` §12 (REVIEW-is-remediable list).
+
+---
+
+## LRN-CO-1 — the employer is whoever the posting says it is; ownership is not employment
+
+- **Date / site:** 2026-09-22 · careers.mobileye.com (corrected the same day, after shipping it wrong).
+- **Signal:** 187 of 194 cards applied to `jobs.eu.lever.co/mobileye`; 7 applied to
+  `comeet.com/jobs/mentee_robotics` under a department named "Humanoids - Mentee". Those 7 were first
+  **excluded** (different ATS ⇒ assumed different employer), then **included** after research found
+  Mobileye had acquired Mentee Robotics and the cards carried Mobileye's own About-us boilerplate.
+  Both calls were made without reading a posting end to end. Both were wrong in method; the second
+  was also wrong in outcome and briefly published 7 jobs under the wrong employer.
+- **What the posting actually said**, in a dedicated element — `p.menteeDisclaimerText`, present on
+  exactly those 7 cards and on none of the other 187:
+  > "About this role: This position is with Mentee Robotics, which is owned by Mobileye but operates
+  > as a separate company. Mentee Robotics manages its own recruitment process, and when you click
+  > Apply you will be redirected to its recruitment system to submit your application."
+- **The rule, in priority order.** An explicit employer-of-record statement in the posting **outranks
+  everything else**: ownership language ("now part of X", "a X company"), parent boilerplate in an
+  About-us block, the department name, and which domain hosts the board or the apply form. A parent
+  can own a subsidiary, host its jobs, and write its About copy while the subsidiary remains the
+  employer — that is the normal shape of an acquisition, not a contradiction.
+- **An ATS host is evidence in NEITHER direction.** It identifies the recruiting tool. Do not derive
+  identity from it (the standing vendor rule), and do not infer a *different* employer from a
+  *different* one either — but do treat an odd host as a prompt to go read that posting in full.
+- **Inspection method — this is where both errors came from, not from the reasoning:**
+  1. **Read one full posting of the anomalous group end to end, untruncated.** A `.slice(0, N)` dump
+     is how the disclaimer was missed; it sits at the very end of the body, just before "Apply now".
+  2. **Enumerate blocks by element, not by heading.** A census of `p.textTitle` / `div.listItem > p`
+     structurally cannot see a block that has no heading — `p.menteeDisclaimerText` has none.
+  3. **Reconcile the counts.** The census printed ~200 unheaded blocks across 194 cards; an excess
+     over one-per-card is unexplained content. That arithmetic was in the output and went unread.
+  4. **Look for disconfirming evidence, not confirming.** Grepping for "mobileye" / "now part of"
+     finds what you already believe. Search the anomalous cards for what makes them *different* —
+     diff their block structure against a normal card.
+- **When the answer is "separate employer":** onboard that employer as its own site from its own
+  board, and keep the relationship in existing fields — the subsidiary's `companyAbout` (its own copy
+  usually states the ownership) and a cross-referencing `adminNote` on both records, per §2.1. There
+  is no parent/owner field on `Site`, and one must not be invented.
+- **Generalizes to:** any careers board mixing ATS hosts — post-acquisition groups, holding companies,
+  staffing arms, multi-brand employers. **Home:** `addsite2.md` §2.1 / CLAUDE.md vendor rule.

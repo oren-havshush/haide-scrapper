@@ -1,5 +1,5 @@
 {
-  "_exportedAt": "2026-09-22T09:47:13.909Z",
+  "_exportedAt": "2026-09-22T09:56:05.141Z",
   "_note": "Mirror of the live config. The DB is authoritative; the worker never reads this file. setupScript lives alongside in <slug>.setup.js.",
   "id": "cmucf79tu000301rxfj6xnl0n",
   "siteUrl": "https://careers.mobileye.com/jobs",
@@ -9,7 +9,7 @@
   "pageFlow": [],
   "fieldMappings": {
     "_meta": {
-      "savedAt": "2026-09-22T09:15:59.281Z",
+      "savedAt": "2026-09-22T09:53:03.277Z",
       "pagination": null,
       "formCapture": null,
       "itemSelector": "div.jobItem",

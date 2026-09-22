@@ -8,7 +8,9 @@ for (var t = 0; t < 60; t++) {
 }
 
 /* city.csv verbatim. Doubles as the Israel filter: a card whose location tag
-   is not one of these is a non-Israel posting and is removed. */
+   is not one of these is a non-Israel posting and is removed. Herzliya stays
+   in the map for a future genuine Mobileye posting there - it is NOT how the
+   Mentee cards are excluded; that is the explicit disclaimer check below. */
 var CITY = {
   'jerusalem': 'ירושלים',
   'ramat gan': 'רמת גן',
@@ -23,9 +25,6 @@ var CITY = {
 var NL = String.fromCharCode(10);
 var TAB = String.fromCharCode(9);
 
-/* Lever createdAt gives a real publish date for the Lever-backed postings.
-   The Mentee by Mobileye cards are Comeet-backed and have no creation date
-   anywhere, so they stay without a publishDate rather than carry a guess. */
 var dates = {};
 try {
   var rs = await fetch('https://api.eu.lever.co/v0/postings/mobileye?mode=json');
@@ -58,6 +57,19 @@ for (var i = 0; i < items.length; i++) {
   var aEl = it.querySelector('a.applyBtn');
   var apply = aEl ? (aEl.getAttribute('href') || '') : '';
 
+  /* EMPLOYER-OF-RECORD GATE. The 7 "Humanoids - Mentee" cards carry their own
+     p.menteeDisclaimerText: "This position is with Mentee Robotics, which is
+     owned by Mobileye but operates as a separate company. Mentee Robotics
+     manages its own recruitment process." Mobileye is the owner, not the
+     employer, so these are not published under Mobileye - they belong to a
+     separate Mentee Robotics site (its own Comeet board). Two independent
+     signals, either one excludes, so a class rename or an ATS move cannot
+     silently let them back in. */
+  if (it.querySelector('p.menteeDisclaimerText') || apply.indexOf('mentee_robotics') >= 0) {
+    it.remove();
+    continue;
+  }
+
   var city = '';
   var tags = it.querySelectorAll('div.tagItem');
   for (var g = 0; g < tags.length; g++) {
@@ -74,8 +86,6 @@ for (var i = 0; i < items.length; i++) {
   if (m) {
     jid = m[1].toLowerCase();
   } else {
-    /* Mentee by Mobileye cards are Comeet-backed: the detail URL ends in a
-       Comeet position uid (/jobs/ai-researcher/7E.956), not a Lever UUID. */
     var segs = href.split('?')[0].split('#')[0].split('/');
     for (var q = segs.length - 1; q >= 0; q--) {
       if (segs[q] !== '') { jid = segs[q]; break; }
@@ -130,9 +140,8 @@ for (var i = 0; i < items.length; i++) {
         (isReq ? req : desc).push(txt);
       } else {
         /* "About us" is company boilerplate repeated verbatim across the whole
-           board (2 distinct texts over 194 cards) and says nothing about this
-           job, so it is not part of the description. The company's own profile
-           carries that copy. "About the team" is job-specific and stays. */
+           board and says nothing about this job, so it is not part of the
+           description. "About the team" is job-specific and stays. */
         var tEl = el.querySelector('p.textTitle');
         if (tEl && norml(tEl.textContent).indexOf('about us') === 0) continue;
         desc.push(txt);
