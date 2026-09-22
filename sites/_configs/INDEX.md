@@ -72,6 +72,7 @@ from top-level params, so a setupScript left only inside `_meta` is dropped.
 | בן & ג’ריס | ACTIVE | 5 | 1215 | `benjerry--12brnw` |
 | בנק הפועלים | ACTIVE | 6 | 4172 | `bankhapoalim--39tiof` |
 | גולדברג פרושן ושות' רואי חשבון | ACTIVE | 5 | 4236 | `goldpro--1pf5j6` |
+| גזית | ACTIVE | 7 | 7944 | `gazit--gejiix` |
 | גילאר | ACTIVE | 6 | — | `gilar--h7463m` |
 | גלוברנדס | ACTIVE | 6 | 1635 | `globrands--5akm6u` |
 | האקדמית רמת גן | ACTIVE | 5 | 1124 | `landing-iac--3cdlhs` |
@@ -123,6 +124,8 @@ from top-level params, so a setupScript left only inside `_meta` is dropped.
 | נאות המושבה - גולדנקייר | ACTIVE | 3 | 700 | `gcare--2uvz1w` |
 | נטלי | ACTIVE | 7 | 7964 | `app-civi--ai732i` |
 | נטפים | ACTIVE | 8 | 6573 | `comeet--4q2aga` |
+| נירלט | ACTIVE | 7 | 4592 | `nirlat--xluh8r` |
+| סיני סטור | ACTIVE | 3 | 1002 | `sinaistore--uxgr3o` |
 | סלקום | ACTIVE | 6 | 2255 | `cellcom--ugxfm3` |
 | סמלת | ACTIVE | 8 | — | `samelet--i6xe7r` |
 | עמותת איכות בשיקום | ACTIVE | 4 | 686 | `eychut--6336w9` |

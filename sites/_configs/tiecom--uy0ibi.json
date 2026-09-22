@@ -1,5 +1,5 @@
 {
-  "_exportedAt": "2026-09-22T12:55:43.278Z",
+  "_exportedAt": "2026-09-22T14:36:29.834Z",
   "_note": "Mirror of the live config. The DB is authoritative; the worker never reads this file. setupScript lives alongside in <slug>.setup.js.",
   "id": "cmqsb9luz000001nua9uy0ibi",
   "siteUrl": "https://www.tiecom.co.il/jobs/",

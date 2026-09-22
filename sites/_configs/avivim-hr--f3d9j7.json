@@ -1,5 +1,5 @@
 {
-  "_exportedAt": "2026-09-22T12:55:56.013Z",
+  "_exportedAt": "2026-09-22T14:36:44.167Z",
   "_note": "Mirror of the live config. The DB is authoritative; the worker never reads this file. setupScript lives alongside in <slug>.setup.js.",
   "id": "cmp05qxto000d01rqucf3d9j7",
   "siteUrl": "https://avivim-hr.co.il/%d7%9e%d7%a9%d7%a8%d7%95%d7%aa/",

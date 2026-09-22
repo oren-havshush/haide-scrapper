@@ -1,5 +1,5 @@
 {
-  "_exportedAt": "2026-09-22T12:55:40.955Z",
+  "_exportedAt": "2026-09-22T14:36:27.511Z",
   "_note": "Mirror of the live config. The DB is authoritative; the worker never reads this file. setupScript lives alongside in <slug>.setup.js.",
   "id": "cmqycmkiz001b01nzx7ovj4kr",
   "siteUrl": "https://personetics.com/careers/",

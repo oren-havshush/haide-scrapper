@@ -1,5 +1,5 @@
 {
-  "_exportedAt": "2026-09-22T12:55:30.357Z",
+  "_exportedAt": "2026-09-22T14:36:16.740Z",
   "_note": "Mirror of the live config. The DB is authoritative; the worker never reads this file. setupScript lives alongside in <slug>.setup.js.",
   "id": "cmu5m7fm5000801p9xiwb3q8e",
   "siteUrl": "https://kidum.com/career/",

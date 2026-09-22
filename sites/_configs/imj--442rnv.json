@@ -1,5 +1,5 @@
 {
-  "_exportedAt": "2026-09-22T12:55:38.195Z",
+  "_exportedAt": "2026-09-22T14:36:25.435Z",
   "_note": "Mirror of the live config. The DB is authoritative; the worker never reads this file. setupScript lives alongside in <slug>.setup.js.",
   "id": "cmqymqkbn004101nzck442rnv",
   "siteUrl": "https://www.imj.org.il/he/node/619",

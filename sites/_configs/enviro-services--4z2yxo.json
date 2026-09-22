@@ -1,5 +1,5 @@
 {
-  "_exportedAt": "2026-09-22T12:55:31.580Z",
+  "_exportedAt": "2026-09-22T14:36:17.658Z",
   "_note": "Mirror of the live config. The DB is authoritative; the worker never reads this file. setupScript lives alongside in <slug>.setup.js.",
   "id": "cmu2pfk1v000101nvmm4z2yxo",
   "siteUrl": "https://enviro-services.co.il/blog/category/job/",

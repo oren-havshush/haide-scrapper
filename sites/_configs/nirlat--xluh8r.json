@@ -1,80 +1,112 @@
 {
-  "_exportedAt": "2026-08-17T15:34:44.389Z",
+  "_exportedAt": "2026-09-22T14:36:44.909Z",
   "_note": "Mirror of the live config. The DB is authoritative; the worker never reads this file. setupScript lives alongside in <slug>.setup.js.",
   "id": "cmp01cdsd001a01ph74xluh8r",
   "siteUrl": "https://careers.nirlat.com/#jobs",
   "companyName": "נירלט",
   "status": "ACTIVE",
-  "setupScriptFile": null,
+  "setupScriptFile": "nirlat--xluh8r.setup.js",
   "pageFlow": [],
   "fieldMappings": {
     "_meta": {
-      "savedAt": "2026-05-20T05:30:27.073Z",
+      "savedAt": "2026-09-22T13:34:01.053Z",
       "pagination": null,
       "formCapture": {
         "fields": [
           {
-            "name": "form_fields[name]",
+            "name": "input_1",
+            "label": "מספר משרה",
+            "tagName": "input",
+            "required": false,
+            "fieldType": "hidden"
+          },
+          {
+            "name": "input_3",
+            "label": "שם המשרה",
+            "tagName": "input",
+            "required": false,
+            "fieldType": "hidden"
+          },
+          {
+            "name": "input_4",
             "label": "שם מלא",
             "tagName": "input",
             "required": true,
             "fieldType": "text"
           },
           {
-            "name": "form_fields[tel]",
+            "name": "input_6",
             "label": "טלפון נייד",
             "tagName": "input",
             "required": true,
             "fieldType": "tel"
           },
           {
-            "name": "form_fields[email]",
+            "name": "input_5",
             "label": "אימייל",
             "tagName": "input",
             "required": true,
             "fieldType": "email"
           },
           {
-            "name": "form_fields[file]",
+            "name": "input_7",
             "label": "הוספת קורות חיים",
             "tagName": "input",
             "required": true,
             "fieldType": "file"
           }
         ],
-        "method": "POST",
-        "actionUrl": "https://my.elementor.com/api/v1/forms/submit",
-        "formSelector": "form.elementor-form[id=\"form_2\"], form.elementor-form"
+        "method": "post",
+        "actionUrl": "https://careers.nirlat.com/#gf_1",
+        "formSelector": "form#gform_1"
       },
-      "itemSelector": ".career-row",
+      "itemSelector": "div.career-row",
+      "minPublishDate": null,
+      "minPublishDays": null,
       "revealSelector": null,
       "listingSelector": null,
-      "originalMappings": null
+      "applyLoginReason": null,
+      "browserOverrides": null,
+      "loadMoreSelector": null,
+      "locationFallback": null,
+      "originalMappings": null,
+      "applyRequiresLogin": false
     },
     "title": {
-      "source": "MANUAL",
-      "selector": ".job-title",
-      "confidence": 100,
-      "capturedOnUrl": "https://careers.nirlat.com/"
+      "source": "auto",
+      "selector": "h3.job-title",
+      "confidence": 0.95
+    },
+    "location": {
+      "source": "auto",
+      "selector": ".__ai-location",
+      "confidence": 0.9
+    },
+    "department": {
+      "source": "auto",
+      "selector": ".__ai-department",
+      "confidence": 0.8
     },
     "description": {
-      "source": "MANUAL",
-      "selector": ".career-content",
-      "confidence": 100,
-      "capturedOnUrl": "https://careers.nirlat.com/"
+      "source": "auto",
+      "selector": ".__ai-description",
+      "confidence": 0.9
     },
     "publishDate": {
-      "source": "MANUAL",
-      "selector": ".col-meta:nth-of-type(2) .value",
-      "confidence": 100,
-      "capturedOnUrl": "https://careers.nirlat.com/"
+      "source": "auto",
+      "selector": ".__ai-publishDate",
+      "confidence": 0.9
+    },
+    "requirements": {
+      "source": "auto",
+      "selector": ".__ai-requirements",
+      "confidence": 0.9
     },
     "externalJobId": {
-      "source": "MANUAL",
-      "selector": ".job-id",
-      "confidence": 100,
-      "extractAttr": "data-code",
-      "capturedOnUrl": "https://careers.nirlat.com/"
+      "source": "auto",
+      "selector": "span.value.job-id",
+      "confidence": 0.95,
+      "extractAttr": "data-code"
     }
   }
 }

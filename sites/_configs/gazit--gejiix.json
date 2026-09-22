@@ -1,5 +1,5 @@
 {
-  "_exportedAt": "2026-09-22T09:47:18.454Z",
+  "_exportedAt": "2026-09-22T14:36:19.935Z",
   "_note": "Mirror of the live config. The DB is authoritative; the worker never reads this file. setupScript lives alongside in <slug>.setup.js.",
   "id": "cmszz0jfd000s01kfclgejiix",
   "siteUrl": "https://www.gazit.co.il/%D7%A7%D7%A8%D7%99%D7%99%D7%A8%D7%94/",
@@ -9,7 +9,7 @@
   "pageFlow": [],
   "fieldMappings": {
     "_meta": {
-      "savedAt": "2026-08-19T10:54:59.437Z",
+      "savedAt": "2026-09-22T14:31:19.641Z",
       "pagination": null,
       "formCapture": {
         "fields": [
