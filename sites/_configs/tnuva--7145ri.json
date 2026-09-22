@@ -1,5 +1,5 @@
 {
-  "_exportedAt": "2026-09-22T09:47:26.881Z",
+  "_exportedAt": "2026-09-22T11:55:07.884Z",
   "_note": "Mirror of the live config. The DB is authoritative; the worker never reads this file. setupScript lives alongside in <slug>.setup.js.",
   "id": "cmqyh9j7k002n01nzpb7145ri",
   "siteUrl": "https://www.tnuva.co.il/jobs/",

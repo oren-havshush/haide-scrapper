@@ -1,5 +1,5 @@
 {
-  "_exportedAt": "2026-09-22T09:47:17.363Z",
+  "_exportedAt": "2026-09-22T11:55:02.429Z",
   "_note": "Mirror of the live config. The DB is authoritative; the worker never reads this file. setupScript lives alongside in <slug>.setup.js.",
   "id": "cmt041iz3001j01kfgslz6kls",
   "siteUrl": "https://www.campkimama.org/copy-of-%D7%9E%D7%99-%D7%90%D7%A0%D7%97%D7%A0%D7%95",

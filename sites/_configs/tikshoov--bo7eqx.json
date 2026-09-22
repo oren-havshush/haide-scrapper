@@ -1,5 +1,5 @@
 {
-  "_exportedAt": "2026-09-22T09:47:14.243Z",
+  "_exportedAt": "2026-09-22T11:55:00.078Z",
   "_note": "Mirror of the live config. The DB is authoritative; the worker never reads this file. setupScript lives alongside in <slug>.setup.js.",
   "id": "cmu5mleu7000c01p950bo7eqx",
   "siteUrl": "https://www.tikshoov.co.il/come-work-with-us/careers-list",

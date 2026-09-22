@@ -1,5 +1,5 @@
 {
-  "_exportedAt": "2026-09-22T09:47:29.080Z",
+  "_exportedAt": "2026-09-22T11:55:09.708Z",
   "_note": "Mirror of the live config. The DB is authoritative; the worker never reads this file. setupScript lives alongside in <slug>.setup.js.",
   "id": "cmqsblhcg001301nu5gscshwy",
   "siteUrl": "https://www.mey7.co.il/jobs/tenders/",

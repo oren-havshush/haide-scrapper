@@ -1,26 +1,26 @@
 {
-  "_exportedAt": "2026-09-22T11:55:04.564Z",
+  "_exportedAt": "2026-09-22T11:54:59.591Z",
   "_note": "Mirror of the live config. The DB is authoritative; the worker never reads this file. setupScript lives alongside in <slug>.setup.js.",
-  "id": "cmsxb05st001c01p80n4q2aga",
-  "siteUrl": "https://www.comeet.com/jobs/netafim/B7.002",
-  "companyName": "נטפים",
+  "id": "cmuciga0w000b01rxtllfseiu",
+  "siteUrl": "https://www.comeet.com/jobs/mentee_robotics/6A.002",
+  "companyName": "Mentee Robotics",
   "status": "ACTIVE",
-  "setupScriptFile": "comeet--4q2aga.setup.js",
+  "setupScriptFile": "comeet--lfseiu.setup.js",
   "pageFlow": [
     {
-      "url": "https://www.comeet.com/jobs/netafim/B7.002",
+      "url": "https://www.comeet.com/jobs/mentee_robotics/6A.002",
       "action": "navigate",
       "waitFor": ".positionItem"
     },
     {
-      "url": "https://www.comeet.com/jobs/netafim/B7.002/*",
+      "url": "https://www.comeet.com/jobs/mentee_robotics/6A.002/*",
       "action": "a.positionItem",
-      "waitFor": "[data-qa=\"positionDescription\"]"
+      "waitFor": "[data-qa=\"requirementFieldContent\"]"
     }
   ],
   "fieldMappings": {
     "_meta": {
-      "savedAt": "2026-08-17T14:11:38.275Z",
+      "savedAt": "2026-09-22T10:39:08.546Z",
       "pagination": null,
       "formCapture": {
         "fields": [
@@ -60,13 +60,6 @@
             "fieldType": "file"
           },
           {
-            "name": "linkedin",
-            "label": "LinkedIn Profile URL",
-            "tagName": "input",
-            "required": false,
-            "fieldType": "url"
-          },
-          {
             "name": "websiteUrl",
             "label": "Personal website",
             "tagName": "input",
@@ -96,7 +89,7 @@
           }
         ],
         "method": "POST",
-        "actionUrl": "https://www.comeet.co/jobs/B7.002/apply",
+        "actionUrl": "https://www.comeet.co/jobs/6A.002/apply",
         "formSelector": "form.__comeet-apply-static"
       },
       "itemSelector": "li:has(> a.positionItem)",
@@ -107,7 +100,7 @@
       "applyLoginReason": null,
       "browserOverrides": null,
       "loadMoreSelector": null,
-      "locationFallback": "פריסה ארצית",
+      "locationFallback": null,
       "originalMappings": null,
       "applyRequiresLogin": false
     },
@@ -115,50 +108,50 @@
       "source": "auto",
       "selector": ".positionLink",
       "confidence": 0.95,
-      "capturedOnUrl": "https://www.comeet.com/jobs/netafim/B7.002"
+      "capturedOnUrl": "https://www.comeet.com/jobs/mentee_robotics/6A.002"
     },
     "location": {
       "source": "auto",
       "selector": ".__ai-location",
       "confidence": 0.9,
-      "capturedOnUrl": "https://www.comeet.com/jobs/netafim/B7.002/customer-service-representative/74.C6D"
+      "capturedOnUrl": "https://www.comeet.com/jobs/mentee_robotics/6A.002/mechanical-technician--service-engineer/74.D51"
     },
     "detailUrl": {
       "source": "auto",
       "selector": "a.positionItem",
       "confidence": 0.95,
       "extractAttr": "href",
-      "capturedOnUrl": "https://www.comeet.com/jobs/netafim/B7.002"
+      "capturedOnUrl": "https://www.comeet.com/jobs/mentee_robotics/6A.002"
     },
     "department": {
       "source": "auto",
       "selector": ".__ai-department",
       "confidence": 0.9,
-      "capturedOnUrl": "https://www.comeet.com/jobs/netafim/B7.002"
+      "capturedOnUrl": "https://www.comeet.com/jobs/mentee_robotics/6A.002"
     },
     "description": {
       "source": "auto",
       "selector": ".__ai-description",
       "confidence": 0.9,
-      "capturedOnUrl": "https://www.comeet.com/jobs/netafim/B7.002/customer-service-representative/74.C6D"
+      "capturedOnUrl": "https://www.comeet.com/jobs/mentee_robotics/6A.002/mechanical-technician--service-engineer/74.D51"
     },
     "requirements": {
       "source": "auto",
       "selector": ".__ai-requirements",
-      "confidence": 0.85,
-      "capturedOnUrl": "https://www.comeet.com/jobs/netafim/B7.002/customer-service-representative/74.C6D"
+      "confidence": 0.9,
+      "capturedOnUrl": "https://www.comeet.com/jobs/mentee_robotics/6A.002/mechanical-technician--service-engineer/74.D51"
     },
     "externalJobId": {
       "source": "auto",
       "selector": ".__ai-jobid",
       "confidence": 0.95,
-      "capturedOnUrl": "https://www.comeet.com/jobs/netafim/B7.002"
+      "capturedOnUrl": "https://www.comeet.com/jobs/mentee_robotics/6A.002"
     },
     "employmentType": {
       "source": "auto",
       "selector": ".__ai-employmentType",
-      "confidence": 0.9,
-      "capturedOnUrl": "https://www.comeet.com/jobs/netafim/B7.002"
+      "confidence": 0.85,
+      "capturedOnUrl": "https://www.comeet.com/jobs/mentee_robotics/6A.002/mechanical-technician--service-engineer/74.D51"
     }
   }
 }

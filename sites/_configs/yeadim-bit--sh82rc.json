@@ -1,5 +1,5 @@
 {
-  "_exportedAt": "2026-09-22T09:47:34.720Z",
+  "_exportedAt": "2026-09-22T11:55:15.263Z",
   "_note": "Mirror of the live config. The DB is authoritative; the worker never reads this file. setupScript lives alongside in <slug>.setup.js.",
   "id": "cmqi9z6q2000m01t1hcsh82rc",
   "siteUrl": "https://www.yeadim-bit.co.il/jobs/",

@@ -1,5 +1,5 @@
 {
-  "_exportedAt": "2026-09-22T09:47:30.767Z",
+  "_exportedAt": "2026-09-22T11:55:11.024Z",
   "_note": "Mirror of the live config. The DB is authoritative; the worker never reads this file. setupScript lives alongside in <slug>.setup.js.",
   "id": "cmqqp2amo000v01nwcmyvpgzk",
   "siteUrl": "https://g-stat.com/careers/",

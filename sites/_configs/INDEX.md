@@ -32,7 +32,8 @@ from top-level params, so a setupScript left only inside `_meta` is dropped.
 | Hylabs | ACTIVE | 4 | 502 | `hylabs--gyocvt` |
 | IPV Security | ACTIVE | 6 | 3307 | `news-ipvsecurity--5knkts` |
 | LEASE4U | ACTIVE | 8 | 6532 | `freesbe--6cznyg` |
-| Mobileye | ACTIVE | 9 | 5928 | `mobileye--6xnl0n` |
+| Mentee Robotics | ACTIVE | 8 | 7617 | `comeet--lfseiu` |
+| Mobileye | ACTIVE | 9 | 6318 | `mobileye--6xnl0n` |
 | Ness-Tech | ACTIVE | 12 | 2989 | `ness-tech--w43uor` |
 | Novilis Software Systems | ACTIVE | 4 | 905 | `novilis--1u1jp3` |
 | On Line | ACTIVE | 4 | 857 | `oneline--dqdxkb` |
@@ -71,7 +72,6 @@ from top-level params, so a setupScript left only inside `_meta` is dropped.
 | בן & ג’ריס | ACTIVE | 5 | 1215 | `benjerry--12brnw` |
 | בנק הפועלים | ACTIVE | 6 | 4172 | `bankhapoalim--39tiof` |
 | גולדברג פרושן ושות' רואי חשבון | ACTIVE | 5 | 4236 | `goldpro--1pf5j6` |
-| גזית | ACTIVE | 7 | 7944 | `gazit--gejiix` |
 | גילאר | ACTIVE | 6 | — | `gilar--h7463m` |
 | גלוברנדס | ACTIVE | 6 | 1635 | `globrands--5akm6u` |
 | האקדמית רמת גן | ACTIVE | 5 | 1124 | `landing-iac--3cdlhs` |
@@ -124,10 +124,8 @@ from top-level params, so a setupScript left only inside `_meta` is dropped.
 | נאות המושבה - גולדנקייר | ACTIVE | 3 | 700 | `gcare--2uvz1w` |
 | נטלי | ACTIVE | 7 | 7964 | `app-civi--ai732i` |
 | נטפים | ACTIVE | 8 | 6573 | `comeet--4q2aga` |
-| סיני סטור | ACTIVE | 3 | 1002 | `sinaistore--uxgr3o` |
 | סלקום | ACTIVE | 6 | 2255 | `cellcom--ugxfm3` |
 | סמלת | ACTIVE | 8 | — | `samelet--i6xe7r` |
-| עזריאלי | ACTIVE | 5 | 1078 | `azrielipalace--qmhgmh` |
 | עמותת איכות בשיקום | ACTIVE | 4 | 686 | `eychut--6336w9` |
 | ענבי ציון | ACTIVE | 4 | — | `anvei-zion--tkz1xm` |
 | פוליכד | ACTIVE | 3 | 315 | `polycad--is4jw2` |
@@ -153,7 +151,6 @@ from top-level params, so a setupScript left only inside `_meta` is dropped.
 | רשות שדות התעופה | ACTIVE | 5 | 761 | `iaa--676m0e` |
 | ש.ב שמירה וביטחון | ACTIVE | 3 | — | `sbisrael--u0j3bu` |
 | ש.ל.ה שירותי רפואה | ACTIVE | 6 | 2199 | `clalitsmile--xsxv25` |
-| שחל | ACTIVE | 5 | 3333 | `shahal--hfyc3r` |
 | שטראוס | ACTIVE | 6 | — | `strauss-group--oeqo46` |
 | שמרד אלקטרוניקה | ACTIVE | 4 | 1536 | `shamrad--dv1p94` |
 | תיגבור כח אדם | ACTIVE | 9 | 8000 | `tigbur--iobe0d` |

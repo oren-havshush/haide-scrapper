@@ -1,5 +1,5 @@
 {
-  "_exportedAt": "2026-09-22T09:47:16.329Z",
+  "_exportedAt": "2026-09-22T11:55:01.929Z",
   "_note": "Mirror of the live config. The DB is authoritative; the worker never reads this file. setupScript lives alongside in <slug>.setup.js.",
   "id": "cmt07ezrv002501kfkvai732i",
   "siteUrl": "https://app.civi.co.il/promos/id=Y5499HHEL5&src=19522",

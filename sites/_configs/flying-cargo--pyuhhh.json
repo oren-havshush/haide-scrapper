@@ -1,5 +1,5 @@
 {
-  "_exportedAt": "2026-09-22T09:47:15.980Z",
+  "_exportedAt": "2026-09-22T11:55:01.596Z",
   "_note": "Mirror of the live config. The DB is authoritative; the worker never reads this file. setupScript lives alongside in <slug>.setup.js.",
   "id": "cmt08f7va002f01kfcxpyuhhh",
   "siteUrl": "https://www.flying-cargo.com/careers/",

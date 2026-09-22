@@ -1,5 +1,5 @@
 {
-  "_exportedAt": "2026-09-22T09:47:24.481Z",
+  "_exportedAt": "2026-09-22T11:55:05.739Z",
   "_note": "Mirror of the live config. The DB is authoritative; the worker never reads this file. setupScript lives alongside in <slug>.setup.js.",
   "id": "cmsw0arqt000a01p87o9nr6ww",
   "siteUrl": "https://www.ashtrom.co.il/career",
