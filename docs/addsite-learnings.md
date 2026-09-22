@@ -149,6 +149,75 @@
   from the worker before SKIPPING, and before adding a UA override.
   **Home:** Step 3 reachability / §12 QA.
 
+### LRN-WAF-6 — Reblaze answers with **HTTP 247**, and both reach gates call that a PASS
+- **Date / site:** 2026-09-22 · career.rafael.co.il (`cmucbm75u000101rxp617f04a`, REVIEW)
+- **Signal:** `triage` said GRAY `topCluster 0`, which reads like "no listing structure".
+  It was not: every HTML path returns a **581-byte stub** — `window.rbzns` plus
+  `/kramericaindustries.ac_v2.lib.js` (Reblaze `ac_v2`) — and `<body>` renders **empty**.
+  The status code is **`247`**, not 403. That one detail defeats both gates:
+  - `reach` printed `PASS bare (status=247)` — it only rejects 4xx/5xx.
+  - `detail-reach` printed `OK: detail page reachable at worker parity` — `INCAPSULA_RE`
+    has no Reblaze markers, so nothing matched.
+  Neither gate has a **response-byte floor**, so a 581-byte stub is "reachable". A site
+  can therefore clear Step 3 and Step 5 and still have never been seen.
+- **Tell:** `parityBytes` / `uaBytes` in `detail-reach` output. ~600 bytes is a stub;
+  a real listing is tens of KB. **Read the byte counts, not just the verdict line.**
+  Corollary: `topCluster 0` on a reachable host means "look at the HTML", not "GRAY".
+- **Fix:** none found. UA override is the prescribed first attempt (`waf-bypasses.md` §5)
+  and it does **not** work here — parity 593 B vs real-Chrome-131 UA 581 B, both stubs.
+  Routed to REVIEW, which is also where the analyzer landed on its own.
+- **Ruled out — tested from the worker, same day.** A parity probe run inside
+  `haide-scrapper-worker-1` (exact `launchBrowser`/`createPage` options, full mask,
+  13 s settle) returned **HTTP 247, 581 bytes, `bodyTextLen 0`, `window.rbzns` still
+  defined, 0 anchors** — byte-identical to the dev-IP result. Two things that looked
+  like worker advantages turned out not to apply:
+  - **`SCRAPE_PROXY_URL` is unset** in the deployed container, so the worker egresses
+    from the box's own IP. There is no separate network path. `LRN-WAF-5`'s "a local
+    block is not a worker block" escape hatch **does not apply** to this site.
+  - The worker's **fuller fingerprint mask** (`webdriver` + `languages` + `plugins`,
+    vs `detail-reach`'s `webdriver` alone) made **no difference**.
+  So the block is automation **fingerprinting**, not IP flagging. Do not re-onboard
+  with the current stack — it will reproduce exactly. Remaining options are a
+  residential/mobile IL egress via `SCRAPE_PROXY_URL`, or a stealth/persistent-profile
+  browser; neither is available to the worker as it stands.
+- **Worth generalising from the probe itself:** the local gates are *not* worker parity.
+  `detail-reach` masks only `navigator.webdriver` and cannot see `SCRAPE_PROXY_URL` or
+  `SCRAPE_USER_AGENT`. When a WAF verdict actually matters, probe **inside the
+  container** by piping a CJS script over stdin —
+  `ssh <host> "docker exec -i -e NODE_PATH=/app/node_modules -w /app
+  haide-scrapper-worker-1 node -" < probe.cjs` — which leaves **nothing on the box**
+  (no `/tmp` file to clean up, unlike `LRN-WAF-5`'s recipe) and needs no token.
+- **Worth knowing anyway:** `/robots.txt` is served **unchallenged** (200) while
+  everything else is stubbed. It is the stock **SAP SuccessFactors** career-site file
+  (`Disallow: /search/f/`, `/search/*/f/`), so a single 58-byte fetch identified the
+  vendor through the WAF — and confirmed `/search/` itself is *permitted*, i.e. the
+  blocker is technical, not policy. **On any WAF'd careers host, fetch `robots.txt`
+  first**: it is usually allowlisted and it fingerprints the ATS for free.
+- **Fixed (2026-09-22):** detection moved out of `addsite-batch.ts` into
+  `scripts/lib/challenge-detect.ts`, shared by `reach`, `detail-reach` and `triage`, with
+  `scripts/lib/challenge-detect.test.ts` covering it. All three now reject this site:
+  `reach` exits 3 (`reblaze-bootstrap`), `triage` returns RED naming the WAF and the byte
+  count instead of `GRAY topCluster 0`, `detail-reach` exits 3.
+- **The trap that fix walked into — a WAF marker is NOT a block signal.** Folding
+  `_Incapsula_Resource` into the shared classifier as a conclusive marker immediately REDed
+  **www.ono.ac.il, an ACTIVE and perfectly healthy site**: Imperva fronts the whole domain,
+  so its plumbing ships on *working* pages too (from the worker: HTTP 200, 314 KB, 501
+  anchors, marker present). Markers therefore come in two tiers:
+  - **block text** — phrases only a block page contains (`Request unsuccessful`,
+    `Incapsula incident`, `Just a moment`). Conclusive at any size.
+  - **bootstrap** — vendor plumbing (`rbzns`, `_Incapsula_Resource`) that also ships on
+    healthy pages. Only counts when the document has **no anchors**, i.e. is really a shell.
+  Size is *not* evidence of content either: a padded shell can exceed any byte threshold,
+  so "has anchors" is the content test and the byte floor is only a last-resort backstop
+  for an unrecognised WAF. Both of those were caught by deliberately breaking the rules and
+  watching which assertions failed — the first draft of the test passed with the Incapsula
+  rule deleted, because a 223-byte fixture was being caught by the size rule instead.
+- **Generalizes to:** every Reblaze-fronted Israeli site (common in defence, finance and
+  government), and to any WAF whose script tags appear site-wide. When adding a new vendor,
+  decide which tier its marker belongs in before adding it — guessing "conclusive" costs a
+  live site.
+  **Home:** `scripts/lib/challenge-detect.ts`; `recipes/waf-bypasses.md` §5; Step 3 reachability.
+
 ---
 
 ## B. Analyzer race / config persistence
