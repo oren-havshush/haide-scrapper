@@ -2879,3 +2879,51 @@
   and a date like any other row. Remove it in `setupScript`; do not publish it.
 - **Generalizes to:** any hand-rolled WordPress/Elementor jobs board with a client-side filter.
   **Home:** `addsite2.md` §2.2.
+
+---
+
+## LRN-LOC-13 — a branch label is not a city: strip the prefix, expand the abbreviation, map to a closed set
+
+- **Date / site:** 2026-09-22 · halilit.com (rebuild).
+- **Signal:** the listing tags each posting with a branch label in a red (`#ff0000`) span —
+  `סניף יפו`, `סניף ראשל"צ`, `מרלוג קדימה-צורן`. The previous build stored that string **verbatim**
+  as `location`, so **6 of 7 jobs shipped a value absent from `city.csv`**. Extraction was
+  "working" — fill was 1.00 and every other gate passed; only `verify-location-csv` sees this.
+- **Three things make a branch label unusable as-is**, and all three appeared on one page:
+  1. **A facility prefix** — `סניף` (branch), `מרלוג` (distribution centre). Never part of the name.
+  2. **An abbreviation** — `ראשל"צ` → `ראשון לציון`. `city.csv` never carries the short form.
+  3. **Punctuation and naming that differ from the CSV** — `קדימה-צורן` vs the CSV's `קדימה צורן`;
+     `יפו` and `ת"א-יפו` are the **same branch** written two ways, and the CSV has neither alone,
+     only `תל אביב-יפו`.
+- **Fix:** map with a closed set of the employer's own branches, matched on a *distinguishing
+  substring* rather than the whole string, so a quote or hyphen variant cannot miss —
+  `ירושלים`→`ירושלים`, `ראשל|ראשון`→`ראשון לציון`, `קדימה|צורן`→`קדימה צורן`, `יפו`→`תל אביב-יפו`.
+  An unlisted branch returns the `Unknown` sentinel; never guess a new one, and never fall back to
+  the raw label. Chain-wide postings carry no branch and get `Unknown` too — which is also what
+  keeps `normalizer.ts` from filling the field off the prose (LRN-LOC-12).
+- **Check the branch against the ad's own words before trusting the map:** here the `סניף ראשל"צ`
+  posting says `סניף ראשון לציון` in its body and the `ת"א-יפו` posting says `סניף יפו` — free
+  confirmation that the two spellings are one branch.
+- **Generalizes to:** every retail/chain employer that tags postings by branch — the dominant
+  pattern on Israeli store, clinic and logistics boards. **Home:** `addsite2.md` §12 location gate.
+
+---
+
+## LRN-WAF-7 — the interstitial's own element id can name the wrong gate
+
+- **Date / site:** 2026-09-22 · halilit.com.
+- **Signal:** the worker's default headless UA got a ~1.5KB Hebrew interstitial ("עבור לדף המבוקש")
+  whose `documentElement` id is **`page_no_referer`**. The name says referer, so that is what gets
+  tested — and it cost a full round of it: the page still served the interstitial on reload, with an
+  explicit `Referer` header, and after a **real in-site navigation from the homepage** with
+  `document.referrer` genuinely set. It is a **user-agent** gate: a desktop Chrome UA clears it
+  outright (title `דרושים | חלילית`, 8 items, the stored `itemSelector` still matching).
+- **Rule:** an interstitial's markup is the site author's guess at why you were stopped, not
+  evidence. Vary **one input at a time** — UA first, since it is one config key and free to test —
+  before believing a name. Confirm by the size/title flip, not by whether the request "worked".
+- **Do not generalise the direction.** The same one-key fix points the opposite way on
+  `tikshoov.co.il` (LRN-WAF-5), where the default headless UA passes and a spoofed desktop UA is
+  403'd. Both sites are one `browserOverrides.userAgent` away from 0 jobs, in opposite directions,
+  and neither reports an error — the run just returns nothing.
+- **Generalizes to:** any site whose block page ships a descriptive id/class or body copy naming a
+  cause. **Home:** `addsite2.md` §5 reachability; `recipes/waf-bypasses.md` §1.
