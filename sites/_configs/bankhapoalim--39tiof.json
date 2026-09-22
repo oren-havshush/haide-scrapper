@@ -1,5 +1,5 @@
 {
-  "_exportedAt": "2026-08-19T15:17:54.027Z",
+  "_exportedAt": "2026-09-22T09:47:16.155Z",
   "_note": "Mirror of the live config. The DB is authoritative; the worker never reads this file. setupScript lives alongside in <slug>.setup.js.",
   "id": "cmt08c2da002d01kf0r39tiof",
   "siteUrl": "https://www.bankhapoalim.co.il/he/jobs-site/lobby",

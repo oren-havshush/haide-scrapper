@@ -32,6 +32,7 @@ from top-level params, so a setupScript left only inside `_meta` is dropped.
 | Hylabs | ACTIVE | 4 | 502 | `hylabs--gyocvt` |
 | IPV Security | ACTIVE | 6 | 3307 | `news-ipvsecurity--5knkts` |
 | LEASE4U | ACTIVE | 8 | 6532 | `freesbe--6cznyg` |
+| Mobileye | ACTIVE | 9 | 5928 | `mobileye--6xnl0n` |
 | Ness-Tech | ACTIVE | 12 | 2989 | `ness-tech--w43uor` |
 | Novilis Software Systems | ACTIVE | 4 | 905 | `novilis--1u1jp3` |
 | On Line | ACTIVE | 4 | 857 | `oneline--dqdxkb` |
@@ -162,3 +163,4 @@ from top-level params, so a setupScript left only inside `_meta` is dropped.
 | תמורה | ACTIVE | 4 | 6170 | `tmuralife--m6phhu` |
 | תנובה | ACTIVE | 5 | 1994 | `tnuva--7145ri` |
 | תפקיד פלוס | ACTIVE | 6 | 967 | `tafkid-plus--ioqkzw` |
+| תקשוב | ACTIVE | 6 | 5841 | `tikshoov--bo7eqx` |

@@ -1,5 +1,5 @@
 {
-  "_exportedAt": "2026-08-18T20:37:31.985Z",
+  "_exportedAt": "2026-09-22T09:47:19.675Z",
   "_note": "Mirror of the live config. The DB is authoritative; the worker never reads this file. setupScript lives alongside in <slug>.setup.js.",
   "id": "cmsz3n8q2000001kffv4j7v1x",
   "siteUrl": "https://www.fibi.co.il/private/general/about/jobs/jobsfibi/",

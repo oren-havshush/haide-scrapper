@@ -1,5 +1,5 @@
 {
-  "_exportedAt": "2026-09-17T15:53:53.042Z",
+  "_exportedAt": "2026-09-22T09:47:14.075Z",
   "_note": "Mirror of the live config. The DB is authoritative; the worker never reads this file. setupScript lives alongside in <slug>.setup.js.",
   "id": "cmu5o7j7b000i01p96jcemdht",
   "siteUrl": "https://career.adamtotal.co.il/Home/Index?search=&token=6675d401-0dee-428a-a776-5d41885d16b0-harel&eid=&shr=&prof=&subProf=&eshkol=&scopeid=",

@@ -1,5 +1,5 @@
 {
-  "_exportedAt": "2026-09-16T14:18:38.540Z",
+  "_exportedAt": "2026-09-22T09:47:15.471Z",
   "_note": "Mirror of the live config. The DB is authoritative; the worker never reads this file. setupScript lives alongside in <slug>.setup.js.",
   "id": "cmu12wsm0000801o6xko8qwd8",
   "siteUrl": "https://www.ono.ac.il/we-want-you/",
