@@ -59,6 +59,7 @@
  */
 import * as fs from "fs";
 import * as path from "path";
+import { classifyResponse } from "./lib/challenge-detect";
 
 // Ensure Playwright resolves its browsers from the project-local node_modules
 // installation (PLAYWRIGHT_BROWSERS_PATH=0), matching how the worker runs.
@@ -1120,11 +1121,9 @@ const REAL_UA =
 const HE_HEADERS: Record<string, string> = {
   "accept-language": "he-IL,he;q=0.9,en-US;q=0.8,en;q=0.7",
 };
-// Challenge/anti-bot interstitial markers (Cloudflare/Reblaze/etc.).
-const CHALLENGE_RE =
-  /just a moment|cf-mitigated|reblaze|access denied|attention required|enable javascript and cookies/i;
-// Imperva/Incapsula HeadlessChrome block markers (see LRN-WAF-2).
-const INCAPSULA_RE = /Request unsuccessful|_Incapsula_Resource/i;
+// Challenge/block detection lives in scripts/lib/challenge-detect.ts so that
+// `reach`, `detail-reach` and `triage` share ONE rule set. They used to hold
+// separate partial copies and each copy had a different hole (LRN-WAF-5/6).
 
 async function getChromium(): Promise<any | null> {
   try {
@@ -1139,6 +1138,8 @@ interface NavResult {
   ok: boolean;
   status?: number;
   challenged?: boolean;
+  /** Which detection rule fired, e.g. "reblaze-marker" / "stub-581b". */
+  challengeReason?: string | null;
   error?: string;
   htmlLen: number;
   html: string;
@@ -1151,11 +1152,14 @@ async function tryNav(chromium: any, url: string, opts: any): Promise<NavResult>
     const p = await ctx.newPage();
     const r = await p.goto(url, { waitUntil: "domcontentloaded", timeout: 15000 });
     const html = await p.content().catch(() => "");
-    const challenged = CHALLENGE_RE.test(html);
+    // Passing the status matters: Reblaze answers with 247, which is < 400 and
+    // therefore invisible to the old check (LRN-WAF-6).
+    const verdict = classifyResponse(html, r?.status());
     return {
-      ok: !!r && r.status() < 400 && !challenged,
+      ok: !!r && r.status() < 400 && !verdict.challenged,
       status: r?.status(),
-      challenged,
+      challenged: verdict.challenged,
+      challengeReason: verdict.reason,
       htmlLen: html.length,
       html,
     };
@@ -1180,8 +1184,14 @@ async function cmdReach(argv: string[]): Promise<void> {
 
   const bare = await tryNav(chromium, url, {});
   if (bare.ok) {
-    console.log(JSON.stringify({ url, ok: true, needsUaOverride: false, lane: "reachable" }, null, 2));
-    console.error(`[reach] PASS bare (status=${bare.status})`);
+    console.log(
+      JSON.stringify(
+        { url, ok: true, needsUaOverride: false, lane: "reachable", bytes: bare.htmlLen },
+        null,
+        2,
+      ),
+    );
+    console.error(`[reach] PASS bare (status=${bare.status}, ${bare.htmlLen} bytes)`);
     return;
   }
   const real = await tryNav(chromium, url, { userAgent: REAL_UA, extraHTTPHeaders: HE_HEADERS });
@@ -1211,12 +1221,21 @@ async function cmdReach(argv: string[]): Promise<void> {
         reason: "unreachable (network/region/captcha)",
         bareError: bare.error ?? null,
         realError: real.error ?? null,
+        bareChallengeReason: bare.challengeReason ?? null,
+        realChallengeReason: real.challengeReason ?? null,
+        bareBytes: bare.htmlLen,
+        realBytes: real.htmlLen,
       },
       null,
       2,
     ),
   );
-  console.error("[reach] FAIL: neither bare nor real-UA could reach the site (likely IL-IP/captcha/outage).");
+  const why = bare.challengeReason || real.challengeReason;
+  console.error(
+    `[reach] FAIL: neither bare nor real-UA could reach the site (likely IL-IP/captcha/outage)${
+      why ? ` — challenge: ${why}` : ""
+    }.`,
+  );
   process.exit(3);
 }
 
@@ -1233,7 +1252,9 @@ async function cmdDetailReach(argv: string[]): Promise<void> {
     process.exit(1);
   }
 
-  async function probe(useUA: boolean): Promise<{ blocked: boolean; bytes: number }> {
+  async function probe(
+    useUA: boolean,
+  ): Promise<{ blocked: boolean; bytes: number; reason: string | null }> {
     const b = await chromium.launch({
       headless: true,
       args: ["--no-sandbox", "--disable-blink-features=AutomationControlled", "--lang=he-IL"],
@@ -1250,12 +1271,15 @@ async function cmdDetailReach(argv: string[]): Promise<void> {
       const p = await ctx.newPage();
       await p.goto(listing, { waitUntil: "domcontentloaded", timeout: 30000 }); // set cookies
       await p.waitForLoadState("networkidle", { timeout: 6000 }).catch(() => {});
-      await p.goto(detail, { waitUntil: "domcontentloaded", timeout: 30000 });
+      const r = await p.goto(detail, { waitUntil: "domcontentloaded", timeout: 30000 });
       await p.waitForTimeout(4000);
       const html = await p.content();
-      return { blocked: INCAPSULA_RE.test(html), bytes: html.length };
+      // Was INCAPSULA_RE only, so a Reblaze stub reported "reachable" with 581
+      // bytes on the line above it (LRN-WAF-6).
+      const verdict = classifyResponse(html, r?.status());
+      return { blocked: verdict.challenged, bytes: html.length, reason: verdict.reason };
     } catch {
-      return { blocked: true, bytes: 0 };
+      return { blocked: true, bytes: 0, reason: "nav-error" };
     } finally {
       await b.close().catch(() => {});
     }
@@ -1272,6 +1296,8 @@ async function cmdDetailReach(argv: string[]): Promise<void> {
         uaOverrideBlocked: withUa.blocked,
         parityBytes: parity.bytes,
         uaBytes: withUa.bytes,
+        parityReason: parity.reason,
+        uaReason: withUa.reason,
       },
       null,
       2,
@@ -1694,9 +1720,22 @@ async function cmdTriage(argv: string[]): Promise<void> {
   }
 
   if (!reachable) {
-    const out = { url, host, lane: "RED", reason: "unreachable (network/region/captcha)" };
+    // Name the WAF when we recognise it. A bare "unreachable" used to send the
+    // onboarder hunting for selectors on what was actually a block page
+    // (LRN-WAF-5/6), so the reason carries the rule that fired and the size.
+    const why = bare.challengeReason || null;
+    const out = {
+      url,
+      host,
+      lane: "RED",
+      reason: why
+        ? `anti-bot challenge/block page (${why}, ${bare.htmlLen} bytes) — not a listing`
+        : "unreachable (network/region/captcha)",
+      challengeReason: why,
+      bytes: bare.htmlLen,
+    };
     console.log(JSON.stringify(out, null, 2));
-    console.error("[triage] RED: unreachable");
+    console.error(`[triage] RED: ${out.reason}`);
     return;
   }
 
