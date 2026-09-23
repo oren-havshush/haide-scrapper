@@ -248,9 +248,16 @@ if [ -d deploy/systemd ] && command -v systemctl >/dev/null 2>&1; then
   systemctl daemon-reload
   # Say what is actually armed, every deploy, so "are the timers on?" is
   # answered by the deploy log rather than by memory.
+  #
+  # `is-enabled` prints the state on stdout AND exits non-zero when a unit is
+  # not enabled, so the obvious `|| echo "disabled"` appended a SECOND line and
+  # every timer was reported twice. Take the first line, and swallow the exit
+  # status rather than reacting to it — a disabled timer is the expected answer
+  # here, not an error. `|| true` is required: under `set -e` an assignment from
+  # a failing command substitution exits the script.
   for t in haide-sweep-scrape.timer haide-sweep-policy.timer; do
-    state=$(systemctl is-enabled "$t" 2>/dev/null || echo "disabled")
-    echo "    $t: $state"
+    state=$(systemctl is-enabled "$t" 2>/dev/null | head -1 || true)
+    echo "    $t: ${state:-not installed}"
   done
 else
   echo "==> Skipping systemd units (no systemctl, or no deploy/systemd)"
