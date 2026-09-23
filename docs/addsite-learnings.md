@@ -3220,3 +3220,53 @@
 - **Generalizes to:** any ad naming a city in the Ramla/Lod, Yokneam or similar pairs, and to every
   future `verify-location-csv` exit 2 — ask "is this the ad's fault or the list's?" before fixing.
   **Home:** `addsite2.md` §12 location gate.
+
+---
+
+## LRN-SPA-14 — "no jobs in the HTML" does not mean there is an API: prove it with an EMPTY request log before hunting one
+
+- **Date / site:** 2026-09-23 · xnes.co.il/jobs (Nuxt/Vue, הפניקס בית השקעות). The site had been
+  parked with the note "jobs load on-demand via an API keyed by company+category that is not exposed
+  without multi-step interaction. Needs a dedicated API-reverse-engineering onboarding." That premise
+  was wrong, and the whole cost of this site was spent discovering that.
+- **What is actually true:** all 20 open positions ship inside the page's own `window.__NUXT__`
+  payload. The category `<select>` filters them **client-side**; choosing a category and clicking
+  search renders the result cards while the network log stays **completely empty**.
+- **The one-minute test that settles it, and should come first:** drive the real control, then read
+  the request log. Cards rendered + zero requests = the data was already in the page; go read the
+  payload. Cards rendered + a request = that request is the API. Either way you are done. Do this
+  *before* reading bundles or guessing endpoints.
+- **Two things that waste the hour if you skip it:**
+  - `__NUXT__.state.<store>` being empty (`career.positions: []`) looks like proof the data has not
+    arrived. It only means the *Vuex store* is empty — the payload can still carry the jobs as
+    component props elsewhere in the tree. **Walk the whole `__NUXT__` object** for objects carrying a
+    known job key (here `jobNumber`), rather than trusting one store path.
+  - `__NUXT__.config` publishes real-looking bases (`axios.browserBaseURL: "/api/v1"`,
+    `middlewareAPI`, `servicesAPI`). Guessing paths under them returns the SPA's **404 page with a 404
+    status and a 240KB HTML body** — which reads as "wrong path, keep guessing" forever.
+- **Reading the payload is also the better config:** no fetch, no CORS, no pagination, nothing to
+  re-discover when the vendor changes an endpoint. `setupScript` walks `__NUXT__`, dedupes by the job
+  number and injects one row per job.
+- **Generalizes to:** every Nuxt/Next/Vue/React careers page whose HTML has no job markup.
+  **Home:** `addsite2.md` §6.2; `recipes/spa-frameworks.md`.
+
+---
+
+## LRN-COV-6 — a sitemap is not the list of OPEN jobs, and building from it publishes years of closed roles
+
+- **Date / site:** 2026-09-23 · xnes.co.il — `sitemap.xml` lists **137** `/jobs/<slug>/` pages;
+  **20** are actually open.
+- **Signal:** the sitemap is the obvious way out when a listing has no links, and every one of those
+  137 pages still returns 200 with a full server-rendered posting, `jobNumber` and all. Nothing about
+  fetching one tells you the role is closed. Their `lastmod` values run from 2025-01 to 2026-09 —
+  the giveaway, and only visible if you look at the distribution rather than the newest few.
+- **Rule:** a sitemap answers "what pages exist", never "what is open". Take the open set from what
+  the site's own careers UI shows — here the page payload the search filters — and use the sitemap
+  only to corroborate (matching the 20 open slugs against it gave a useful freshness range,
+  2026-03-30..2026-09-15, for a board that prints no dates).
+- **Cross-check before trusting either:** the count the employer's own search returns is ground
+  truth; a sitemap-derived count that is several times larger is closed roles, not better coverage.
+  Shipping 137 here would have published ~117 dead postings that every gate would have passed, since
+  each has a title, a body, an id and an apply form.
+- **Generalizes to:** any site where the listing is JS-rendered and the sitemap looks like a shortcut.
+  **Home:** `addsite2.md` §6.2 coverage gate; read alongside `LRN-COV-5`.
