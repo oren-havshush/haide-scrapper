@@ -21,6 +21,11 @@ const FAILURE_LABELS: Record<string, string> = {
   timeout: "Timeout",
   structure_changed: "Structure Changed",
   empty_results: "Empty Results",
+  // A site that scrapes several listing pages refused to publish a partial set.
+  // Its listings are intact; a page needs looking at, not a retry.
+  listing_url_failed: "Listing Page Failed",
+  listing_url_empty: "Listing Page Empty",
+  listing_urls_removed: "Listing Pages Removed",
 };
 
 function getFailureLabel(category: string | null): string {
@@ -38,6 +43,9 @@ function getActionConfig(category: string | null): {
     case "structure_changed":
       return { label: "Fix", type: "fix" };
     case "empty_results":
+    case "listing_url_failed":
+    case "listing_url_empty":
+    case "listing_urls_removed":
       return { label: "Investigate", type: "investigate" };
     default:
       return { label: "Retry", type: "retry" };

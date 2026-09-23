@@ -111,6 +111,64 @@
 - **Generalizes to:** any Radware/ShieldSquare-fronted site. The `reach`/`triage`
   probe should treat a cross-host redirect to a known challenge host as RED.
   **Home:** Step 3 reachability gate / `reach` script.
+- **Worker-confirmed and SKIPPED (2026-09-23, re-onboarding attempt).** The original
+  entry asserted "none within the worker's means" without testing from the container —
+  the probe recipe did not exist yet. Now measured. Site created this time
+  (`cmudy8r0p000801r0yqe11adn`, **SKIPPED**). Two read-only parity probes inside
+  `haide-scrapper-worker-1`, both ending on the captcha, egressing from
+  **194.88.110.149** (the `ssr=` param base64-decodes to the box IP) with
+  `SCRAPE_PROXY_URL` **unset**:
+  - default **HeadlessChrome** UA → HTTP 200, 17,781 B, `bodyTextLen 58`, 0 anchors;
+  - `SCRAPE_USER_AGENT` = desktop **Chrome/131** → HTTP 200, 17,861 B, same body, 0 anchors.
+
+  So `browserOverrides.userAgent` does **not** fix this one, and `LRN-WAF-5`'s
+  "a local block is not a worker block" escape hatch **does not apply** — same shape as
+  `LRN-WAF-6`. On the Chrome-131 run the Angular app partly booted (`/api/shared`,
+  `/dictionary/he.json`, `/api/search/service-providers` all 200) **before** the
+  challenge interdicted, which is the same "the origin API is behind the same wall"
+  finding the entry already recorded for `/api/careers` — a couple of 200s mid-boot are
+  not access.
+- **The gate STILL does not catch this, six days on.** `triage` returned
+  `lane: GRAY, reachable: true, topCluster 2` on 2026-09-23 — the exact miss this entry
+  asked to fix. `scripts/lib/challenge-detect.ts` (shipped 2026-09-22, `LRN-WAF-6`)
+  covers Reblaze and Incapsula only, and **every rule misses ShieldSquare**:
+  `BLOCK_TEXT_RE` has no ShieldSquare phrase; rule 2 fires only for the two named
+  bootstraps; the redirect lands on a standard **200**, so the nonstandard-status rule
+  is silent; and the interstitial is **~17.8 KB**, far over `MIN_REAL_HTML_BYTES`
+  (2000), so the size backstop never fires. `classifyResponse` therefore returns
+  `challenged: false` on a pure captcha page.
+  **Fix to make — and the obvious version of it is WRONG.** Measured against all 147
+  ACTIVE sites (2026-09-23, raw-HTML fetch): 4 carry Radware/ShieldSquare markers, and
+  **2 of those are healthy pages** — mizrahi-tefahot.co.il (192,710 B, has anchors,
+  29 jobs) and careers.iec.co.il (700,222 B, has anchors, 28 jobs). So
+  `__uzdbm_`, `stormcaster.js`, `SSJSConnectorObj` **and the literal string
+  `validate.perfdrive.com`** all ship on working pages. Promoting any of them to
+  `BLOCK_TEXT_RE` would RED four live sites serving 82 jobs — the exact
+  `_Incapsula_Resource`/ono.ac.il trap this module is built around. They are
+  **BOOTSTRAP class**: conclusive only when `looksLikeShell` (no anchors) also holds.
+  That combination is measurably safe here — the two interstitials in the scan,
+  fibi.co.il (118,374 B) and iaa.gov.il (15,049 B), both have **no anchors**, while both
+  healthy pages do.
+  The only safe *conclusive* markers are the titles, and there are **three variants**,
+  not one: `ShieldSquare Captcha`, `Radware Captcha Page` (iaa.gov.il) and `Radware Page`
+  (fibi.co.il). Zero false positives across the 147 — the healthy pages' titles are
+  ordinary Hebrew job-page titles.
+  **Size cannot help at all:** FIBI's interstitial is 118 KB, 59× `MIN_REAL_HTML_BYTES`.
+  **And the genuinely conclusive signal is not available to the function:** what proves a
+  block is being *redirected to* `validate.perfdrive.com`, but `classifyResponse(html,
+  status?)` never receives the final URL — that needs a signature change or a
+  caller-side check.
+  **Caveat on the measurement:** the scan used raw `fetch`, while the gates pass rendered
+  `page.content()`. Marker presence is solid either way (inline source scripts), but
+  re-confirm the anchors signal on rendered DOM before leaning on it. The one rendered
+  data point agrees: the worker probe saw `totalAnchors: 0` on the captcha page.
+  **Do not read the scan as "iaa/fibi are broken":** both served *this dev IP* an
+  interstitial while completing fine in production (10 and 15 jobs) — `LRN-WAF-5` again.
+- **Cheap tell that worked:** `robots.txt` is served **unchallenged** (200) while
+  `/career/*` 302s — same as `LRN-WAF-6`. It is permissive (`Allow: /`, no `/career/`
+  disallow), so the blocker is **technical, not policy**. `sitemap.xml` also returns 200
+  but serves the **Angular SPA shell, not XML**, so there are no detail URLs to harvest
+  around the wall.
 
 ### LRN-WAF-5 — Incapsula that blocks the SPOOFED Chrome UA and the dev IP, not the worker
 - **Date / site:** 2026-09-17 · tikshoov.co.il (`cmu5mleu7000c01p950bo7eqx`, ACTIVE, 101 jobs)
@@ -2816,7 +2874,7 @@
 
 ---
 
-## LRN-LOC-12 — the gazetteer's second stage reads the TITLE; and how to take a city from the ad body without a generic scan
+## LRN-LOC-14 — the gazetteer's second stage reads the TITLE; and how to take a city from the ad body without a generic scan
 
 - **Date / site:** 2026-09-22 · careers.nirlat.com (rebuild).
 - **Signal:** `normalizer.ts`'s second-stage fallback fires when `location` is empty and joins
@@ -2900,7 +2958,8 @@
   `ירושלים`→`ירושלים`, `ראשל|ראשון`→`ראשון לציון`, `קדימה|צורן`→`קדימה צורן`, `יפו`→`תל אביב-יפו`.
   An unlisted branch returns the `Unknown` sentinel; never guess a new one, and never fall back to
   the raw label. Chain-wide postings carry no branch and get `Unknown` too — which is also what
-  keeps `normalizer.ts` from filling the field off the prose (LRN-LOC-12).
+  keeps `normalizer.ts` from filling the field off the prose (LRN-LOC-14). See also LRN-LOC-12,
+  which reaches the same "a branch label is not a town" rule from renuar.co.il's store directory.
 - **Check the branch against the ad's own words before trusting the map:** here the `סניף ראשל"צ`
   posting says `סניף ראשון לציון` in its body and the `ת"א-יפו` posting says `סניף יפו` — free
   confirmation that the two spellings are one branch.
@@ -2992,3 +3051,123 @@
   raw before trusting a script. Do it for `\s` and `\d` too — the same collapse drops those.
 - **Generalizes to:** any `setupScript`, hook or config written from this environment.
   **Home:** `CLAUDE.md` (escape decoding); `recipes/setupscript-patterns.md`.
+## LRN-LOC-12 — a retail chain's branch label is not a town, and matching a city.csv row does not make it one: use the chain's own store directory
+
+- **Date / site:** 2026-09-22 · renuar.co.il/pages/stores-and-points-of-sale
+  (`cmucn360g000h01rxmvvjy3cn`), 28 store-management postings on one accordion page.
+- **Signal:** every title names a branch, not a town — `צוות ניהול לסניף <branch>`. Most
+  branches happen to be town names; three are malls, and two of those resolved wrong on
+  the first pass. `סניף ביאליק` reads as קרית ביאליק but is the Bialik *street* branch in
+  רמת גן. Worse, `סניף גלילות` was stored as `גלילות` purely **because `גלילות` is a real
+  `city.csv` row** — the branch (ביג פאשן גלילות, מחלף גלילות) is in **רמת השרון**.
+- **The trap that matters:** a branch label that *is* a canonical entry looks verified and
+  is not. `verify-location-csv` passes it, `addsite-qa` never reads location values, and
+  the gazetteer only fills an EMPTY location — so a plausible-looking near-miss ships with
+  every gate green. Treating "it's in city.csv" as confirmation is the whole bug.
+- **Fix — the chain publishes the answer.** A retail chain almost always has a store
+  locator, and it is machine-readable: renuar's `/pages/store-locator` is a **Stockist**
+  widget (`data-stockist-widget-tag="map_83p8nnj3"`), and
+  `stockist.co/api/v1/<tag>/locations/all` returns all 88 branches as JSON with an explicit
+  `city` per row. One request settled every ambiguous branch and confirmed the rest:
+  קניון איילון → רמת גן, ביג גלילות → רמת השרון, and it showed the chain runs **both** a
+  רמת גן Bialik branch and a separate קרית ביאליק one. Look for the locator page and its
+  data source (Stockist, Storemapper, a `stores.json`, a Google-My-Maps KML) **before**
+  reasoning about branch names at all.
+- **Priority, per posting:**
+  1. the chain's **own store directory** (explicit city per branch);
+  2. the town named in the **ad's own body** (`בסניף ביאליק ברמת גן`, `רשת OUTLET בהרצליה`);
+  3. the **page's own section heading** when a branch is still unresolved — these pages
+     group postings under regions (`מרכז`, `השרון`, `דרום ואילת`) that alias onto the
+     canonical `אזור *` entries. A region the site itself asserts is honest
+     under-specification, and strictly better than a town nobody stated;
+  4. `Unknown`.
+  **Never** step 2-and-a-half: "the branch label is in `city.csv`, so use it."
+  Build the result as an explicit title→city table, not a runtime scan — prose scanning for
+  Hebrew city names is banned for the `\b`/final-letter reasons in `LRN-LOC-2`, and a table
+  degrades an unseen title to (3) then (4) instead of to a wrong town.
+- **Watch for the title/body contradiction.** `3813 - צוות ניהול לסניף רחובות` has a body
+  reading `בסניף רמלה` — a stale copy of the *other* 3813 posting (`סניף רמלה`), same req
+  number and identical boilerplate. Rule 2 alone would take רמלה and be wrong; the store
+  directory (a real רחובות branch) broke the tie for the title. When body and title
+  disagree, the **per-posting title** wins, the directory confirms it, and the contradiction
+  goes in the `adminNote`; the employer's text is still published as-is.
+- **Generalizes to:** any chain listing one posting per branch — fashion/food/pharmacy
+  retail, bank branches, clinics, gyms. Assume the branch label is a *store* name until a
+  directory or the ad itself says otherwise.
+
+---
+
+## LRN-CO-2 — one employer whose jobs are split across several listing pages is ONE site, not one site per page
+
+- **Date / site:** 2026-09-22 · renuar.co.il (`cmucn360g000h01rxmvvjy3cn`).
+- **Signal:** the careers hub `/pages/<drushim>` holds no jobs at all — it links three
+  department listings: stores (28 jobs), head office (8), logistics (1). Onboarded from
+  one of those leaves the other two invisible; onboarding each of them creates three
+  sites.
+- **Why three sites is the wrong answer:** there is no Company model. Company identity is
+  denormalised onto `Site` — `companyName`, `companyAbout`, `companyHqCity`, and the logo
+  at `/logos/<siteId>.png` — and `Job` reaches its employer only through `siteId`. The
+  public jobs site reads that row directly. Three sites therefore publish the same
+  employer three times, each with its own separately-captured profile and its own logo
+  file, and nothing downstream merges them. `companyName` is a nullable, un-indexed,
+  non-unique string: it is not a key and never has been. (Checked the day this shipped:
+  of 144 ACTIVE sites, zero shared a `companyName` — the fleet had never done this.)
+- **Fix:** `_meta.listingUrls` — one site, N listing pages, every job on the one row.
+  `siteUrl` becomes the hub (what the dashboard shows, what `company-profile` derives the
+  homepage from) and is no longer scraped; the list is the complete target set. Contract
+  and failure modes: `LRN-WRK-21`. Home: `addsite2.md` §2.3.
+- **Identify the pages by CONTENT, not by link text.** renuar's three links happened to
+  share one CTA (`לרשימת המשרות`), and a reworded CTA would have silently returned two
+  pages instead of three — a whole department dropped with nothing to notice it. Fetch
+  each same-host candidate and keep the ones carrying repeating job markup.
+- **Dedup had to learn it too:** the exact `?siteUrl=` filter now matches a site's own URL
+  **or** any entry in its `_meta.listingUrls`, so onboarding a company's second department
+  page resolves to the parent. The caller must compare the returned row's `siteUrl` with
+  what it asked for: a mismatch means "covered by that site", and onboarding onto that row
+  would PUT a single-URL config over the parent and stop publishing its other pages.
+- **Generalises to:** any employer whose careers site splits jobs by department, brand or
+  region — retail chains, hospital groups, municipalities. Distinguish it from `LRN-SPA-4`
+  (a wrapper page embedding ONE board — onboard the board instead) and from `pagination`
+  (pages 2..N of one listing).
+
+---
+
+## LRN-WRK-21 — a listing page that goes dark must refuse to publish, not shrink the site
+
+- **Date / site:** 2026-09-22 · shipped with `LRN-CO-2` (renuar.co.il).
+- **The hazard:** persistence is delete-all-for-siteId then insert
+  (`worker/jobs/scrape.ts`, scheduled transaction and the manual path alike), so the
+  merged set from every listing page IS the site's published state. With 28/8/1 across
+  three pages, the head-office page returning 0 leaves 29 of 37 — and nothing notices:
+  `isSuspiciousDrop` wants under half (18), `job_count_drop` wants a 30% fall (25.9). The
+  scrape reports success, eight published jobs are deleted, and the only trace is a
+  smaller number.
+- **Contract (`worker/lib/listingTargets.ts`, all of it pure and unit-tested):**
+  - the list REPLACES `siteUrl`; unset means `[siteUrl]`, i.e. every existing site is
+    byte-identical;
+  - every page is merged BEFORE the single dedup and the single persist — never persist
+    per page, or one failing page wipes the others;
+  - **all** pages failed → throw, exactly as a single-page site always has (the FAILED
+    path, breaker evidence intact);
+  - **some** failed → `COMPLETED` + `listing_url_failed`, nothing deleted, nothing written;
+  - a page that loaded but yielded 0 (or under half) where it had rows → same refusal,
+    `listing_url_empty`. Per-page thresholds are `minPrevious: 5`, not the site-level 10:
+    an 8-job department must trip it;
+  - rows tagged with a page no longer configured → `listing_urls_removed` on a scheduled
+    run; a manual run proceeds with a warning, which is how an operator retires a page;
+  - all three are soft failures (`sweepSelection.ts`): never the breaker, never a success,
+    named in the attention queue.
+- **Where the baseline comes from:** each raw record carries `_listingUrl` into
+  `Job.rawData`, counted back with one grouped query. No column, no migration. Rows written
+  before the feature have no tag and group under `""` — never mistaken for a removed page.
+- **Two smaller traps closed on the way:** `runSetupScript` restored the 30 s default
+  timeout only on success, so a failing script on page 1 left 90 s defaults for every later
+  page; and the RAW dedup's last-resort `title|location` tier now includes the page,
+  because two departments can legitimately both advertise "נציג/ת שירות". Raw tier only:
+  the normalized dedup still keys on `id || url || title|location`, so a site mapping
+  neither an id nor a URL can still fold such a pair — as it always could. Not a
+  regression; the `per_url_counts` figure is likewise "kept after the raw dedup", not
+  "written".
+- **Generalises to:** any future change that makes one run write on behalf of several
+  sources. The rule is that a partial view of the truth must never become the whole
+  published state.

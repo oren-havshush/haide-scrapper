@@ -1,17 +1,18 @@
-// renuar.co.il /pages/stores-and-points-of-sale — 28 jobs as FAQ accordion rows
-// on ONE server-rendered Shopify page. No detail pages. Apply is email
+// renuar.co.il careers — 37 jobs as FAQ accordion rows across THREE
+// server-rendered Shopify pages sharing this markup, ONE site via
+// _meta.listingUrls: stores-and-points-of-sale (28), company-headquarters (8),
+// logistics-operations (1). No detail pages. Apply is email
 // (jobs@renuar.co.il) + WhatsApp -> applicationInfo.
-// externalJobId: the printed req number is NOT unique here (3764 x3, 3802 x3,
-// 3814/3771/3813/3819/3809/3812 x2) -> renuar-<req>-<djb2 of branch title>.
+// externalJobId: the req number is NOT unique (3764 x3, 3802 x3, 5 more x2) ->
+// renuar-<req>-<djb2 of title>. A row MUST carry one: the 3 footer accordions
+// on every page do not.
 var ITEM = 'accordion-disclosure.accordion';
 
-// Cities are resolved against the chain's OWN store directory — the Stockist
-// feed behind /pages/store-locator (stockist.co/api/v1/map_83p8nnj3/locations/all),
-// 88 branches each carrying an explicit city. That is what settles a branch named
-// after a mall: kanyon Ayalon -> Ramat Gan, BIG Glilot -> Ramat HaSharon.
-// Verbatim "CSV files/city.csv" entries, keyed by the title minus its leading
-// req number. Every value was checked against that feed and against each ad's
-// own body; nothing here is inferred from a branch label. See adminNote.
+// Cities come from the chain's OWN store directory — the Stockist feed behind
+// /pages/store-locator (map_83p8nnj3), 88 branches each with an explicit city.
+// That settles a branch named after a mall: kanyon Ayalon -> Ramat Gan, BIG
+// Glilot -> Ramat HaSharon. Verbatim "CSV files/city.csv", keyed by the title
+// minus its req number; every value checked against the feed and each ad's body.
 var CITY = {
   'צוותי ניהול ומכירה לסניפים ברחבי הארץ!': 'פריסה ארצית',
   'צוות ניהול לסניף איילון': 'רמת גן',
@@ -40,21 +41,46 @@ var CITY = {
   'צוות ניהול לסניפי אשקלון': 'אשקלון',
   'צוות ניהול לסניפי באר שבע': 'באר שבע',
   'צוות ניהול לסניף דימונה': 'דימונה',
-  'לקבוצת רנואר בסניף ביג אשדוד דרוש /ה מנהל /ת משמרת שיכול /ה לעבוד בשבת': 'אשדוד'
+  'לקבוצת רנואר בסניף ביג אשדוד דרוש /ה מנהל /ת משמרת שיכול /ה לעבוד בשבת': 'אשדוד',
+  // --- HQ + logistics: only rows whose title or body NAMES a place. The
+  // head-office address is never assumed; a role stating none falls to REGION.
+  'ממצב/ת סניף רחובות': 'רחובות',
+  'ממצב/ת לסניפי זהב ראשל"צ+ קניון איילון': 'ראשון לציון, רמת גן',
+  'מנהל/ת חשבונות': 'ראשון לציון',
+  'מנהל/ת פעילות איקומרס': 'ראשון לציון',
+  'מעצב/ת אופנה': 'ראשון לציון',
+  'סגן/ית מנהל חלוקות למרכז הלוגיסטי': 'ראשון לציון'
 };
 
-// The page's own region headings -> verbatim city.csv area entries. Used only
-// when a title is not in CITY (a new or reworded posting), so an unknown row
-// degrades to its region and never to a wrong town.
+// The page's own region headings -> verbatim city.csv area entries. Used when a
+// title is not in CITY (new or reworded), so an unknown row degrades to its
+// region, never to a wrong town.
 var REGION = {
   'השרון': 'אזור השרון',
   'ירושלים': 'אזור ירושלים',
   'מרכז': 'אזור מרכז',
   'השומרון': 'אזור יהודה ושומרון',
-  'דרום ואילת': 'אזור דרום'
+  'דרום ואילת': 'אזור דרום',
+  'דרום': 'אזור דרום',
+  'ראשון לציון': 'ראשון לציון'
 };
 
+// Which listing page a row came from -> department: the company's own section
+// names from the careers hub, pinned here because each page's title/h2 disagree
+// with it and each other. Path SUBSTRING match: a trailing slash cannot blank it.
+var SECTION = {
+  'stores-and-points-of-sale': 'חנויות ונקודות מכירה',
+  'company-headquarters': 'מטה החברה',
+  'logistics-operations': 'המערך הלוגיסטי'
+};
+var DEPT = '';
+for (var sk in SECTION) { if (location.pathname.indexOf(sk) > -1) { DEPT = SECTION[sk]; break; } }
+
 var norm = function (s) { return (s || '').replace(/\s+/g, ' ').trim(); };
+// CITY lookup key only — the PUBLISHED title keeps its own punctuation.
+// fromCharCode, never a literal or escape: both unsafe here (CLAUDE.md).
+var GERSHAYIM = String.fromCharCode(1524), GERESH = String.fromCharCode(1523);
+var keyOf = function (s) { return s.split(GERSHAYIM).join('"').split(GERESH).join("'"); };
 var hh = function (s) { var h = 5381, i = s.length; while (i) { h = (h * 33) ^ s.charCodeAt(--i); } return (h >>> 0).toString(36); };
 var tidy = function (s) { return s.replace(/[ \t]+\n/g, '\n').replace(/\n{3,}/g, '\n\n').trim(); };
 // <br> -> newline before reading text, so block structure survives.
@@ -79,11 +105,12 @@ for (var i = 0; i < items.length; i++) {
   var raw = norm(sumEl.textContent);
   var numM = raw.match(/^\s*(\d{3,5})\s*-/);
   var num = numM ? numM[1] : '';
+  if (!num) continue;
   var title = norm(raw.replace(/^\s*\d{3,5}\s*-\s*/, ''));
   if (!title) continue;
 
   // ---- location ----------------------------------------------------------
-  var loc = CITY[title] || '';
+  var loc = CITY[keyOf(title)] || '';
   if (!loc) {
     var p = item.previousElementSibling;
     while (p && !(p.classList && p.classList.contains('faq__category'))) p = p.previousElementSibling;
@@ -139,6 +166,7 @@ for (var i = 0; i < items.length; i++) {
   put(item, '__ai-title', title);
   put(item, '__ai-eid', 'renuar-' + (num ? num + '-' : '') + hh(title));
   put(item, '__ai-loc', loc);
+  put(item, '__ai-dept', DEPT);
   put(item, '__ai-desc', tidy(body));
   put(item, '__ai-req', tidy(req.join('\n')));
   put(item, '__ai-apply', info);

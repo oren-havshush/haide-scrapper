@@ -170,10 +170,13 @@ async function main() {
           "utf8",
         );
     }
+    // How many listing pages this site scrapes: 1 unless it has listingUrls.
+    const listingUrls = (meta as { listingUrls?: unknown } | undefined)?.listingUrls;
+    const pages = Array.isArray(listingUrls) && listingUrls.length > 0 ? listingUrls.length : 1;
     index.push(
       `| ${site.companyName ?? "*(none)*"} | ${site.status} | ${fieldCount} | ${
         setupScript ? `${setupScript.length}` : "—"
-      } | \`${slug}\` |`,
+      } | ${pages} | \`${slug}\` |`,
     );
   }
 
@@ -200,9 +203,12 @@ async function main() {
     "Restore: PUT the JSON back to `/api/sites/{id}/config`, adding `setupScript` from",
     "the matching `.setup.js` as a top-level field — `saveSiteConfig` rebuilds `_meta`",
     "from top-level params, so a setupScript left only inside `_meta` is dropped.",
+    "**`listingUrls` behaves the same way**: on a site whose Pages column is above 1 it",
+    "must be re-sent as a TOP-LEVEL key too, or the restore silently turns a company's",
+    "several listing pages back into one and stops publishing the rest.",
     "",
-    "| Company | Status | Fields | setupScript chars | File |",
-    "| --- | --- | --- | --- | --- |",
+    "| Company | Status | Fields | setupScript chars | Pages | File |",
+    "| --- | --- | --- | --- | --- | --- |",
     ...index,
     "",
   ].join("\n");

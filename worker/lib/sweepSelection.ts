@@ -6,6 +6,7 @@
 // "never succeeded" at the same time.
 
 import { countUsableFieldMappings, getApplyRequiresLogin } from "./fieldMappings";
+import { LISTING_SOFT_CATEGORIES } from "./listingTargets";
 
 // ---------------------------------------------------------------------------
 // Success (N5)
@@ -14,13 +15,15 @@ import { countUsableFieldMappings, getApplyRequiresLogin } from "./fieldMappings
 /**
  * A run worked.
  *
- * COMPLETED ALONE IS NOT SUCCESS. Two early-return paths in scrape.ts write
+ * COMPLETED ALONE IS NOT SUCCESS. Several early-return paths in scrape.ts write
  * `status: "COMPLETED"` *with* a failureCategory — `empty_results` when nothing
- * was extracted, `structure_changed` when nothing survived validation. Counting
- * those as successes would let a site whose selectors died silently reset the
- * breaker, register as "recently healthy", and satisfy the 20h window: the site
- * would never be scraped again and never be reported. A run that found nothing
- * is not a run that worked.
+ * was extracted, `structure_changed` when nothing survived validation, and the
+ * three `listing_*` refusals when a site scraping several listing pages could
+ * not see all of them. Counting those as successes would let a site whose
+ * selectors died silently reset the breaker, register as "recently healthy",
+ * and satisfy the 20h window: the site would never be scraped again and never
+ * be reported. A run that found nothing is not a run that worked, and a run
+ * that refused to publish a partial set has not published tonight's jobs.
  */
 export function isSuccessfulRun(
   run: { status: string; failureCategory: string | null } | null | undefined,
@@ -34,7 +37,8 @@ export function isSuccessfulRun(
  * launch, a database that is gone. Three in a row halt the sweep.
  *
  * `empty_results` and `structure_changed` are per-site config death and never
- * halt; `apply_requires_login` and `oversize` are decisions, not faults.
+ * halt; `apply_requires_login` and `oversize` are decisions, not faults; the
+ * `listing_*` refusals are one site's pages, not the infrastructure.
  */
 export const HARD_FAILURE_CATEGORIES = ["timeout", "other"] as const;
 
@@ -62,7 +66,9 @@ export function classifyOutcome(run: {
   }
   if (
     run.failureCategory === "empty_results" ||
-    run.failureCategory === "structure_changed"
+    run.failureCategory === "structure_changed" ||
+    (run.failureCategory != null &&
+      (LISTING_SOFT_CATEGORIES as readonly string[]).includes(run.failureCategory))
   ) {
     return "soft_failure";
   }

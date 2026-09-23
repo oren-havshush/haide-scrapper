@@ -143,6 +143,21 @@ function previewUrl(url: string): string {
     : url;
 }
 
+/**
+ * The listing pages a site scrapes, when it scrapes more than its own URL.
+ *
+ * Empty for an ordinary site. When set, `siteUrl` is the company's careers page
+ * and these are what actually get scraped \u2014 worth saying on the row, because
+ * otherwise the one URL shown is not the whole story.
+ */
+function readListingUrls(fieldMappings: unknown): string[] {
+  if (!fieldMappings || typeof fieldMappings !== "object") return [];
+  const meta = (fieldMappings as Record<string, unknown>)._meta;
+  if (!meta || typeof meta !== "object") return [];
+  const raw = (meta as Record<string, unknown>).listingUrls;
+  return Array.isArray(raw) ? raw.filter((u): u is string => typeof u === "string") : [];
+}
+
 function SortIndicator({ column, sortBy, sortOrder }: {
   column: SortableColumn;
   sortBy: SortableColumn;
@@ -534,15 +549,30 @@ export function SitesTable({
                     )}
                 </TableCell>
                 <TableCell className="font-mono text-[13px]">
-                  <a
-                    href={site.siteUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    title={site.siteUrl}
-                    className="block w-full truncate hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50 rounded"
-                  >
-                    {previewUrl(site.siteUrl)}
-                  </a>
+                  {(() => {
+                    const listingUrls = readListingUrls(site.fieldMappings);
+                    return (
+                      <div className="flex w-full items-center gap-1.5">
+                        <a
+                          href={site.siteUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          title={site.siteUrl}
+                          className="min-w-0 flex-1 truncate hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50 rounded"
+                        >
+                          {previewUrl(site.siteUrl)}
+                        </a>
+                        {listingUrls.length > 0 && (
+                          <span
+                            title={`Scrapes ${listingUrls.length} listing page(s):\n${listingUrls.join("\n")}`}
+                            className="shrink-0 rounded bg-muted px-1.5 py-0.5 text-[11px] text-muted-foreground"
+                          >
+                            {listingUrls.length} pages
+                          </span>
+                        )}
+                      </div>
+                    );
+                  })()}
                 </TableCell>
                 <TableCell>
                   <div className="flex items-center">

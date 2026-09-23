@@ -250,6 +250,70 @@ If links point to individual job pages (e.g. `/job/analytical-chemist-al3`) → 
 Reference: labs-eco.com (WordPress `job` CPT, 3 jobs, falsely GRAY'd due to small
 cluster size; straightforwardly scrapable with `li.item` + `/job/<slug>` detail pages).
 
+### 2.3 Careers-hub gate — ONE employer is ONE site (`LRN-CO-2`)
+
+A careers page that links several listing pages of the **same employer** is a careers
+**hub**, not a dead end. It has no jobs of its own — but its jobs are one click away,
+split by department.
+
+**Run this check on EVERY lane, not just `GRAY`.** A hub having no jobs does NOT make it
+`GRAY`: `topCluster` counts repeating markup, and on a storefront or a heavily themed
+site the biggest repeating block is the site's own chrome. renuar.co.il's hub
+`/pages/דרושים` carries **zero** job rows and still triages
+**`YELLOW`, `topCluster: 28`** — those 28 are sidebar navigation links. Take that lane at
+face value and §3 builds a config against the menu: the rows extract, the completeness
+gates (§B2.5) fail them for having no description and no apply path, and the site is
+SKIPPED or REVIEWed while a real 37-job employer goes unonboarded.
+
+**The tell, before you build anything:** the rows you are about to extract carry no job
+signal — no req number, no per-row detail link, titles that read like navigation or
+product categories — and/or the page links to two or more same-host pages that
+content-verify as listings (below). Either one means: stop and treat it as a hub.
+
+**Onboard it as ONE site with `listingUrls`, never one site per link.** Company identity
+lives on the site row — `companyName`, the about copy, the HQ city, and the logo at
+`/logos/<siteId>.png` — and the public jobs site reads that row. Three sites for three
+department pages publishes the same employer three times over, each with its own logo and
+its own profile, and nothing downstream merges them.
+
+Identify the listing pages **by content, never by link text** (a CTA gets reworded and
+discovery silently returns fewer pages). Fetch each same-host candidate and keep the ones
+that actually carry repeating job markup:
+
+```bash
+# for each same-host /pages/* | /careers/* link on the hub:
+npx tsx scripts/addsite-batch.ts triage --url "$CANDIDATE"
+```
+
+A non-`GRAY` lane on the candidate is **not** enough on its own — that is the same trap
+as the hub's own 28-link nav cluster. Confirm the candidate's rows look like jobs (req
+numbers, per-row detail links, or role-shaped titles) before you count it as a listing
+page. A candidate whose cluster is the same size as the hub's is chrome, not jobs.
+
+Then:
+
+- **`siteUrl` = the hub.** It is the company's careers page, it is what the dashboard
+  shows, and `company-profile` derives the homepage from it. It is NOT scraped.
+- **`listingUrls` = every listing page**, including the one you would otherwise have
+  onboarded alone. The list REPLACES `siteUrl` as the scrape target set, so a page missing
+  from it is a page that stops being published. **Never list the hub itself** — it yields
+  0 items every night.
+- All pages normally share one config (same template, same `itemSelector`). If they
+  genuinely differ, route to REVIEW: per-page config overrides do not exist yet.
+- Cite `LRN-CO-2`; the worker contract is `LRN-WRK-21`.
+
+Reference: renuar.co.il — hub `/pages/דרושים` (0 jobs, but triages `YELLOW`
+`topCluster: 28` off the storefront nav) linking `/pages/stores-and-points-of-sale` (28),
+`/pages/company-headquarters` (8) and `/pages/logistics-operations` (1). One site,
+37 jobs, one company. Renuar itself is **not** the shape to copy: it was already live on
+the stores page, and `siteUrl` is `@unique` and not patchable, so it keeps that URL and
+lists all three pages. A site onboarded fresh from the hub gets the hub as `siteUrl`.
+
+> **This is not pagination.** `pagination` walks pages 2..N of ONE listing;
+> `listingUrls` is several DIFFERENT listings. And it is not a `setupScript` that
+> fetches the other pages: that hides a page going dark, and the script cap is 8,000
+> characters (`LRN-API-7`).
+
 ---
 
 ## 3. Step 1 — Duplicate check
@@ -274,9 +338,15 @@ Cite: `LRN-API-8`.
 
 | Result | Action |
 |---|---|
+| Row's `siteUrl` **differs from what you asked for** | This URL is already one of that site's `listingUrls` — it is covered. Log `SKIPPED (covered by <id>)`. **Do not onboard onto that row**: a single-URL PUT would replace its `listingUrls` and stop publishing its other pages. |
 | Status `ACTIVE` | Report existing site, no action. Log `ACTIVE (already existed)`. |
 | Status `SKIPPED` or `FAILED` | If `--force`: reactivate (§B1.5). Else: log `SKIPPED (existing, no --force)`. |
 | Not found | → §4 create |
+
+> The exact `?siteUrl=` filter matches a site's `siteUrl` **or** any URL in its
+> `_meta.listingUrls` — that is what stops a company's second department page from
+> becoming a second company. Always compare the returned row's own `siteUrl` with the URL
+> you queried. Cite: `LRN-CO-2`.
 
 **LANDMINE:** `pageSize > 100` silently returns `[]`. Never use >100 for dedup. Use `pageSize=10` with an exact-match filter.
 
@@ -432,6 +502,8 @@ Establish the true total before submitting. Never silently ship only page 1.
 ```
 # Count items in DOM, compare against total displayed on page ("Showing 1–20 of 87 jobs")
 # Emit: coverage: <extracted>/<total>
+# With listingUrls (§2.3), emit ONE LINE PER PAGE plus the site total:
+#   coverage: <url>=28/28, <url>=8/8, <url>=1/1  → site 37/37
 ```
 If extracted < total and you haven't handled pagination → read `addsite2-recipes/pagination-and-loading.md`.
 
@@ -516,6 +588,10 @@ npx tsx sites/_shared/dryrun.ts '{
 > **fewer than 2 jobs** (0 or 1). 2+ valid jobs is shippable — never SKIP a site
 > just because the count is "low" or "thin" (e.g. 2–4 jobs). Job count is NOT an
 > ROI/complexity judgment call; the only volume bar is `< 2`.
+>
+> **With `listingUrls` (§2.3) the bar is the SITE total, not the page.** A
+> one-job logistics page inside a 37-job employer is a department, not a site,
+> and skipping it would drop a real job from a company that is shipping.
 
 | Result | Action |
 |---|---|
@@ -619,6 +695,8 @@ full field table in `form-capture.md` §9.
   },
   "pageFlow": [],                  // REQUIRED — [] for a listing-only site
   "formCapture": null,             // REQUIRED — the captured object from §8, or null
+  "listingUrls": ["…/a", "…/b"],   // optional — several listing pages of ONE employer (§2.3);
+                                   //   REPLACES siteUrl as the scrape target set; same host
   "browserOverrides": { ... },     // if reachability required UA
   "setupScript": "...",            // if fields required injection
   // minPublishDays / minPublishDate — no longer needed; see §10
@@ -640,13 +718,23 @@ email-apply site, §12 Step 5a). Cite: `LRN-API-6`.
 
 **LANDMINE — a PUT REPLACES the config; every optional key you leave out is CLEARED.**
 `saveSiteConfig()` rebuilds `fieldMappings._meta` from the payload alone, so `formCapture`,
-`setupScript`, `browserOverrides`, `pagination`, `loadMoreSelector` and `locationFallback`
+`setupScript`, `listingUrls`, `browserOverrides`, `pagination`, `loadMoreSelector` and
+`locationFallback`
 are each written as "the value you sent, else null". This is not a merge. On **any** later
 PUT — a one-line selector fix, a re-PUT to win the analyzer race — **resend the full
 `formCapture` object and the full `setupScript`**, or the apply path and the injected
 fields vanish silently: extraction still succeeds, the DOM-sourced fields still report
 100%, and only the injected ones go empty. Re-run `verify-config` with
 `--expect-form-fields N` after every PUT, not just the first.
+
+> **On a multi-page site this is the one that bites (§2.3).** Dropping `listingUrls`
+> turns a company back into its primary page and stops publishing every other
+> department. The worker now refuses rather than shrink — the next **scheduled** run ends
+> `COMPLETED` + `listing_urls_removed`, writes nothing, and names the pages whose jobs it
+> still holds — but a **manual** run treats it as you retiring the page deliberately and
+> proceeds. Re-run `verify-config --expect-listing-urls …` after every PUT. Note the
+> Chrome extension's Save rebuilds `_meta` from seven keys and drops the rest, so it
+> clears `listingUrls` too (as it already clears `pagination` and `setupScript`).
 
 **LANDMINE — `setupScript` is capped at 8,000 characters, and `verify-config` cannot see a
 rejected script.** A longer script makes the PUT return `VALIDATION_ERROR: Too big: expected
@@ -684,11 +772,14 @@ npx tsx scripts/addsite-batch.ts verify-config \
   --site-id $SITE_ID \
   --expect-item "$ITEM_SEL" \
   --expect-fields "title,description,location,externalJobId,detailUrl" \
-  [--expect-form-fields N]
+  [--expect-form-fields N] [--expect-listing-urls "<url>,<url>"]
 # Exit 2 = config was clobbered → re-PUT and verify again (max 2 retries, then REVIEW)
 ```
 **LANDMINE:** never mark ACTIVE without passing `verify-config`. Exit 2 means the analyzer race won and your config is gone. Cite: `LRN-RACE-2`.
 **Exit 0 does not prove a `setupScript` was saved** — compare the stored script too (§9.1, `LRN-API-7`).
+**On a multi-page site (§2.3), always pass `--expect-listing-urls`** — it is an EXACT set
+match, so a page missing from the stored config exits 2 instead of quietly becoming a
+department that no longer publishes.
 
 ---
 
@@ -922,6 +1013,7 @@ Pre-reading all recipes defeats the lean-core cost goal.
 | **Wix repeater** jobs board (`comp-*__item-<suffix>` rows), or a **Niloos/Hunter minisite** (`minisite.niloos.ai`, reCAPTCHA SPA) | `addsite2-recipes/spa-frameworks.md` (#wix / #niloos) |
 | Job prints an **apply deadline**; need to drop past-deadline jobs | `addsite2-recipes/setupscript-patterns.md` (§12, `LRN-WRK-10`) |
 | `extracted < total` (coverage gap), lazy loading, or "load more" detected | `addsite2-recipes/pagination-and-loading.md` |
+| A careers **hub** linking several listing pages of one employer (jobs split by department) | §2.3 — one site with `listingUrls`, never one site per link (`LRN-CO-2`). Not pagination. |
 
 ---
 

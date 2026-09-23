@@ -26,6 +26,10 @@
 //   structure_changed    nothing survived validation
 //   suspicious_drop      the run extracted a fraction of the site's listings
 //                        and the undersize guard refused to write them
+//   listing_url_failed   one of the site's listing pages errored
+//   listing_url_empty    one of them went dark where it had listings
+//   listing_urls_removed the site holds listings from a page no longer configured
+//                        (all three: the run refused to publish a partial set)
 //
 // Counting any of them would halt the night for reasons that say nothing about
 // whether the next site would scrape.

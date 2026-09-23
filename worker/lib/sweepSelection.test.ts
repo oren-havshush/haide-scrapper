@@ -87,6 +87,19 @@ assert(
   classifyOutcome({ status: "COMPLETED", failureCategory: "empty_results" }) === "soft_failure",
   "empty_results is soft — per-site config death, not infrastructure",
 );
+// A site scraping several listing pages refuses to publish rather than shrink
+// when one page errors, goes dark, or drops out of the config. Those runs are
+// COMPLETED with a category: soft, like the other two, so the breaker ignores
+// them, the site stays due tomorrow, and the report names it as drift.
+for (const cat of ["listing_url_failed", "listing_url_empty", "listing_urls_removed"]) {
+  const run = { status: "COMPLETED", failureCategory: cat };
+  assert(
+    classifyOutcome(run) === "soft_failure",
+    `${cat} is soft — one site's pages, not the infrastructure (got ${classifyOutcome(run)})`,
+  );
+  assert(!isSuccessfulRun(run), `${cat} is not success — nothing was published tonight`);
+}
+
 assert(
   classifyOutcome({ status: "FAILED", failureCategory: "apply_requires_login" }) === "other",
   "a login-gated skip is a decision, not a fault, and must never halt the sweep",

@@ -12,6 +12,17 @@
 // gate saved, silently absent from exactly the nights something went wrong.
 
 import { DEFAULT_DROP_THRESHOLDS, isSuspiciousDrop, type DropThresholds } from "./scheduledRun";
+import { LISTING_SOFT_CATEGORIES } from "./listingTargets";
+
+/**
+ * A multi-page site that refused to publish a partial set. Soft, like drift,
+ * but the opposite in kind: drift is a site that changed under us and said
+ * nothing, this is the worker declining to shrink what it publishes — and the
+ * run already named the pages, so the queue quotes them instead of guessing.
+ */
+function isListingRefusal(category: string | null): boolean {
+  return category != null && (LISTING_SOFT_CATEGORIES as readonly string[]).includes(category);
+}
 
 /** Anything the report needs about the sweep itself. */
 export type ReportSweep = {
@@ -263,7 +274,17 @@ export function needsAttention(
     if (i.outcome === "hard_failure") add(i, `failed (${i.failureCategory ?? "unknown"})`);
 
     // --- scrape phase: drift and drops ---
-    if (i.outcome === "soft_failure") {
+    if (i.outcome === "soft_failure" && isListingRefusal(i.failureCategory)) {
+      const detail = (i.warnings ?? [])
+        .map((w) => String(w))
+        .filter((w) => w.startsWith("listing_url"))
+        .join("; ");
+      add(
+        i,
+        `refused to publish a partial set (${i.failureCategory}): ${i.jobsAfter} listing(s) kept` +
+          (detail ? ` — ${detail}` : ""),
+      );
+    } else if (i.outcome === "soft_failure") {
       const newest = i.newestJobAt ? sweepDate(i.newestJobAt, timeZone) : "none";
       add(
         i,
@@ -391,7 +412,9 @@ export function renderSweepReport(
   for (const [cat, n] of [...byCategory.entries()].sort((a, b) => b[1] - a[1])) {
     lines.push(`  ${String(n).padStart(4)}  ${cat}`);
   }
-  lines.push(`  ${String(counters.silentDrift).padStart(4)}  silent drift (empty_results / structure_changed)`);
+  lines.push(
+    `  ${String(counters.silentDrift).padStart(4)}  silent drift or refusal (empty_results / structure_changed / listing_*)`,
+  );
   lines.push("");
 
   lines.push("Gate");
