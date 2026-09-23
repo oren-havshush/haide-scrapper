@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { NotFoundError, ValidationError } from "@/lib/errors";
 import { resolveLocationInput } from "@/lib/locations";
+import { matchOverrides } from "@/lib/locationOverrides";
 
 /**
  * Persist a manual location override for a job, keyed by (siteId, jobKey).
@@ -14,7 +15,7 @@ import { resolveLocationInput } from "@/lib/locations";
 export async function updateJobLocation(jobId: string, location: string) {
   const job = await prisma.job.findUnique({
     where: { id: jobId },
-    select: { id: true, siteId: true, externalJobId: true, detailUrl: true },
+    select: { id: true, siteId: true, title: true, externalJobId: true, detailUrl: true },
   });
 
   if (!job) {
@@ -36,10 +37,20 @@ export async function updateJobLocation(jobId: string, location: string) {
   const { primary, list } = resolveLocationInput(location);
 
   await prisma.$transaction([
+    // The title is written on every save, create and update alike. jobKey can
+    // stop matching when a config change re-seeds a synthesised id (halilit:
+    // 6 of 7 jobs), and a row reading "site X, key h-1p1cu0x, חיפה" is one
+    // nobody can re-apply or delete with confidence.
     prisma.jobLocationOverride.upsert({
       where: { siteId_jobKey: { siteId: job.siteId, jobKey } },
-      create: { siteId: job.siteId, jobKey, location: primary, locations: list },
-      update: { location: primary, locations: list },
+      create: {
+        siteId: job.siteId,
+        jobKey,
+        location: primary,
+        locations: list,
+        jobTitle: job.title,
+      },
+      update: { location: primary, locations: list, jobTitle: job.title },
     }),
     prisma.job.update({
       where: { id: jobId },
@@ -59,4 +70,47 @@ export async function updateJobLocation(jobId: string, location: string) {
       siteId: true,
     },
   });
+}
+
+/**
+ * A site's manual location overrides, paired with the jobs they apply to.
+ *
+ * Read-only, and its whole purpose is the rows that DON'T pair. An override is
+ * keyed by `externalJobId ?? detailUrl`; on a site with no id mapping that is a
+ * synthesised `h-<hash>` whose stability depends on the config that seeds it
+ * (halilit re-keyed 6 of its 7 jobs across one config change). When the key
+ * moves, the override survives — it is keyed on siteId+jobKey, not on the Job
+ * row — and silently applies to nothing. Until this, the only way to find that
+ * out was to notice a location had quietly reverted.
+ */
+export async function listLocationOverrides(siteId: string) {
+  const site = await prisma.site.findUnique({ where: { id: siteId }, select: { id: true } });
+  if (!site) {
+    throw new NotFoundError("Site", siteId);
+  }
+
+  const [overrides, jobs] = await Promise.all([
+    prisma.jobLocationOverride.findMany({
+      where: { siteId },
+      select: {
+        id: true,
+        jobKey: true,
+        location: true,
+        locations: true,
+        jobTitle: true,
+        updatedAt: true,
+      },
+    }),
+    prisma.job.findMany({
+      where: { siteId },
+      select: { id: true, title: true, externalJobId: true, detailUrl: true },
+    }),
+  ]);
+
+  const rows = matchOverrides(overrides, jobs);
+  return {
+    overrides: rows,
+    total: rows.length,
+    unmatched: rows.filter((r) => !r.matched).length,
+  };
 }

@@ -222,3 +222,19 @@ export function useScanPolicyUrl() {
     },
   });
 }
+
+/**
+ * A site's manual location overrides, paired with the jobs they apply to.
+ *
+ * Read on demand — `enabled` keeps it from firing for every row in the table;
+ * only the site whose dialog is open is fetched. Not cached long: an override
+ * set through the jobs page has to show up here without a reload.
+ */
+export function useSiteLocationOverrides(siteId: string | null) {
+  return useQuery({
+    queryKey: ["site-location-overrides", siteId],
+    queryFn: () => apiFetch(`/api/sites/${siteId}/location-overrides`),
+    enabled: !!siteId,
+    staleTime: 0,
+  });
+}

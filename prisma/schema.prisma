@@ -208,6 +208,15 @@ model JobLocationOverride {
   /// Full override list. Without this a manual multi-location edit would be
   /// silently collapsed back to one value on the next scrape.
   locations String[] @default([])
+  /// The job's title when the override was set. Nullable: rows written before
+  /// this column stay NULL, which is true of them.
+  ///
+  /// jobKey is `externalJobId ?? detailUrl`, and on a site with no id mapping
+  /// that is a synthesised `h-<hash>` whose stability depends on the config
+  /// that seeds it — halilit re-keyed 6 of 7 jobs across one config change. An
+  /// override that stops matching is otherwise a row reading "site X, key
+  /// h-1p1cu0x, חיפה", which nobody can re-apply or delete with confidence.
+  jobTitle  String?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 

@@ -15,6 +15,8 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import { toast } from "sonner";
 import { SiteActions } from "@/components/sites/SiteActions";
 import { DeleteSiteDialog } from "@/components/sites/DeleteSiteDialog";
+import { FailSiteDialog } from "@/components/sites/FailSiteDialog";
+import { SiteLocationOverridesDialog } from "@/components/sites/SiteLocationOverridesDialog";
 import { SiteNoteDialog } from "@/components/sites/SiteNoteDialog";
 import { SiteCompanyDialog } from "@/components/sites/SiteCompanyDialog";
 import { SiteCompanyProfileDialog } from "@/components/sites/SiteCompanyProfileDialog";
@@ -255,6 +257,8 @@ export function SitesTable({
   onPageChange,
 }: SitesTableProps) {
   const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null);
+  const [failTargetId, setFailTargetId] = useState<string | null>(null);
+  const [overridesTargetId, setOverridesTargetId] = useState<string | null>(null);
   const [noteTargetId, setNoteTargetId] = useState<string | null>(null);
   const [companyTargetId, setCompanyTargetId] = useState<string | null>(null);
   const [profileTargetId, setProfileTargetId] = useState<string | null>(null);
@@ -275,6 +279,10 @@ export function SitesTable({
     ? sites.find((s) => s.id === noteTargetId) ?? null
     : null;
 
+  const failTargetSite = failTargetId
+    ? sites.find((s) => s.id === failTargetId) ?? null
+    : null;
+
   const companyTargetSite = companyTargetId
     ? sites.find((s) => s.id === companyTargetId) ?? null
     : null;
@@ -289,11 +297,23 @@ export function SitesTable({
     );
   };
 
+  // FAILED is the one status change that destroys data: updateSiteStatus
+  // deletes every Job row for the site in the same transaction. So it asks
+  // first, with the count. Skip and Clear Jobs are unchanged — Skip destroys
+  // nothing, and Clear Jobs says what it does in its own name.
   const handleFail = (siteId: string) => {
+    setFailTargetId(siteId);
+  };
+
+  const handleFailConfirm = () => {
+    if (!failTargetId) return;
     updateStatus.mutate(
-      { siteId, status: "FAILED" },
+      { siteId: failTargetId, status: "FAILED" },
       {
-        onSuccess: () => toast.success("Site marked as failed"),
+        onSuccess: () => {
+          toast.success("Site marked as failed");
+          setFailTargetId(null);
+        },
         onError: (err: Error) => toast.error(err.message),
       }
     );
@@ -627,6 +647,7 @@ export function SitesTable({
                     onScrape={handleScrape}
                     onTestScrape={handleTestScrape}
                     onClearJobs={handleClearJobs}
+                    onLocationOverrides={setOverridesTargetId}
                     onReview={handleReview}
                     onPolicyRecheck={handlePolicyRecheck}
                     isSkipping={updateStatus.isPending}
@@ -675,6 +696,31 @@ export function SitesTable({
         }}
         onConfirm={handleDeleteConfirm}
         isDeleting={deleteSiteMutation.isPending}
+      />
+
+      <FailSiteDialog
+        open={failTargetId !== null}
+        onOpenChange={(open) => {
+          if (!open) setFailTargetId(null);
+        }}
+        onConfirm={handleFailConfirm}
+        isFailing={updateStatus.isPending}
+        siteUrl={failTargetSite?.siteUrl ?? ""}
+        // What the site publishes now, from the run that owns its rows. null
+        // when no run owns any — the dialog then warns without a number rather
+        // than printing a reassuring 0 it cannot stand behind.
+        jobCount={failTargetSite?.listingRun?.listingCount ?? null}
+      />
+
+      <SiteLocationOverridesDialog
+        open={overridesTargetId !== null}
+        onOpenChange={(open) => {
+          if (!open) setOverridesTargetId(null);
+        }}
+        siteId={overridesTargetId}
+        siteUrl={
+          (overridesTargetId ? sites.find((s) => s.id === overridesTargetId)?.siteUrl : "") ?? ""
+        }
       />
 
       <SiteNoteDialog

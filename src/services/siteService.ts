@@ -12,14 +12,10 @@ import { findListingRunsBySiteIds } from "@/lib/listingRun";
 import type { PaginationParams } from "@/lib/types";
 import type { SiteStatus } from "@/generated/prisma/enums";
 import { emitEvent } from "@/services/eventService";
+import { VALID_STATUS_TRANSITIONS } from "@/lib/statusTransitions";
 
-const VALID_STATUS_TRANSITIONS: Record<string, string[]> = {
-  ANALYZING: ["REVIEW", "ACTIVE", "FAILED"],
-  REVIEW: ["SKIPPED", "ACTIVE", "FAILED", "ANALYZING"],
-  ACTIVE: ["SKIPPED", "FAILED", "REVIEW", "ANALYZING"],
-  FAILED: ["SKIPPED", "ANALYZING", "ACTIVE"],
-  SKIPPED: ["ANALYZING", "FAILED"],
-};
+// The table lives in src/lib/statusTransitions.ts so the dashboard and a test
+// can read it without pulling in Prisma.
 
 const STATUS_TIMESTAMP_MAP: Record<string, string> = {
   ANALYZING: "analyzingAt",

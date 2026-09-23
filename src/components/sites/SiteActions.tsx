@@ -20,6 +20,7 @@ interface SiteActionsProps {
   onScrape?: (siteId: string) => void;
   onTestScrape?: (siteId: string) => void;
   onClearJobs?: (siteId: string) => void;
+  onLocationOverrides?: (siteId: string) => void;
   onReview?: (siteUrl: string) => void;
   onPolicyRecheck?: (siteId: string) => void;
   isSkipping?: boolean;
@@ -40,6 +41,7 @@ export function SiteActions({
   onScrape,
   onTestScrape,
   onClearJobs,
+  onLocationOverrides,
   onReview,
   onPolicyRecheck,
   isSkipping,
@@ -175,6 +177,11 @@ export function SiteActions({
           {onClearJobs && (status === "ACTIVE" || status === "REVIEW" || status === "FAILED") && (
             <DropdownMenuItem onClick={() => onClearJobs(siteId)}>
               Clear Jobs
+            </DropdownMenuItem>
+          )}
+          {onLocationOverrides && (
+            <DropdownMenuItem onClick={() => onLocationOverrides(siteId)}>
+              Location overrides
             </DropdownMenuItem>
           )}
           {onPolicyRecheck && (
