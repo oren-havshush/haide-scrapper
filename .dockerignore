@@ -30,3 +30,46 @@ deploy.sh
 scripts
 .github
 README.md
+
+# Scratch left at the repo root by an onboarding or debugging session.
+#
+# Not cosmetic: the Dockerfile does `COPY . .` and then `pnpm build`, so every
+# file in the context is type-checked. A one-off probe importing
+# `./lib/playwright` — a path that exists only in a scratch directory — failed a
+# deploy of production code that was itself correct. Nothing reached the image
+# and nothing broke; the cost was a build error about code that does not ship.
+#
+# Anchored to the root on purpose. These names are plausible inside src/ and
+# worker/ (a real `check-*.ts` module, a real `*.out` fixture), and a pattern
+# that swallowed one of those would fail the deploy just as hard and far less
+# visibly. scripts/dockerignore.test.ts asserts no tracked file is caught.
+/probe-*
+/check-*
+/debug-*
+/scratch*
+/tmp-*
+/*.local.ts
+/*.log
+/*.bak
+/*.orig
+/*.rej
+/*.tmp
+/*.out
+/*.har
+/*.sql
+/*.png
+/*.jpg
+/*.jpeg
+/*.webp
+/*.gif
+/*.pdf
+/*.zip
+/*.tar
+/*.tar.gz
+/*.dump.json
+/*.bak.*
+/*.ts.bak
+# Config-writer one-offs from onboarding. `.gitignore` already has this exact
+# pattern, so they are invisible to `git status` — and were sitting in the build
+# context, unlinted and uncommitted, while this was written.
+/write-*-config.js

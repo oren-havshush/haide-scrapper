@@ -1,5 +1,31 @@
 import { z } from "zod";
 
+/**
+ * True when a string carries a C0 control character other than the three that
+ * are ordinary script formatting: tab (9), newline (10), carriage return (13).
+ *
+ * A setupScript has no legitimate use for the rest. What DOES put one there is
+ * an escape that collapsed on its way here: a doubled backslash losing one of
+ * its pair leaves the single-backslash form, which JS reads as the BACKSPACE
+ * escape — U+0008 — and the regex holding it silently matches nothing
+ * (LRN-SETUP-19, careers.jnj.com, 2026-09-23: requirements 0/22 with every
+ * other field at 1.00 and verify-config green).
+ *
+ * Deliberately a charCodeAt loop and NOT a regex. The first version of this
+ * guard was a character class with escaped bounds, and the write path decoded
+ * those escapes into six RAW control bytes sitting inside the regex literal —
+ * the check became an instance of the thing it checks for, on its first day,
+ * while passing its own tests. There is no escape here to decode.
+ */
+function hasControlCharacter(s: string): boolean {
+  for (let i = 0; i < s.length; i++) {
+    const c = s.charCodeAt(i);
+    if (c < 32 && c !== 9 && c !== 10 && c !== 13) return true;
+  }
+  return false;
+}
+
+
 export const createSiteSchema = z.object({
   siteUrl: z.url(),
 });
@@ -213,7 +239,18 @@ export const updateSiteConfigSchema = z.object({
   // and before extraction. Lets SPAs that hide most content behind app state
   // (Angular scope flags, React store slices) render the full listing so the
   // extractor sees everything. Body is executed verbatim via page.evaluate.
-  setupScript: z.string().max(8_000).optional(),
+  setupScript: z
+    .string()
+    .max(8_000)
+    .refine((s) => !hasControlCharacter(s), {
+      message:
+        "setupScript contains a raw control character (0x0-0x1f other than tab/newline/CR). " +
+        "This is what a collapsed doubled backslash leaves behind: \\\\b in a string " +
+        "becomes \\b, and JS reads that as backspace (LRN-SETUP-19). The regex then " +
+        "matches nothing while every gate stays green. Rewrite the escape out — a plain " +
+        "string test, a character class, or String.fromCharCode(n).",
+    })
+    .optional(),
   // Optional CSS selector for an append-style "Load more" button. The worker
   // clicks it repeatedly after page load until item count stabilizes or caps
   // hit. Different from `pagination` (which expects content replacement).

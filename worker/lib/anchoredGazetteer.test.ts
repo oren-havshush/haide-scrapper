@@ -1,0 +1,270 @@
+// Run: npx tsx worker/lib/anchoredGazetteer.test.ts
+//
+// The second-stage gazetteer reads ADVERTISING PROSE and writes a published
+// city. Everything about that is dangerous, and CLAUDE.md already records why:
+// `\b` does not fire after a Hebrew letter, final letters differ, and ordinary
+// Hebrew words ARE town names — `כנות` inside `הסוכנות`, `משמרות` meaning
+// "shifts", `יקום` inside `מיקום`. Scanning for city-shaped words finds all of
+// them, and each one ships as a real address on the public jobs site.
+//
+// So the scan is anchored. A place is read only where the ad says it is naming
+// one: after a location LABEL, or after a word for the employer's own premises.
+// Everywhere else is not searched at all.
+//
+// Fixtures are real ad text: nirlat (cmp01cdsd001a01ph74xluh8r) and tikshoov
+// (cmu5mleu7000c01p950bo7eqx), read from /api/jobs on 2026-09-23.
+
+import { extractLocationFromGazetteer } from "./normalizer";
+import { isCanonicalLocation } from "./locationNormalize";
+
+let failures = 0;
+function assert(cond: boolean, msg: string) {
+  if (!cond) {
+    console.error("FAIL:", msg);
+    failures++;
+  }
+}
+const eq = (got: unknown, want: unknown, msg: string) => {
+  const g = JSON.stringify(got);
+  const w = JSON.stringify(want);
+  if (g !== w) {
+    console.error(`FAIL: ${msg}\n  got=${g}\n  want=${w}`);
+    failures++;
+  }
+};
+
+// ---------------------------------------------------------------------------
+console.log("# nirlat — the three ads that name a place, and the four values");
+// ---------------------------------------------------------------------------
+{
+  // JB-812. The ad names TWO sites, separated by a slash. The old scan returned
+  // ONE — and the second one, ניר עוז, losing באר שבע entirely. Splitting the
+  // value is the point: an employer writing "X/Y" has named both.
+  eq(
+    extractLocationFromGazetteer(
+      'נירלט מגייסת טכנאי.ת פיתוח לאתר החברה בבאר שבע/ניר עוז! במסגרת התפקיד: ' +
+        "• ביצוע עבודות פיתוח וניסויים כחלק מתהליכי פיתוח ושיפור מוצרי החברה",
+    ),
+    ["באר שבע", "ניר עוז"],
+    "JB-812: לאתר החברה ב<X>/<Y> yields both places",
+  );
+
+  // JB-802. The value carries a settlement word the city.csv row does not.
+  eq(
+    extractLocationFromGazetteer(
+      "נירלט מגייסת יצרן.ית צבע (על בסיס ממס) לאתר הייצור בקיבוץ ניר עוז! " +
+        "במסגרת התפקיד: • הכנת מנות צבע בהתאם להוראות הייצור",
+    ),
+    ["ניר עוז"],
+    "JB-802: בקיבוץ <city> — the settlement word does not block the city",
+  );
+
+  // JB-765. A label, with a dash rather than a colon, at the very end of the ad.
+  eq(
+    extractLocationFromGazetteer(
+      "יכולת למידה מהירה של מערכות מידע כגון: CRM, SAP, MES.\nמקום- נתניה",
+    ),
+    ["נתניה"],
+    "JB-765: מקום- <city>",
+  );
+
+  // JB-817, for completeness: the same site phrase with the city directly after ב.
+  eq(
+    extractLocationFromGazetteer("נירלט מגייסת מבקר.ת איכות לאתר הייצור בבאר שבע! במסגרת התפקיד:"),
+    ["באר שבע"],
+    "JB-817: לאתר הייצור ב<city>",
+  );
+}
+
+// ---------------------------------------------------------------------------
+console.log("# nirlat — the ads that name no place must yield nothing");
+// ---------------------------------------------------------------------------
+{
+  // JB-828's requirements line. `במפעל` IS an anchor, and what follows it is a
+  // slash-separated list — of materials. A value that is not on city.csv is not
+  // a place, however well-formed the sentence around it is.
+  eq(
+    extractLocationFromGazetteer("ניסיון קודם במפעל צבע / כימיה / דבקים – יתרון משמעותי."),
+    [],
+    "JB-828: במפעל צבע / כימיה / דבקים names no place",
+  );
+
+  // JB-808. The anchor fires; nothing resolvable follows it.
+  eq(
+    extractLocationFromGazetteer(
+      "בעלי ניסיון בעבודה במפעל יצרני – חובה רישיון נהיגה-חובה נכונות לעבודה פיזית- חובה",
+    ),
+    [],
+    "JB-808: במפעל יצרני names no place",
+  );
+
+  // JB-830. No anchor anywhere in a 1,000-character marketing ad.
+  eq(
+    extractLocationFromGazetteer(
+      "נירלט מגייסת מנהל/ת תקשורת שיווקית. התפקיד כולל: אחריות על גיבוש והובלת " +
+        "אסטרטגיית התקשורת השיווקית והדיגיטלית של נירלט, לטובת חיזוק המותג והגדלת " +
+        "המכירות. ניהול אתר נירלט, כולל פלטפורמת אי-קומרס. תכנון והובלת קמפיינים ממומנים.",
+    ),
+    [],
+    "JB-830: an ad with no anchor yields nothing — including from ניהול אתר נירלט",
+  );
+}
+
+// ---------------------------------------------------------------------------
+console.log("# tikshoov — the five false matches, each from its own real ad");
+// ---------------------------------------------------------------------------
+{
+  // Every one of these five words is a genuine city.csv row, which is exactly
+  // what makes them dangerous: they pass every downstream gate.
+  for (const name of ["שדרות", "אזור", "משמרות", "חניתה", "יקום"]) {
+    assert(isCanonicalLocation(name), `${name} really is on city.csv — that is the trap`);
+  }
+
+  // 1. שדרות — a BOULEVARD. Two different tikshoov ads, two different streets.
+  eq(
+    extractLocationFromGazetteer(
+      "מיקום המשרה: חיפה (מושבה גרמנית, קניון סיטי סנטר, שדרות בן גוריון 6). מיקום מרכזי ונגיש.",
+    ),
+    ["חיפה"],
+    "4953: the label's own value is חיפה; שדרות בן גוריון is a street",
+  );
+  eq(
+    extractLocationFromGazetteer(
+      "קופת חולים מאוחדת. מיקום המשרה: אשקלון (שדרות התעשייה 8, בניין בית דסור - מול כלא אשקלון).",
+    ),
+    ["אשקלון"],
+    "4893: likewise — שדרות התעשייה is a street inside the אשקלון value",
+  );
+
+  // 2. אזור — "the area of".
+  eq(
+    extractLocationFromGazetteer(
+      "מיקום המשרה: ירושלים (המטה הארצי, קלרמון גאנו 4 - אזור גבעת התחמושת). מתן מענה טלפוני.",
+    ),
+    ["ירושלים"],
+    "3327: אזור גבעת התחמושת does not make the town אזור",
+  );
+
+  // 3. משמרות — "shifts". Six tikshoov ads say עבודה במשמרות; none is in the
+  //    moshav. Note the ב prefix: this is precisely the "ב<city>" shape the old
+  //    scan trusted.
+  eq(
+    extractLocationFromGazetteer(
+      "עבודה בימים א'-ה' בין השעות 08:00-18:00. עבודה במשמרות: 08:00-16:00 או 10:00-18:00.",
+    ),
+    [],
+    "5043: עבודה במשמרות is a shift pattern, not מושב משמרות",
+  );
+
+  // 4. חניתה — via the edit-distance-1 tail, from חניכה ("mentoring").
+  eq(
+    extractLocationFromGazetteer(
+      "ניהול אישי ומקצועי של נציגי הצוות - חניכה והובלת הצוות לעמידה ביעדים - ביצוע שיחות משוב",
+    ),
+    [],
+    "5102/4082: חניכה is not the kibbutz חניתה",
+  );
+
+  // 5. יקום — inside מיקום, the label word itself (LRN-LOC-6). The anchored
+  //    scan cannot make this mistake: מיקום is consumed AS the anchor.
+  eq(
+    extractLocationFromGazetteer("מיקום המשרה: עבודה מהבית (ההכשרה מתקיימת פרונטלית בנתניה)."),
+    [],
+    "5046: a work-from-home label value names no city — and יקום is not lifted out of מיקום",
+  );
+  // And the real place of that name still resolves when an ad actually says it.
+  eq(
+    extractLocationFromGazetteer("מיקום המשרה: יקום"),
+    ["יקום"],
+    "5093/4998: the kibbutz יקום still lands when the label names it",
+  );
+}
+
+// ---------------------------------------------------------------------------
+console.log("# CLAUDE.md's two named traps");
+// ---------------------------------------------------------------------------
+{
+  // כנות inside הסוכנות. The word is a real moshav; the ad is about an agency.
+  eq(
+    extractLocationFromGazetteer("החברה עובדת מול הסוכנות היהודית ומול משרדי הממשלה."),
+    [],
+    "הסוכנות does not contain the moshav כנות",
+  );
+  eq(
+    extractLocationFromGazetteer("נכונות לעבודה במשמרות ובסופי שבוע."),
+    [],
+    "במשמרות is shifts, not the moshav",
+  );
+  // The final-letter case named in CLAUDE.md: סניף ends in ף, סניפים in פ.
+  eq(
+    extractLocationFromGazetteer("דרוש/ה מנהל/ת לסניף ברחובות."),
+    ["רחובות"],
+    "the singular סניף is an anchor",
+  );
+  eq(
+    extractLocationFromGazetteer("דרוש/ה מנהל/ת לסניפי החברה בחדרה."),
+    ["חדרה"],
+    "and so is the construct plural סניפי — the final letter differs",
+  );
+}
+
+// ---------------------------------------------------------------------------
+console.log("# the anchor set, and the fact that nothing else is scanned");
+// ---------------------------------------------------------------------------
+{
+  for (const [text, want] of [
+    ["מיקום המשרה: נתניה (שילוב עבודה מהבית)", ["נתניה"]],
+    ["מיקום: חיפה", ["חיפה"]],
+    ["מקום העבודה: אשדוד", ["אשדוד"]],
+    ["כתובת: רחובות", ["רחובות"]],
+    ["העבודה באתר נתניה", ["נתניה"]],
+    ["העבודה בסניף חדרה", ["חדרה"]],
+    ["העבודה במפעל בבאר שבע", ["באר שבע"]],
+    ["העבודה במשרדי החברה בהרצליה", ["הרצליה"]],
+    ["העבודה במשרדינו ברמת גן", ["רמת גן"]],
+  ] as Array<[string, string[]]>) {
+    eq(extractLocationFromGazetteer(text), want, `anchor fires: ${JSON.stringify(text)}`);
+  }
+
+  // The removed behaviour, stated so it cannot come back by accident. Each of
+  // these was a real production fixture of the bare-word scan; each is now
+  // deliberately unrecognised, because the same shape is what produced the five
+  // false matches above.
+  for (const text of [
+    "מחסנאי/ת לנמל אשדוד דרוש/ה מחסנאי/ת!", // ל<noun> <bare city>
+    "דרוש/ה נהג/ת חלוקה 12 טון למושב כנות חברת ישרקו", // ל<noun> <bare city>
+    "דרוש/ה מפעיל/ת CNC למפעל מצליח ברמת הגולן!!", // ב<region>, unanchored
+    "העבודה בתל אביב", // bare ב<city>
+    "📍 פארק המדע רחובות", // a cue within 30 chars
+  ]) {
+    eq(extractLocationFromGazetteer(text), [], `no longer scanned: ${JSON.stringify(text)}`);
+  }
+}
+
+// ---------------------------------------------------------------------------
+console.log("# the gate — nothing off-list ever leaves the gazetteer");
+// ---------------------------------------------------------------------------
+{
+  for (const text of [
+    "מיקום המשרה: צ'ק פוסט",
+    "מיקום המשרה: הכשרה באזור תעשייה קדמת גליל",
+    "מיקום המשרה: תקשוב מהבית",
+    "מיקום המשרה: לוד (מול תחנת הרכבת",
+    "כתובת: רחוב המלאכה 14",
+    "העבודה במשרדי החברה בחו\"ל",
+    "מיקום המשרה: חיפה וקריות",
+  ]) {
+    const out = extractLocationFromGazetteer(text);
+    const bad = out.filter((v) => !isCanonicalLocation(v));
+    eq(bad, [], `no off-list value from ${JSON.stringify(text)}`);
+  }
+  // The area label in particular: it names a region and two different city
+  // groups, and must not collapse to חיפה (the rule-4 case, job 4082).
+  eq(extractLocationFromGazetteer("מיקום המשרה: חיפה וקריות"), [], "an area label names no city");
+}
+
+if (failures > 0) {
+  console.error(`\n${failures} assertion(s) failed`);
+  process.exit(1);
+}
+console.log("\nanchoredGazetteer: a place is read only where the ad says it is naming one");

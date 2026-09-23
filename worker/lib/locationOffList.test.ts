@@ -160,17 +160,25 @@ console.log("# rule 3 — שדרות and אזור are never matched as a bare or
   eq(normalizeLocations('ירושלים יו"ש'), ["אזור ירושלים"], "the tikshoov bucket still maps to its region");
 
   // The same rule on the gazetteer side: a cue plus a bare ב-prefix used to
-  // read Rothschild Boulevard as the city Sderot.
+  // read Rothschild Boulevard as the city Sderot. The anchored scan reaches the
+  // same answer by never looking there at all — ממוקם is not an anchor.
   eq(
     extractLocationFromGazetteer("המשרד ממוקם בשדרות רוטשילד 15"),
-    null,
+    [],
     "gazetteer: בשדרות רוטשילד is not the city שדרות",
   );
   // A labeled value keeps the full vocabulary — that context is reliable.
   eq(
     extractLocationFromGazetteer("מיקום המשרה: שדרות"),
-    "שדרות",
+    ["שדרות"],
     "gazetteer: a labeled שדרות is still the city",
+  );
+  // And the boulevard inside a labeled value is not lifted out of it: the
+  // value starts with the city, and nothing past the first place is read.
+  eq(
+    extractLocationFromGazetteer("מיקום המשרה: חיפה (שדרות בן גוריון 6)"),
+    ["חיפה"],
+    "gazetteer: the street inside a labeled value contributes nothing",
   );
 }
 

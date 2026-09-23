@@ -9,7 +9,8 @@ import {
   extractLocationFromGazetteer,
 } from "../lib/normalizer";
 import type { NormalizedJobRecord } from "../lib/normalizer";
-import { normalizeLocations } from "../lib/locationNormalize";
+import { resolveJobLocation, type PreviousLocation } from "../lib/jobLocation";
+import { runSetupScript } from "../lib/setupScriptRun";
 import { validateJobRecord } from "../lib/validator";
 import type { ValidationResult } from "../lib/validator";
 import type { Browser, Page } from "playwright";
@@ -2306,37 +2307,9 @@ function getSetupScript(fieldMappingsRaw: unknown): string | null {
   return s;
 }
 
-async function runSetupScript(page: Page, script: string): Promise<void> {
-  try {
-    // Run the script body inside an async function and AWAIT it, so scripts
-    // that perform `await fetch(...)` enrichments (e.g. Workday per-item job
-    // description JSON) fully resolve before extraction. Plain synchronous
-    // scripts (sync XHR injection, DOM pokes) keep working — the async wrapper
-    // just resolves immediately.
-    // Use a 90s timeout to allow long-running scripts (e.g. load-more loops with
-    // multiple AJAX clicks and sleeps that can easily exceed the 30s default).
-    page.setDefaultTimeout(90_000);
-    try {
-      await page.evaluate(async (src: string) => {
-        const AsyncFunction = Object.getPrototypeOf(
-          async function () {},
-        ).constructor as new (body: string) => () => Promise<unknown>;
-        const fn = new AsyncFunction(src);
-        await fn();
-      }, script);
-    } finally {
-      // Restore even when the script throws. A site whose jobs span several
-      // listing pages runs this once per page, and a raised default left behind
-      // by the first would triple every later page's worst case — straight into
-      // the run's own 15-minute cap.
-      page.setDefaultTimeout(30_000);
-    }
-    await page.waitForTimeout(1_500);
-    console.info(`[scrape] setupScript executed (${script.length} chars)`);
-  } catch (e) {
-    console.warn(`[scrape] setupScript error — ${(e as Error).message}`);
-  }
-}
+// runSetupScript now lives in worker/lib/setupScriptRun.ts, where a test can
+// drive it against a real Chromium page — which is the only way to assert that
+// what the script writes to the page console actually reaches the journal.
 
 // ---------------------------------------------------------------------------
 // Helper: get loadMoreSelector from fieldMappings JSON. When set, the worker
@@ -2832,7 +2805,8 @@ function buildLocationWarnings(
       const text = [j.title, j.description, j.requirements]
         .filter(Boolean)
         .join("\n");
-      const city = text ? extractLocationFromGazetteer(text) : null;
+      // The first place the ad names at one of its own anchors, if any.
+      const city = (text ? extractLocationFromGazetteer(text) : [])[0] ?? null;
       if (city && city !== loc && !COARSE_LOCATIONS.has(city)) {
         regionOverCity++;
         if (!regionOverCityExample) regionOverCityExample = `${loc} -> ${city}`;
@@ -2880,6 +2854,8 @@ function buildJobRows(args: {
   locationOverrides: Map<string, string>;
   locationOverrideLists: Map<string, string[]>;
   locationFallback: string | null;
+  /** The site's current rows, keyed by externalJobId and by detailUrl. */
+  previousLocations: Map<string, PreviousLocation>;
   siteId: string;
   scrapeRunId: string;
 }): Prisma.JobCreateManyInput[] {
@@ -2890,27 +2866,31 @@ function buildJobRows(args: {
     const persistedExternalJobId =
       args.synthesizedIds[idx] ?? normalized.externalJobId ?? null;
     const overriddenLocation = (jobKey && args.locationOverrides.get(jobKey)) || null;
-    // Precedence: manual dashboard override → extracted location →
-    // site-level fallback (HQ) → "Unknown". The extracted value can be an
-    // empty string (not null), so test it with trim() rather than ??.
-    const extractedLocation = normalized.location?.trim() || null;
-    const rawLocation =
-      overriddenLocation ?? extractedLocation ?? args.locationFallback ?? "Unknown";
-    // Canonicalise against "CSV files/city.csv" and split multi-place values.
-    // Returns [] only for empty/"Unknown"; otherwise always non-empty (falling
-    // back to the raw string), so a scraped value is never silently dropped.
     const overrideList = jobKey ? args.locationOverrideLists.get(jobKey) : undefined;
-    const canonicalLocations = overrideList ?? normalizeLocations(rawLocation);
-    // `location` stays the single primary value — the public site reads this
-    // column directly, so its shape must not change.
-    const resolvedLocation = canonicalLocations[0] ?? rawLocation;
+    // The row this job had before the delete/re-create. Tried under each of the
+    // identities it could have been stored with — see readPreviousLocations.
+    const previous =
+      [jobKey, persistedExternalJobId, normalized.url]
+        .filter((k): k is string => !!k)
+        .map((k) => args.previousLocations.get(k))
+        .find((v) => v !== undefined) ?? null;
+    // The whole precedence lives in worker/lib/jobLocation.ts, where it can be
+    // tested without a browser or a database. The extracted value can be an
+    // empty string rather than null, so it is trimmed on the way in.
+    const resolved = resolveJobLocation({
+      overrideLocation: overriddenLocation,
+      overrideLocations: overrideList ?? null,
+      extracted: normalized.location?.trim() || null,
+      previous,
+      fallback: args.locationFallback,
+    });
 
     return {
       title: normalized.title || "Untitled",
       description: normalized.description || null,
       requirements: normalized.requirements || null,
-      location: resolvedLocation,
-      locations: canonicalLocations,
+      location: resolved.location,
+      locations: resolved.locations,
       department: normalized.department || null,
       externalJobId: persistedExternalJobId || null,
       publishDate: normalized.publishDate || null,
@@ -3248,6 +3228,55 @@ async function readPreviousListingCounts(siteId: string): Promise<Map<string, nu
     // smaller harm than failing a scrape that would otherwise have worked.
     console.warn(
       "[scrape] could not read previous listing counts:",
+      err instanceof Error ? err.message : String(err),
+    );
+    return new Map();
+  }
+}
+
+/**
+ * What the site publishes for each job right now, so a scrape that stops
+ * printing a location does not move the job to the company HQ.
+ *
+ * Keyed BOTH ways on purpose. `buildJobRows` identifies a job by
+ * `externalJobId ?? detailUrl`, but the id it stores may be the synthesised
+ * `h-<hash>` while the id it matches on is the extracted one — a site with no
+ * id mapping has only its URL to go on. Indexing under each of a row's two
+ * identities lets the lookup try them in order without the caller knowing which
+ * kind of site it is looking at.
+ *
+ * A key that two rows share is DROPPED rather than resolved: an ambiguous match
+ * would carry one job's city onto another, and inventing a place is the one
+ * outcome this whole path exists to prevent.
+ */
+async function readPreviousLocations(siteId: string): Promise<Map<string, PreviousLocation>> {
+  try {
+    const rows = await prisma.job.findMany({
+      where: { siteId },
+      select: { externalJobId: true, detailUrl: true, location: true, locations: true },
+    });
+    const out = new Map<string, PreviousLocation>();
+    const ambiguous = new Set<string>();
+    for (const r of rows) {
+      const value: PreviousLocation = { location: r.location ?? "", locations: r.locations };
+      for (const key of [r.externalJobId, r.detailUrl]) {
+        if (!key) continue;
+        if (out.has(key)) ambiguous.add(key);
+        out.set(key, value);
+      }
+    }
+    for (const key of ambiguous) out.delete(key);
+    if (ambiguous.size > 0) {
+      console.warn(
+        `[scrape] ${ambiguous.size} previous job key(s) are not unique; those rows carry nothing forward`,
+      );
+    }
+    return out;
+  } catch (err) {
+    // Same trade as the listing counts above: losing the baseline costs the
+    // carry-forward, which is far smaller than failing a working scrape.
+    console.warn(
+      "[scrape] could not read previous locations:",
       err instanceof Error ? err.message : String(err),
     );
     return new Map();
@@ -3818,8 +3847,13 @@ async function executeScrape(
       .map((r) => [r.jobKey, r.locations]),
   );
 
+  // What this site publishes for each job right now. Read BEFORE the
+  // delete/re-create, because after it there is nothing left to read.
+  const previousLocations = await readPreviousLocations(site.id);
+
   // Site-level default location (e.g. company HQ) for jobs that print none of
-  // their own. Applied below only after extraction comes up empty.
+  // their own. Applied below only after extraction comes up empty AND the job
+  // has no clean previously-published city of its own.
   const locationFallback = getLocationFallback(site.fieldMappings);
 
   // Last-resort externalJobId. A site whose config exposes no id mapping stores
@@ -3884,6 +3918,7 @@ async function executeScrape(
     locationOverrides,
     locationOverrideLists,
     locationFallback,
+    previousLocations,
     siteId: site.id,
     scrapeRunId,
   });

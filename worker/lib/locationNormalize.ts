@@ -132,6 +132,19 @@ const AREA_LABEL: ReadonlySet<string> = new Set([
   "אזור תל אביב",
 ]);
 
+/**
+ * True for a value that names an AREA around a city rather than a city.
+ *
+ * Exported because the gazetteer needs the identical rule and reaches it by a
+ * different route: it matches the longest place name a value STARTS with, and
+ * "חיפה וקריות" starts with "חיפה". Without this the area label would collapse
+ * to the city by the front door after being shut out of the alias table —
+ * exactly job 4082 again.
+ */
+export function isAreaLabel(v: string): boolean {
+  return AREA_LABEL.has(squash(v));
+}
+
 function levenshtein1(a: string, b: string): boolean {
   if (Math.abs(a.length - b.length) > 1) return false;
   const dp: number[][] = Array.from({ length: a.length + 1 }, (_, i) => [i, ...Array(b.length).fill(0)]);
@@ -183,7 +196,18 @@ function scanPlaces(raw: string): string[] {
   return out;
 }
 
-function resolvePart(part: string): string | null {
+/**
+ * Resolve one value EXACTLY: the canonical list, the alias table, the English
+ * table, and the two spelling variants — and nothing approximate.
+ *
+ * Split out from resolvePart so a caller can ask for certainty. The
+ * edit-distance-1 tail below is a recovery for a value an employer typed
+ * slightly wrong; applied to a word lifted out of prose it is an invention
+ * machine (`חניכה`, "mentoring", resolves to the kibbutz `חניתה`). The anchored
+ * gazetteer in normalizer.ts takes its values from ad text and therefore uses
+ * this, never resolvePart.
+ */
+export function resolveExactLocation(part: string): string | null {
   const p = squash(part);
   if (!p) return null;
   if (CANONICAL.has(p)) return p;
@@ -207,6 +231,15 @@ function resolvePart(part: string): string | null {
   ])
     if (CANONICAL.has(alt)) return alt;
 
+  return null;
+}
+
+function resolvePart(part: string): string | null {
+  const exact = resolveExactLocation(part);
+  if (exact) return exact;
+  // The approximate tail: an employer's typo, recovered. Deliberately NOT part
+  // of resolveExactLocation — see the note there.
+  const p = squash(part);
   if (p.length >= 5) for (const c of BY_LEN) if (c.length >= 5 && levenshtein1(p, c)) return c;
   return null;
 }

@@ -1,123 +1,146 @@
 // Run: npx tsx worker/lib/gazetteer-location.test.ts
 //
-// Covers the "ל<noun> <city>" recovery pattern and, more importantly, the
-// precedence that keeps it from outranking higher-confidence matches.
-// All fixtures are real ad text from production.
+// THE LEDGER OF WHAT THE ANCHORED SCAN GAVE UP.
+//
+// This file used to cover the bare-word gazetteer: "ל<noun> <city>", bare
+// "ב<city>", a cue within 30 characters, direction words. Every fixture below
+// is real production ad text that the old scan was written for, and every one
+// is kept — with the value the anchored scan returns now.
+//
+// Keeping them is the point. The shapes that recovered אשדוד from "לנמל אשדוד"
+// are the same shapes that read `משמרות` out of "עבודה במשמרות" and `שדרות` out
+// of "שדרות בן גוריון 6" (see anchoredGazetteer.test.ts for those five). There
+// is no rule that keeps one and drops the other, so the recoveries went with
+// the inventions. Deleting the fixtures would hide that trade; asserting the
+// new answer makes it a decision on the record, and makes an accidental
+// re-introduction of prose scanning fail here.
 
 import { extractLocationFromGazetteer } from "./normalizer";
 
-function assert(cond: boolean, msg: string) {
-  if (!cond) {
-    console.error("FAIL:", msg);
-    process.exit(1);
-  }
-}
-const eq = (got: string | null, want: string | null, msg: string) => {
-  if (got !== want) {
-    console.error(`FAIL: ${msg}\n  got=${got}\n  want=${want}`);
-    process.exit(1);
+let failures = 0;
+const eq = (got: unknown, want: unknown, msg: string) => {
+  const g = JSON.stringify(got);
+  const w = JSON.stringify(want);
+  if (g !== w) {
+    console.error(`FAIL: ${msg}\n  got=${g}\n  want=${w}`);
+    failures++;
   }
 };
 
-// --- "ל<noun> <city>": the city carries no ב prefix of its own -------------
+// --- KEPT: the anchor happens to be one of the employer's own premises ------
+
+console.log("# kept, because the ad names the place at an anchor");
+
+eq(
+  extractLocationFromGazetteer("דרוש/ה עובד/ת למפעל גדול בקרית גת"),
+  ["קרית גת"],
+  "למפעל … ב<city> — מפעל is a site noun, so this still resolves",
+);
+eq(
+  extractLocationFromGazetteer("לחברה מובילה בסניף רחובות דרוש/ה מבקר/ת טיב"),
+  ["רחובות"],
+  "בסניף <city> still resolves",
+);
+
+// --- GIVEN UP: no anchor, so nothing is read -------------------------------
+
+console.log("# given up, deliberately");
 
 eq(
   extractLocationFromGazetteer("מחסנאי/ת לנמל אשדוד דרוש/ה מחסנאי/ת!"),
-  "אשדוד",
-  "recovers city after a ל-prefixed workplace noun (לנמל אשדוד)",
+  [],
+  "לנמל אשדוד — נמל is not one of the five premises words",
 );
 eq(
   extractLocationFromGazetteer("דרוש/ה נהג/ת חלוקה 12 טון למושב כנות חברת ישרקו"),
-  "כנות",
-  "recovers city after למושב",
+  [],
+  "למושב כנות — and כנות is the word CLAUDE.md names as hiding inside הסוכנות",
 );
-
-// --- precedence: the ל<noun> pattern must not outrank a real match ---------
-
-// The regression this ordering exists to prevent: "מצליח" is an adjective here
-// ("a successful factory"), and must not beat the explicit "ברמת הגולן".
 eq(
   extractLocationFromGazetteer("דרוש/ה מפעיל/ת CNC למפעל מצליח ברמת הגולן!!"),
-  "רמת הגולן",
-  "a ב-prefixed region outranks an adjective sitting after a ל-noun",
-);
-// A bare "ב<city>" is higher confidence and must win.
-eq(
-  extractLocationFromGazetteer("דרוש/ה עובד/ת למפעל גדול בקרית גת"),
-  "קרית גת",
-  "a ב-prefixed city outranks the ל-noun pattern",
-);
-
-// --- guards that must keep holding ----------------------------------------
-
-eq(
-  extractLocationFromGazetteer("דרוש/ה עובד/ת למשרה מלאה בתנאים טובים"),
-  null,
-  "מלאה (full-time) is denied globally and must not resolve",
+  [],
+  "למפעל מצליח ברמת הגולן — the anchor fires, but מצליח is not a place and " +
+    "the ב-word is past it: no value the list contains",
 );
 eq(
-  extractLocationFromGazetteer("העבודה במשמרות בוקר וערב"),
-  null,
-  "משמרות (shifts) must not resolve via the bare prefix",
+  extractLocationFromGazetteer("לחברה מובילה ברחובות דרוש/ה מבקר/ת טיב"),
+  [],
+  "a bare ב<city> with no anchor is no longer read",
 );
-assert(extractLocationFromGazetteer("") === null, "empty text yields null");
-assert(
-  extractLocationFromGazetteer("דרוש/ה מנהל/ת צוות לחברה מובילה") === null,
-  "text with no place yields null",
+eq(
+  extractLocationFromGazetteer('דרוש/ה מנהל/ת חשבונות בת"א'),
+  [],
+  'and neither is a bare abbreviation — בת"א has no anchor either',
 );
-
-// --- direction words qualify the city, they are not the location ----------
-
-// tigbur job 232880: stored אזור צפון, but the ad says north Tel Aviv.
 eq(
   extractLocationFromGazetteer('לארגון בצפון ת"א דרוש\\ה מהנדס\\ת מכונות'),
-  "תל אביב-יפו",
-  'בצפון ת"א resolves to Tel Aviv, not the northern region',
+  [],
+  'בצפון ת"א — the direction patterns are gone with the rest',
 );
 eq(
   extractLocationFromGazetteer("דרוש/ה עובד/ת לחברה בדרום תל אביב"),
-  "תל אביב",
-  "בדרום <city> resolves to the city",
+  [],
+  "בדרום תל אביב likewise",
 );
-// With no city after it, the direction is still a legitimate region read.
 eq(
   extractLocationFromGazetteer("המשרה בצפון הארץ, נדרשת ניידות"),
-  "צפון",
-  "a direction with no city after it still reads as a region",
-);
-
-// --- city abbreviations ---------------------------------------------------
-
-eq(
-  extractLocationFromGazetteer('דרוש/ה מנהל/ת חשבונות בת"א'),
-  "תל אביב-יפו",
-  'בת"א resolves via abbreviation',
+  [],
+  "a bare direction reads as no place at all, rather than as a region",
 );
 eq(
-  extractLocationFromGazetteer("דרוש/ה מלצר/ית בב״ש למשמרות ערב"),
-  "באר שבע",
-  "Hebrew gershayim (U+05F4) is accepted as well as ASCII quote",
+  extractLocationFromGazetteer("📍 פארק המדע רחובות"),
+  [],
+  "a pictograph cue within 30 characters is no longer a licence to scan",
+);
+
+// --- the abbreviations still resolve, at an anchor --------------------------
+
+console.log("# abbreviations, now only where the ad names a place");
+
+eq(
+  extractLocationFromGazetteer('מיקום המשרה: ת"א'),
+  ["תל אביב-יפו"],
+  'ת"א resolves via the abbreviation table',
 );
 eq(
-  extractLocationFromGazetteer('דרוש/ה נהג/ת בפ"ת'),
-  "פתח תקווה",
-  'בפ"ת resolves to פתח תקווה',
+  extractLocationFromGazetteer("מיקום המשרה: ב״ש"),
+  ["באר שבע"],
+  "Hebrew gershayim (U+05F4) is accepted as well as the ASCII quote",
+);
+eq(
+  extractLocationFromGazetteer('כתובת: פ"ת'),
+  ["פתח תקווה"],
+  'פ"ת resolves to פתח תקווה',
 );
 
-// --- אזור is "the area of", not the town ----------------------------------
+// --- guards that must keep holding, and now hold by construction -----------
 
+console.log("# the guards the old lists existed to provide");
+
+eq(
+  extractLocationFromGazetteer("דרוש/ה עובד/ת למשרה מלאה בתנאים טובים"),
+  [],
+  "מלאה (full-time) — no GAZETTEER_DENYLIST needed; there is no anchor",
+);
+eq(
+  extractLocationFromGazetteer("העבודה במשמרות בוקר וערב"),
+  [],
+  "משמרות (shifts) — no BARE_PREFIX_DENYLIST needed either",
+);
 eq(
   extractLocationFromGazetteer('לבסיס של צה"ל באזור צומת שוקת דרוש/ה טכנאי/ת'),
-  null,
-  "באזור (in the area of) must not resolve to the town אזור",
+  [],
+  "באזור (in the area of) is not the town אזור",
 );
-
-// --- existing behaviour still intact --------------------------------------
-
+eq(extractLocationFromGazetteer(""), [], "empty text yields nothing");
 eq(
-  extractLocationFromGazetteer("לחברה מובילה ברחובות דרוש/ה מבקר/ת טיב"),
-  "רחובות",
-  "bare ב<city> still works",
+  extractLocationFromGazetteer("דרוש/ה מנהל/ת צוות לחברה מובילה"),
+  [],
+  "text with no place yields nothing",
 );
 
-console.log("PASS: all gazetteer-location assertions");
+if (failures > 0) {
+  console.error(`\n${failures} assertion(s) failed`);
+  process.exit(1);
+}
+console.log("\nPASS: all gazetteer-location assertions");

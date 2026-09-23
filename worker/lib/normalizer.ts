@@ -6,7 +6,7 @@
 // preserves the original rawFields for debugging and re-processing.
 // ---------------------------------------------------------------------------
 
-import { IL_CITIES, IL_REGIONS } from "../data/il-places";
+import { isAreaLabel, resolveExactLocation } from "./locationNormalize";
 import { structureDescription } from "./descriptionStructure";
 
 /** Standard job schema fields that map directly to Job model columns */
@@ -475,233 +475,236 @@ function extractRequirementsBlock(text: string): string | null {
 
 // ---------------------------------------------------------------------------
 // Unlabeled IL city/area gazetteer fallback
-// Used as a LAST resort when no explicit "Location:" / "מיקום:" label exists
-// in the text. Only fires when location is still empty after matchLabeled.
-//
-// The place lists (IL_CITIES / IL_REGIONS) are generated from
-// "CSV files/city.csv" into worker/data/il-places.ts (regenerate with
-// `npx tsx scripts/build-il-places.ts`). They are large (~1,400 entries), so
-// rather than compiling one RegExp per place per call we precompile a handful
-// of single-alternation matchers once at module load.
+// Used as a LAST resort when no explicit "Location:" label produced a value.
 // ---------------------------------------------------------------------------
+
+// ---------------------------------------------------------------------------
+// The anchored scan
+// ---------------------------------------------------------------------------
+//
+// What replaced the bare-word scan, and why.
+//
+// The old matchers looked for a city name anywhere in the ad, optionally with a
+// "ב"/"ל" prefix or a nearby cue. Hebrew makes that unwinnable. `\b` does not
+// fire after a Hebrew letter, final letters differ (סניף ends in ף, סניפים uses
+// פ), and a great many town names are ordinary words: `כנות` sits inside
+// `הסוכנות`, `יקום` inside `מיקום`, `משמרות` means "shifts", `שדרות` means
+// "boulevard", `אזור` means "the area of". Every one of those is a real
+// `CSV files/city.csv` row, so a false match passes every downstream gate and
+// ships as a published address. Five of them were measured on tikshoov alone.
+//
+// So the scan is anchored: a place is read only where the ad is saying that it
+// is naming one.
+//
+//   a LABEL      מיקום המשרה / מיקום / מקום / כתובת, then the value
+//   a SITE noun  אתר / סניף / מפעל / משרדי / משרדינו — the employer's own
+//                premises — then "ב" and the value
+//
+// and nowhere else. The value is split on "/" (an employer writing "X/Y" has
+// named both places), and every part must resolve EXACTLY: the canonical list,
+// the alias table, an abbreviation. No prose scan, and no edit-distance — the
+// approximate tail is what reads `חניכה` as the kibbutz `חניתה`.
+//
+// The cost is deliberate and worth stating: shapes the old scan did recover are
+// now missed. `לנמל אשדוד` and `למושב כנות` name a real place after a ל-noun
+// that is not one of the five above, and a bare `בתל אביב` names one with no
+// anchor at all. Each is the same shape as the false matches, so there is no
+// rule that keeps the recoveries and drops the inventions. A missing location
+// is a NULL a human can fill; a wrong one is published data nothing repairs.
 
 const escapeRe = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
-// Build a regex alternation, longest name first so a more specific multi-word
-// place wins over a shorter substring at the same position.
-const altOf = (names: readonly string[]) =>
-  names
-    .slice()
-    .sort((a, b) => b.length - a.length)
-    .map(escapeRe)
-    .join("|");
-
-// Bare "ב<name>" patterns have no surrounding cue/label, so a short place name
-// that is also a common Hebrew word (e.g. "שחר"/"תמר"/"קשת") would false-match.
-// Gate those patterns to names of at least this length; cue/label/indicator
-// patterns keep the full list because their context makes a match reliable.
-const BARE_PREFIX_MIN_LEN = 4;
-
-// Some place names are spelled identically to very common Hebrew job-ad words,
-// so the length gate alone isn't enough — the bare "ב<name>" prefix matches the
-// word, not the place. The classic case: "במשמרות" = "working in shifts", which
-// resolved to the moshav משמרות. Exclude these from the BARE-prefix lists only;
-// labeled/cue/indicator matches ("מיקום: …", "📍 …", "לאזור …") keep the full
-// list because their surrounding context makes the place reading reliable.
-const BARE_PREFIX_DENYLIST = new Set<string>([
-  "משמרות", // "במשמרות" = in shifts (shift work), not the moshav משמרות
-  "אזור", // "באזור צומת שוקת" = in the area of — not the town אזור
-  "שדרות", // "בשדרות רוטשילד 15" = on Rothschild Blvd — not the city שדרות
-]);
-
-const passesBarePrefix = (name: string) =>
-  name.length >= BARE_PREFIX_MIN_LEN && !BARE_PREFIX_DENYLIST.has(name);
-
-// Place names spelled identically to very common Hebrew job-ad words that cause
-// false-positive location reads even WITH a cue/label nearby — so, unlike
-// BARE_PREFIX_DENYLIST (bare-"ב<name>" only), these are dropped from EVERY
-// gazetteer matcher. The classic case: "מלאה" (= "full") is a micro-locality,
-// but appears constantly as "משרה מלאה" (full-time) / "שליטה מלאה" (full
-// command); with a 📍/✔ pictograph cue within 30 chars it wrongly resolved to
-// the locality. Such tiny places are virtually never used as a job location, so
-// dropping them only removes false positives. Labeled "מיקום: …" extraction is
-// unaffected (it doesn't use these lists).
-const GAZETTEER_DENYLIST = new Set<string>([
-  "מלאה", // "משרה מלאה" = full-time, "שליטה מלאה" = full command — not the locality
-]);
-const notDenied = (name: string) => !GAZETTEER_DENYLIST.has(name);
-
-const CITY_ALT = altOf(IL_CITIES.filter(notDenied));
-const REGION_ALT = altOf(IL_REGIONS.filter(notDenied));
-const CITY_ALT_LONG = altOf(
-  IL_CITIES.filter((n) => notDenied(n) && passesBarePrefix(n)),
-);
-const REGION_ALT_LONG = altOf(
-  IL_REGIONS.filter((n) => notDenied(n) && passesBarePrefix(n)),
-);
-
-// A location CUE: a pin/office emoji or a location noun
-// ("מיקום", "כתובת", "סניף", "פארק", "משרדי(נו)", "ממוקם", "עיר").
-const LOC_CUE =
-  String.raw`(?:\p{Extended_Pictographic}|מיקום|כתובת|סניף|פארק(?:\s+המדע)?|` +
-  String.raw`משרדי(?:נו)?|ממוקמ\w*|עיר|אתר)`;
-
-// Hebrew-letter word boundaries. JS `\b` is ASCII-only, so a place followed by
-// "!" or preceded by another Hebrew letter wouldn't be bounded correctly. We
-// instead require the matched name to not be glued to another Hebrew letter on
-// either side (so "אבן יהודה" matches in "...באבן יהודה!" but "תקווה" is not
-// matched as a suffix of an unrelated word).
-const NOT_HEB_BEFORE = String.raw`(?<![\u0590-\u05FF])`;
-
-// Israeli ads write the big cities as abbreviations far more often than in full
-// ("\u05DC\u05D0\u05E8\u05D2\u05D5\u05DF \u05D1\u05E6\u05E4\u05D5\u05DF \u05EA\"\u05D0"). None of these appear in IL_CITIES, so before this the
-// city was simply unmatchable and whatever else was in the sentence \u2014 usually a
-// direction word \u2014 won by default.
-//
-// Ads use both the ASCII quote and the Hebrew gershayim (U+05F4), so the
-// alternation accepts either. Deliberately excluded: \u05E7"\u05D2 (= kilogram) and
-// any other abbreviation that collides with a common unit or word.
+// Israeli ads write the big cities as abbreviations far more often than in full.
+// None of these are in IL_CITIES. Ads use both the ASCII quote and the Hebrew
+// gershayim (U+05F4), so both spellings are accepted. Built with
+// String.fromCharCode rather than an escape, per CLAUDE.md.
+const GERSHAYIM = String.fromCharCode(0x05f4);
 const CITY_ABBREVIATIONS: ReadonlyArray<readonly [string, string]> = [
-  ['\u05E8\u05D0\u05E9\u05DC"\u05E6', "\u05E8\u05D0\u05E9\u05D5\u05DF \u05DC\u05E6\u05D9\u05D5\u05DF"],
-  ['\u05EA"\u05D0', "\u05EA\u05DC \u05D0\u05D1\u05D9\u05D1-\u05D9\u05E4\u05D5"],
-  ['\u05D1"\u05E9', "\u05D1\u05D0\u05E8 \u05E9\u05D1\u05E2"],
-  ['\u05E4"\u05EA', "\u05E4\u05EA\u05D7 \u05EA\u05E7\u05D5\u05D5\u05D4"],
-  ['\u05E8"\u05D2', "\u05E8\u05DE\u05EA \u05D2\u05DF"],
-  ['\u05DB"\u05E1', "\u05DB\u05E4\u05E8 \u05E1\u05D1\u05D0"],
-  ["\u05D9-\u05DD", "\u05D9\u05E8\u05D5\u05E9\u05DC\u05D9\u05DD"],
+  [`ראשל"צ`, `ראשון לציון`],
+  [`ת"א`, `תל אביב-יפו`],
+  [`ב"ש`, `באר שבע`],
+  [`פ"ת`, `פתח תקווה`],
+  [`ר"ג`, `רמת גן`],
+  [`כ"ס`, `כפר סבא`],
+  [`י-ם`, `ירושלים`],
 ];
-const anyQuote = (s: string) => escapeRe(s).replace(/"/g, `["\u05F4]`);
-const ABBR_ALT = CITY_ABBREVIATIONS.slice()
-  .sort((a, b) => b[0].length - a[0].length)
-  .map(([abbr]) => anyQuote(abbr))
-  .join("|");
 const ABBR_TO_CITY = new Map<string, string>(
-  CITY_ABBREVIATIONS.map(([abbr, city]) => [abbr, city]),
-);
-/** Resolve a matched token to a canonical city name (abbreviations only). */
-const resolvePlace = (name: string): string =>
-  ABBR_TO_CITY.get(name.replace(/\u05F4/g, '"')) ?? name;
-
-// Words that qualify the city that follows them rather than naming a place of
-// their own: "\u05D1\u05E6\u05E4\u05D5\u05DF \u05EA\"\u05D0" is north Tel Aviv, "\u05D1\u05D0\u05D6\u05D5\u05E8 \u05EA\u05E2\u05E9\u05D9\u05D4 \u05E2\u05DB\u05D5" is Akko. Note
-// "\u05D0\u05D6\u05D5\u05E8" is itself a town, which is exactly why it is also in
-// BARE_PREFIX_DENYLIST \u2014 on its own it is almost always "the area of".
-const DIRECTION_ALT = [
-  String.raw`\u05D0\u05D6\u05D5\u05E8(?:\s+\u05D4?\u05EA\u05E2\u05E9\u05D9\u05D9?\u05D4)?`,
-  "\u05DE\u05E8\u05D7\u05D1",
-  "\u05E6\u05E4\u05D5\u05DF",
-  "\u05D3\u05E8\u05D5\u05DD",
-  "\u05DE\u05E8\u05DB\u05D6",
-  "\u05DE\u05D6\u05E8\u05D7",
-  "\u05DE\u05E2\u05E8\u05D1",
-].join("|");
-const NOT_HEB_AFTER = String.raw`(?![\u0590-\u05FF])`;
-
-// Pattern A: explicit area indicator — "לאזור X" / "באזור X" / "בעיר X".
-const RE_REGION_INDICATOR = new RegExp(
-  String.raw`(?:ל?אזור|בעיר)\s+(` + REGION_ALT + String.raw`)` + NOT_HEB_AFTER,
-  "u",
-);
-const RE_CITY_INDICATOR = new RegExp(
-  String.raw`(?:ל?אזור|בעיר|במשרדי?(?:\s+ה\w+)?\s+ב)\s*(` +
-    CITY_ALT +
-    String.raw`)` +
-    NOT_HEB_AFTER,
-  "u",
-);
-// Pattern A2: a location cue followed within a short window by a known city,
-// even without a ":" label or a "ב" prefix (e.g. "📍 פארק המדע רחובות").
-const RE_CITY_CUE = new RegExp(
-  LOC_CUE +
-    String.raw`[\s\S]{0,30}?` +
-    NOT_HEB_BEFORE +
-    String.raw`(` +
-    CITY_ALT +
-    String.raw`)` +
-    NOT_HEB_AFTER,
-  "u",
-);
-// Pattern A3: "ב<direction> <city>" — the direction qualifies the city that
-// follows it. Must be tried before RE_REGION_B, which would otherwise match the
-// direction alone and discard the city: "בצפון ת\"א" resolved to the northern
-// region instead of Tel Aviv.
-const RE_DIRECTION_CITY = new RegExp(
-  NOT_HEB_BEFORE +
-    String.raw`ב(?:` +
-    DIRECTION_ALT +
-    String.raw`)\s+(` +
-    ABBR_ALT +
-    "|" +
-    CITY_ALT +
-    String.raw`)` +
-    NOT_HEB_AFTER,
-  "u",
-);
-// Pattern A4: bare "ב<abbreviation>" — "בת\"א", "בב\"ש". Safe without a length
-// gate because the embedded quote makes these unambiguous.
-const RE_CITY_ABBR_B = new RegExp(
-  NOT_HEB_BEFORE + String.raw`ב(` + ABBR_ALT + String.raw`)`,
-  "u",
-);
-// Pattern B/C: bare "ב<city>" / "ב<region>" prefix (length-gated). The "ב"
-// must itself start a word (not be glued to a preceding Hebrew letter).
-const RE_CITY_B = new RegExp(
-  NOT_HEB_BEFORE + String.raw`ב(` + CITY_ALT_LONG + String.raw`)` + NOT_HEB_AFTER,
-  "u",
-);
-const RE_REGION_B = new RegExp(
-  NOT_HEB_BEFORE +
-    String.raw`ב(` +
-    REGION_ALT_LONG +
-    String.raw`)` +
-    NOT_HEB_AFTER,
-  "u",
-);
-// Pattern D: "ל<noun> <city>" — the ad addresses a *place of work* whose name
-// carries the ל prefix, leaving the city bare right after it: "לנמל אשדוד",
-// "לסניף קרית גת", "לבית חולים רמת גן". Pattern B misses these because the
-// city itself has no "ב" prefix.
-//
-// The ל-word is required to be Hebrew and at least two letters, and the city
-// is matched from the length-gated CITY_ALT_LONG list, so the classic
-// false-positive "למשרה מלאה" cannot fire ("מלאה" is in GAZETTEER_DENYLIST and
-// therefore absent from every alternation).
-const RE_CITY_L_NOUN = new RegExp(
-  NOT_HEB_BEFORE +
-    String.raw`ל[א-ת]{2,}\s+(` +
-    CITY_ALT_LONG +
-    String.raw`)` +
-    NOT_HEB_AFTER,
-  "u",
+  CITY_ABBREVIATIONS.flatMap(([abbr, city]) => [
+    [abbr, city] as [string, string],
+    [abbr.replace(/"/g, GERSHAYIM), city] as [string, string],
+  ]),
 );
 
 /**
- * Attempt to extract an unlabeled Israeli city/region from free-form text.
- * Tries, in order of confidence:
- *   (A)  "לאזור/בעיר <region|city>" — explicit preposition + indicator,
- *   (A2) a location cue (📍/"מיקום"/"סניף"/…) within 30 chars of a city,
- *   (B)  bare "ב<city>" prefix (length-gated, see above),
- *   (D)  "ל<noun> <city>" — city bare after a ל-prefixed workplace noun,
- *   (C)  bare "ב<region>" prefix — coarsest, tried last.
- * Returns the matched place name, or null if no reliable match is found.
+ * Words naming the EMPLOYER'S OWN premises. An ad using one of these is about
+ * to say where that place is.
+ *
+ * Inflected forms are listed rather than derived: Hebrew final letters mean a
+ * suffix rule would either miss `סניפי` or match halfway into an unrelated
+ * word, and a written-out list is auditable. Longest first, so `משרדינו` is
+ * never read as `משרדי` with a stray `נו`.
  */
-export function extractLocationFromGazetteer(text: string): string | null {
-  if (!text) return null;
-  const m =
-    RE_REGION_INDICATOR.exec(text) ||
-    RE_CITY_INDICATOR.exec(text) ||
-    RE_CITY_CUE.exec(text) ||
-    // Before the region matchers: a direction word only qualifies the city.
-    RE_DIRECTION_CITY.exec(text) ||
-    RE_CITY_ABBR_B.exec(text) ||
-    RE_CITY_B.exec(text) ||
-    RE_REGION_B.exec(text) ||
-    // Lowest confidence, so it runs last: the city here carries no prefix of its
-    // own, and any adjective sitting after a ל-noun that happens to share a
-    // place name would otherwise outrank a correct earlier match (the real case:
-    // "למפעל מצליח ברמת הגולן" resolving to מצליח instead of רמת הגולן).
-    RE_CITY_L_NOUN.exec(text);
-  return m ? resolvePlace(m[1]) : null;
+const SITE_NOUNS = [
+  `משרדינו`,
+  `משרדי`,
+  `מפעלי`,
+  `מפעל`,
+  `סניפי`,
+  `סניף`,
+  `אתרי`,
+  `אתר`,
+] as const;
+
+/** Labels that introduce a location value outright. Longest first. */
+const LOC_LABELS = [
+  `מיקום המשרה`,
+  `מקום העבודה`,
+  `מיקום`,
+  `מקום`,
+  `כתובת`,
+] as const;
+
+// A Hebrew letter on either side means the word is part of a longer one.
+const HEB = `\\u0590-\\u05FF`;
+const RE_LABEL_ANCHOR = new RegExp(
+  `(?:^|[^${HEB}])ה?(?:${LOC_LABELS.map(escapeRe).join("|")})(?![${HEB}])\\s*[:\\-–—]?\\s*`,
+  "gu",
+);
+const RE_SITE_ANCHOR = new RegExp(
+  `(?:^|[^${HEB}])[בל]?(?:${SITE_NOUNS.map(escapeRe).join("|")})(?![${HEB}])`,
+  "gu",
+);
+
+// Where a value ends. A location value is a short noun phrase; the moment the
+// sentence turns into anything else, it is over. "," ends it too — an address
+// continues past a comma, but this function wants the town, not the street.
+// The quote characters are NOT stops: Israeli ads abbreviate the big cities
+// with one (ת"א, ב״ש), and cutting there leaves a single letter.
+const VALUE_STOP = /[\n\r.;:|!?()[\]{},–—]/;
+
+// A settlement type sitting in front of its own name: "בקיבוץ ניר עוז".
+// city.csv stores `ניר עוז`, not `קיבוץ ניר עוז`.
+const SETTLEMENT_PREFIX = /^(?:קיבוץ|קבוץ|מושבה|מושב|כפר|העיר|עיר|היישוב|יישוב|ישוב|שכונת)\s+/;
+
+/** The first word in `seg` that begins with "ב", within `limit` characters. */
+function firstBetPrefixed(seg: string, limit: number): string | null {
+  const re = new RegExp(`(?:^|[^${HEB}])ב([${HEB}].*)$`, "u");
+  const head = seg.slice(0, limit);
+  const m = re.exec(head);
+  if (!m) return null;
+  // Everything from that word on, including the part beyond `limit`.
+  const at = head.length - (m[1] as string).length;
+  return seg.slice(at);
+}
+
+/**
+ * Resolve ONE candidate value to a canonical place, or null.
+ *
+ * Exact only. `resolveExactLocation` covers the canonical list, the alias
+ * table, the English table and the two spelling variants; the abbreviation map
+ * covers `ת"א`. Nothing here scans, and nothing here approximates.
+ */
+function resolveValuePart(part: string): string | null {
+  let p = part.trim().replace(/^[\s־"'`–—-]+|[\s־"'`–—-]+$/g, "");
+  if (!p) return null;
+  p = p.replace(SETTLEMENT_PREFIX, "").trim();
+  if (!p) return null;
+
+  const abbr = ABBR_TO_CITY.get(p);
+  if (abbr) return abbr;
+
+  const direct = resolveExactLocation(p);
+  if (direct) return direct;
+
+  // A value that carries its own "ב"/"ל" prefix: "מיקום: בתל אביב". Stripped
+  // only when the STRIPPED form resolves and the whole one does not, so
+  // `בית שמש` is never read as `ית שמש`.
+  if (/^[בל]/.test(p) && p.length > 2) {
+    const stripped = resolveExactLocation(p.slice(1).trim());
+    if (stripped) return stripped;
+  }
+  return null;
+}
+
+/**
+ * The longest place name this value part STARTS with, or null.
+ *
+ * A place name is one to four words, and the ad has just said it is about to
+ * name one — so the name is at the front and the rest of the sentence is not
+ * searched. Longest first, so "רמת גן" is never read as "רמת".
+ *
+ * This is what keeps the anchored scan from becoming a prose scan again: a
+ * city three words into the tail is not a match, because it is not what the ad
+ * put after its own label.
+ */
+const MAX_PLACE_WORDS = 4;
+function leadingPlace(part: string): string | null {
+  const cleaned = part
+    .trim()
+    .replace(/^[\s־'`–—-]+/, "")
+    .replace(SETTLEMENT_PREFIX, "")
+    .trim();
+  if (!cleaned) return null;
+  // An area label names a region and several towns at once. It starts with a
+  // city name, so prefix matching would collapse it to that city — the 4082
+  // defect coming back through a different door.
+  if (isAreaLabel(cleaned)) return null;
+  const words = cleaned.split(/\s+/);
+  for (let n = Math.min(MAX_PLACE_WORDS, words.length); n >= 1; n--) {
+    const hit = resolveValuePart(words.slice(0, n).join(" "));
+    if (hit) return hit;
+  }
+  return null;
+}
+
+/** Split a value segment on "/" and resolve each part. */
+function placesInValue(segment: string): string[] {
+  const out: string[] = [];
+  for (const raw of segment.split("/")) {
+    const v = leadingPlace(raw);
+    if (v && !out.includes(v)) out.push(v);
+  }
+  return out;
+}
+
+/** How far past a site noun the "ב" that introduces the value may sit. */
+const SITE_GAP_LIMIT = 30;
+
+/**
+ * Read the places an ad NAMES, from its labels and its own premises only.
+ *
+ * Returns every place found, in the order the ad gives them — a value of
+ * "באר שבע/ניר עוז" is two places, and returning one of them (which is what the
+ * old single-value scan did, and it returned the second) publishes a job in
+ * half the places its employer stated.
+ *
+ * Every returned value is on `CSV files/city.csv`. An empty array means the ad
+ * named no place this function is willing to swear to.
+ */
+export function extractLocationFromGazetteer(text: string): string[] {
+  if (!text) return [];
+  const out: string[] = [];
+  const add = (places: string[]) => {
+    for (const p of places) if (!out.includes(p)) out.push(p);
+  };
+
+  RE_LABEL_ANCHOR.lastIndex = 0;
+  for (let m = RE_LABEL_ANCHOR.exec(text); m; m = RE_LABEL_ANCHOR.exec(text)) {
+    const tail = text.slice(m.index + m[0].length);
+    add(placesInValue(tail.split(VALUE_STOP)[0] ?? ""));
+  }
+
+  RE_SITE_ANCHOR.lastIndex = 0;
+  for (let m = RE_SITE_ANCHOR.exec(text); m; m = RE_SITE_ANCHOR.exec(text)) {
+    const tail = text.slice(m.index + m[0].length);
+    const segment = tail.split(VALUE_STOP)[0] ?? "";
+    // "ב" marks where the value starts: "לאתר הייצור בבאר שבע". Without one,
+    // the value is whatever follows the noun directly: "אתר נתניה".
+    const bet = firstBetPrefixed(segment, SITE_GAP_LIMIT);
+    add(placesInValue(bet ?? segment));
+  }
+
+  return out;
 }
 
 /**
@@ -876,19 +879,21 @@ export function normalizeJobRecord(
   }
 
   // Second-stage gazetteer fallback for location: runs only when neither a
-  // dedicated selector nor labeled extraction produced one. Scans the title in
-  // addition to description + requirements — known-place matches only, so a
-  // role title without a place won't false-match (e.g. recovers "אבן יהודה"
-  // from "...במרלוג החדש באבן יהודה").
+  // dedicated selector nor labeled extraction produced one. Reads the title in
+  // addition to description + requirements, and only at its anchors.
+  //
+  // Joined with a COMMA, never a slash: the block below rewrites "/" to a space
+  // before normalizeLocations() splits, which would fuse two cities into one
+  // off-vocabulary string and lose both at the gate. A comma survives both.
   if (!location || location.trim().length === 0) {
     const locationSource = [title, description, requirements]
       .filter(Boolean)
       .join("\n");
     if (locationSource) {
       const gazetteered = extractLocationFromGazetteer(locationSource);
-      if (gazetteered) {
-        location = gazetteered;
-        rawOut["_enrichedFromDescription_location"] = gazetteered;
+      if (gazetteered.length > 0) {
+        location = gazetteered.join(", ");
+        rawOut["_enrichedFromDescription_location"] = location;
       }
     }
   }
