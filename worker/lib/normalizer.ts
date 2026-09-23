@@ -11,6 +11,7 @@ import {
   isQualifierPlace,
   resolveExactLocation,
   MULTI_WORD_PLACE_NAMES,
+  NATIONWIDE_LOCATION,
 } from "./locationNormalize";
 import { structureDescription } from "./descriptionStructure";
 
@@ -733,6 +734,11 @@ export function bareMultiWordPlaces(text: string): string[] {
     // English, spelling variants. No edit-distance, so a near-miss on a
     // two-word phrase cannot become a place either.
     const v = resolveValuePart(m[1] as string);
+    // Filtered by RESOLVED value, not by the words matched, so the aliases that
+    // mean the same thing ("בכל הארץ") are excluded with it. See
+    // NATIONWIDE_LOCATION for why: the phrase usually describes a shuttle
+    // service or a production footprint, not where the job is.
+    if (v === NATIONWIDE_LOCATION) continue;
     if (v && !out.includes(v)) out.push(v);
   }
   return out;

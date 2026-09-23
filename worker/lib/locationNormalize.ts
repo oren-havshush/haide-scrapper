@@ -351,5 +351,22 @@ export function isCanonicalLocation(v: string): boolean {
  * the drift src/lib/ats-hosts.ts was created to end.
  */
 export function isRegionLocation(v: string): boolean {
-  return /^אזור\s/.test(v) || v === "פריסה ארצית";
+  return /^אזור\s/.test(v) || v === NATIONWIDE_LOCATION;
 }
+
+/**
+ * The nationwide marker: a real city.csv entry, and the right answer for a role
+ * that genuinely has no one place.
+ *
+ * Named because the gazetteer excludes it from its UNANCHORED scan. It is two
+ * words, so the multi-word rule would otherwise read it out of prose — and the
+ * sentences it appears in are usually not about where the job is. Measured on
+ * the fleet: "מערך הסעות בפריסה ארצית" is a nationwide shuttle service offered
+ * as a perk, and "בקווי הייצור בפריסה ארצית" describes the company's production
+ * lines. A job published as "everywhere" on the strength of either is a wrong
+ * value, and nothing downstream catches it.
+ *
+ * Excluded from that scan ONLY. A labelled value and a site field both still
+ * land it — those are assertions about the job, not mentions in passing.
+ */
+export const NATIONWIDE_LOCATION = "פריסה ארצית";

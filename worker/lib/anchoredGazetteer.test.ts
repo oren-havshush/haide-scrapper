@@ -15,7 +15,7 @@
 // (cmu5mleu7000c01p950bo7eqx), read from /api/jobs on 2026-09-23.
 
 import { extractLocationFromGazetteer } from "./normalizer";
-import { isCanonicalLocation } from "./locationNormalize";
+import { isCanonicalLocation, normalizeLocations } from "./locationNormalize";
 
 let failures = 0;
 function assert(cond: boolean, msg: string) {
@@ -377,6 +377,62 @@ console.log("# the multi-word exception — a two-word name needs no anchor");
     extractLocationFromGazetteer("מיקום המשרה: שדרות"),
     ["שדרות"],
     "likewise שדרות alone",
+  );
+
+  // --- the nationwide marker is not read from prose ----------------------
+  //
+  // "פריסה ארצית" is a real city.csv entry and the right answer for a role that
+  // genuinely has no one place. It is also two words, so the rule above would
+  // read it — and the sentences it appears in are usually not about where the
+  // job is. Measured on the fleet: "מערך הסעות בפריסה ארצית" is a nationwide
+  // SHUTTLE SERVICE offered as a perk, and "בקווי הייצור בפריסה ארצית"
+  // describes the company's production lines.
+  //
+  // A wrong value is worse than a missing one, and "this job is everywhere" is
+  // a wrong value with nothing downstream to catch it. So it is excluded from
+  // the UNANCHORED scan only: an ad that labels it, or a site field that
+  // states it, still lands.
+  eq(
+    extractLocationFromGazetteer(
+      "שעות נוספות ותנאים נוספים מערך הסעות בפריסה ארצית המשרה מיועדת לנשים וגברים כאחד",
+    ),
+    [],
+    "elbit 4729: a nationwide SHUTTLE SERVICE is not the job's location",
+  );
+  eq(
+    extractLocationFromGazetteer(
+      "דרושים.ות עובדים.ות לעבודה בקווי הייצור בפריסה ארצית – עבודה עם משמעות",
+    ),
+    [],
+    "elbit 6613: nationwide PRODUCTION LINES are not the job's location either",
+  );
+  eq(
+    extractLocationFromGazetteer("החברה פועלת בכל הארץ"),
+    [],
+    "and not through the alias that means the same thing",
+  );
+
+  // Still reachable the two ways that are an assertion rather than a mention.
+  eq(
+    extractLocationFromGazetteer("מיקום המשרה: פריסה ארצית"),
+    ["פריסה ארצית"],
+    "a labelled nationwide value still lands",
+  );
+  eq(
+    extractLocationFromGazetteer("מיקום המשרה: כל הארץ"),
+    ["פריסה ארצית"],
+    "including through its alias",
+  );
+  assert(
+    JSON.stringify(normalizeLocations("פריסה ארצית")) === JSON.stringify(["פריסה ארצית"]),
+    "and a site field carrying it is untouched — this changes the gazetteer only",
+  );
+
+  // Only that value is dropped, not the whole result.
+  eq(
+    extractLocationFromGazetteer("מערך הסעות בפריסה ארצית. המפעל בבאר שבע."),
+    ["באר שבע"],
+    "a real place in the same ad still comes through",
   );
 
   // An anchored value still wins outright. The unanchored scan is a fallback
