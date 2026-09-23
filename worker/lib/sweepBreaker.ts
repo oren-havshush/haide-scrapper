@@ -63,6 +63,12 @@ export const QUALIFYING_SUCCESS_WINDOW_MS = 7 * 24 * 60 * 60_000; // 7 days
  */
 export const SOFT_FAILURE_ALERT_RATIO = 0.2;
 
+/**
+ * And below this many attempts, the ratio means nothing and the alert is
+ * withheld entirely. A hand-run `--site <id> --now` attempts one site.
+ */
+export const SOFT_FAILURE_ALERT_MIN_ATTEMPTED = 5;
+
 export type BreakerState = {
   /** Consecutive QUALIFIED hard failures. Unqualified ones do not touch this. */
   consecutiveHard: number;
@@ -162,6 +168,11 @@ export function recordOutcome(state: BreakerState, event: BreakerEvent): Breaker
  * way on the same night.
  */
 export function shouldAlertSoftFailures(state: BreakerState): boolean {
-  if (state.attempted === 0) return false;
+  // A ratio over a handful of sites is not a ratio. `nightly.ts --site x --now`
+  // attempts ONE site; if it comes back empty that is 1/1 = 100%, and the
+  // report announces a fleet-wide shared cause on the strength of a single
+  // site an operator deliberately re-ran. The alert's whole claim is "many
+  // sites, one cause", so it needs many sites before it can make it.
+  if (state.attempted < SOFT_FAILURE_ALERT_MIN_ATTEMPTED) return false;
   return state.softTotal / state.attempted > SOFT_FAILURE_ALERT_RATIO;
 }

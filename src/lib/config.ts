@@ -34,9 +34,19 @@ export const sweepConfig = {
   get freshWindowHours(): number {
     return parseInt(process.env.SWEEP_FRESH_WINDOW_HOURS || "20", 10);
   },
-  /** Stop enqueueing after this many minutes of wall clock. Default 5h. */
+  /**
+   * Stop enqueueing after this many minutes of wall clock. Default 260 (4h20m).
+   *
+   * Sized against the deadline that actually matters: the scrape timer fires at
+   * 02:00 and the public jobs site reads this database directly at 07:01, so
+   * the night's work has to be finished and settled before 07:00. 260 minutes
+   * ends enqueueing at 06:20, leaving the last site's 18-minute per-site budget
+   * and the report to land inside the hour. The previous 300 ran to 07:00
+   * exactly — on a slow night the final site would still have been writing
+   * while the public site was reading.
+   */
   get maxRuntimeMinutes(): number {
-    return parseInt(process.env.SWEEP_MAX_RUNTIME_MINUTES || "300", 10);
+    return parseInt(process.env.SWEEP_MAX_RUNTIME_MINUTES || "260", 10);
   },
   /** How long to wait for one site's run to reach a terminal state. Default 18m. */
   get perSiteTimeoutMinutes(): number {

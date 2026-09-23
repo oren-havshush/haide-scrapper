@@ -12,6 +12,7 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import {
+  computeCounters,
   needsAttention,
   renderSweepReport,
   sweepDate,
@@ -100,8 +101,31 @@ assert(
 // Silent drift is named, with category, listing count and newest listing date
 // ---------------------------------------------------------------------------
 
-const drift = items.filter((i) => i.outcome === "soft_failure");
-assert(drift.length === 12, `the fixture has 12 drifted sites (got ${drift.length})`);
+const soft = items.filter((i) => i.outcome === "soft_failure");
+assert(soft.length === 12, `the fixture has 12 soft failures (got ${soft.length})`);
+
+// Two kinds, and the split is what this fixture is for.
+//
+// Eight sites HAD listings and returned none: real drift, a site that changed
+// under us on the night. Four had none to begin with — se.com, xnes,
+// careers.jnj.com, safelog — which is not drift and never was; it is the shape
+// a config that has never worked takes.
+//
+// Every one of those four turned out to be exactly that. xnes and safelog were
+// rebuilt and are ACTIVE; se.com and careers.jnj.com were retired to SKIPPED.
+// Which is the argument for naming them separately rather than dropping them:
+// the distinction is real, and so is the problem on both sides of it.
+const noJobs = soft.filter((i) => i.failureCategory === "empty_results" && i.jobsBefore === 0);
+const drift = soft.filter((i) => !noJobs.includes(i));
+assert(noJobs.length === 4, `four sites had no jobs and returned none (got ${noJobs.length})`);
+assert(drift.length === 8, `and eight actually drifted (got ${drift.length})`);
+assert(
+  ["se.com", "xnes", "careers.jnj.com", "safelog"].every((s) =>
+    noJobs.some((i) => i.siteUrl.includes(s)),
+  ),
+  "the four are the ones the remediation later rebuilt or retired",
+);
+
 for (const d of drift) {
   const a = attention.find((x) => x.siteUrl === d.siteUrl);
   assert(a !== undefined, `drifted site is named: ${d.siteUrl}`);
@@ -111,6 +135,28 @@ for (const d of drift) {
   // The sweep's local date, like every other date in the report.
   const newest = d.newestJobAt ? sweepDate(d.newestJobAt, opts.timeZone) : "none";
   assert(a.why.includes(`newest ${newest}`), `${d.siteUrl}: its newest listing date is on the line (${a.why})`);
+}
+
+for (const n of noJobs) {
+  const a = attention.find((x) => x.siteUrl === n.siteUrl);
+  assert(a !== undefined, `a site with no jobs is still named: ${n.siteUrl}`);
+  assert(
+    a !== undefined && /no jobs, and has none stored/.test(a.why),
+    `${n.siteUrl}: in its own words (${a?.why})`,
+  );
+  assert(
+    a !== undefined && !/silent drift/.test(a.why),
+    `${n.siteUrl}: and not as drift`,
+  );
+}
+
+{
+  // The counters follow the same split, so the Outcomes section and the queue
+  // cannot tell different stories about the same night.
+  const c = computeCounters(sweep, items);
+  assert(c.silentDrift === 8, `silentDrift counts the eight (got ${c.silentDrift})`);
+  assert(c.noJobs === 4, `noJobs counts the four (got ${c.noJobs})`);
+  assert(c.listingRefusals === 0, "and that night had no listing refusals — the feature did not exist");
 }
 
 {
@@ -151,14 +197,46 @@ assert(text.includes("\nWarnings ("), "the report has a Warnings section");
     text.includes(`Warnings (${withWarnings} sites)`),
     `the Warnings header counts every site whose run warned (${withWarnings})`,
   );
+
+  // Every warning is COUNTED under its type; only the two that are about a
+  // particular site name one. This fixture is the argument: 61 of these 140
+  // sites warned, and naming all of them produced a section longer than the
+  // rest of the report, almost entirely location-quality lines that are fixed
+  // by changing a rule once — not by visiting 61 sites.
+  const NAMED = new Set(["job_count_drop", "near_timeout"]);
+  const section = text.slice(text.indexOf("\nWarnings ("));
+  const seenTypes = new Set<string>();
   for (const i of items) {
     for (const w of i.warnings ?? []) {
       const [type, ...rest] = w.split(":");
-      if (!text.includes(`${i.siteUrl} — ${rest.join(":").trim()}`) || !text.includes(`  ${type} (`)) {
-        assert(false, `warning surfaced: ${i.siteUrl} ${w.slice(0, 60)}`);
+      const t = (type ?? "").trim();
+      seenTypes.add(t);
+      assert(section.includes(`  ${t} (`), `every type is counted: ${t}`);
+      const named = section.includes(`${i.siteUrl} — ${rest.join(":").trim()}`);
+      if (NAMED.has(t)) {
+        assert(named, `${t} names its site: ${i.siteUrl}`);
+      } else {
+        assert(!named, `${t} does NOT name its site: ${i.siteUrl}`);
       }
     }
   }
+  assert(seenTypes.size >= 5, `the fixture exercises several warning types (${seenTypes.size})`);
+  assert(seenTypes.has("job_count_drop"), "including the one that names sites");
+
+  // The size of the thing, in the real numbers. That night: 61 sites warned,
+  // 70 warnings across 6 types. 8 of them were job_count_drop and none was
+  // near_timeout, so the section carries 8 site lines instead of 70 — and the
+  // 41 location-quality warnings that dominate it are a count, which is what
+  // an operator can act on anyway.
+  const namedLines = (section.match(/\n {4}https:\/\//g) ?? []).length;
+  const totalWarnings = items.reduce((n, i) => n + (i.warnings ?? []).length, 0);
+  assert(withWarnings === 61, `61 sites warned (got ${withWarnings})`);
+  assert(totalWarnings === 70, `70 warnings in total (got ${totalWarnings})`);
+  assert(namedLines === 8, `and the section names 8 of them (got ${namedLines})`);
+  assert(
+    namedLines < totalWarnings / 5,
+    "a small fraction of the warnings, which is the whole point of the change",
+  );
 }
 
 if (failures > 0) {

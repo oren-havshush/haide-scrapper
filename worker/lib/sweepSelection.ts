@@ -96,7 +96,13 @@ export type SelectableSite = {
   lastAttemptAt: Date | null;
 };
 
-export type Excluded = { site: SelectableSite; reason: string };
+/**
+ * `kind: "fresh"` marks the only exclusion that is not a problem — the site
+ * succeeded recently enough. The report collapses those to one count line; the
+ * rest are named, because each is a fix waiting for someone. Carried as a field
+ * rather than matched out of `reason`, which is a human sentence.
+ */
+export type Excluded = { site: SelectableSite; reason: string; kind?: "fresh" };
 
 export type Selection = {
   selected: SelectableSite[];
@@ -155,6 +161,7 @@ export function selectSitesForSweep(
     if (site.lastSuccessAt && site.lastSuccessAt.getTime() > cutoff) {
       excluded.push({
         site,
+        kind: "fresh",
         reason: `succeeded ${Math.round((opts.now.getTime() - site.lastSuccessAt.getTime()) / 3_600_000)}h ago, inside the ${Math.round(freshWindowMs / 3_600_000)}h window`,
       });
       continue;

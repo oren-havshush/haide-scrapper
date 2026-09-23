@@ -24,6 +24,19 @@ function isListingRefusal(category: string | null): boolean {
   return category != null && (LISTING_SOFT_CATEGORIES as readonly string[]).includes(category);
 }
 
+/**
+ * A site that returned nothing and had nothing. Not a regression — it is a
+ * company with no open roles, or one whose board has been empty for weeks.
+ *
+ * `empty_results` is classified `soft_failure` whatever the site held before,
+ * so without this a permanently-empty site sits in the same bucket, and the
+ * same alert ratio, as one that emptied out last night. Only the second is
+ * news.
+ */
+function isNoJobs(i: ReportItem): boolean {
+  return i.outcome === "soft_failure" && i.failureCategory === "empty_results" && i.jobsBefore === 0;
+}
+
 /** Anything the report needs about the sweep itself. */
 export type ReportSweep = {
   id: string;
@@ -67,8 +80,21 @@ export type ReportItem = {
   defect?: string | null;
 };
 
-/** A site selection left out of the night, and why. */
-export type SkippedSite = { siteUrl: string; reason: string };
+/**
+ * A site selection left out of the night, and why.
+ *
+ * `kind: "fresh"` marks the one reason that is not a problem: the site
+ * succeeded recently enough to be inside the fresh window. Carried as a field
+ * rather than matched out of `reason`, which is a human sentence carrying an
+ * hour count and would change the moment someone reworded it.
+ */
+export type SkippedSite = { siteUrl: string; reason: string; kind?: "fresh" };
+
+/**
+ * Warning types whose value is WHICH site they happened to. Everything else is
+ * a count: a fleet-wide quality signal, acted on by fixing a rule once.
+ */
+const WARNINGS_THAT_NAME_SITES: ReadonlySet<string> = new Set(["job_count_drop", "near_timeout"]);
 
 export type ReportOptions = {
   timeZone: string;
@@ -107,26 +133,43 @@ export type SweepCounters = {
   wouldHaveDemoted: number;
   wouldHavePromoted: number;
   listingsProtected: number;
+  /** Multi-page sites that declined to publish a partial set. Not drift. */
+  listingRefusals: number;
+  /** Sites that returned nothing and had nothing. Not drift either. */
+  noJobs: number;
 };
 
 /** A withheld SKIP is carried as its own outcome rather than a column. */
 export const WITHHELD_SKIP_OUTCOME = "withheld_skip";
 
 /**
- * Listings the gate saved: the run ended FAILED with listings to lose.
+ * Listings the gate saved: a run that ended without publishing, on a site with
+ * listings to lose.
+ *
+ * Two kinds qualify, and they arrive by different routes.
+ *
+ *   - A scheduled run that FAILED. The gate withheld the delete that a manual
+ *     run would have performed.
+ *   - A multi-page site that REFUSED to publish a partial set. Its two
+ *     scheduled-only categories do not fire on a manual run at all, so a manual
+ *     run would have written the shrunken set and deleted the missing page's
+ *     rows. That is the same save by a different mechanism.
+ *
+ * The second used to be excluded with the rest of `soft_failure`, which filed
+ * it under silent drift — the opposite thing. Drift is a site that changed
+ * under us and said nothing; this is the worker declining to shrink what it
+ * publishes, and it is exactly what the counter's own line describes.
  *
  * `apply_requires_login` is excluded — that path never deletes anything, and
  * counting it would inflate the number that justifies the whole design.
  */
 function protectedListings(i: ReportItem): boolean {
-  return (
-    i.failureCategory !== null &&
-    i.failureCategory !== "apply_requires_login" &&
-    i.failureCategory !== "cancelled" &&
-    i.outcome !== "success" &&
-    i.outcome !== "soft_failure" &&
-    i.jobsBefore > 0
-  );
+  if (i.failureCategory === null) return false;
+  if (i.failureCategory === "apply_requires_login" || i.failureCategory === "cancelled") return false;
+  if (i.jobsBefore <= 0) return false;
+  if (i.outcome === "success") return false;
+  if (i.outcome === "soft_failure") return isListingRefusal(i.failureCategory);
+  return true;
 }
 
 export function computeCounters(sweep: ReportSweep, items: ReportItem[]): SweepCounters {
@@ -143,13 +186,20 @@ export function computeCounters(sweep: ReportSweep, items: ReportItem[]): SweepC
       wouldHaveDemoted: 0,
       wouldHavePromoted: 0,
       listingsProtected: 0,
+      listingRefusals: 0,
+      noJobs: 0,
     };
   }
+  // The three shapes `soft_failure` covers, kept apart. One is a problem, one
+  // is the worker doing its job, and one is a company with no open roles.
+  const soft = items.filter((i) => i.outcome === "soft_failure");
   return {
     selectedCount: sweep.selectedCount,
     ok: items.filter((i) => i.outcome === "success").length,
     failed: items.filter((i) => i.outcome === "hard_failure").length,
-    silentDrift: items.filter((i) => i.outcome === "soft_failure").length,
+    silentDrift: soft.filter((i) => !isListingRefusal(i.failureCategory) && !isNoJobs(i)).length,
+    listingRefusals: soft.filter((i) => isListingRefusal(i.failureCategory)).length,
+    noJobs: soft.filter(isNoJobs).length,
     skippedConflict: items.filter((i) => i.outcome === "skipped_conflict").length,
     wouldHaveDemoted: items.filter((i) => i.wouldDemoteTo).length,
     wouldHavePromoted: items.filter((i) => i.wouldPromoteTo).length,
@@ -261,9 +311,14 @@ export function needsAttention(
     if (i.wouldPromoteTo) add(i, `would have promoted to ${i.wouldPromoteTo} — a human promotes`);
     if (i.wouldDemoteTo) add(i, `would have demoted to ${i.wouldDemoteTo}`);
     if (i.outcome === WITHHELD_SKIP_OUTCOME) add(i, "would have been SKIPPED (login-gated apply)");
-    // A refused drop protected its listings too, but its own line says so with
-    // both counts; the generic one beside it would only repeat it.
-    if (protectedListings(i) && i.outcome !== "suspicious_drop") {
+    // A refused drop and a listing refusal protected their listings too, but
+    // each has its own line below with both counts; the generic one beside it
+    // would only repeat it.
+    if (
+      protectedListings(i) &&
+      i.outcome !== "suspicious_drop" &&
+      !isListingRefusal(i.failureCategory)
+    ) {
       add(i, `${i.jobsBefore} listing(s) kept that a manual run would have deleted`);
     }
     if (isStaleButGreen(i, sweep.startedAt)) {
@@ -284,6 +339,15 @@ export function needsAttention(
         `refused to publish a partial set (${i.failureCategory}): ${i.jobsAfter} listing(s) kept` +
           (detail ? ` — ${detail}` : ""),
       );
+    } else if (isNoJobs(i)) {
+      // Counted apart from drift, but NOT dropped from the queue. A site that
+      // has nothing and returns nothing is not a regression — it is either a
+      // company with no open roles or a config that has never worked, and the
+      // report cannot tell which. The step 9 fixture settles what to do about
+      // that: all four sites in this state that night (se.com, xnes,
+      // careers.jnj.com, safelog) turned out to be broken configs, two of them
+      // since rebuilt and two retired. Naming them is how that was found.
+      add(i, "returned no jobs, and has none stored — no open roles, or a config that never worked");
     } else if (i.outcome === "soft_failure") {
       const newest = i.newestJobAt ? sweepDate(i.newestJobAt, timeZone) : "none";
       add(
@@ -369,7 +433,17 @@ export function renderSweepReport(
     // Named, with the reason: a site selection left out is a site nobody looked
     // at tonight, and "no usable fieldMappings" is a fix waiting for someone.
     lines.push(`  skipped   ${opts.skipped.length} at selection`);
-    for (const s of opts.skipped) lines.push(`    ${s.siteUrl} — ${s.reason}`);
+    // The fresh window is not a problem, and on a re-run it is nearly the whole
+    // fleet — 140 lines of "succeeded 3h ago" burying the two selections that
+    // were skipped for a reason someone has to fix. One count line.
+    const fresh = opts.skipped.filter((s) => s.kind === "fresh");
+    if (fresh.length > 0) {
+      lines.push(`    ${fresh.length} too recent to scrape (inside the fresh window)`);
+    }
+    for (const s of opts.skipped) {
+      if (s.kind === "fresh") continue;
+      lines.push(`    ${s.siteUrl} — ${s.reason}`);
+    }
   }
   lines.push("");
 
@@ -412,9 +486,21 @@ export function renderSweepReport(
   for (const [cat, n] of [...byCategory.entries()].sort((a, b) => b[1] - a[1])) {
     lines.push(`  ${String(n).padStart(4)}  ${cat}`);
   }
+  // Three lines, not one. They were a single "silent drift or refusal" bucket,
+  // which put a site that emptied out last night, a site that has been empty
+  // for a month, and the worker declining to shrink a site it could not fully
+  // see, under one number — and only the first is news.
   lines.push(
-    `  ${String(counters.silentDrift).padStart(4)}  silent drift or refusal (empty_results / structure_changed / listing_*)`,
+    `  ${String(counters.silentDrift).padStart(4)}  silent drift (empty_results / structure_changed)`,
   );
+  if (counters.listingRefusals > 0) {
+    lines.push(
+      `  ${String(counters.listingRefusals).padStart(4)}  refused to publish a partial set (listing_*)`,
+    );
+  }
+  if (counters.noJobs > 0) {
+    lines.push(`  ${String(counters.noJobs).padStart(4)}  returned no jobs and had none`);
+  }
   lines.push("");
 
   lines.push("Gate");
@@ -448,7 +534,13 @@ export function renderSweepReport(
     const ordered = [...byType.entries()].sort((a, b) => b[1].length - a[1].length || a[0].localeCompare(b[0]));
     for (const [type, list] of ordered) {
       lines.push(`  ${type} (${list.length})`);
-      for (const w of list) lines.push(`    ${w.siteUrl} — ${w.detail}`);
+      // Only the two that are about a SITE. On the step 9 night 61 of 140 sites
+      // warned, most of them about location quality — a per-site list that long
+      // is one nobody reads, and a location warning is acted on by fixing the
+      // rule once, not by visiting 61 sites. These two are different: each names
+      // one site whose config or budget needs looking at, tonight.
+      if (!WARNINGS_THAT_NAME_SITES.has(type)) continue;
+      for (const w of list) lines.push(`    ${w.siteUrl}${w.detail ? ` — ${w.detail}` : ""}`);
     }
   }
 

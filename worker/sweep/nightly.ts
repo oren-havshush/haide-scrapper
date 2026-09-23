@@ -144,9 +144,14 @@ type SiteResult = {
   wouldPromoteTo: string | null;
   wouldSkip: string | null;
   /**
-   * The ScrapeRun's raw terminal status, kept because `listingsProtected`
-   * depends on it and `outcome` cannot answer the question — see the counter's
-   * definition in realRun.
+   * The ScrapeRun's raw terminal status.
+   *
+   * Its comment used to say `listingsProtected` depended on it. That stopped
+   * being true when the counters moved into sweepReport.ts (so a HALTED night
+   * would stop writing zeros for them), and nothing has read this field since.
+   * Kept, and only kept, because it is the one place the run's own status is
+   * carried alongside the driver's interpretation of it — which is what a
+   * `defect` line would need to quote if the two ever disagree.
    */
   runStatus: string;
   startedAt: Date;
@@ -669,7 +674,7 @@ async function realRun(mode: Mode): Promise<number> {
       freshWindowMs: sweepConfig.freshWindowHours * 3_600_000,
     });
     queue = selected;
-    skipped = excluded.map((e) => ({ siteUrl: e.site.siteUrl, reason: e.reason }));
+    skipped = excluded.map((e) => ({ siteUrl: e.site.siteUrl, reason: e.reason, kind: e.kind }));
     log(`[sweep] selected ${queue.length} site(s), skipped ${skipped.length}`);
   }
 
@@ -841,7 +846,10 @@ async function realRun(mode: Mode): Promise<number> {
   }
 
   // Never a halt. Above this share the signature stops being per-site config
-  // death and starts looking like a shared ATS re-theme or an IP block.
+  // death and starts looking like a shared ATS re-theme or an IP block — and
+  // below a handful of attempted sites the share is not a signature at all, so
+  // shouldAlertSoftFailures withholds it entirely (a `--site x --now` run that
+  // comes back empty is 1/1, and would otherwise announce a fleet-wide cause).
   if (shouldAlertSoftFailures(breaker)) {
     log(
       `  ALERT: ${breaker.softTotal}/${breaker.attempted} sites returned empty or ` +
