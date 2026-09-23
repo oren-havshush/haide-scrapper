@@ -3337,3 +3337,51 @@
   an onboarding change. No fleet sweep of stored `companyHqCity` values.
 - **Generalises to:** every Israeli address written in running prose rather than as a postal line —
   which is most about pages. **Home:** `company-profile.md` §3.1 / §5.
+
+---
+
+## LRN-CO-3 — the URL you asked for is not always the URL you got: compare the final URL before believing a lane
+
+- **Date / site:** 2026-09-23 · se.com (Schneider Electric Israel), rebuilt and retired.
+- **Signal:** the stored listing URL `/il/he/about-us/local/open-positions` still answers 200, so nothing
+  looks wrong — but it **redirects** to `/il/he/about-us/careers/overview/`, a marketing-plus-FAQ page with
+  zero postings. `triage` reported **YELLOW, topCluster 32**, and those 32 are the `qds-web-megamenu-*`
+  navigation. Taken at face value, §3 builds a config against a mega-menu, the completeness gates fail it
+  for having no description and no apply path, and a site that should simply be retired instead lands in
+  SKIPPED/REVIEW carrying a config that pretends to work. This is the §2.3 hub trap arriving by a different
+  route: not "the hub has no jobs" but "the page you configured no longer exists".
+- **Cheap check, worth making routine:** after rendering, compare `location.href` with the URL you
+  requested. `reach` and `triage` both describe the page they *land on*, and neither says a redirect
+  happened. A changed path on a site that was onboarded months ago means the employer reorganised its
+  careers section — re-discover before building, do not tune selectors.
+- **Corroborate with the page's own words, not the cluster count:** here, 0 job cards, `דרושים` present
+  **0** times, and leftover unfilled CMS placeholders (`ZZ_Paragraph Title`, `ZZ_Paragraph Content`) showing
+  the page is only half-maintained. Those are the signals that a listing is gone; `topCluster` is not.
+- **Then run the §2.1 embedded-ATS gate before SKIPPING** so the retirement is not a false negative. It was
+  empty here: the only iframes were analytics (`s.company-target.com`, `csxd.contentsquare.net`).
+- **Generalizes to:** every `--force` rebuild of a site that last scraped months ago. A redirect is the
+  most likely reason an old careers URL "still works" but yields nothing.
+  **Home:** `addsite2.md` §2 triage / §5 reachability.
+
+---
+
+## LRN-WAF-8 — Akamai "Access Denied / errors.edgesuite.net" blocks the whole host, and a desktop UA does not help
+
+- **Date / site:** 2026-09-23 · careers.se.com (Schneider's global Phenom-style portal).
+- **Fingerprint:** a ~200–400 byte body reading `Access Denied — You don't have permission to access "<url>"
+  on this server.` with `Reference #18.<hex>.<epoch>.<hex>` and an `https://errors.edgesuite.net/...` link.
+  `edgesuite.net` is Akamai; the reference number is what their support asks for.
+- **What distinguishes it from the UA gates:** it is **host-wide and client-wide**. Every path was 403 —
+  `/`, `/jobs`, `/professionals`, and the country-filtered search URLs — from bare `curl` **and** from
+  headless Chrome carrying a current desktop UA, identically. So it is neither `LRN-WAF-1` (default UA
+  rejected, desktop UA clears) nor `LRN-WAF-5` (default UA passes, spoofed desktop UA 403s): swapping the
+  UA changes nothing in either direction, and there is no point spending a remediation attempt on
+  `browserOverrides`. Note the denial echoes the URL as `http://` even for an https request, and truncates
+  at the `?`, so query-string variants are not being evaluated separately — the host is simply closed.
+- **What to do:** do not burn the budget. Record the reference id and the paths tried, and treat the host
+  as unbuildable until someone tests from a residential IP or the employer is asked. Where the blocked host
+  is a *different* host from `siteUrl` — as here — this compounds with `LRN-WRK-22`: it could only ever be
+  its own Site, and that Site is not buildable today either, so retiring the local record is the honest
+  outcome rather than parking it.
+- **Generalizes to:** any global-enterprise careers portal fronted by Akamai.
+  **Home:** `recipes/waf-bypasses.md`; read with `LRN-WAF-1` and `LRN-WAF-5`.
