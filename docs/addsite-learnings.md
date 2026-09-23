@@ -3171,3 +3171,52 @@
 - **Generalises to:** any future change that makes one run write on behalf of several
   sources. The rule is that a partial view of the truth must never become the whole
   published state.
+
+---
+
+## LRN-AGE-2 — for a careers PAGE the feed's `lastBuildDate` is the wrong staleness signal; its own sitemap `lastmod` is the right one
+
+- **Date / site:** 2026-09-23 · safelog.co.il/דרושים, two roles with no dates anywhere.
+- **Signal:** LRN-AGE-1 lists `/feed/` `lastBuildDate` first among the cheap staleness probes. On a
+  WordPress site the main feed carries **posts**, and a careers page is almost always a **Page**, which
+  never appears in it. Here the two disagreed by nearly a year: the feed last built **2025-08-07**,
+  while the careers page's own `page-sitemap.xml` entry reads **`lastmod` 2024-10-27** — ~23 months
+  before the rebuild. The feed number is about the blog; only the second is about the ad you are
+  publishing.
+- **Do this:** fetch `/sitemap_index.xml` → `page-sitemap.xml` and read the `lastmod` of the careers
+  URL itself. Yoast and the WP core sitemap both expose it, it is one request, and it is the date the
+  owner is actually being asked to judge. Keep the feed as a fallback for sites with no sitemap, and
+  say which signal a number came from when you report it — "the site" and "this page" are different
+  claims.
+- **Still not a SKIP rule** (LRN-AGE-1): record the figure in the `adminNote` and let the owner decide.
+  safelog: all gates green, owner chose ACTIVE on 2026-09-23 with the 2024-10-27 `lastmod` recorded and
+  the roles flagged for confirmation.
+- **Generalizes to:** every dateless WordPress careers page, which is most of them.
+  **Home:** `addsite2.md` §10.
+
+---
+
+## LRN-LOC-15 — `city.csv` is not a complete gazetteer: a missing city is sometimes a gap in the list, not a bad value in the ad
+
+- **Date / sites:** 2026-09-22 halilit.com, 2026-09-23 safelog.co.il — two independent gaps in two days.
+- **Signal:** the ad names a real, unambiguous Israeli city and `verify-location-csv` still has nowhere
+  to put it. Two distinct shapes:
+  - **Absent, with a same-name neighbour that is a DIFFERENT locality.** J&J and halilit both sit in
+    **Yokneam Illit**; `city.csv` has only `יקנעם (מושבה)`, the adjacent moshava under a different
+    council. Storing it would be wrong, so those jobs store nothing.
+  - **Absent alone, present only inside a COMBINED row.** safelog's full-time role says `באזור לוד`;
+    there is no `לוד` and no `רמלה` — only `רמלה לוד`. The combined row does cover the place, but it
+    also names a town the ad never mentions.
+- **These are different decisions and only the owner can make the second one.** Storing nothing is
+  always safe. Storing the combined row is defensible but publishes a name the employer did not write,
+  so surface the specific **job + city** and let the owner choose — do not pick the nearest-looking row
+  silently, and never invent a spelling to make the gate pass. safelog's owner chose `רמלה לוד`
+  (2026-09-23); the Yokneam jobs were left empty.
+- **Editing `city.csv` is a third option and a product-data change**: the public site's city filter reads
+  it, so a new row affects every site, not the one in front of you. Never unprompted.
+- **Check before you conclude a value is un-storable:** grep the CSV for the bare name *and* for rows
+  containing it (`grep -n <name>`), since the entry may be a pair (`רמלה לוד`), a region (`אזור דרום`)
+  or carry a qualifier (`יקנעם (מושבה)`).
+- **Generalizes to:** any ad naming a city in the Ramla/Lod, Yokneam or similar pairs, and to every
+  future `verify-location-csv` exit 2 — ask "is this the ad's fault or the list's?" before fixing.
+  **Home:** `addsite2.md` §12 location gate.
