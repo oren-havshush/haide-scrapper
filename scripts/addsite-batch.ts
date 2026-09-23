@@ -24,6 +24,7 @@
  *             LRN-RACE-2). Exits 2 when clobbered so callers drive the re-PUT loop.
  *             Usage: verify-config --site-id <id> [--expect-item <sel>]
  *                        [--expect-fields a,b,c] [--expect-form-fields N]
+ *                        [--expect-listing-urls <url,url>]
  *                        [--expect-file <config.json>]
  *
  *   reach     Step 3 worker-parity reachability gate (bare vs real-UA nav).
@@ -554,12 +555,23 @@ async function cmdParse(argv: string[]): Promise<void> {
       const existing = (await apiGet(
         `/api/sites?siteUrl=${encodeURIComponent(entry.normalizedUrl)}`,
         headers,
-      )) as { data?: Array<{ id: string; status: string }> };
+      )) as { data?: Array<{ id: string; status: string; siteUrl?: string }> };
       if (existing?.data?.length) {
         const site = existing.data[0];
         entry.existingId = site.id;
         entry.existingStatus = site.status;
-        if (site.status === "ACTIVE") {
+        // The lookup also matches a URL listed in a site's _meta.listingUrls, so
+        // a hit whose own siteUrl is a DIFFERENT page means this URL is already
+        // one of that site's listing pages. It is covered, not a site of its
+        // own — and onboarding onto that row would PUT a single-URL config over
+        // the parent's, silently dropping its other pages.
+        if (site.siteUrl && site.siteUrl !== entry.normalizedUrl) {
+          entry.preStatus = "SKIP_PRIOR";
+          entry.existingStatus = `COVERED_BY ${site.id} (${site.siteUrl})`;
+          console.info(
+            `[batch] ${entry.normalizedUrl} is already a listing page of ${site.id} — skipping`,
+          );
+        } else if (site.status === "ACTIVE") {
           entry.preStatus = "ALREADY_ACTIVE";
         } else if (site.status === "SKIPPED" && !force) {
           entry.preStatus = "SKIP_PRIOR";
@@ -889,7 +901,11 @@ async function cmdSummary(argv: string[]): Promise<void> {
 //
 //   npx tsx scripts/addsite-batch.ts verify-config --site-id <id> \
 //     --expect-item "div.job" --expect-fields "title,externalJobId,description" \
-//     [--expect-form-fields 7]
+//     [--expect-form-fields 7] [--expect-listing-urls "https://a/x,https://a/y"]
+//
+// --expect-listing-urls is an EXACT set match against _meta.listingUrls. A site
+// that scrapes several listing pages loses a whole department when one of them
+// goes missing from the config, and the run still reports itself a success.
 //
 //   # or derive all expectations from the config JSON you PUT in Step 6:
 //   npx tsx scripts/addsite-batch.ts verify-config --site-id <id> \
@@ -904,6 +920,7 @@ interface StoredFieldMapping {
 interface StoredMeta {
   itemSelector?: string;
   formCapture?: { fields?: unknown[] } | null;
+  listingUrls?: unknown;
   [k: string]: unknown;
 }
 type StoredFieldMappings = Record<string, StoredFieldMapping | StoredMeta> & {
@@ -939,6 +956,10 @@ async function cmdVerifyConfig(argv: string[]): Promise<void> {
     .map((s) => s.trim())
     .filter(Boolean);
   let expectFormFields = flagInt(flags, "expect-form-fields", 0);
+  let expectListingUrls = (flagStr(flags, "expect-listing-urls") ?? "")
+    .split(",")
+    .map((s) => s.trim())
+    .filter(Boolean);
 
   const expectFile = flagStr(flags, "expect-file");
   if (expectFile) {
@@ -946,6 +967,7 @@ async function cmdVerifyConfig(argv: string[]): Promise<void> {
       itemSelector?: string;
       fieldMappings?: Record<string, unknown>;
       formCapture?: { fields?: unknown[] } | null;
+      listingUrls?: string[];
     };
     if (!expectItem) expectItem = cfg.itemSelector;
     if (!expectFields.length && cfg.fieldMappings) {
@@ -953,6 +975,9 @@ async function cmdVerifyConfig(argv: string[]): Promise<void> {
     }
     if (!flagStr(flags, "expect-form-fields")) {
       expectFormFields = cfg.formCapture?.fields?.length ?? 0;
+    }
+    if (!expectListingUrls.length && Array.isArray(cfg.listingUrls)) {
+      expectListingUrls = cfg.listingUrls;
     }
   }
 
@@ -964,6 +989,10 @@ async function cmdVerifyConfig(argv: string[]): Promise<void> {
   const storedItem = meta.itemSelector;
   const storedFormFields = meta.formCapture?.fields?.length ?? 0;
 
+  const storedListingUrls = Array.isArray(meta.listingUrls)
+    ? (meta.listingUrls as unknown[]).filter((u): u is string => typeof u === "string")
+    : [];
+
   const itemOk = !expectItem || storedItem === expectItem;
   const missingFields = expectFields.filter((k) => {
     const f = fm[k] as StoredFieldMapping | undefined;
@@ -971,32 +1000,44 @@ async function cmdVerifyConfig(argv: string[]): Promise<void> {
   });
   const fieldsOk = missingFields.length === 0;
   const formOk = expectFormFields === 0 || storedFormFields >= expectFormFields;
+  // Exact set, not a subset: a listing page silently missing from the stored
+  // config is a department of the company that stops being published, and the
+  // scrape reports success at its new, smaller size.
+  const listingUrlsOk =
+    expectListingUrls.length === 0 ||
+    (storedListingUrls.length === expectListingUrls.length &&
+      expectListingUrls.every((u) => storedListingUrls.includes(u)));
 
-  const ok = itemOk && fieldsOk && formOk;
+  const ok = itemOk && fieldsOk && formOk && listingUrlsOk;
   const verdict = {
     siteId,
     ok,
     itemOk,
     fieldsOk,
     formOk,
+    listingUrlsOk,
     expectedItem: expectItem ?? null,
     storedItem: storedItem ?? null,
     missingFields,
     expectedFormFields: expectFormFields,
     storedFormFields,
+    expectedListingUrls: expectListingUrls,
+    storedListingUrls,
   };
   console.log(JSON.stringify(verdict, null, 2));
 
   if (!ok) {
     console.error(
       `[verify-config] CLOBBERED: itemOk=${itemOk} fieldsOk=${fieldsOk} formOk=${formOk}` +
+        ` listingUrlsOk=${listingUrlsOk}` +
         (missingFields.length ? ` missing=[${missingFields.join(",")}]` : "") +
         ` (stored itemSelector="${storedItem ?? ""}")`,
     );
     process.exit(2);
   }
   console.error(
-    `[verify-config] OK: itemSelector="${storedItem ?? ""}" fields=[${expectFields.join(",")}] formFields=${storedFormFields}`,
+    `[verify-config] OK: itemSelector="${storedItem ?? ""}" fields=[${expectFields.join(",")}] formFields=${storedFormFields}` +
+      (storedListingUrls.length ? ` listingUrls=${storedListingUrls.length}` : ""),
   );
 }
 
@@ -1877,7 +1918,8 @@ if (!cmd) {
     `  summary       --batch-dir <dir>\n` +
     `\n` +
     `  verify-config --site-id <id> [--expect-item <sel>] [--expect-fields a,b,c]\n` +
-    `                [--expect-form-fields N] [--expect-file <config.json>]\n` +
+    `                [--expect-form-fields N] [--expect-listing-urls <url,url>]\n` +
+    `                [--expect-file <config.json>]\n` +
     `                (exit 2 = analyzer clobbered the config)\n` +
     `\n` +
     `  verify-jobids --site-id <id> [--min-fill 0.9] [--require-prefix h-]\n` +

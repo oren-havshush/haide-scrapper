@@ -2813,3 +2813,126 @@
   populated before reusing another Comeet site's mappings — and to any ATS that exposes
   both coarse wrappers and per-section title/content pairs. The per-section pairs are the
   reliable source; the wrappers are customer-configurable.
+
+---
+
+## LRN-LOC-12 — a retail chain's branch label is not a town, and matching a city.csv row does not make it one: use the chain's own store directory
+
+- **Date / site:** 2026-09-22 · renuar.co.il/pages/stores-and-points-of-sale
+  (`cmucn360g000h01rxmvvjy3cn`), 28 store-management postings on one accordion page.
+- **Signal:** every title names a branch, not a town — `צוות ניהול לסניף <branch>`. Most
+  branches happen to be town names; three are malls, and two of those resolved wrong on
+  the first pass. `סניף ביאליק` reads as קרית ביאליק but is the Bialik *street* branch in
+  רמת גן. Worse, `סניף גלילות` was stored as `גלילות` purely **because `גלילות` is a real
+  `city.csv` row** — the branch (ביג פאשן גלילות, מחלף גלילות) is in **רמת השרון**.
+- **The trap that matters:** a branch label that *is* a canonical entry looks verified and
+  is not. `verify-location-csv` passes it, `addsite-qa` never reads location values, and
+  the gazetteer only fills an EMPTY location — so a plausible-looking near-miss ships with
+  every gate green. Treating "it's in city.csv" as confirmation is the whole bug.
+- **Fix — the chain publishes the answer.** A retail chain almost always has a store
+  locator, and it is machine-readable: renuar's `/pages/store-locator` is a **Stockist**
+  widget (`data-stockist-widget-tag="map_83p8nnj3"`), and
+  `stockist.co/api/v1/<tag>/locations/all` returns all 88 branches as JSON with an explicit
+  `city` per row. One request settled every ambiguous branch and confirmed the rest:
+  קניון איילון → רמת גן, ביג גלילות → רמת השרון, and it showed the chain runs **both** a
+  רמת גן Bialik branch and a separate קרית ביאליק one. Look for the locator page and its
+  data source (Stockist, Storemapper, a `stores.json`, a Google-My-Maps KML) **before**
+  reasoning about branch names at all.
+- **Priority, per posting:**
+  1. the chain's **own store directory** (explicit city per branch);
+  2. the town named in the **ad's own body** (`בסניף ביאליק ברמת גן`, `רשת OUTLET בהרצליה`);
+  3. the **page's own section heading** when a branch is still unresolved — these pages
+     group postings under regions (`מרכז`, `השרון`, `דרום ואילת`) that alias onto the
+     canonical `אזור *` entries. A region the site itself asserts is honest
+     under-specification, and strictly better than a town nobody stated;
+  4. `Unknown`.
+  **Never** step 2-and-a-half: "the branch label is in `city.csv`, so use it."
+  Build the result as an explicit title→city table, not a runtime scan — prose scanning for
+  Hebrew city names is banned for the `\b`/final-letter reasons in `LRN-LOC-2`, and a table
+  degrades an unseen title to (3) then (4) instead of to a wrong town.
+- **Watch for the title/body contradiction.** `3813 - צוות ניהול לסניף רחובות` has a body
+  reading `בסניף רמלה` — a stale copy of the *other* 3813 posting (`סניף רמלה`), same req
+  number and identical boilerplate. Rule 2 alone would take רמלה and be wrong; the store
+  directory (a real רחובות branch) broke the tie for the title. When body and title
+  disagree, the **per-posting title** wins, the directory confirms it, and the contradiction
+  goes in the `adminNote`; the employer's text is still published as-is.
+- **Generalizes to:** any chain listing one posting per branch — fashion/food/pharmacy
+  retail, bank branches, clinics, gyms. Assume the branch label is a *store* name until a
+  directory or the ad itself says otherwise.
+
+---
+
+## LRN-CO-2 — one employer whose jobs are split across several listing pages is ONE site, not one site per page
+
+- **Date / site:** 2026-09-22 · renuar.co.il (`cmucn360g000h01rxmvvjy3cn`).
+- **Signal:** the careers hub `/pages/<drushim>` holds no jobs at all — it links three
+  department listings: stores (28 jobs), head office (8), logistics (1). Onboarded from
+  one of those leaves the other two invisible; onboarding each of them creates three
+  sites.
+- **Why three sites is the wrong answer:** there is no Company model. Company identity is
+  denormalised onto `Site` — `companyName`, `companyAbout`, `companyHqCity`, and the logo
+  at `/logos/<siteId>.png` — and `Job` reaches its employer only through `siteId`. The
+  public jobs site reads that row directly. Three sites therefore publish the same
+  employer three times, each with its own separately-captured profile and its own logo
+  file, and nothing downstream merges them. `companyName` is a nullable, un-indexed,
+  non-unique string: it is not a key and never has been. (Checked the day this shipped:
+  of 144 ACTIVE sites, zero shared a `companyName` — the fleet had never done this.)
+- **Fix:** `_meta.listingUrls` — one site, N listing pages, every job on the one row.
+  `siteUrl` becomes the hub (what the dashboard shows, what `company-profile` derives the
+  homepage from) and is no longer scraped; the list is the complete target set. Contract
+  and failure modes: `LRN-WRK-21`. Home: `addsite2.md` §2.3.
+- **Identify the pages by CONTENT, not by link text.** renuar's three links happened to
+  share one CTA (`לרשימת המשרות`), and a reworded CTA would have silently returned two
+  pages instead of three — a whole department dropped with nothing to notice it. Fetch
+  each same-host candidate and keep the ones carrying repeating job markup.
+- **Dedup had to learn it too:** the exact `?siteUrl=` filter now matches a site's own URL
+  **or** any entry in its `_meta.listingUrls`, so onboarding a company's second department
+  page resolves to the parent. The caller must compare the returned row's `siteUrl` with
+  what it asked for: a mismatch means "covered by that site", and onboarding onto that row
+  would PUT a single-URL config over the parent and stop publishing its other pages.
+- **Generalises to:** any employer whose careers site splits jobs by department, brand or
+  region — retail chains, hospital groups, municipalities. Distinguish it from `LRN-SPA-4`
+  (a wrapper page embedding ONE board — onboard the board instead) and from `pagination`
+  (pages 2..N of one listing).
+
+---
+
+## LRN-WRK-21 — a listing page that goes dark must refuse to publish, not shrink the site
+
+- **Date / site:** 2026-09-22 · shipped with `LRN-CO-2` (renuar.co.il).
+- **The hazard:** persistence is delete-all-for-siteId then insert
+  (`worker/jobs/scrape.ts`, scheduled transaction and the manual path alike), so the
+  merged set from every listing page IS the site's published state. With 28/8/1 across
+  three pages, the head-office page returning 0 leaves 29 of 37 — and nothing notices:
+  `isSuspiciousDrop` wants under half (18), `job_count_drop` wants a 30% fall (25.9). The
+  scrape reports success, eight published jobs are deleted, and the only trace is a
+  smaller number.
+- **Contract (`worker/lib/listingTargets.ts`, all of it pure and unit-tested):**
+  - the list REPLACES `siteUrl`; unset means `[siteUrl]`, i.e. every existing site is
+    byte-identical;
+  - every page is merged BEFORE the single dedup and the single persist — never persist
+    per page, or one failing page wipes the others;
+  - **all** pages failed → throw, exactly as a single-page site always has (the FAILED
+    path, breaker evidence intact);
+  - **some** failed → `COMPLETED` + `listing_url_failed`, nothing deleted, nothing written;
+  - a page that loaded but yielded 0 (or under half) where it had rows → same refusal,
+    `listing_url_empty`. Per-page thresholds are `minPrevious: 5`, not the site-level 10:
+    an 8-job department must trip it;
+  - rows tagged with a page no longer configured → `listing_urls_removed` on a scheduled
+    run; a manual run proceeds with a warning, which is how an operator retires a page;
+  - all three are soft failures (`sweepSelection.ts`): never the breaker, never a success,
+    named in the attention queue.
+- **Where the baseline comes from:** each raw record carries `_listingUrl` into
+  `Job.rawData`, counted back with one grouped query. No column, no migration. Rows written
+  before the feature have no tag and group under `""` — never mistaken for a removed page.
+- **Two smaller traps closed on the way:** `runSetupScript` restored the 30 s default
+  timeout only on success, so a failing script on page 1 left 90 s defaults for every later
+  page; and the RAW dedup's last-resort `title|location` tier now includes the page,
+  because two departments can legitimately both advertise "נציג/ת שירות". Raw tier only:
+  the normalized dedup still keys on `id || url || title|location`, so a site mapping
+  neither an id nor a URL can still fold such a pair — as it always could. Not a
+  regression; the `per_url_counts` figure is likewise "kept after the raw dedup", not
+  "written".
+- **Generalises to:** any future change that makes one run write on behalf of several
+  sources. The rule is that a partial view of the truth must never become the whole
+  published state.

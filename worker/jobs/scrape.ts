@@ -19,6 +19,19 @@ import { APPLY_LOGIN_SKIP_NOTE, APPLY_LOGIN_FAILURE_CATEGORY } from "../lib/appl
 import { applyJobIdFallback } from "../lib/synthesizeJobId";
 import { getApplyRequiresLogin, isUsableMappingEntry } from "../lib/fieldMappings";
 import {
+  BUDGET_EXHAUSTED,
+  LISTING_URL_TAG,
+  decideListingOutcome,
+  getListingUrls,
+  listingBudgetExhausted,
+  mergeListingResults,
+  previousCountsByUrl,
+  resolveListingTargets,
+  savedCountsByUrl,
+  type ListingTarget,
+  type ListingUrlResult,
+} from "../lib/listingTargets";
+import {
   ACTIVATION_GATE_NOTE_PREFIX,
   INSERT_BATCH,
   TX_MAX_WAIT_MS,
@@ -1378,7 +1391,21 @@ function dedupeAndCapRawFields(
     // Skip empty junk rows.
     if (!title && !location && !url) continue;
 
-    const fingerprint = url || externalJobId || `${title}|${location}`;
+    // The last-resort tier is title+location, which two of a company's listing
+    // pages can legitimately share — "נציג/ת שירות" in two divisions is two
+    // jobs. Including the page keeps them apart HERE; a job genuinely listed on
+    // two pages is still collapsed by its URL or id, which rank above this.
+    // On a single-page site every row carries the same tag, so the key is what
+    // it has always been.
+    //
+    // This is the raw tier only. The normalized dedup that runs later keys on
+    // id || url || title|location without the page, so a site that maps
+    // neither an id nor a URL can still fold two same-titled, same-located
+    // jobs from different pages into one — exactly as it always could. Left
+    // as-is deliberately: it is not a regression, and the sites that reach
+    // this tier are the ones with the least to key on.
+    const listingUrl = (raw[LISTING_URL_TAG] ?? "").trim().toLowerCase();
+    const fingerprint = url || externalJobId || `${title}|${location}|${listingUrl}`;
     if (seen.has(fingerprint)) {
       if (deduped.length <= 1) {
         console.warn(
@@ -1425,12 +1452,23 @@ async function extractRawFieldsWithPageFlow(
   stats?: { listingItemsSeen: number | null },
   /** Cooperative stop, checked between listing pages. See the sibling extractor. */
   abort: AbortToken<unknown> | null = null,
+  /**
+   * Listing page to open instead of `pageFlow[0].url`, for a site whose jobs are
+   * split across several listing pages (`_meta.listingUrls`).
+   *
+   * Only the navigation moves. `pageFlow` itself stays canonical, because
+   * `classifyFieldsByPage` decides which fields are listing-scope by matching
+   * their recorded `capturedOnUrl` against `pageFlow[0].url` — swapping that for
+   * the current department page would match nothing and push title and location
+   * into detail scope, where the card selectors do not exist.
+   */
+  listingUrlOverride: string | null = null,
 ): Promise<Record<string, string>[]> {
   const rawFieldsList: Record<string, string>[] = [];
 
   // Navigate to the first page flow URL (listing page)
   const listingStep = pageFlow[0];
-  await gotoForgiving(page, listingStep.url, NAVIGATION_TIMEOUT_MS);
+  await gotoForgiving(page, listingUrlOverride ?? listingStep.url, NAVIGATION_TIMEOUT_MS);
 
   // Wait for the listing page's waitFor selector if specified
   if (listingStep.waitFor) {
@@ -2278,14 +2316,21 @@ async function runSetupScript(page: Page, script: string): Promise<void> {
     // Use a 90s timeout to allow long-running scripts (e.g. load-more loops with
     // multiple AJAX clicks and sleeps that can easily exceed the 30s default).
     page.setDefaultTimeout(90_000);
-    await page.evaluate(async (src: string) => {
-      const AsyncFunction = Object.getPrototypeOf(
-        async function () {},
-      ).constructor as new (body: string) => () => Promise<unknown>;
-      const fn = new AsyncFunction(src);
-      await fn();
-    }, script);
-    page.setDefaultTimeout(30_000);
+    try {
+      await page.evaluate(async (src: string) => {
+        const AsyncFunction = Object.getPrototypeOf(
+          async function () {},
+        ).constructor as new (body: string) => () => Promise<unknown>;
+        const fn = new AsyncFunction(src);
+        await fn();
+      }, script);
+    } finally {
+      // Restore even when the script throws. A site whose jobs span several
+      // listing pages runs this once per page, and a raised default left behind
+      // by the first would triple every later page's worst case — straight into
+      // the run's own 15-minute cap.
+      page.setDefaultTimeout(30_000);
+    }
     await page.waitForTimeout(1_500);
     console.info(`[scrape] setupScript executed (${script.length} chars)`);
   } catch (e) {
@@ -2998,6 +3043,16 @@ export async function handleScrapeJob(
   const setupScript = getSetupScript(site.fieldMappings);
   const loadMoreSelector = getLoadMoreSelector(site.fieldMappings);
   const browserOverrides = getBrowserOverrides(site.fieldMappings);
+  // Several listing pages of one employer, or the site's own URL when unset.
+  const listingTargets = resolveListingTargets({
+    siteUrl: site.siteUrl,
+    listingUrls: getListingUrls(site.fieldMappings),
+  });
+  if (listingTargets.length > 1) {
+    console.info(
+      `[scrape] listing targets: ${listingTargets.length} — ${listingTargets.map((t) => t.url).join(", ")}`,
+    );
+  }
 
   // Login-gated apply flows are useless for auto-submit. The flag is set at
   // onboarding (capture-form login detection); short-circuit here — before the
@@ -3044,6 +3099,7 @@ export async function handleScrapeJob(
         loadMoreSelector,
         browserOverrides,
         runMode,
+        listingTargets,
       ),
       timeout.promise,
     ]);
@@ -3158,6 +3214,87 @@ export async function handleScrapeJob(
   }
 }
 
+/**
+ * How many of the site's current listings came from each listing page.
+ *
+ * Read from the `_listingUrl` tag every raw record carries into `Job.rawData`
+ * — no column, no migration. It is the baseline that makes "this page went
+ * dark" distinguishable from "this page has always been empty", which is the
+ * difference between refusing to publish and deleting a department's jobs.
+ *
+ * Raw SQL because a JSON path cannot be grouped through the query builder, and
+ * pulling thousands of rawData blobs back to count them would be absurd.
+ * Scoped to one site, on an indexed column. Rows written before this feature
+ * have no tag and group under "" — never mistaken for a page.
+ */
+async function readPreviousListingCounts(siteId: string): Promise<Map<string, number>> {
+  try {
+    // The key is written out rather than bound: `->>` is overloaded on text and
+    // integer, and a bound parameter leaves that to inference. This is the one
+    // query here nobody can run locally (there is no DATABASE_URL), and its
+    // failure mode is silent — the catch below simply loses tonight's baseline
+    // — so it copies the shape already proven in production
+    // (scrapeRunService.ts: `payload->>'scrapeRunId'`). The literal is pinned
+    // to LISTING_URL_TAG by an assertion in listingTargets.test.ts.
+    const rows = await prisma.$queryRaw<Array<{ url: string | null; n: bigint }>>`
+      SELECT "rawData"->>'_listingUrl' AS url, COUNT(*) AS n
+      FROM "Job"
+      WHERE "siteId" = ${siteId}
+      GROUP BY 1
+    `;
+    return previousCountsByUrl(rows);
+  } catch (err) {
+    // Losing the baseline costs tonight's regression guard, which is a far
+    // smaller harm than failing a scrape that would otherwise have worked.
+    console.warn(
+      "[scrape] could not read previous listing counts:",
+      err instanceof Error ? err.message : String(err),
+    );
+    return new Map();
+  }
+}
+
+/**
+ * A run that could not see all of the site's listing pages.
+ *
+ * COMPLETED, because the worker ran and reached a decision; with a category,
+ * because the decision was "do not publish"; and having deleted nothing,
+ * because what the site already publishes is still the best set we have.
+ * Shaped like the `empty_results` return, with one addition: it writes its own
+ * warnings, since the usual warnings block only runs after persistence.
+ */
+async function refuseListingRun(
+  scrapeRunId: string,
+  outcome: { failureCategory: string; error: string; warnings: string[] },
+): Promise<ScrapeResult> {
+  console.warn(`[scrape] refusing to publish — ${outcome.error}`);
+
+  await prisma.scrapeRun.update({
+    where: { id: scrapeRunId },
+    data: {
+      status: "COMPLETED",
+      jobCount: 0,
+      totalJobs: 0,
+      validJobs: 0,
+      invalidJobs: 0,
+      error: outcome.error.slice(0, 2000),
+      failureCategory: outcome.failureCategory,
+      ...(outcome.warnings.length > 0 ? { warnings: outcome.warnings } : {}),
+      completedAt: new Date(),
+    },
+  });
+
+  return {
+    success: true,
+    scrapeRunId,
+    jobCount: 0,
+    totalJobs: 0,
+    validJobs: 0,
+    invalidJobs: 0,
+    failureCategory: outcome.failureCategory,
+  };
+}
+
 // ---------------------------------------------------------------------------
 // Core scrape execution (runs within the timeout race)
 // ---------------------------------------------------------------------------
@@ -3179,9 +3316,15 @@ async function executeScrape(
   loadMoreSelector: string | null = null,
   browserOverrides: BrowserOverrides | null = null,
   runMode: RunMode = { scheduled: false, abort: createAbortToken<ScrapeResult>() },
+  listingTargets: ListingTarget[] = [{ url: site.siteUrl }],
 ): Promise<ScrapeResult> {
   const scrapeStartedAt = Date.now();
   const { scheduled } = runMode;
+
+  // What the site currently publishes, per listing page. Read before the
+  // browser opens, because it is what tells a page that went dark apart from a
+  // page that was always empty.
+  const previousListingCounts = await readPreviousListingCounts(site.id);
 
   // Launch browser
   const browser = await launchBrowser();
@@ -3197,276 +3340,358 @@ async function executeScrape(
   // Determine scrape strategy
   const hasPageFlow = pageFlow.length > 0;
 
-  // Filled by the pageFlow extractor with the number of cards the expanded
-  // listing showed, so it can be compared against what actually got saved.
-  const listingStats: { listingItemsSeen: number | null } = { listingItemsSeen: null };
+  // ONE listing page, start to finish. Called once per configured target;
+  // everything inside works on the live page, so only the URL it navigates to
+  // changes between calls. Whatever it throws belongs to THIS page: the caller
+  // records it and decides what the whole run does, because persistence
+  // replaces the site's listings wholesale and a page that failed must never
+  // let the pages that worked become the site's new, smaller published state.
+  async function extractOneTarget(
+    targetUrl: string,
+  ): Promise<{ items: Record<string, string>[]; seen: number | null }> {
+    // Filled by the pageFlow extractor with the number of cards the expanded
+    // listing showed, so it can be compared against what actually got saved.
+    const listingStats: { listingItemsSeen: number | null } = { listingItemsSeen: null };
+    let rawFieldsList: Record<string, string>[];
 
-  let rawFieldsList: Record<string, string>[];
-
-  if (hasPageFlow) {
-    // Multi-page flow
-    console.info("[scrape] Using multi-page flow extraction");
-    rawFieldsList = await extractRawFieldsWithPageFlow(
-      page,
-      fieldMappings,
-      pageFlow,
-      listingSelector,
-      itemSelector,
-      revealSelector,
-      formCaptureConfig,
-      pagination,
-      setupScript,
-      loadMoreSelector,
-      listingStats,
-      runMode.abort,
-    );
-    context.pageLoaded = true;
-    context.selectorsMatched = rawFieldsList.length > 0;
-    context.itemsFound = rawFieldsList.length;
-    context.listingItemsSeen = listingStats.listingItemsSeen;
-
-    // Multi-page may visit detail pages and capture per-job form data inline,
-    // but a single-step pageFlow leaves us back on the listing page with the
-    // form embedded there. Capture once and attach to every record.
-    if (
-      formCaptureConfig &&
-      rawFieldsList.length > 0 &&
-      !rawFieldsList.some((r) => r["_formData"])
-    ) {
-      // A single-step pageFlow leaves us on the listing page (no detail/apply
-      // navigation), so a live form here has the same decoy risk as a
-      // listing-only site — prefer the static blob. A multi-step pageFlow may
-      // legitimately be on a real apply/detail page, so keep live-first there.
-      const formData = await extractFormDataOrFallback(
+    if (hasPageFlow) {
+      // Multi-page flow
+      console.info("[scrape] Using multi-page flow extraction");
+      rawFieldsList = await extractRawFieldsWithPageFlow(
         page,
+        fieldMappings,
+        pageFlow,
+        listingSelector,
+        itemSelector,
+        revealSelector,
         formCaptureConfig,
-        pageFlow.length <= 1,
+        pagination,
+        setupScript,
+        loadMoreSelector,
+        listingStats,
+        runMode.abort,
+        targetUrl,
       );
-      if (formData) {
-        for (const raw of rawFieldsList) {
-          raw["_formData"] = formData;
-        }
-      }
-    }
-  } else {
-    // Single-page extraction
-    console.info("[scrape] Using single-page extraction");
+      context.pageLoaded = true;
 
-    // ---- Diagnostic listeners (capture console + JS errors + key responses)
-    const consoleMessages: Array<{ type: string; text: string }> = [];
-    const pageErrors: string[] = [];
-    const subResources: Array<{ url: string; status: number }> = [];
-    const onConsole = (msg: import("playwright").ConsoleMessage) => {
-      if (consoleMessages.length < 50) {
-        consoleMessages.push({ type: msg.type(), text: msg.text().slice(0, 300) });
-      }
-    };
-    const onPageError = (err: Error) => {
-      if (pageErrors.length < 20) pageErrors.push(err.message.slice(0, 300));
-    };
-    const onResponse = (r: import("playwright").Response) => {
-      const url = r.url();
-      // Capture WAF-relevant assets: anti-bot lib, all sub-document HTML, any
-      // response with a "rbz" / "akamai" / "datadome" hint
+      // Multi-page may visit detail pages and capture per-job form data inline,
+      // but a single-step pageFlow leaves us back on the listing page with the
+      // form embedded there. Capture once and attach to every record.
       if (
-        /\.lib\.js$|rbz|akamai|datadome|cf_chl|challenge/i.test(url) ||
-        r.request().resourceType() === "document"
+        formCaptureConfig &&
+        rawFieldsList.length > 0 &&
+        !rawFieldsList.some((r) => r["_formData"])
       ) {
-        if (subResources.length < 30) {
-          subResources.push({ url, status: r.status() });
-        }
-      }
-    };
-    page.on("console", onConsole);
-    page.on("pageerror", onPageError);
-    page.on("response", onResponse);
-
-    // Navigate to the site URL -- domcontentloaded + best-effort networkidle
-    const navResponse = await gotoForgiving(page, site.siteUrl, NAVIGATION_TIMEOUT_MS);
-    context.pageLoaded = true;
-
-    // Many Israeli sites sit behind Reblaze (kramericaindustries.ac_v2.lib.js
-    // → winsocks() → reload). The challenge page has an empty <body> until
-    // the PoW completes and the page reloads. Give that reload a chance to
-    // land before we try to extract.
-    try {
-      await page.waitForFunction(
-        () => !!document.body && document.body.children.length > 0,
-        { timeout: 25_000 },
-      );
-    } catch {
-      console.warn("[scrape] Body never populated within 25s (likely WAF challenge stuck)");
-    }
-
-    // Optional setupScript: SPA hook for sites that hide most content behind
-    // app state (Angular scope, React store). Runs once after page load and
-    // before any extraction step.
-    //
-    // For SPAs that hydrate asynchronously (Workday serves a bare
-    // `<div id="root">` shell), wait for the configured revealSelector to
-    // appear first so the script doesn't run against an empty DOM. Best-effort:
-    // if it never shows we run anyway. Only gates when revealSelector is set —
-    // inject-style scripts (which CREATE the items, e.g. bezeq) leave it null.
-    if (setupScript && revealSelector) {
-      try {
-        await page.waitForSelector(revealSelector, {
-          timeout: 20_000,
-          state: "attached",
-        });
-      } catch {
-        console.warn(
-          `[scrape] setupScript gate: revealSelector "${revealSelector}" not found in 20s — running setupScript anyway`,
+        // A single-step pageFlow leaves us on the listing page (no detail/apply
+        // navigation), so a live form here has the same decoy risk as a
+        // listing-only site — prefer the static blob. A multi-step pageFlow may
+        // legitimately be on a real apply/detail page, so keep live-first there.
+        const formData = await extractFormDataOrFallback(
+          page,
+          formCaptureConfig,
+          pageFlow.length <= 1,
         );
-      }
-    }
-    if (setupScript) {
-      await runSetupScript(page, setupScript);
-    }
-
-    await autoScrollUntilStable(page, itemSelector);
-    await clickLoadMoreUntilStable(page, loadMoreSelector, itemSelector);
-
-    // If load-more was configured, re-run setupScript so newly-appended items
-    // get the same enrichment (hidden data attrs, noscript stripping, etc.).
-    // setupScripts are expected to be idempotent — they guard with
-    // `if (!el.querySelector(injected))` so a second pass only touches the
-    // items that arrived after the first run.
-    if (setupScript && loadMoreSelector) {
-      await runSetupScript(page, setupScript);
-    }
-
-    // Log the main navigation response so we can see status / redirect / size
-    // when the page comes back empty. This is the single most important signal
-    // for distinguishing "blocked" vs "empty SPA shell" vs "geo redirect".
-    if (navResponse) {
-      try {
-        const status = navResponse.status();
-        const finalUrl = navResponse.url();
-        const headers = navResponse.headers();
-        const bodyBuf = await navResponse.body().catch(() => Buffer.alloc(0));
-        const bodyLen = bodyBuf.length;
-        const requestChain: Array<{ url: string; status: number }> = [];
-        let req = navResponse.request();
-        while (req) {
-          const r = await req.response().catch(() => null);
-          requestChain.push({ url: req.url(), status: r ? r.status() : -1 });
-          const redirectedFrom = req.redirectedFrom();
-          if (!redirectedFrom) break;
-          req = redirectedFrom;
+        if (formData) {
+          for (const raw of rawFieldsList) {
+            raw["_formData"] = formData;
+          }
         }
-        console.info("[scrape] Main navigation response:", {
-          requestedUrl: site.siteUrl,
-          finalUrl,
-          status,
-          contentType: headers["content-type"],
-          contentLength: headers["content-length"],
-          server: headers["server"],
-          setCookie: headers["set-cookie"]?.slice(0, 200),
-          bodyBytes: bodyLen,
-          bodyPreview: bodyBuf.toString("utf8").slice(0, 1500),
-          redirectChain: requestChain.reverse(),
-        });
-      } catch (err) {
-        console.warn("[scrape] Could not inspect navigation response:", err);
       }
     } else {
-      console.warn("[scrape] page.goto returned null response (no main document loaded)");
-    }
+      // Single-page extraction
+      console.info("[scrape] Using single-page extraction");
 
-    // Wait for the title selector to appear (dynamic / SPA sites)
-    const titleSelector = fieldMappings["title"]?.selector;
-    if (titleSelector) {
-      try {
-        await page.waitForSelector(titleSelector, { timeout: 10_000 });
-        console.info("[scrape] Title selector appeared on page");
-      } catch {
-        console.warn(
-          `[scrape] Title selector not found after 10s, proceeding anyway: ${titleSelector}`,
-        );
-      }
-    }
-
-    rawFieldsList = await extractRawFieldsFromListingPage(
-      page,
-      fieldMappings,
-      listingSelector,
-      itemSelector,
-      revealSelector,
-      pagination,
-      runMode.abort,
-    );
-
-    // If nothing matched, give the page a chance: scroll to bottom to trigger
-    // lazy-load, wait a beat, then retry once. This recovers many SPAs that
-    // hadn't finished hydrating when `networkidle` fired.
-    if (rawFieldsList.length === 0 && itemSelector) {
-      console.warn("[scrape] 0 items on first pass — scrolling to trigger lazy-load and retrying");
-      try {
-        await page.evaluate(async () => {
-          const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
-          for (let y = 0; y < 3; y++) {
-            window.scrollTo(0, document.body.scrollHeight);
-            await sleep(800);
+      // ---- Diagnostic listeners (capture console + JS errors + key responses)
+      const consoleMessages: Array<{ type: string; text: string }> = [];
+      const pageErrors: string[] = [];
+      const subResources: Array<{ url: string; status: number }> = [];
+      const onConsole = (msg: import("playwright").ConsoleMessage) => {
+        if (consoleMessages.length < 50) {
+          consoleMessages.push({ type: msg.type(), text: msg.text().slice(0, 300) });
+        }
+      };
+      const onPageError = (err: Error) => {
+        if (pageErrors.length < 20) pageErrors.push(err.message.slice(0, 300));
+      };
+      const onResponse = (r: import("playwright").Response) => {
+        const url = r.url();
+        // Capture WAF-relevant assets: anti-bot lib, all sub-document HTML, any
+        // response with a "rbz" / "akamai" / "datadome" hint
+        if (
+          /\.lib\.js$|rbz|akamai|datadome|cf_chl|challenge/i.test(url) ||
+          r.request().resourceType() === "document"
+        ) {
+          if (subResources.length < 30) {
+            subResources.push({ url, status: r.status() });
           }
-          window.scrollTo(0, 0);
-        });
-        await page.waitForTimeout(1500);
+        }
+      };
+      page.on("console", onConsole);
+      page.on("pageerror", onPageError);
+      page.on("response", onResponse);
+
+      // Navigate to the site URL -- domcontentloaded + best-effort networkidle
+      const navResponse = await gotoForgiving(page, targetUrl, NAVIGATION_TIMEOUT_MS);
+      context.pageLoaded = true;
+
+      // Many Israeli sites sit behind Reblaze (kramericaindustries.ac_v2.lib.js
+      // → winsocks() → reload). The challenge page has an empty <body> until
+      // the PoW completes and the page reloads. Give that reload a chance to
+      // land before we try to extract.
+      try {
+        await page.waitForFunction(
+          () => !!document.body && document.body.children.length > 0,
+          { timeout: 25_000 },
+        );
       } catch {
-        /* scroll is best-effort */
+        console.warn("[scrape] Body never populated within 25s (likely WAF challenge stuck)");
+      }
+
+      // Optional setupScript: SPA hook for sites that hide most content behind
+      // app state (Angular scope, React store). Runs once after page load and
+      // before any extraction step.
+      //
+      // For SPAs that hydrate asynchronously (Workday serves a bare
+      // `<div id="root">` shell), wait for the configured revealSelector to
+      // appear first so the script doesn't run against an empty DOM. Best-effort:
+      // if it never shows we run anyway. Only gates when revealSelector is set —
+      // inject-style scripts (which CREATE the items, e.g. bezeq) leave it null.
+      if (setupScript && revealSelector) {
+        try {
+          await page.waitForSelector(revealSelector, {
+            timeout: 20_000,
+            state: "attached",
+          });
+        } catch {
+          console.warn(
+            `[scrape] setupScript gate: revealSelector "${revealSelector}" not found in 20s — running setupScript anyway`,
+          );
+        }
+      }
+      if (setupScript) {
+        await runSetupScript(page, setupScript);
+      }
+
+      await autoScrollUntilStable(page, itemSelector);
+      await clickLoadMoreUntilStable(page, loadMoreSelector, itemSelector);
+
+      // If load-more was configured, re-run setupScript so newly-appended items
+      // get the same enrichment (hidden data attrs, noscript stripping, etc.).
+      // setupScripts are expected to be idempotent — they guard with
+      // `if (!el.querySelector(injected))` so a second pass only touches the
+      // items that arrived after the first run.
+      if (setupScript && loadMoreSelector) {
+        await runSetupScript(page, setupScript);
+      }
+
+      // Log the main navigation response so we can see status / redirect / size
+      // when the page comes back empty. This is the single most important signal
+      // for distinguishing "blocked" vs "empty SPA shell" vs "geo redirect".
+      if (navResponse) {
+        try {
+          const status = navResponse.status();
+          const finalUrl = navResponse.url();
+          const headers = navResponse.headers();
+          const bodyBuf = await navResponse.body().catch(() => Buffer.alloc(0));
+          const bodyLen = bodyBuf.length;
+          const requestChain: Array<{ url: string; status: number }> = [];
+          let req = navResponse.request();
+          while (req) {
+            const r = await req.response().catch(() => null);
+            requestChain.push({ url: req.url(), status: r ? r.status() : -1 });
+            const redirectedFrom = req.redirectedFrom();
+            if (!redirectedFrom) break;
+            req = redirectedFrom;
+          }
+          console.info("[scrape] Main navigation response:", {
+            requestedUrl: targetUrl,
+            finalUrl,
+            status,
+            contentType: headers["content-type"],
+            contentLength: headers["content-length"],
+            server: headers["server"],
+            setCookie: headers["set-cookie"]?.slice(0, 200),
+            bodyBytes: bodyLen,
+            bodyPreview: bodyBuf.toString("utf8").slice(0, 1500),
+            redirectChain: requestChain.reverse(),
+          });
+        } catch (err) {
+          console.warn("[scrape] Could not inspect navigation response:", err);
+        }
+      } else {
+        console.warn("[scrape] page.goto returned null response (no main document loaded)");
+      }
+
+      // Wait for the title selector to appear (dynamic / SPA sites)
+      const titleSelector = fieldMappings["title"]?.selector;
+      if (titleSelector) {
+        try {
+          await page.waitForSelector(titleSelector, { timeout: 10_000 });
+          console.info("[scrape] Title selector appeared on page");
+        } catch {
+          console.warn(
+            `[scrape] Title selector not found after 10s, proceeding anyway: ${titleSelector}`,
+          );
+        }
       }
 
       rawFieldsList = await extractRawFieldsFromListingPage(
-        page, fieldMappings, listingSelector, itemSelector, revealSelector, pagination,
+        page,
+        fieldMappings,
+        listingSelector,
+        itemSelector,
+        revealSelector,
+        pagination,
         runMode.abort,
       );
-    }
 
-    // Still nothing → dump WAF-challenge diagnostics: did lib.js load? did
-    // winsocks() throw? did any subsequent navigation happen?
-    if (rawFieldsList.length === 0) {
-      console.warn("[scrape] WAF/challenge diagnostics:", {
-        subResources,
-        consoleMessages,
-        pageErrors,
-        cookies: await page.context().cookies(site.siteUrl).catch(() => []),
-      });
-    }
+      // If nothing matched, give the page a chance: scroll to bottom to trigger
+      // lazy-load, wait a beat, then retry once. This recovers many SPAs that
+      // hadn't finished hydrating when `networkidle` fired.
+      if (rawFieldsList.length === 0 && itemSelector) {
+        console.warn("[scrape] 0 items on first pass — scrolling to trigger lazy-load and retrying");
+        try {
+          await page.evaluate(async () => {
+            const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+            for (let y = 0; y < 3; y++) {
+              window.scrollTo(0, document.body.scrollHeight);
+              await sleep(800);
+            }
+            window.scrollTo(0, 0);
+          });
+          await page.waitForTimeout(1500);
+        } catch {
+          /* scroll is best-effort */
+        }
 
-    page.off("console", onConsole);
-    page.off("pageerror", onPageError);
-    page.off("response", onResponse);
-
-    context.selectorsMatched = rawFieldsList.length > 0;
-    context.itemsFound = rawFieldsList.length;
-    // Single-page path leaves us on the listing, so the card count can be taken
-    // here rather than threaded out of the extractor.
-    if (itemSelector) {
-      try {
-        context.listingItemsSeen = await page.evaluate(
-          (sel: string) => document.querySelectorAll(sel).length,
-          itemSelector,
+        rawFieldsList = await extractRawFieldsFromListingPage(
+          page, fieldMappings, listingSelector, itemSelector, revealSelector, pagination,
+          runMode.abort,
         );
-      } catch {
-        // Diagnostic only.
       }
-    }
 
-    // Extract form data once from the single page and attach to all records.
-    // This is a listing-only site (no pageFlow), so a live <form> on the listing
-    // is likely a decoy — prefer the verified static blob (LRN-APPLY-7).
-    if (formCaptureConfig && rawFieldsList.length > 0) {
-      const formData = await extractFormDataOrFallback(
-        page,
-        formCaptureConfig,
-        true,
-      );
-      if (formData) {
-        for (const raw of rawFieldsList) {
-          raw["_formData"] = formData;
+      // Still nothing → dump WAF-challenge diagnostics: did lib.js load? did
+      // winsocks() throw? did any subsequent navigation happen?
+      if (rawFieldsList.length === 0) {
+        console.warn("[scrape] WAF/challenge diagnostics:", {
+          subResources,
+          consoleMessages,
+          pageErrors,
+          cookies: await page.context().cookies(targetUrl).catch(() => []),
+        });
+      }
+
+      page.off("console", onConsole);
+      page.off("pageerror", onPageError);
+      page.off("response", onResponse);
+
+      // Single-page path leaves us on the listing, so the card count can be taken
+      // here rather than threaded out of the extractor.
+      if (itemSelector) {
+        try {
+          listingStats.listingItemsSeen = await page.evaluate(
+            (sel: string) => document.querySelectorAll(sel).length,
+            itemSelector,
+          );
+        } catch {
+          // Diagnostic only.
+        }
+      }
+
+      // Extract form data once from the single page and attach to all records.
+      // This is a listing-only site (no pageFlow), so a live <form> on the listing
+      // is likely a decoy — prefer the verified static blob (LRN-APPLY-7).
+      if (formCaptureConfig && rawFieldsList.length > 0) {
+        const formData = await extractFormDataOrFallback(
+          page,
+          formCaptureConfig,
+          true,
+        );
+        if (formData) {
+          for (const raw of rawFieldsList) {
+            raw["_formData"] = formData;
+          }
         }
       }
     }
+
+    return { items: rawFieldsList, seen: listingStats.listingItemsSeen };
   }
+
+  const perUrl: ListingUrlResult[] = [];
+  for (const target of listingTargets) {
+    // The deadline passed. Stop visiting pages and let the guard below hand the
+    // run to whoever owns its terminal status; deciding an outcome here would
+    // write one behind the timeout handler's back.
+    if (isAborted(runMode.abort)) break;
+    // That same 15-minute timer deletes a manual run's listings when it fires.
+    // Stopping short of it turns a page we cannot afford into a refusal we
+    // control, on a run that has already deleted nothing.
+    if (
+      listingTargets.length > 1 &&
+      listingBudgetExhausted(scrapeStartedAt, Date.now(), SCRAPE_TIMEOUT_MS)
+    ) {
+      console.warn(`[scrape] out of time budget before ${target.url}`);
+      perUrl.push({ url: target.url, items: [], seen: null, error: BUDGET_EXHAUSTED });
+      continue;
+    }
+    try {
+      const one = await extractOneTarget(target.url);
+      // Which page a job came from, carried into Job.rawData so the next run
+      // can tell "this page went dark" from "this page was always empty".
+      for (const raw of one.items) raw[LISTING_URL_TAG] = target.url;
+      perUrl.push({ url: target.url, items: one.items, seen: one.seen, error: null });
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      console.warn(`[scrape] listing page failed: ${target.url} — ${msg}`);
+      perUrl.push({ url: target.url, items: [], seen: null, error: msg });
+    }
+  }
+
+  // Same rule as the persistence guard further down: once the deadline has
+  // passed, the timeout handler owns this run's terminal status. Every outcome
+  // below writes one, so none of them may be reached.
+  if (isAborted(runMode.abort)) {
+    console.warn(
+      `[scrape] deadline passed while reading listing pages — writing nothing for ${site.siteUrl}`,
+    );
+    return {
+      success: false,
+      scrapeRunId,
+      jobCount: 0,
+      totalJobs: 0,
+      validJobs: 0,
+      invalidJobs: 0,
+      failureCategory: "timeout",
+      ...(scheduled ? { scheduled: true } : {}),
+    };
+  }
+
+  const merged = mergeListingResults(perUrl);
+  context.selectorsMatched = merged.items.length > 0;
+  context.itemsFound = merged.items.length;
+  context.listingItemsSeen = merged.listingItemsSeen;
+
+  // One dedup across every page: a job listed on two department pages is one
+  // job, and MAX_EXTRACTED_ITEMS caps the site rather than each page.
+  let rawFieldsList = dedupeAndCapRawFields(merged.items);
+
+  const listingOutcome = decideListingOutcome({
+    perUrl,
+    targets: listingTargets,
+    previous: previousListingCounts,
+    scheduled,
+    savedByUrl: savedCountsByUrl(rawFieldsList),
+  });
+  if (listingOutcome.kind === "rethrow") {
+    // Every page failed — indistinguishable from the single-page site whose one
+    // page failed, so it takes the path it has always taken.
+    throw new Error(listingOutcome.error);
+  }
+  if (listingOutcome.kind === "soft_fail") {
+    return await refuseListingRun(scrapeRunId, listingOutcome);
+  }
+  const listingWarnings = listingOutcome.warnings;
 
   // Apply maxJobs limit if set (e.g. "Test 1 Job" from dashboard)
   if (maxJobs && rawFieldsList.length > maxJobs) {
@@ -3880,6 +4105,10 @@ async function executeScrape(
       },
     });
     scrapeWarnings.push(...buildLocationWarnings(savedJobs));
+    // What each listing page contributed, saved/seen. Only present on a site
+    // that has more than one, and the only place a cross-page dedup collapse
+    // is attributable to the page it happened on.
+    scrapeWarnings.push(...listingWarnings);
     // TIER 1 — cards shown on the listing vs rows actually written. The gap is
     // never an error on its own: true duplicate postings, dead detail pages
     // skipped by design, validator rejects, the maxJobs cap and cards with no

@@ -98,7 +98,21 @@ export async function listSites(
   if (urlSearch) {
     where.siteUrl = { contains: urlSearch, mode: "insensitive" };
   } else if (siteUrl) {
-    where.siteUrl = siteUrl;
+    // A site may scrape several listing pages (_meta.listingUrls), and only one
+    // of them can be its siteUrl. Without the second arm, onboarding a
+    // company's other department pages would find no match and create a second
+    // Site for an employer that already has one — the duplicate-company bug
+    // listingUrls exists to prevent. Callers tell the two apart by comparing
+    // the row's own siteUrl with what they asked for.
+    where.OR = [
+      { siteUrl },
+      {
+        fieldMappings: {
+          path: ["_meta", "listingUrls"],
+          array_contains: [siteUrl],
+        },
+      },
+    ];
   }
   if (companyNameSearch) {
     where.companyName = { contains: companyNameSearch, mode: "insensitive" };
@@ -313,6 +327,49 @@ export async function createAnalysisJob(
   return workerJob;
 }
 
+/**
+ * The listing pages a site scrapes, canonicalised — or null when it is an
+ * ordinary one-page site.
+ *
+ * Every page must sit on the site's own host. Robots and the scraping-policy
+ * review are established per origin from `siteUrl`, so a listing URL somewhere
+ * else would be scraped without a policy ever having been checked for it.
+ */
+function canonicalizeListingUrls(
+  input: string[] | undefined,
+  siteUrl: string,
+): string[] | null {
+  if (!input || input.length === 0) return null;
+
+  let host: string;
+  try {
+    host = new URL(siteUrl).host;
+  } catch {
+    throw new ValidationError(`Site has an unparsable siteUrl: ${siteUrl}`);
+  }
+
+  const seen = new Set<string>();
+  for (const raw of input) {
+    let url: URL;
+    try {
+      url = new URL(raw.trim());
+    } catch {
+      throw new ValidationError(`listingUrls: not a URL: ${raw}`);
+    }
+    if (url.protocol !== "http:" && url.protocol !== "https:") {
+      throw new ValidationError(`listingUrls: must be http(s): ${raw}`);
+    }
+    if (url.host !== host) {
+      throw new ValidationError(
+        `listingUrls: ${url.host} is not the site's host (${host}). ` +
+          "A page on another host has had no robots/policy check of its own.",
+      );
+    }
+    seen.add(url.href);
+  }
+  return [...seen];
+}
+
 export async function saveSiteConfig(
   siteId: string,
   config: {
@@ -334,12 +391,15 @@ export async function saveSiteConfig(
     minPublishDate?: string;
     minPublishDays?: number;
     locationFallback?: string;
+    listingUrls?: string[];
   }
 ) {
   const site = await prisma.site.findUnique({ where: { id: siteId } });
   if (!site) {
     throw new NotFoundError("Site", siteId);
   }
+
+  const listingUrls = canonicalizeListingUrls(config.listingUrls, site.siteUrl);
 
   const fieldMappingsWithMeta: Record<string, unknown> = {
     ...config.fieldMappings,
@@ -349,6 +409,7 @@ export async function saveSiteConfig(
       revealSelector: config.revealSelector || null,
       originalMappings: config.originalMappings || null,
       formCapture: config.formCapture,
+      listingUrls,
       pagination: config.pagination || null,
       setupScript: config.setupScript || null,
       loadMoreSelector: config.loadMoreSelector || null,

@@ -193,6 +193,22 @@ export const updateSiteConfigSchema = z.object({
       }),
     ])
     .optional(),
+  // Several listing pages belonging to ONE employer, scraped into this one
+  // site. For a company whose careers site splits jobs by department (a hub
+  // linking /stores, /head-office, /logistics): without this each page needs
+  // its own Site row, and since company identity lives on Site — logo, about,
+  // HQ, all keyed by siteId — that publishes the same employer several times
+  // over on the public jobs site.
+  //
+  // When set and non-empty this is the COMPLETE list of pages to scrape, and
+  // `siteUrl` becomes the company's canonical careers page: shown in the
+  // dashboard, used to derive the company homepage, and NOT itself scraped
+  // unless it appears here. Leave it unset for the ordinary one-page site.
+  //
+  // Same host as `siteUrl` (checked in saveSiteConfig, where the site is
+  // known): policy/robots review is origin-scoped, so a page on another host
+  // would be scraped without one. Stored under fieldMappings._meta.
+  listingUrls: z.array(z.url().max(500)).max(10).optional(),
   // Optional JS snippet evaluated in the page context once after page load
   // and before extraction. Lets SPAs that hide most content behind app state
   // (Angular scope flags, React store slices) render the full listing so the
