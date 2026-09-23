@@ -11,11 +11,14 @@
 Description=haide nightly scrape sweep (02:00 Asia/Jerusalem)
 
 [Timer]
-OnCalendar=*-*-* 02:00:00
-# Named explicitly rather than inherited from the host clock: the report's date
-# label, the selection's freshness window and this timer all mean the same night
-# only if they agree about which timezone that is (SWEEP_TZ, same default).
-Timezone=Asia/Jerusalem
+# The timezone goes INSIDE the calendar expression. There is no Timezone= key in
+# [Timer] — systemd parses the file, logs "Unknown key name 'Timezone' in
+# section 'Timer', ignoring", and runs the timer on the HOST clock. This box is
+# Etc/UTC, so the ignored form would have fired the sweep at 02:00 UTC = 05:00
+# Jerusalem, and its 260-minute enqueue budget would have run to 09:20 local —
+# two hours past the 07:01 public read the budget exists to stay clear of.
+# Caught by `systemd-analyze verify` on the box, not by reading the file.
+OnCalendar=*-*-* 02:00:00 Asia/Jerusalem
 
 # NO Persistent=true. A missed night is a night that did not happen, and the
 # fleet is re-selected from scratch every run anyway — a site that was not

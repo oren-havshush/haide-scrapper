@@ -12,8 +12,9 @@
 Description=haide nightly policy sweep (06:00 Asia/Jerusalem)
 
 [Timer]
-OnCalendar=*-*-* 06:00:00
-Timezone=Asia/Jerusalem
+# In the calendar expression, not a Timezone= key — there is no such key in
+# [Timer], and systemd ignores it and uses the host clock. See the scrape timer.
+OnCalendar=*-*-* 06:00:00 Asia/Jerusalem
 
 # Same reasoning as the scrape timer: a missed policy pass is caught by the next
 # one — the selection is recomputed from scratch and the cap is per night, not
