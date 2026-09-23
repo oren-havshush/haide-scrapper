@@ -1,0 +1,65 @@
+{
+  "_exportedAt": "2026-09-23T13:44:32.061Z",
+  "_note": "Mirror of the live config. The DB is authoritative; the worker never reads this file. setupScript lives alongside in <slug>.setup.js.",
+  "id": "cmue21era000e01r0zjchpkcu",
+  "siteUrl": "https://www.domicile.co.il/%d7%93%d7%a8%d7%95%d7%a9%d7%99%d7%9d-%d7%91%d7%93%d7%95%d7%9e%d7%99%d7%a1%d7%99%d7%9c/",
+  "companyName": "דומיסיל יבוא וייצוא בע\"מ",
+  "status": "ACTIVE",
+  "setupScriptFile": "domicile--chpkcu.setup.js",
+  "pageFlow": [],
+  "fieldMappings": {
+    "_meta": {
+      "savedAt": "2026-09-23T13:41:56.044Z",
+      "pagination": null,
+      "formCapture": null,
+      "listingUrls": null,
+      "itemSelector": "#haide-jobs-root [data-haide-job]",
+      "minPublishDate": null,
+      "minPublishDays": null,
+      "revealSelector": null,
+      "listingSelector": null,
+      "applyLoginReason": null,
+      "browserOverrides": null,
+      "loadMoreSelector": null,
+      "locationFallback": null,
+      "originalMappings": null,
+      "applyRequiresLogin": false
+    },
+    "title": {
+      "source": "MANUAL",
+      "selector": ".__ai-title",
+      "confidence": 1,
+      "capturedOnUrl": "https://www.domicile.co.il/%d7%93%d7%a8%d7%95%d7%a9%d7%99%d7%9d-%d7%91%d7%93%d7%95%d7%9e%d7%99%d7%a1%d7%99%d7%9c/"
+    },
+    "location": {
+      "source": "MANUAL",
+      "selector": ".__ai-location",
+      "confidence": 1,
+      "capturedOnUrl": "https://www.domicile.co.il/%d7%93%d7%a8%d7%95%d7%a9%d7%99%d7%9d-%d7%91%d7%93%d7%95%d7%9e%d7%99%d7%a1%d7%99%d7%9c/"
+    },
+    "description": {
+      "source": "MANUAL",
+      "selector": ".__ai-description",
+      "confidence": 1,
+      "capturedOnUrl": "https://www.domicile.co.il/%d7%93%d7%a8%d7%95%d7%a9%d7%99%d7%9d-%d7%91%d7%93%d7%95%d7%9e%d7%99%d7%a1%d7%99%d7%9c/"
+    },
+    "requirements": {
+      "source": "MANUAL",
+      "selector": ".__ai-requirements",
+      "confidence": 1,
+      "capturedOnUrl": "https://www.domicile.co.il/%d7%93%d7%a8%d7%95%d7%a9%d7%99%d7%9d-%d7%91%d7%93%d7%95%d7%9e%d7%99%d7%a1%d7%99%d7%9c/"
+    },
+    "externalJobId": {
+      "source": "MANUAL",
+      "selector": "[data-haide-job-id]",
+      "confidence": 1,
+      "capturedOnUrl": "https://www.domicile.co.il/%d7%93%d7%a8%d7%95%d7%a9%d7%99%d7%9d-%d7%91%d7%93%d7%95%d7%9e%d7%99%d7%a1%d7%99%d7%9c/"
+    },
+    "applicationInfo": {
+      "source": "MANUAL",
+      "selector": ".__ai-apply-email",
+      "confidence": 1,
+      "capturedOnUrl": "https://www.domicile.co.il/%d7%93%d7%a8%d7%95%d7%a9%d7%99%d7%9d-%d7%91%d7%93%d7%95%d7%9e%d7%99%d7%a1%d7%99%d7%9c/"
+    }
+  }
+}
