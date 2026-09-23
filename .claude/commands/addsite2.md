@@ -252,9 +252,23 @@ cluster size; straightforwardly scrapable with `li.item` + `/job/<slug>` detail 
 
 ### 2.3 Careers-hub gate — ONE employer is ONE site (`LRN-CO-2`)
 
-A `GRAY` page that links several listing pages of the **same employer** is a careers
-**hub**, not a dead end. It has no jobs of its own, so `topCluster` finds nothing — but
-its jobs are one click away, split by department.
+A careers page that links several listing pages of the **same employer** is a careers
+**hub**, not a dead end. It has no jobs of its own — but its jobs are one click away,
+split by department.
+
+**Run this check on EVERY lane, not just `GRAY`.** A hub having no jobs does NOT make it
+`GRAY`: `topCluster` counts repeating markup, and on a storefront or a heavily themed
+site the biggest repeating block is the site's own chrome. renuar.co.il's hub
+`/pages/דרושים` carries **zero** job rows and still triages
+**`YELLOW`, `topCluster: 28`** — those 28 are sidebar navigation links. Take that lane at
+face value and §3 builds a config against the menu: the rows extract, the completeness
+gates (§B2.5) fail them for having no description and no apply path, and the site is
+SKIPPED or REVIEWed while a real 37-job employer goes unonboarded.
+
+**The tell, before you build anything:** the rows you are about to extract carry no job
+signal — no req number, no per-row detail link, titles that read like navigation or
+product categories — and/or the page links to two or more same-host pages that
+content-verify as listings (below). Either one means: stop and treat it as a hub.
 
 **Onboard it as ONE site with `listingUrls`, never one site per link.** Company identity
 lives on the site row — `companyName`, the about copy, the HQ city, and the logo at
@@ -268,8 +282,13 @@ that actually carry repeating job markup:
 
 ```bash
 # for each same-host /pages/* | /careers/* link on the hub:
-npx tsx scripts/addsite-batch.ts triage --url "$CANDIDATE"   # lane != GRAY ⇒ a real listing
+npx tsx scripts/addsite-batch.ts triage --url "$CANDIDATE"
 ```
+
+A non-`GRAY` lane on the candidate is **not** enough on its own — that is the same trap
+as the hub's own 28-link nav cluster. Confirm the candidate's rows look like jobs (req
+numbers, per-row detail links, or role-shaped titles) before you count it as a listing
+page. A candidate whose cluster is the same size as the hub's is chrome, not jobs.
 
 Then:
 
@@ -283,9 +302,12 @@ Then:
   genuinely differ, route to REVIEW: per-page config overrides do not exist yet.
 - Cite `LRN-CO-2`; the worker contract is `LRN-WRK-21`.
 
-Reference: renuar.co.il — hub `/pages/דרושים` (0 jobs) linking
-`/pages/stores-and-points-of-sale` (28), `/pages/company-headquarters` (8) and
-`/pages/logistics-operations` (1). One site, 37 jobs, one company.
+Reference: renuar.co.il — hub `/pages/דרושים` (0 jobs, but triages `YELLOW`
+`topCluster: 28` off the storefront nav) linking `/pages/stores-and-points-of-sale` (28),
+`/pages/company-headquarters` (8) and `/pages/logistics-operations` (1). One site,
+37 jobs, one company. Renuar itself is **not** the shape to copy: it was already live on
+the stores page, and `siteUrl` is `@unique` and not patchable, so it keeps that URL and
+lists all three pages. A site onboarded fresh from the hub gets the hub as `siteUrl`.
 
 > **This is not pagination.** `pagination` walks pages 2..N of ONE listing;
 > `listingUrls` is several DIFFERENT listings. And it is not a `setupScript` that
