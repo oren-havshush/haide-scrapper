@@ -2927,3 +2927,68 @@
   and neither reports an error — the run just returns nothing.
 - **Generalizes to:** any site whose block page ships a descriptive id/class or body copy naming a
   cause. **Home:** `addsite2.md` §5 reachability; `recipes/waf-bypasses.md` §1.
+
+---
+
+## LRN-WRK-22 — a jobs board on another host cannot be bolted onto a Site, and `pageFlow[0].url` will not take you there
+
+- **Date / site:** 2026-09-23 · careers.jnj.com (Workday-backed, ended SKIPPED for an unrelated
+  reason — the apply flow requires account creation).
+- **What was attempted:** `siteUrl` is `www.careers.jnj.com`, the jobs live on
+  `jj.wd5.myworkdayjobs.com`. The Workday CXS API (`POST /wday/cxs/<tenant>/<site>/jobs`) is a
+  clean source — 22 Israeli jobs, native `jobReqId`, ISO `startDate`, apply URL, full description,
+  and the Israel location facets can be discovered from the response so a new site is picked up
+  automatically. The plan was a `setupScript` calling it, with `pageFlow[0].url` pointing the
+  worker at the board.
+- **Three walls, in the order they are hit:**
+  1. **`pageFlow[0].url` is inert.** Since `listingUrls` shipped (`LRN-WRK-21`) the extractor
+     navigates to `listingUrlOverride ?? listingStep.url`, and the override is the resolved
+     listing target — `[siteUrl]` when `_meta.listingUrls` is unset. So the run went to
+     `careers.jnj.com`, ran the setupScript there, and the relative `/wday/cxs/...` fetch
+     returned an empty body. **No error, no warning**: `COMPLETED`, 0 jobs, and a log line that
+     reads like a bad selector. The tell is the diagnostics block — `"url"` is the site URL, not
+     the pageFlow URL.
+  2. **`_meta.listingUrls` is host-locked** (`siteService.ts`): `listingUrls: <host> is not the
+     site's host`, because "a page on another host has had no robots/policy check of its own".
+     That is the guard working, not an obstacle to route around.
+  3. **The API cannot be read cross-origin.** Workday CXS sends no `Access-Control-Allow-Origin`;
+     from `careers.jnj.com` both `cors` and `no-cors` fetches fail outright (CSP blocks the
+     request leaving, and an opaque response would be unreadable anyway — the `LRN-WAF-3` ceiling).
+- **Rule:** an ATS board on a different host is a **separate Site** (`addsite2.md` §2.1), never a
+  `pageFlow`/`listingUrls` pointer from the wrapper record. Decide that before building, because
+  `siteUrl` cannot be PATCHed — switching means a new record, hence a new id, hence a re-captured
+  company profile and logo (`/logos/<siteId>.png`) and a policy review of its own.
+- **Check it costs nothing to run first:** does the wrapper host serve the same jobs itself?
+  careers.jnj.com does — `/en/jobs/?country=Israel`, same 22 postings, the req id in each detail
+  URL (`/jobs/r-100261/...`), location and category on the card. Same origin, so no guard is in
+  play. Look for that before proposing a restructure.
+- **Generalizes to:** every Workday/Greenhouse/Lever board fronted by a marketing careers domain.
+  **Home:** `addsite2.md` §2.1; `recipes/spa-frameworks.md` (Workday).
+
+---
+
+## LRN-SETUP-19 — doubling a backslash to protect it is what destroys it, and the run still looks green
+
+- **Date / site:** 2026-09-23 · careers.jnj.com, while splitting a Workday description into
+  description/requirements.
+- **Signal:** the split silently stopped matching. Requirements went to **0/22 while every other
+  field stayed at 1.00** and `verify-config` passed — the stored script was byte-identical to the
+  one sent, because the corruption happened *before* the PUT.
+- **Mechanism, and why the usual workaround fails.** CLAUDE.md records that every path that
+  writes a file decodes escapes. The sharp edge is what that does to a *doubled* backslash:
+  `new RegExp("^(Qualifications|Requirements)\b")` is the correct way to put a word boundary in
+  a JS **string**, but the write path collapses the pair to one backslash, and JS then reads the
+  survivor as the backspace escape. The regex ends up holding a raw 0x08 and matches nothing.
+  A single `\s` in a regex *literal* passes through untouched, which is what makes the doubled
+  form look like the safe one. It happened twice in one session — once via `node -e` string
+  replacement (already forbidden), once via a quoted `cat <<'EOF'` heredoc.
+- **Fix — remove the escape rather than defend it.** A word boundary was never needed:
+  `s.toLowerCase().indexOf("qualification") === 0` is the same test with no backslash anywhere,
+  and it rejects "Qualified …" as required. Prefer a plain string test, a character class, or
+  `String.fromCharCode(n)` over any escape that has to survive a write.
+- **Verify by bytes, not by eye.** `\b` and a raw backspace are indistinguishable in a terminal
+  and in most diffs; `JSON.stringify` renders both as `\b`. Grep the written file for the control
+  character itself (`s.split(String.fromCharCode(8)).length - 1`) and print every regex literal
+  raw before trusting a script. Do it for `\s` and `\d` too — the same collapse drops those.
+- **Generalizes to:** any `setupScript`, hook or config written from this environment.
+  **Home:** `CLAUDE.md` (escape decoding); `recipes/setupscript-patterns.md`.
