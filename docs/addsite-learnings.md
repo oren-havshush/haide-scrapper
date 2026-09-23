@@ -2994,3 +2994,73 @@
 - **Generalises to:** any future change that makes one run write on behalf of several
   sources. The rule is that a partial view of the truth must never become the whole
   published state.
+
+---
+
+## LRN-HQ-5 — a Hebrew one-letter prefix splits a two-word city, and the shorter half is also a real city
+
+- **Date / site:** 2026-09-23 · domicile.co.il (`cmue21era000e01r0zjchpkcu`), דומיסיל יבוא וייצוא.
+- **Signal:** `/company-profile` returned `WRITTEN COMPLETE … address city=ברק`. `ברק` is a real
+  `city.csv` entry (line 973, the moshav in the Yizre'el valley), so the city gate passed and the
+  status came back COMPLETE. The employer is in Bnei Brak and Gezer; it has nothing to do with ברק.
+- **Mechanism (reproduced, deterministic, no LLM):** the about page prints
+  `אולם התצוגה המרכזי של דומיסיל שוכן ברחוב לח"י 24, במתחם העיצוב בבני ברק …`. The city name
+  carries the ordinary Hebrew preposition ב-, so the segment reads `בבני ברק`, not `בני ברק`.
+  `matchCityInAddress()` (`scripts/lib/city-csv.ts`) cannot match the two-word entry against the
+  prefixed first word, scans on, and finds the **second** word `ברק` — itself a city.csv entry.
+  Strip the prefix and the same call returns `בני ברק` correctly:
+
+  ```
+  matchCityInAddress('במתחם העיצוב בבני ברק')  -> "ברק"        # wrong, and gate-clean
+  matchCityInAddress('במתחם העיצוב בני ברק')   -> "בני ברק"    # correct
+  ```
+
+  This is the `\b`-after-Hebrew problem from CLAUDE.md in a new place: the prefix is not a word
+  boundary, so the longest-match preference never gets a chance to fire.
+- **Blast radius (measured against the live list):** **100 of 1,367** `city.csv` entries are
+  multi-word names whose tail is *itself* a `city.csv` entry, and every one of them resolves to
+  the WRONG city when the address carries a one-letter prefix — `בני ברק`→`ברק`, `גן יבנה`→`יבנה`,
+  `עין כרמל`→`כרמל`, `הר חברון`→`חברון`, `תל קציר`→`קציר`. `בני ברק` is the one that matters:
+  it is a major employment centre, so it appears in real HQ addresses constantly.
+- **Why the gates cannot see it:** the city gate proves a city EXISTS, never that it is THIS
+  company's (company-profile §5, the same blind spot as `LRN-HQ-4`). `verify-location-csv` reads
+  job locations, not `companyHqCity`, so nothing on the onboarding path looks at this value at all.
+- **Second, independent error on the same site:** the address the capture picked was the flagship
+  **showroom**. The about page says in plain words that the logistics centre *and the head offices*
+  moved from Modiin `לאזור התעשייה החדש בכניסה לקיבוץ גזר`. A company can publish several
+  addresses; the capture takes a compact one, not the one labelled as the head office.
+- **Fix (this site):** `PUT /company-profile?force=1` with `companyHqAddress` only
+  (`אזור התעשייה בכניסה לקיבוץ גזר`), so the industrial-zone detail lives in the address. The
+  address has no provenance protection (`LRN-HQ-2`); the site's `adminNote` says so.
+- **Root cause of the fallback, and the owner's decision:** `גזר` was **absent from `city.csv`**
+  altogether — while its Gezer-council neighbours `קיבוץ חולדה`, `קיבוץ נען`, `כרמי יוסף`,
+  `בית חשמונאי`, `יציץ` and `פדיה` were all listed, so it was an omission, not a policy. That one
+  missing row produced BOTH symptoms: the three logistics jobs fell back to the region
+  `אזור שפלה`, and the HQ city could not be stored at all, because `saveCompanyHqCity()` refuses
+  a region by design (*"A job may be in a region; a company headquarters is at an address"*,
+  `src/services/siteService.ts`). **Owner: add the city.** `גזר` was appended to
+  `CSV files/city.csv` on 2026-09-23 and `worker/data/il-places.ts` REGENERATED
+  (`npx tsx scripts/build-il-places.ts` — the file is auto-generated, never hand-edited);
+  `src/lib/locations.test.ts` runs in CI and asserts the two lists are identical in both
+  directions, so a one-sided edit fails the build (verified by breaking it deliberately:
+  `FAIL: no city.csv entry outside IL_CANONICAL (offenders: גזר)`, exit 1). The employer's own
+  wording stays in the description; only the place goes in `location`.
+- **A new city.csv row does NOT take effect on the server until a deploy.** The three job
+  locations updated to `גזר` on the very next scrape — the worker passes a value its gazetteer
+  cannot resolve through VERBATIM rather than dropping it, so the scrape write path never
+  consulted the new list. But `PUT /company-hq-city` validates against the `IL_CANONICAL`
+  **bundled into the deployed build** (deliberately — `city.csv` is absent from the
+  `output: "standalone"` image), so it answered
+  `400 Not a known city: "גזר"` with the row already in the repo. Same for the dashboard's manual
+  job-location edit (`resolveLocationInput` → `jobService`). The city therefore lands in two
+  steps: the scraped values immediately, the operator-authored HQ city only after
+  `./deploy.sh haide-prod`. Until then leave `operator:none` in place — it is what stops a
+  `--force` re-capture writing `ברק` back over the null.
+- **Rule:** after a capture, re-read the address the city came from. If the city is a *short* name
+  and the address contains a longer `city.csv` entry ending in that same word, the prefix split it.
+  And check whether the address is labelled as the head office at all.
+- **Not done (owner's call):** no extractor change — stripping a leading ב/ל/מ/ה/ו/כ/ש before the
+  scan, or preferring the longest `city.csv` match in a segment, would fix all 100, and neither is
+  an onboarding change. No fleet sweep of stored `companyHqCity` values.
+- **Generalises to:** every Israeli address written in running prose rather than as a postal line —
+  which is most about pages. **Home:** `company-profile.md` §3.1 / §5.
