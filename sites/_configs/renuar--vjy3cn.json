@@ -1,5 +1,5 @@
 {
-  "_exportedAt": "2026-09-22T12:55:29.544Z",
+  "_exportedAt": "2026-09-23T09:09:59.066Z",
   "_note": "Mirror of the live config. The DB is authoritative; the worker never reads this file. setupScript lives alongside in <slug>.setup.js.",
   "id": "cmucn360g000h01rxmvvjy3cn",
   "siteUrl": "https://renuar.co.il/pages/stores-and-points-of-sale",
@@ -9,9 +9,14 @@
   "pageFlow": [],
   "fieldMappings": {
     "_meta": {
-      "savedAt": "2026-09-22T12:51:39.336Z",
+      "savedAt": "2026-09-23T09:05:28.846Z",
       "pagination": null,
       "formCapture": null,
+      "listingUrls": [
+        "https://renuar.co.il/pages/stores-and-points-of-sale",
+        "https://renuar.co.il/pages/company-headquarters",
+        "https://renuar.co.il/pages/logistics-operations"
+      ],
       "itemSelector": "accordion-disclosure.accordion",
       "minPublishDate": null,
       "minPublishDays": null,
@@ -32,6 +37,11 @@
     "location": {
       "source": "auto",
       "selector": ".__ai-loc",
+      "confidence": 0.95
+    },
+    "department": {
+      "source": "auto",
+      "selector": ".__ai-dept",
       "confidence": 0.95
     },
     "description": {
