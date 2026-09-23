@@ -111,6 +111,64 @@
 - **Generalizes to:** any Radware/ShieldSquare-fronted site. The `reach`/`triage`
   probe should treat a cross-host redirect to a known challenge host as RED.
   **Home:** Step 3 reachability gate / `reach` script.
+- **Worker-confirmed and SKIPPED (2026-09-23, re-onboarding attempt).** The original
+  entry asserted "none within the worker's means" without testing from the container —
+  the probe recipe did not exist yet. Now measured. Site created this time
+  (`cmudy8r0p000801r0yqe11adn`, **SKIPPED**). Two read-only parity probes inside
+  `haide-scrapper-worker-1`, both ending on the captcha, egressing from
+  **194.88.110.149** (the `ssr=` param base64-decodes to the box IP) with
+  `SCRAPE_PROXY_URL` **unset**:
+  - default **HeadlessChrome** UA → HTTP 200, 17,781 B, `bodyTextLen 58`, 0 anchors;
+  - `SCRAPE_USER_AGENT` = desktop **Chrome/131** → HTTP 200, 17,861 B, same body, 0 anchors.
+
+  So `browserOverrides.userAgent` does **not** fix this one, and `LRN-WAF-5`'s
+  "a local block is not a worker block" escape hatch **does not apply** — same shape as
+  `LRN-WAF-6`. On the Chrome-131 run the Angular app partly booted (`/api/shared`,
+  `/dictionary/he.json`, `/api/search/service-providers` all 200) **before** the
+  challenge interdicted, which is the same "the origin API is behind the same wall"
+  finding the entry already recorded for `/api/careers` — a couple of 200s mid-boot are
+  not access.
+- **The gate STILL does not catch this, six days on.** `triage` returned
+  `lane: GRAY, reachable: true, topCluster 2` on 2026-09-23 — the exact miss this entry
+  asked to fix. `scripts/lib/challenge-detect.ts` (shipped 2026-09-22, `LRN-WAF-6`)
+  covers Reblaze and Incapsula only, and **every rule misses ShieldSquare**:
+  `BLOCK_TEXT_RE` has no ShieldSquare phrase; rule 2 fires only for the two named
+  bootstraps; the redirect lands on a standard **200**, so the nonstandard-status rule
+  is silent; and the interstitial is **~17.8 KB**, far over `MIN_REAL_HTML_BYTES`
+  (2000), so the size backstop never fires. `classifyResponse` therefore returns
+  `challenged: false` on a pure captcha page.
+  **Fix to make — and the obvious version of it is WRONG.** Measured against all 147
+  ACTIVE sites (2026-09-23, raw-HTML fetch): 4 carry Radware/ShieldSquare markers, and
+  **2 of those are healthy pages** — mizrahi-tefahot.co.il (192,710 B, has anchors,
+  29 jobs) and careers.iec.co.il (700,222 B, has anchors, 28 jobs). So
+  `__uzdbm_`, `stormcaster.js`, `SSJSConnectorObj` **and the literal string
+  `validate.perfdrive.com`** all ship on working pages. Promoting any of them to
+  `BLOCK_TEXT_RE` would RED four live sites serving 82 jobs — the exact
+  `_Incapsula_Resource`/ono.ac.il trap this module is built around. They are
+  **BOOTSTRAP class**: conclusive only when `looksLikeShell` (no anchors) also holds.
+  That combination is measurably safe here — the two interstitials in the scan,
+  fibi.co.il (118,374 B) and iaa.gov.il (15,049 B), both have **no anchors**, while both
+  healthy pages do.
+  The only safe *conclusive* markers are the titles, and there are **three variants**,
+  not one: `ShieldSquare Captcha`, `Radware Captcha Page` (iaa.gov.il) and `Radware Page`
+  (fibi.co.il). Zero false positives across the 147 — the healthy pages' titles are
+  ordinary Hebrew job-page titles.
+  **Size cannot help at all:** FIBI's interstitial is 118 KB, 59× `MIN_REAL_HTML_BYTES`.
+  **And the genuinely conclusive signal is not available to the function:** what proves a
+  block is being *redirected to* `validate.perfdrive.com`, but `classifyResponse(html,
+  status?)` never receives the final URL — that needs a signature change or a
+  caller-side check.
+  **Caveat on the measurement:** the scan used raw `fetch`, while the gates pass rendered
+  `page.content()`. Marker presence is solid either way (inline source scripts), but
+  re-confirm the anchors signal on rendered DOM before leaning on it. The one rendered
+  data point agrees: the worker probe saw `totalAnchors: 0` on the captcha page.
+  **Do not read the scan as "iaa/fibi are broken":** both served *this dev IP* an
+  interstitial while completing fine in production (10 and 15 jobs) — `LRN-WAF-5` again.
+- **Cheap tell that worked:** `robots.txt` is served **unchallenged** (200) while
+  `/career/*` 302s — same as `LRN-WAF-6`. It is permissive (`Allow: /`, no `/career/`
+  disallow), so the blocker is **technical, not policy**. `sitemap.xml` also returns 200
+  but serves the **Angular SPA shell, not XML**, so there are no detail URLs to harvest
+  around the wall.
 
 ### LRN-WAF-5 — Incapsula that blocks the SPOOFED Chrome UA and the dev IP, not the worker
 - **Date / site:** 2026-09-17 · tikshoov.co.il (`cmu5mleu7000c01p950bo7eqx`, ACTIVE, 101 jobs)
