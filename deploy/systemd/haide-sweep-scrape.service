@@ -1,0 +1,56 @@
+# The nightly scrape sweep.
+#
+# Installed by deploy.sh, NEVER enabled by it. Installing a unit file changes
+# nothing; `systemctl enable --now` is a decision, and it is taken by hand once
+# a watched run has been read. @REMOTE_DIR@ is substituted at install time from
+# deploy.sh's own REMOTE_DIR, so the two cannot disagree.
+#
+# What this runs is the `sweep` compose service: the worker's image and the
+# worker's environment block through a YAML anchor, with the worker's
+# healthcheck disabled and behind a profile so `docker compose up -d` never
+# starts it. `run` ignores profiles, which is what makes that safe.
+
+[Unit]
+Description=haide nightly scrape sweep
+Documentation=file://@REMOTE_DIR@/docs/addsite-learnings.md
+# The database has to be up. Wants, not Requires: if docker is slow the sweep
+# should try and report, not be cancelled silently by systemd.
+Wants=docker.service
+After=docker.service network-online.target
+
+[Service]
+Type=oneshot
+WorkingDirectory=@REMOTE_DIR@
+
+# Longer than the sweep can possibly take, or systemd kills it mid-scrape and
+# the night's work is a container SIGKILLed between a delete and its inserts.
+# SWEEP_MAX_RUNTIME_MINUTES (260) stops ENQUEUEING; the last site enqueued still
+# has its per-site budget (18m) to finish, and the report is written after that.
+# 330 minutes is that plus an hour of slack, and still ends before 07:30.
+TimeoutStartSec=330min
+
+# --name, so `docker ps -f name=haide-sweep-` finds it. deploy.sh refuses to
+# deploy while any container with that prefix is running, and that guard is the
+# only thing standing between a deploy and a half-written site.
+#
+# --rm is deliberately NOT used: ExecStopPost below removes the container
+# instead, so it survives a timeout or a kill long enough to be inspected, and
+# is cleaned up either way.
+ExecStart=/usr/bin/docker compose run --name haide-sweep-scrape -T sweep \
+    node_modules/.bin/tsx worker/sweep/nightly.ts --now
+
+# Runs on success, on failure, and after a TimeoutStartSec kill. Without it a
+# timed-out sweep leaves a container holding the name, and the NEXT night's
+# `docker compose run --name haide-sweep-scrape` fails before it starts — one
+# bad night becoming every night. `|| true` because the usual case is that the
+# container is already gone.
+ExecStopPost=-/bin/sh -c 'docker rm -f haide-sweep-scrape >/dev/null 2>&1 || true'
+
+# The report is the point of the run, and journalctl is where it is read until
+# mail is switched on.
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=haide-sweep-scrape
+
+[Install]
+WantedBy=multi-user.target

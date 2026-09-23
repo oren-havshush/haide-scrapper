@@ -1,0 +1,35 @@
+# 02:00 Asia/Jerusalem, every day.
+#
+# The hour is fixed by what happens at the other end of the night: the public
+# jobs site reads this database directly at 07:01 and keeps its own copy for the
+# day, so everything has to be written and settled before 07:00. From 02:00,
+# SWEEP_MAX_RUNTIME_MINUTES=260 stops enqueueing at 06:20 and the last site's
+# 18-minute budget lands at 06:38. worker/lib/sweepBudget.test.ts asserts that
+# arithmetic, so moving this line without moving that one fails a test.
+
+[Unit]
+Description=haide nightly scrape sweep (02:00 Asia/Jerusalem)
+
+[Timer]
+OnCalendar=*-*-* 02:00:00
+# Named explicitly rather than inherited from the host clock: the report's date
+# label, the selection's freshness window and this timer all mean the same night
+# only if they agree about which timezone that is (SWEEP_TZ, same default).
+Timezone=Asia/Jerusalem
+
+# NO Persistent=true. A missed night is a night that did not happen, and the
+# fleet is re-selected from scratch every run anyway — a site that was not
+# scraped simply falls outside its 20h freshness window and is picked up
+# tonight. Catching up at 11:00 on boot would instead start a four-hour fleet
+# scrape in the middle of a working day, while an operator is using the
+# dashboard, and would land its writes long after the public site had already
+# read.
+Persistent=false
+
+# Spread the start over a minute. One box, so this is not thundering-herd
+# protection; it keeps the sweep from starting in the same second as anything
+# else on a *-*-* 02:00:00 schedule.
+RandomizedDelaySec=60
+
+[Install]
+WantedBy=timers.target

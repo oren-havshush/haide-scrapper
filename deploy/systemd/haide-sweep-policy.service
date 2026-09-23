@@ -1,0 +1,37 @@
+# The nightly policy sweep.
+#
+# A separate unit and a separate run from the scrape sweep, which removes the
+# ordering problem between them entirely. It does NOT remove the overlap: the
+# scrape sweep can still be enqueueing at 06:00, on the same FIFO queue, one job
+# at a time — so a policy job may wait behind a long scrape before it is
+# claimed. worker/lib/policyJobWait.ts times the wait from CLAIM, not from
+# enqueue, precisely because of this window.
+#
+# Installed by deploy.sh, never enabled by it.
+
+[Unit]
+Description=haide nightly policy sweep
+Wants=docker.service
+After=docker.service network-online.target
+
+[Service]
+Type=oneshot
+WorkingDirectory=@REMOTE_DIR@
+
+# Shorter than the scrape sweep's: this is a capped 25 checks
+# (SWEEP_POLICY_MAX_PER_NIGHT), each with its own budget, and it has no fleet to
+# walk. Still generous enough to cover the worst case of every check waiting
+# behind a scrape.
+TimeoutStartSec=120min
+
+ExecStart=/usr/bin/docker compose run --name haide-sweep-policy -T sweep \
+    node_modules/.bin/tsx worker/sweep/policy.ts --now
+
+ExecStopPost=-/bin/sh -c 'docker rm -f haide-sweep-policy >/dev/null 2>&1 || true'
+
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=haide-sweep-policy
+
+[Install]
+WantedBy=multi-user.target

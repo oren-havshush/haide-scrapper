@@ -1,0 +1,27 @@
+# 06:00 Asia/Jerusalem, every day.
+#
+# Four hours after the scrape sweep starts, which is not four hours after it
+# finishes — on a long night the scrape sweep is still enqueueing at 06:00. That
+# overlap is known and handled: the two share one FIFO queue and one worker, so
+# a policy job simply waits its turn, and policyJobWait.ts measures its budget
+# from when it is CLAIMED rather than from when it is enqueued. Timing the
+# budget from enqueue reported healthy checks as timed_out every night the two
+# overlapped.
+
+[Unit]
+Description=haide nightly policy sweep (06:00 Asia/Jerusalem)
+
+[Timer]
+OnCalendar=*-*-* 06:00:00
+Timezone=Asia/Jerusalem
+
+# Same reasoning as the scrape timer: a missed policy pass is caught by the next
+# one — the selection is recomputed from scratch and the cap is per night, not
+# per site — and a catch-up run started on boot would compete with whatever the
+# box was doing at the time.
+Persistent=false
+
+RandomizedDelaySec=60
+
+[Install]
+WantedBy=timers.target

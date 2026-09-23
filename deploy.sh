@@ -222,6 +222,40 @@ if [ $ELAPSED -ge $TIMEOUT ]; then
 fi
 
 # Run backup after successful deploy
+# --- systemd units for the nightly sweeps ----------------------------------
+#
+# INSTALLED, NEVER ENABLED. Writing a unit file changes nothing about what runs;
+# `systemctl enable` is a decision, taken by hand after a watched run has been
+# read. So this copies the files, substitutes the one template, and reloads the
+# daemon — and deliberately does not touch enablement in either direction.
+#
+# It must also not disturb a timer that IS already enabled. Idempotent: the
+# files are written every deploy, the daemon-reload is harmless, and whatever
+# `systemctl enable`/`disable` state exists on the box survives untouched.
+#
+# @REMOTE_DIR@ is substituted from this script's own REMOTE_DIR, so
+# WorkingDirectory cannot drift from the directory the deploy actually uses.
+if [ -d deploy/systemd ] && command -v systemctl >/dev/null 2>&1; then
+  echo "==> Installing systemd units (not enabling them)..."
+  for unit in deploy/systemd/*.service deploy/systemd/*.timer; do
+    [ -e "$unit" ] || continue
+    name=$(basename "$unit")
+    # A literal | cannot appear in a path systemd would accept here, so it is a
+    # safe delimiter for a value containing slashes.
+    sed "s|@REMOTE_DIR@|$REMOTE_DIR|g" "$unit" > "/etc/systemd/system/$name"
+    echo "    $name"
+  done
+  systemctl daemon-reload
+  # Say what is actually armed, every deploy, so "are the timers on?" is
+  # answered by the deploy log rather than by memory.
+  for t in haide-sweep-scrape.timer haide-sweep-policy.timer; do
+    state=$(systemctl is-enabled "$t" 2>/dev/null || echo "disabled")
+    echo "    $t: $state"
+  done
+else
+  echo "==> Skipping systemd units (no systemctl, or no deploy/systemd)"
+fi
+
 echo "==> Running database backup..."
 docker compose --profile backup run --rm -T db-backup || echo "WARNING: Backup failed (non-fatal)"
 
