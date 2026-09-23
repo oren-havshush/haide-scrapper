@@ -299,6 +299,17 @@ model ScrapeSweep {
   wouldHaveDemoted  Int @default(0)
   wouldHavePromoted Int @default(0)
   listingsProtected Int @default(0)
+  /// Multi-page sites that declined to publish a partial set, and sites that
+  /// returned nothing and had nothing. Both used to be counted as silentDrift,
+  /// which is a different thing: drift is a site that changed under us.
+  ///
+  /// closeSweep spreads the whole SweepCounters object into this row, so every
+  /// counter MUST have a column here — adding one without a migration throws
+  /// "Unknown argument" at the end of the night, after every site has been
+  /// scraped, and leaves the sweep row RUNNING with no report.
+  /// scripts/sweepCountersSchema.test.ts pins the two together.
+  listingRefusals   Int @default(0)
+  noJobs            Int @default(0)
 
   haltedAt   DateTime?
   haltReason String?
