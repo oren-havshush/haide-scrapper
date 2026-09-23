@@ -234,11 +234,159 @@ console.log("# the anchor set, and the fact that nothing else is scanned");
     "מחסנאי/ת לנמל אשדוד דרוש/ה מחסנאי/ת!", // ל<noun> <bare city>
     "דרוש/ה נהג/ת חלוקה 12 טון למושב כנות חברת ישרקו", // ל<noun> <bare city>
     "דרוש/ה מפעיל/ת CNC למפעל מצליח ברמת הגולן!!", // ב<region>, unanchored
-    "העבודה בתל אביב", // bare ב<city>
     "📍 פארק המדע רחובות", // a cue within 30 chars
   ]) {
     eq(extractLocationFromGazetteer(text), [], `no longer scanned: ${JSON.stringify(text)}`);
   }
+}
+
+// ---------------------------------------------------------------------------
+console.log("# the multi-word exception — a two-word name needs no anchor");
+// ---------------------------------------------------------------------------
+//
+// Every one of the five false matches above is ONE word: שדרות, אזור, משמרות,
+// חניתה, יקום. So is כנות. That is not a coincidence — it is the whole reason
+// Hebrew prose scanning fails. A one-word place name is a word, and Hebrew has
+// a lot of words.
+//
+// Two words is a different proposition. "באר שבע" and "פתח תקווה" are not
+// phrases that occur by accident, and a prefixed ב in front of one is an
+// employer saying where the job is. So a name of two or more words is read
+// without an anchor; a name of one word still requires one.
+//
+// 669 of city.csv's 1,368 entries are multi-word, and 20 of the 43 alias keys.
+{
+  eq(
+    extractLocationFromGazetteer("דרוש/ה מחסנאי/ת למחסן שלנו בבאר שבע"),
+    ["באר שבע"],
+    "בבאר שבע resolves with no anchor",
+  );
+  eq(
+    extractLocationFromGazetteer("העבודה בתל אביב"),
+    ["תל אביב-יפו"],
+    "בתל אביב resolves, through the alias — a legal spelling still lands (LRN-LOC rule 2)",
+  );
+  eq(
+    extractLocationFromGazetteer("המשרד שלנו בפתח תקווה, ליד הרכבת"),
+    ["פתח תקווה"],
+    "בפתח תקווה resolves",
+  );
+
+  // One word still needs an anchor. These are the same five, now stated as a
+  // rule rather than as five separate cases.
+  for (const [text, name] of [
+    ["המשרד ממוקם בשדרות רוטשילד 15", "שדרות"],
+    ["לבסיס באזור צומת שוקת דרוש/ה טכנאי/ת", "אזור"],
+    ["העבודה במשמרות בוקר וערב", "משמרות"],
+    ["חניכה והובלת הצוות לעמידה ביעדים", "חניתה"],
+    ["מיקום המשרה: עבודה מהבית (ההכשרה בנתניה)", "יקום"],
+    ["החברה עובדת מול הסוכנות היהודית", "כנות"],
+    ["לחברה מובילה ברחובות דרוש/ה מבקר/ת טיב", "רחובות"],
+  ] as Array<[string, string]>) {
+    const got = extractLocationFromGazetteer(text);
+    assert(
+      !got.includes(name),
+      `one word still needs an anchor: ${JSON.stringify(name)} not read from ${JSON.stringify(text)} (got ${JSON.stringify(got)})`,
+    );
+  }
+  // And the five that matter, as whole results.
+  for (const text of [
+    "המשרד ממוקם בשדרות רוטשילד 15",
+    "לבסיס של צה\"ל באזור צומת שוקת דרוש/ה טכנאי/ת",
+    "עבודה בימים א'-ה'. עבודה במשמרות: 08:00-16:00 או 10:00-18:00.",
+    "ניהול אישי ומקצועי של נציגי הצוות - חניכה והובלת הצוות לעמידה ביעדים",
+    "החברה עובדת מול הסוכנות היהודית ומול משרדי הממשלה.",
+  ]) {
+    eq(extractLocationFromGazetteer(text), [], `still nothing: ${JSON.stringify(text)}`);
+  }
+
+  // The ב has to be attached to the name itself. "בדרום תל אביב" prefixes the
+  // DIRECTION, and the direction patterns went with the rest of the bare scan.
+  eq(
+    extractLocationFromGazetteer("דרוש/ה עובד/ת לחברה בדרום תל אביב"),
+    [],
+    "the ב must sit on the name, not on a word in front of it",
+  );
+  // An abbreviation is one token and is not on city.csv at all, so it still
+  // needs an anchor even though what it stands for is two words.
+  eq(
+    extractLocationFromGazetteer('דרוש/ה מנהל/ת חשבונות בת"א'),
+    [],
+    'בת"א still needs an anchor — the abbreviation is not a city.csv entry',
+  );
+  eq(
+    extractLocationFromGazetteer('מיקום המשרה: ת"א'),
+    ["תל אביב-יפו"],
+    "and resolves the moment it has one",
+  );
+
+  // An area label is two words and must STILL yield nothing: it names a region
+  // and several towns at once (job 4082).
+  eq(
+    extractLocationFromGazetteer("המוקד בחיפה וקריות מגייס"),
+    [],
+    "an area label is excluded from the multi-word scan too",
+  );
+  eq(
+    extractLocationFromGazetteer("המוקד באזור תל אביב מגייס"),
+    [],
+    "including אזור תל אביב, which would otherwise collapse to the city",
+  );
+
+  // --- the qualifier words, coming back through the anchor door -----------
+  //
+  // Found by measuring the new rule against the fleet, not by reading the code.
+  // The anchored path matches the longest place name a value STARTS with, and
+  // when the longer attempts fail it falls to one word — so `באזור טל שחר`
+  // ("the area of moshav Tal Shahar", a real elbit ad) degraded to `אזור`, the
+  // town. Two of the five false matches are exactly this shape, and both were
+  // walking straight back in.
+  //
+  // A qualifier word in front of other words qualifies them. The place is what
+  // follows it.
+  eq(
+    extractLocationFromGazetteer("מרכיב.ה מכאני לאתר החברה באזור טל שחר דרושים.ות"),
+    ["טל שחר"],
+    "elbit 4391: באזור טל שחר is the moshav, not the town אזור",
+  );
+  // The same shape, and לטרון IS a city.csv row — so this one resolves to the
+  // place the ad names, which is also what the site stores for job 7042. The
+  // qualifier rule does not decide whether a value is a place; it decides which
+  // word is being named.
+  eq(
+    extractLocationFromGazetteer("רכז.ת איכות לאתר הממוקם באזור לטרון דרוש.ה"),
+    ["לטרון"],
+    "elbit 7042: באזור לטרון is לטרון, not the town אזור",
+  );
+  eq(
+    extractLocationFromGazetteer("מיקום המשרה: שדרות רוטשילד 15"),
+    [],
+    "a labelled boulevard is not the city שדרות",
+  );
+  eq(
+    extractLocationFromGazetteer("מיקום המשרה: אזור השרון"),
+    ["אזור השרון"],
+    "but a region that begins with אזור still resolves — longest match first",
+  );
+  eq(
+    extractLocationFromGazetteer("מיקום המשרה: אזור"),
+    ["אזור"],
+    "and a value that is ONLY אזור is the town, because there is nothing for it to qualify",
+  );
+  eq(
+    extractLocationFromGazetteer("מיקום המשרה: שדרות"),
+    ["שדרות"],
+    "likewise שדרות alone",
+  );
+
+  // An anchored value still wins outright. The unanchored scan is a fallback
+  // and runs only when the anchors found nothing — a labelled value is the
+  // employer answering the question directly.
+  eq(
+    extractLocationFromGazetteer("מיקום המשרה: חיפה. המטה שלנו בבאר שבע."),
+    ["חיפה"],
+    "a labelled value is not diluted by a place mentioned elsewhere in the ad",
+  );
 }
 
 // ---------------------------------------------------------------------------

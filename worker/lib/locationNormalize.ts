@@ -109,6 +109,25 @@ export const LOCATION_EN: Readonly<Record<string, string>> = {
 const SCAN_DENYLIST: ReadonlySet<string> = new Set(["שדרות", "אזור"]);
 
 /**
+ * A place name that, standing in front of other words, is almost always
+ * qualifying them rather than naming itself.
+ *
+ * `אזור טל שחר` is the area of the moshav Tal Shahar, not the town Azor;
+ * `שדרות רוטשילד 15` is Rothschild Boulevard, not the city Sderot. Both ARE
+ * real city.csv rows, which is what makes them dangerous — they pass every
+ * gate downstream.
+ *
+ * Exported because the gazetteer needs the identical rule at a different point:
+ * it matches the longest place name a value starts with, and without this
+ * `באזור טל שחר` degrades to `אזור` once the two- and three-word attempts
+ * fail. That is one of the five measured false matches walking back in through
+ * the anchor door.
+ */
+export function isQualifierPlace(name: string): boolean {
+  return SCAN_DENYLIST.has(squash(name));
+}
+
+/**
  * Compound labels that name an AREA AROUND a city rather than the city, and
  * whose area has no entry of its own in city.csv. They resolve to nothing.
  *
@@ -144,6 +163,41 @@ const AREA_LABEL: ReadonlySet<string> = new Set([
 export function isAreaLabel(v: string): boolean {
   return AREA_LABEL.has(squash(v));
 }
+
+/**
+ * Place names of TWO OR MORE words: every city.csv entry and every alias key
+ * that is not a single word, longest first, area labels excluded.
+ *
+ * The gazetteer reads one of these out of prose without an anchor, and reads a
+ * one-word name only where an ad says it is naming a place. The split is not
+ * arbitrary — it is the difference between the names that go wrong and the ones
+ * that do not. Every false match measured on tikshoov is a single word that is
+ * also an ordinary Hebrew word: שדרות is "boulevard", אזור is "the area of",
+ * משמרות is "shifts", יקום sits inside מיקום, חניתה is one letter from חניכה.
+ * כנות, inside הסוכנות, is the case CLAUDE.md names. "באר שבע" and "פתח תקווה"
+ * are not phrases that occur by accident.
+ *
+ * 669 of 1,368 city.csv entries qualify, and 20 of the 43 alias keys. Alias
+ * keys are included because an employer writes what employers write — "תל אביב"
+ * is not on city.csv, "תל אביב-יפו" is, and resolving the one to the other
+ * before the gate is the rule that makes the vocabulary usable at all.
+ *
+ * Area labels are excluded at source: "חיפה וקריות" is two words and names a
+ * region plus several towns, and letting it through here would re-open job
+ * 4082's defect from the other side.
+ */
+export const MULTI_WORD_PLACE_NAMES: readonly string[] = (() => {
+  const names = new Set<string>();
+  for (const name of [...IL_CANONICAL, ...Object.keys(LOCATION_ALIAS)]) {
+    const s = squash(name);
+    if (!s || AREA_LABEL.has(s)) continue;
+    if (s.split(" ").length < 2) continue;
+    names.add(s);
+  }
+  // Longest first, so "תל אביב-יפו" is consumed whole and never re-matched as
+  // the shorter "תל אביב" sitting inside it.
+  return [...names].sort((a, b) => b.length - a.length);
+})();
 
 function levenshtein1(a: string, b: string): boolean {
   if (Math.abs(a.length - b.length) > 1) return false;

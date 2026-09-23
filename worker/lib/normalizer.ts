@@ -6,7 +6,12 @@
 // preserves the original rawFields for debugging and re-processing.
 // ---------------------------------------------------------------------------
 
-import { isAreaLabel, resolveExactLocation } from "./locationNormalize";
+import {
+  isAreaLabel,
+  isQualifierPlace,
+  resolveExactLocation,
+  MULTI_WORD_PLACE_NAMES,
+} from "./locationNormalize";
 import { structureDescription } from "./descriptionStructure";
 
 /** Standard job schema fields that map directly to Job model columns */
@@ -651,8 +656,27 @@ function leadingPlace(part: string): string | null {
   if (isAreaLabel(cleaned)) return null;
   const words = cleaned.split(/\s+/);
   for (let n = Math.min(MAX_PLACE_WORDS, words.length); n >= 1; n--) {
-    const hit = resolveValuePart(words.slice(0, n).join(" "));
-    if (hit) return hit;
+    const candidate = words.slice(0, n).join(" ");
+    const hit = resolveValuePart(candidate);
+    if (!hit) continue;
+    // A qualifier word standing in front of other words is qualifying them:
+    // `אזור טל שחר` is the area of the moshav, `שדרות רוטשילד 15` is the
+    // boulevard. Both are real city.csv rows, so nothing downstream would
+    // catch them. Skip past it and look for the place it qualifies — which is
+    // how `באזור טל שחר` yields `טל שחר` rather than the town `אזור`.
+    //
+    // Only when something FOLLOWS it. A value that is only `אזור` has nothing
+    // to qualify and is the town.
+    if (n === 1 && words.length > 1 && isQualifierPlace(candidate)) {
+      return leadingPlace(words.slice(1).join(" "));
+    }
+    return hit;
+  }
+  // Nothing matched at the front. If the value opens with a qualifier word,
+  // the place may still be behind it: `באזור לטרון` matches nothing at all at
+  // word 1, because `אזור לטרון` is not an entry and `אזור` was not reached.
+  if (words.length > 1 && isQualifierPlace(words[0] as string)) {
+    return leadingPlace(words.slice(1).join(" "));
   }
   return null;
 }
@@ -670,6 +694,50 @@ function placesInValue(segment: string): string[] {
 /** How far past a site noun the "ב" that introduces the value may sit. */
 const SITE_GAP_LIMIT = 30;
 
+// ---------------------------------------------------------------------------
+// The multi-word exception
+// ---------------------------------------------------------------------------
+//
+// A place name of two or more words is read from prose with no anchor at all,
+// carrying the "ב" an employer writes in front of it: "המחסן שלנו בבאר שבע".
+//
+// Why this is safe where the one-word scan was not. Every false match measured
+// on tikshoov is a SINGLE word that is also an ordinary Hebrew word — שדרות
+// ("boulevard"), אזור ("the area of"), משמרות ("shifts"), יקום (inside מיקום),
+// חניתה (one letter from חניכה, "mentoring") — and so is כנות, the case
+// CLAUDE.md names, hiding inside הסוכנות. Two words do not line up by accident.
+//
+// The "ב" must sit on the NAME. "בדרום תל אביב" prefixes the direction, not the
+// city, and is deliberately not read: the direction patterns went with the rest
+// of the bare scan, and reading past one is how "בצפון ת\"א" used to resolve to
+// the northern region instead of Tel Aviv.
+const RE_BARE_MULTIWORD = new RegExp(
+  `(?<![${HEB}])ב(${MULTI_WORD_PLACE_NAMES.map(escapeRe).join("|")})(?![${HEB}])`,
+  "gu",
+);
+
+/**
+ * Places named in prose without an anchor, multi-word names only.
+ *
+ * Exported so the two halves of the gazetteer can be measured apart. The first
+ * attempt at that measurement simulated "anchors only" by disabling every
+ * word-initial ב in the text, which disables the anchored path's own ב as well
+ * — and mis-attributed a batch of anchored answers to this one. A number that
+ * is going to be reported has to be produced by the code it describes.
+ */
+export function bareMultiWordPlaces(text: string): string[] {
+  const out: string[] = [];
+  RE_BARE_MULTIWORD.lastIndex = 0;
+  for (let m = RE_BARE_MULTIWORD.exec(text); m; m = RE_BARE_MULTIWORD.exec(text)) {
+    // Through the same exact resolver as everything else: canonical, alias,
+    // English, spelling variants. No edit-distance, so a near-miss on a
+    // two-word phrase cannot become a place either.
+    const v = resolveValuePart(m[1] as string);
+    if (v && !out.includes(v)) out.push(v);
+  }
+  return out;
+}
+
 /**
  * Read the places an ad NAMES, from its labels and its own premises only.
  *
@@ -682,6 +750,16 @@ const SITE_GAP_LIMIT = 30;
  * named no place this function is willing to swear to.
  */
 export function extractLocationFromGazetteer(text: string): string[] {
+  const anchored = extractAnchoredPlaces(text);
+  // The anchors win outright. A labelled value is the employer answering the
+  // question directly, and an ad that answers it does not also need its prose
+  // read — "מיקום המשרה: חיפה" plus a head office mentioned in passing is one
+  // job in Haifa, not two places.
+  return anchored.length > 0 ? anchored : bareMultiWordPlaces(text);
+}
+
+/** Places named at one of the ad's own anchors. Exported for measurement. */
+export function extractAnchoredPlaces(text: string): string[] {
   if (!text) return [];
   const out: string[] = [];
   const add = (places: string[]) => {
