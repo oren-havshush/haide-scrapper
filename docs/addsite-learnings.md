@@ -3319,6 +3319,32 @@
   each has a title, a body, an id and an apply form.
 - **Generalizes to:** any site where the listing is JS-rendered and the sitemap looks like a shortcut.
   **Home:** `addsite2.md` §6.2 coverage gate; read alongside `LRN-COV-5`.
+## LRN-COV-7 — an Elementor Loop Grid can PAGINATE, and the page-1 count is a plausible number, not a round one
+
+- **Date / site:** 2026-09-24 · willi-food.co.il — DOM renders **6** `.e-loop-item`; the `jobs` CPT
+  actually holds **7**.
+- **Signal:** there is no visible "load more" / "טען עוד" text to notice, and no suspicious round
+  count to distrust. The grid simply stops. `LRN-COV-4` and the pagination recipe both key on a
+  button or an obviously truncated list (10, 20, 40); **6 of 7 trips neither instinct** — it reads
+  like the whole board.
+- **The tell is an attribute, not a button:** the grid emits a bare anchor div
+  `<div class="e-load-more-anchor" data-page="1" data-max-page="2" data-next-page="...">`.
+  `data-max-page > 1` means the DOM you just measured is page 1 only. Grep the listing HTML for
+  `e-load-more-anchor` on ANY Elementor site before believing a card count.
+- **Cross-check that settles it in one request:** the CPT's REST collection. Find the post type from
+  the item classes — each card carries `post-<id> <cpt> type-<cpt>` (here `type-jobs`) — then
+  `GET /wp-json/wp/v2/<cpt>?per_page=100` and compare the count. That same call is also the fix
+  (`LRN-COV-4`): build the items in `setupScript` from the REST records, which returns coverage,
+  `content.rendered` bodies and real ISO dates in one go, and makes the load-more moot.
+- **Free bonus from the same classes:** `post-<id>` is the native WP id, so `externalJobId` is
+  `<site>-<id>` with no hashing. Namespace it — a bare 4-digit id hard-fails `verify-jobids` as
+  index-like (`LRN-ID-11`).
+- **Not the same as `LRN-WP-3`,** which is the other Elementor Loop Grid shape: there every job and
+  its form are already on the listing page inside collapsed `<details>`, so the risk is missing
+  content, not missing rows. Check which shape you have before assuming the page is complete.
+- **Generalizes to:** any WordPress + Elementor Pro jobs archive (a very common Israeli build).
+  **Home:** `addsite2.md` §6.2 coverage gate; read alongside `LRN-COV-4` and `LRN-COV-5`.
+
 ## LRN-HQ-5 — a Hebrew one-letter prefix splits a two-word city, and the shorter half is also a real city
 
 - **Date / site:** 2026-09-23 · domicile.co.il (`cmue21era000e01r0zjchpkcu`), דומיסיל יבוא וייצוא.

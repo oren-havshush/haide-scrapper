@@ -1,0 +1,118 @@
+{
+  "_exportedAt": "2026-09-24T12:56:14.068Z",
+  "_note": "Mirror of the live config. The DB is authoritative; the worker never reads this file. setupScript lives alongside in <slug>.setup.js.",
+  "id": "cmufj06si000801nyfftsircs",
+  "siteUrl": "https://www.willi-food.co.il/%D7%93%D7%A8%D7%95%D7%A9%D7%99%D7%9D/",
+  "companyName": "וילי פוד",
+  "status": "ACTIVE",
+  "setupScriptFile": "willi-food--tsircs.setup.js",
+  "pageFlow": [],
+  "fieldMappings": {
+    "_meta": {
+      "savedAt": "2026-09-24T12:51:59.955Z",
+      "pagination": null,
+      "formCapture": {
+        "fields": [
+          {
+            "name": "form_fields[name]",
+            "label": "שם מלא",
+            "tagName": "input",
+            "required": true,
+            "fieldType": "text"
+          },
+          {
+            "name": "form_fields[field_6537536]",
+            "label": "טלפון",
+            "tagName": "input",
+            "required": true,
+            "fieldType": "tel"
+          },
+          {
+            "name": "form_fields[phone]",
+            "label": "ת.ז.",
+            "tagName": "input",
+            "required": false,
+            "fieldType": "number"
+          },
+          {
+            "name": "form_fields[location]",
+            "label": "הערות",
+            "tagName": "textarea",
+            "required": false,
+            "fieldType": "textarea"
+          },
+          {
+            "name": "form_fields[field_84dc16a][]",
+            "label": "צרפו קורות חיים",
+            "tagName": "input",
+            "required": false,
+            "fieldType": "file"
+          },
+          {
+            "name": "form_fields[lmn_acceptance]",
+            "label": "אני מסכים/ה למדיניות הפרטיות של האתר",
+            "tagName": "input",
+            "required": true,
+            "fieldType": "checkbox"
+          }
+        ],
+        "method": "POST",
+        "actionUrl": "https://www.willi-food.co.il/%D7%93%D7%A8%D7%95%D7%A9%D7%99%D7%9D/",
+        "formSelector": "form.elementor-form"
+      },
+      "listingUrls": null,
+      "itemSelector": ".__ai-job",
+      "minPublishDate": null,
+      "minPublishDays": null,
+      "revealSelector": null,
+      "listingSelector": null,
+      "applyLoginReason": null,
+      "browserOverrides": null,
+      "loadMoreSelector": null,
+      "locationFallback": null,
+      "originalMappings": null,
+      "applyRequiresLogin": false
+    },
+    "title": {
+      "source": "auto",
+      "selector": ".__ai-title",
+      "confidence": 0.95
+    },
+    "location": {
+      "source": "auto",
+      "selector": ".__ai-loc",
+      "confidence": 0.9
+    },
+    "detailUrl": {
+      "source": "auto",
+      "selector": ".__ai-link",
+      "confidence": 0.95,
+      "extractAttr": "href"
+    },
+    "description": {
+      "source": "auto",
+      "selector": ".__ai-desc",
+      "confidence": 0.9
+    },
+    "publishDate": {
+      "source": "auto",
+      "selector": ".__ai-date",
+      "confidence": 0.9
+    },
+    "requirements": {
+      "source": "auto",
+      "selector": ".__ai-req",
+      "confidence": 0.85
+    },
+    "externalJobId": {
+      "source": "auto",
+      "selector": ".__ai-jobid",
+      "confidence": 0.95
+    },
+    "applicationInfo": {
+      "source": "auto",
+      "selector": ".__ai-apply",
+      "confidence": 0.9
+    }
+  }
+}
