@@ -218,6 +218,15 @@
     has no Reblaze markers, so nothing matched.
   Neither gate has a **response-byte floor**, so a 581-byte stub is "reachable". A site
   can therefore clear Step 3 and Step 5 and still have never been seen.
+  **PARTLY FIXED 2026-09-22 in `17dbfbb`** ("addsite gates: share one challenge/block
+  detector across reach, detail-reach and triage"). This exact case is now caught: `247` is
+  absent from `STANDARD_OK_STATUSES` and `scripts/lib/challenge-detect.ts:107-109` returns
+  `nonstandard-status-247`, and the Reblaze bootstraps (`rbzns`, `winsocks(`,
+  `.ac_v2.lib.js`) are matched at `:45` when the document also looks like a shell. Still
+  open is the GENERAL version this bullet describes: neither gate has a byte floor of its
+  own — they only print `bytes` — and the module's `MIN_REAL_HTML_BYTES = 2000` (`:59`)
+  applies only when the page ALSO has no `<a`, so a padded interstitial still passes (see
+  `LRN-WAF-4`: FIBI's ShieldSquare page is 118 KB). Verified at HEAD `e33bc85`, 2026-09-24.
 - **Tell:** `parityBytes` / `uaBytes` in `detail-reach` output. ~600 bytes is a stub;
   a real listing is tens of KB. **Read the byte counts, not just the verdict line.**
   Corollary: `topCluster 0` on a reachable host means "look at the HTML", not "GRAY".
@@ -653,6 +662,19 @@
   When the setupScript emits places itself, keep an `EMIT_AS` map so tokens outside
   the CSV resolve to the nearest entry inside it — on opl.co.il `הגליל` normalises to
   itself and is absent from city.csv, so it is emitted as `אזור הצפון`.
+- **CORRECTION 2026-09-24 — the passthrough named above is gone; the leak is not.**
+  `34e328b` (2026-09-17) removed `return out.length ? out : [original]`, so
+  `normalizeLocations()` now returns `[]` for an unresolved value, and for `locations[]` the
+  gate this bullet asks for is real. The leak moved up one level: the CALLER keeps the raw
+  string as the primary value. It was `canonicalLocations[0] ?? rawLocation` in
+  `buildJobRows`; `d2e9213` (2026-09-23) moved it into `worker/lib/jobLocation.ts:95,101,116`
+  (`list[0] ?? override` / `?? extracted` / `?? fallback`). Measured at HEAD `e33bc85`:
+  `resolveJobLocation({extracted:'New York'})` stores `location: "New York"` with
+  `locations: []`. Nothing downstream rejects it — `buildJobRows` rows go straight to
+  `createMany`, and `worker/lib/validator.ts` checks presence and a 150-char cap only, before
+  normalisation. So `locations[]` is gated and `location` — the column the public site reads —
+  is not. Found 2026-09-24 while checking what a worldwide careers board (Mobileye, 28 of 187
+  postings outside Israel) would store for a non-Israeli posting.
 - **Emitted value != stored value.** `LOCATION_ALIAS` holds 46 accepted *input*
   spellings, and **none of them is in city.csv** (`מרכז`, `ת"א`, `גוש דן`,
   `אזור המרכז`, `תל אביב`). They are legal to emit because `normalizeLocations()`
@@ -2319,6 +2341,11 @@
 - **Generalizes to:** every onboarding — both traps are in the path each site walks, and
   neither depends on the site. **Home:** `addsite2.md` §4 (wait-for-analyzer) and §9.1
   (payload shape); fixing the snippets there removes both.
+- **DONE 2026-09-16 in `250da75`.** §4 now names the 405 outright and polls the list route
+  with an exact-URL filter instead (`addsite2.md:392-405`); §9.1 marks `pageFlow` and
+  `formCapture` REQUIRED with the `updateSiteConfigSchema` landmine spelled out
+  (`addsite2.md:696-716`). Verified at HEAD `e33bc85`, 2026-09-24 — nothing outstanding in
+  this entry.
 
 ---
 
@@ -2643,6 +2670,13 @@
   has no street and no house number, treat it as wrong until proven otherwise. A digit inside a
   company or product name ("60+") is enough for the compact-line rule.
 - **Not done:** no extractor change (owner: out of scope for onboarding).
+- **PARTLY FIXED 2026-09-03 in `817474c`** ("company-profile: city 14 -> 19 of 20, and repair
+  three eaten regex escapes"), i.e. before this entry was written. The 8-90 char + digit gate
+  is still `scripts/lib/company-extract.ts:821-822`, but four filters now follow at `:830-834`
+  — a comma-less line over 4 words is rejected, as is one over 10 words, one with no letter,
+  a `BRANCH_LINE` and a `CONTACT_TAIL`. So "accepts any 8-90 char line containing a digit" is
+  no longer accurate. `הראל 60+ בע"מ` is short and comma-less, so this entry's own case is not
+  covered by those filters; the rule above still stands. Verified at HEAD `e33bc85`, 2026-09-24.
 - **Generalizes to:** employers named after places (הראל, כרמל, גלבוע, תבור, ארבל, עדן…).
   **Home:** `company-profile.md` §3.1; extractor follow-up in `scripts/lib/company-extract.ts`.
 
@@ -2744,6 +2778,19 @@
   lists for site scripts, still unguarded in `extractLocationFromGazetteer`'s bare-`ב` pattern — and
   it never reads "באזור" as the town (`BARE_PREFIX_DENYLIST`, by design). So inject a value; never
   leave the field empty to "let the gazetteer decide" (LRN-LOC-10 step 4).
+  **FIXED 2026-09-23 in `d2e9213`** ("worker: a published city survives a scrape that stops
+  printing it; the gazetteer stops guessing") and its follow-up `16c974e` ("gazetteer: a two-word
+  place name needs no anchor, and two qualifier words stop sneaking back"). The bare-word scan was
+  replaced by an ANCHORED one — a single-word place is read only where the ad says it is the
+  location (`worker/lib/normalizer.ts:574-692`, `extractAnchoredPlaces` at `:768-792`), while a
+  name of two or more words is read unanchored (`RE_BARE_MULTIWORD`, `:715-745`). Measured at HEAD
+  `e33bc85`: "טיפול ברווחה", "10-11 משמרות בחודש", "הממוקמת באזור," and "שרשרת אספקה" all now
+  return `[]`, while "מיקום המשרה: חיפה" and "המחסן שלנו בבאר שבע" still resolve. Both
+  `BARE_PREFIX_DENYLIST` and `BARE_PREFIX_MIN_LEN` are gone; the surviving denylist is
+  `SCAN_DENYLIST = {שדרות, אזור}` at `worker/lib/locationNormalize.ts:109`. Note
+  `locationNormalize.ts:102` still calls it "the mirror of normalizer.ts's BARE_PREFIX_DENYLIST",
+  which now points at a constant that no longer exists. The inject-a-value rule above still
+  stands on its own evidence.
 - **Evidence for the rule:** this employer writes `הממוקמת ב<place>` ten times; the other nine are
   followed by a real place. "Area" usage always names the area after `אזור` ("באזור המרכז",
   "באזור רמלה והסביבה").
@@ -2862,11 +2909,13 @@
   Drop a label that only restates the field name (`Description`, `Requirements`); keep one
   that distinguishes content inside the merged field (`Responsibilities`, and especially
   `Advantages` — dropping it publishes a preferred item as a hard requirement).
-- **Note the recipe snippet is not this.** `addsite2-recipes/spa-frameworks.md#comeet`
-  currently merges *all* blocks into `description`, which violates the owner's job-body
-  rule 1 (requirements live only in `requirements`, moved not copied). Anyone following
-  that snippet verbatim ships every Comeet site with requirements duplicated in the
-  description. Prefer the label-routing above until the recipe is corrected.
+- **The recipe now does this too — corrected 2026-09-22 in `8cb45a5`.** When this entry was
+  written, `addsite2-recipes/spa-frameworks.md#comeet` merged *all* blocks into `description`,
+  which violated the owner's job-body rule 1 (requirements live only in `requirements`, moved
+  not copied). That snippet now routes by label itself — `spa-frameworks.md:138` ("**Do NOT
+  merge every block into `description`**") and the `__ai-requirements` / `__ai-description`
+  split at `:178-190` — so following the recipe verbatim is now safe. Verified at HEAD
+  `e33bc85`, 2026-09-24.
 - **Generalizes to:** every Comeet board — check which `data-qa` wrapper is actually
   populated before reusing another Comeet site's mappings — and to any ATS that exposes
   both coarse wrappers and per-section title/content pairs. The per-section pairs are the
