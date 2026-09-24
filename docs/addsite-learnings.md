@@ -3497,3 +3497,52 @@
   opt-in strict mode would remove — so this is a latent break, not a cosmetic choice.
 - **Generalizes to:** any Akamai-fronted host (`Server: AkamaiGHost`) that resets rather than
   answering. **Home:** Step 3 reachability / `recipes/waf-bypasses.md`; read with `LRN-WAF-8`.
+
+## LRN-API-10 — `GET /api/sites/:id/config` has no `siteUrl`, so a payload rebuilt from it ships `capturedOnUrl: undefined` and the scrape writes NOTHING
+
+- **Date / site:** 2026-09-24 · naamat.org.il (`cmqiakw6s000u01t1kc3s0g1d`), rebuilding a live config.
+- **Signal:** the PUT returns 200, `verify-config` passes, the scrape is accepted, runs for ~50s and
+  ends **`COMPLETED`** — with **`jobCount: 0`**. No error, no warning, no failureCategory.
+- **Root cause:** that route returns **`{ fieldMappings, pageFlow }` and nothing else** — in
+  particular **no `siteUrl`**. Rebuilding the payload from its response (the natural thing to do,
+  because you want to carry `formCapture` / `pagination` / `itemSelector` over verbatim) makes
+  `live.siteUrl` `undefined`, so every listing-scope field goes out with `capturedOnUrl: undefined`.
+  The worker routes fields to the listing or the detail page BY `capturedOnUrl` (`LRN-WRK-9`); with
+  none set, nothing is listing-scope, the listing yields no rows, and the run writes zero jobs.
+- **Why nothing looks wrong:** `verify-config` checks `itemSelector`, field NAMES and the form-field
+  count — it never looks at `capturedOnUrl`. And the undersize guard correctly refuses the empty
+  write, so the site KEEPS its previous jobs and the dashboard still shows the old count. Every
+  surface says healthy. The only tell is `jobCount: 0` on a run whose status is `COMPLETED`.
+- **Fix:** take the listing URL from `pageFlow[0].url` (or from the site row via the list route),
+  and assert every mapped field has a non-empty `capturedOnUrl` before sending the PUT. That turns
+  a silent zero-row scrape into an immediate throw, and it is one line.
+- **Generalizes to:** any config rebuilt from the config endpoint rather than from the site row,
+  and to every other field the endpoint omits — check what it actually returns before reading a
+  key off it. **Home:** §9.1 PUT payload / `verify-config`.
+
+---
+
+## LRN-SETUP-20 — the worker runs the setupScript BEFORE WordPress swaps emoji for `<img>`, so a leading emoji exists in production and not locally
+
+- **Date / site:** 2026-09-24 · naamat.org.il, job `naamat-7525`.
+- **Signal:** one job shipped an EMPTY `requirements` while the same script, run locally against the
+  same URL, produced the line. Nothing threw. Fill rate 0.92 instead of 1.00, on one row.
+- **Mechanism:** WordPress loads `wp-emoji-release.min.js`, which rewrites emoji **text** into
+  `<img>` elements after load. `textContent` of an `<img>` is empty, so once that swap has run the
+  emoji is simply GONE from extracted text. Measured on one detail page: sampled immediately the
+  block holds **1 `<img>`** and reads `💜 עדיפות…`; four seconds later it holds **6** and reads
+  ` עדיפות…`. The worker runs the setupScript as soon as the body is non-empty, so it sees the
+  FIRST state; a local dry-run, which waits, almost always sees the second.
+- **Consequence:** a `^`-anchored pattern — such as the requirement test in `LRN-SETUP-18` — matches
+  locally and fails in production on exactly the lines that begin with an emoji. It is
+  **unreproducible locally by construction**, which is what makes it expensive: the obvious next
+  move is to re-run the dry-run, and the dry-run keeps saying the code is right.
+- **Tell:** the STORED value contains the emoji and your local extraction does not. Compare what the
+  database holds against what the dry-run prints, not just the fill rate. Here the stored string was
+  `"💜 עדיפות לבעלות ניסיון."` while every local render showed it clean.
+- **Fix:** classify against a copy with leading non-letters stripped, and keep the ORIGINAL text in
+  the stored line — strip for the test, never for the value.
+- **Generalizes to:** any page whose own JS rewrites the DOM after load — emoji, lazy images,
+  typography/footnote plugins. The rule: never anchor a pattern to the first character of a line
+  when the page may replace that character. **Home:** `recipes/setupscript-patterns.md` §6.3, read
+  with `LRN-SETUP-18`.
