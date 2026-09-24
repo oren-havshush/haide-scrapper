@@ -3385,3 +3385,66 @@
   outcome rather than parking it.
 - **Generalizes to:** any global-enterprise careers portal fronted by Akamai.
   **Home:** `recipes/waf-bypasses.md`; read with `LRN-WAF-1` and `LRN-WAF-5`.
+
+## LRN-WAF-9 — the OTHER Akamai mode: a transport reset, fixed by CLIENT HINTS (not a UA), which reach/triage never send
+
+- **Date / sites:** 2026-09-23 · www.dhl.com/discover/he-il/Career-at-DHL/Career-at-DHL2
+  (`cmue8d3wb000r01r0tsmwqiig`, **ACTIVE**, 9 jobs) · prior art: osem-nestle.co.il
+  (`cmpo335in002p01mvesps38uj`, SKIPPED for `needs account to apply`, NOT for Akamai).
+- **Read with `LRN-WAF-8`, and do not let it end the investigation.** That entry is Akamai too,
+  and its "a desktop UA does not help" is right **for its own mode**: a host-wide **403** with a
+  200-400 byte `Access Denied` body and an `errors.edgesuite.net` reference id. This is the other
+  mode, and the verdicts are opposite. Tell them apart by what comes back:
+  - a short 403 **body** -> `LRN-WAF-8`, host closed, do not spend the budget;
+  - **no HTTP status at all** — `net::ERR_HTTP2_PROTOCOL_ERROR` in Chromium, `Recv failure:
+    Connection was reset` in curl, after the TLS handshake -> **this one, and it is fixable.**
+  Client hints were never tried on careers.se.com. A 403-with-body points at an IP/geo deny rule
+  rather than a fingerprint, so it is probably still unbuildable — but that is one cheap probe,
+  not an assumption.
+- **Signal:** `triage` returns `lane: RED, bytes: 0`, which reads like a dead host. The host is
+  fine — `curl https://www.dhl.com/` returns a 302 from `AkamaiGHost`. There is no challenge HTML
+  at all, so nothing in `challenge-detect.ts` can ever match it; that file has no Akamai marker
+  either, and for this mode a text marker could not help.
+- **The fix: send the client hints.** `browserOverrides.userAgent` ALONE is reset. The UA plus the
+  full desktop-Chrome header set passes — copy it **verbatim** from `sites/osem/config.json`:
+  `sec-ch-ua`, `sec-ch-ua-mobile`, `sec-ch-ua-platform`, `upgrade-insecure-requests`, the full
+  browser `accept`, and `accept-language`. Neither half works alone; it is the combination.
+  Worker-confirmed from the box (egress 194.88.110.149), three arms: default -> reset, UA-only ->
+  reset, UA+hints -> **200, 9/9 jobs, 3/3 runs**, byte-identical each time.
+- **Why the fleet cannot find this by itself.** `reach`/`triage` retry exactly once, with
+  `REAL_UA` + `HE_HEADERS`, and `HE_HEADERS` is `{accept-language}` alone
+  (`scripts/addsite-batch.ts:1162-1164`). No client hints, so the retry is reset too and the site
+  is written off RED. The technique had sat in the repo for ~4 months in ONE hand-built local file,
+  never promoted to a recipe, a doc or any `sites/_configs/` entry — `sec-ch-ua` appears in none of
+  them. Prior art beats a fresh SKIP: **grep `sites/` before concluding.**
+- **Headful is a DIAGNOSTIC, never a verdict.** `headless: false` returns 200 from the same IP.
+  Worth one probe for what it RULES OUT — not an IP block, not a region block, not a dev-IP false
+  positive (`LRN-WAF-5`). It is never evidence the worker can get in (`LRN-WAF-4`).
+- **THE TRAP — re-analysing such a site DESTROYS it.** `worker/jobs/analyze.ts:66` calls
+  `createPage(browser)` with **no** overrides (so does `policyReview.ts:75`); only SCRAPE passes
+  them (`scrape.ts:3361`). So the analyzer can NEVER load the host. Worse, `PATCH status:ANALYZING`
+  deliberately clears `configLocked` (`siteService.ts:233`), and the analyzer nav-failure path then
+  sets FAILED (`analyze.ts:126`) **and deletes every job** (`analyze.ts:122`) — the careers.iec.co.il
+  loss recorded at `siteService.ts:283-284`. A successful analysis always ends REVIEW
+  (`analyze.ts:376`), so **FAILED proves navigation threw**. Expect the reactivation analysis to
+  fail; that is normal here. `PUT /config` restores `configLocked: true` (`siteService.ts:433`) and
+  that lock is the only protection — say so in the adminNote. Nothing automatic clears it: the
+  nightly sweep is SCRAPE-only over ACTIVE|REVIEW (`sweepSelection.ts:83`) and never analyses.
+- **`company-profile` is NOT affected — it is the worked example of the fix.** It reads
+  `_meta.browserOverrides` back off the site config and hands them to the same `createPage`
+  (`scripts/company-profile.ts:1091-1096`), so once the hints are in the config it just works: DHL
+  captured COMPLETE, real `il-he` about copy and the genuine wordmark (1872x260, valid PNG magic
+  bytes). Do **not** confuse this with `LRN-WAF-5`, where the block is by dev IP and no header can
+  fix it. Two call sites are all that is missing.
+- **Build notes (DHL):** one page, 9 jobs in an AEM accordion `div.cmp-accordion__item`, no per-job
+  URLs -> `pageFlow: []`, no `detailUrl`, `externalJobId = h-<djb2(title|department)>` (recipe S3,
+  as domicile). Email apply -> `formCapture: null`, `formStatus: EMAIL`. Departments from the `h3`
+  group headings above each accordion block.
+- **Multi-city rows: emit a COMMA, not a slash.** `normalizer.ts:985-990` rewrites a slash plus its
+  surrounding spaces into one space BEFORE `normalizeLocations()` splits on comma/pipe/slash/
+  semicolon (`locationNormalize.ts:319`), so a slash can fuse two cities into one off-vocabulary
+  string. A comma survives both stages: `איירפורט סיטי, יד בנימין` resolves to two verbatim
+  `city.csv` values. Today the fused form still resolves via `scanPlaces`, which the proposed
+  opt-in strict mode would remove — so this is a latent break, not a cosmetic choice.
+- **Generalizes to:** any Akamai-fronted host (`Server: AkamaiGHost`) that resets rather than
+  answering. **Home:** Step 3 reachability / `recipes/waf-bypasses.md`; read with `LRN-WAF-8`.
