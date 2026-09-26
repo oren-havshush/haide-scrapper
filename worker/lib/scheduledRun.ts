@@ -100,9 +100,14 @@ export type PersistPlan =
   | { mode: "empty" }
   /** Implausibly many rows. Nothing is deleted and nothing written. */
   | { mode: "oversize"; rowCount: number; limit: number }
-  /** A fraction of the site's current listings. Nothing is deleted and nothing written. */
+  /**
+   * A fraction of the site's current listings (`ratio`), or a listing walk that
+   * stopped short of pages the site offered (`pagination_truncated`, see
+   * worker/lib/paginationGuard.ts). Nothing is deleted and nothing written.
+   */
   | {
       mode: "suspicious_drop";
+      reason: "ratio" | "pagination_truncated";
       rowCount: number;
       previousCount: number;
       thresholds: DropThresholds;
@@ -113,16 +118,24 @@ export type PersistPlan =
 /**
  * @param rowCount       rows this run would write
  * @param previousCount  the site's listings right now — what a commit would replace
+ * @param walk           `paginationTruncated`: the listing walk stalled on a full
+ *   page (isTruncatedWalk). Refused whatever the counts say — the unread pages'
+ *   listings would be deleted, and 2026-09-24's 57 -> 30 cleared the ratio. A
+ *   site with nothing stored loses nothing, so it still commits.
  */
 export function planScheduledPersist(
   rowCount: number,
   previousCount: number,
   thresholds: DropThresholds = DEFAULT_DROP_THRESHOLDS,
+  walk: { paginationTruncated: boolean } = { paginationTruncated: false },
 ): PersistPlan {
   if (rowCount <= 0) return { mode: "empty" };
   if (rowCount > MAX_ROWS) return { mode: "oversize", rowCount, limit: MAX_ROWS };
+  if (walk.paginationTruncated && previousCount > 0) {
+    return { mode: "suspicious_drop", reason: "pagination_truncated", rowCount, previousCount, thresholds };
+  }
   if (isSuspiciousDrop(previousCount, rowCount, thresholds)) {
-    return { mode: "suspicious_drop", rowCount, previousCount, thresholds };
+    return { mode: "suspicious_drop", reason: "ratio", rowCount, previousCount, thresholds };
   }
   return { mode: "commit", rowCount, batches: Math.ceil(rowCount / INSERT_BATCH) };
 }

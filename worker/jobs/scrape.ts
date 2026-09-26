@@ -46,6 +46,12 @@ import {
   readScheduledFlag,
   type WithheldWrite,
 } from "../lib/scheduledRun";
+import {
+  isTruncatedWalk,
+  newPaginationWalk,
+  type AdvanceOutcome,
+  type PaginationWalk,
+} from "../lib/paginationGuard";
 import { sweepConfig } from "../../src/lib/config";
 import {
   awaitCommit,
@@ -114,6 +120,12 @@ interface RunMode {
   scheduled: boolean;
   /** Decides who may write the run's terminal status. See worker/lib/abortToken.ts. */
   abort: AbortToken<ScrapeResult>;
+  /**
+   * Every paginated listing walk this run made, one per walk (a site with
+   * several listing URLs walks several). Any truncated walk refuses a
+   * scheduled persist. See worker/lib/paginationGuard.ts.
+   */
+  walks: PaginationWalk[];
 }
 
 /** Scrape execution context for error categorization */
@@ -1247,6 +1259,8 @@ async function extractRawFieldsFromListingPage(
    * three minutes of a listing nobody will persist.
    */
   abort: AbortToken<unknown> | null = null,
+  /** Out-param: this walk is appended, so the persist step can judge it. */
+  walks: PaginationWalk[] | null = null,
 ): Promise<Record<string, string>[]> {
   // If pagination is configured, repeat extraction per page and merge.
   // We dedupe across pages so the same item from page 1 doesn't double up if
@@ -1261,9 +1275,12 @@ async function extractRawFieldsFromListingPage(
         ? stripPaginationParam(page.url(), pagination.param)
         : null;
     const all: Record<string, string>[] = [];
+    const walk = newPaginationWalk();
+    walks?.push(walk);
     for (let pageIdx = 1; pageIdx <= pagination.maxPages; pageIdx++) {
       if (isAborted(abort)) {
         console.warn(`[scrape] deadline passed — stopping pagination at page ${pageIdx}`);
+        walk.stoppedBy = "aborted";
         break;
       }
       const sig = await firstItemSignature(page, itemSelector);
@@ -1278,10 +1295,14 @@ async function extractRawFieldsFromListingPage(
         `[scrape] pagination page ${pageIdx}: extracted ${pageResults.length} items`,
       );
       all.push(...pageResults);
-      if (pageIdx === pagination.maxPages) break;
+      walk.pageCounts.push(pageResults.length);
+      if (pageIdx === pagination.maxPages) {
+        walk.stoppedBy = "maxPages";
+        break;
+      }
       // nextSeqIndex = pageIdx: page 1 is sequence 0 (already loaded), so the
       // page we advance to after pageIdx is sequence pageIdx.
-      const advanced = await advanceToNextPage(
+      const outcome: AdvanceOutcome = await advanceToNextPage(
         page,
         itemSelector,
         pagination,
@@ -1289,7 +1310,10 @@ async function extractRawFieldsFromListingPage(
         baseUrl,
         pageIdx,
       );
-      if (!advanced) break;
+      if (outcome !== "advanced") {
+        walk.stoppedBy = outcome;
+        break;
+      }
       // Some sites trigger their own scroll-to-load after the page change.
       await autoScrollUntilStable(page, itemSelector);
     }
@@ -1464,6 +1488,8 @@ async function extractRawFieldsWithPageFlow(
    * into detail scope, where the card selectors do not exist.
    */
   listingUrlOverride: string | null = null,
+  /** Out-param: each paginated walk is appended. See worker/lib/paginationGuard.ts. */
+  walks: PaginationWalk[] | null = null,
 ): Promise<Record<string, string>[]> {
   const rawFieldsList: Record<string, string>[] = [];
 
@@ -1517,6 +1543,7 @@ async function extractRawFieldsWithPageFlow(
       revealSelector,
       pagination,
       abort,
+      walks,
     );
   }
 
@@ -1586,6 +1613,8 @@ async function extractRawFieldsWithPageFlow(
     pagination?.type === "url"
       ? stripPaginationParam(page.url(), pagination.param)
       : null;
+  const walk = pagination ? newPaginationWalk() : null;
+  if (walk) walks?.push(walk);
   for (let listingPageIdx = 1; listingPageIdx <= maxListingPages; listingPageIdx++) {
     const sigBefore = pagination
       ? await firstItemSignature(page, itemSelector)
@@ -1739,21 +1768,26 @@ async function extractRawFieldsWithPageFlow(
   }
 
     // ---- Pagination: advance to next listing page or stop. ----
-    if (!pagination) break;
+    if (!pagination || !walk) break;
+    const gainedUrls = detailUrls.length - urlsBefore;
+    walk.pageCounts.push(gainedUrls);
     if (isAborted(abort)) {
       console.warn(
         `[scrape] deadline passed — stopping listing pagination after page ${listingPageIdx}`,
       );
+      walk.stoppedBy = "aborted";
       break;
     }
-    const gainedUrls = detailUrls.length - urlsBefore;
     console.info(
       `[scrape] listing page ${listingPageIdx}: collected ${gainedUrls} detail URLs (running total ${detailUrls.length})`,
     );
-    if (listingPageIdx === maxListingPages) break;
+    if (listingPageIdx === maxListingPages) {
+      walk.stoppedBy = "maxPages";
+      break;
+    }
     // nextSeqIndex = listingPageIdx: listing page 1 is sequence 0 (already
     // loaded), so the page we advance to is sequence listingPageIdx.
-    const advanced = await advanceToNextPage(
+    const outcome: AdvanceOutcome = await advanceToNextPage(
       page,
       itemSelector,
       pagination,
@@ -1761,7 +1795,10 @@ async function extractRawFieldsWithPageFlow(
       paginationBaseUrl,
       listingPageIdx,
     );
-    if (!advanced) break;
+    if (outcome !== "advanced") {
+      walk.stoppedBy = outcome;
+      break;
+    }
     // Some sites lazy-load rows after the pagination click (in-page scroll).
     await autoScrollUntilStable(page, itemSelector);
   }
@@ -2120,8 +2157,12 @@ function stripPaginationParam(url: string, param: string): string {
 
 /**
  * Advance to the next listing page by clicking the configured selector.
- * Returns true if the click happened and content changed; false if there's
- * no next page (button missing, disabled, or list content didn't update).
+ * Returns why it stopped, not just whether (worker/lib/paginationGuard.ts):
+ * "advanced" when the next page loaded; "end" when the listing says there is
+ * no more (button missing or disabled, URL page empty or identical); "stalled"
+ * when the listing offered a next page and did not deliver it (click threw,
+ * content did not change in the window, URL page failed to load). A stall on a
+ * full page is how 2026-09-24 deleted 21 live ashtrom listings.
  *
  * "Content changed" = the first item's outerHTML signature changes within
  * `settleMs * 4` ms. Avoids matching the same page twice on SPAs that don't
@@ -2134,7 +2175,7 @@ async function advanceToNextPage(
   signatureBefore: string,
   baseUrl: string | null = null,
   nextSeqIndex = 0,
-): Promise<boolean> {
+): Promise<AdvanceOutcome> {
   // URL pagination: navigate to base URL with the incremented query param.
   // Stop when there are no items on the next page, or when its content is
   // identical to the page we just left (out-of-range pages on Drupal/WP
@@ -2142,7 +2183,7 @@ async function advanceToNextPage(
   if (cfg.type === "url") {
     if (!baseUrl) {
       console.info("[scrape] pagination(url): no base URL — stopping");
-      return false;
+      return "end";
     }
     const target = buildPaginatedUrl(baseUrl, cfg, nextSeqIndex);
     console.info(`[scrape] pagination(url): navigating to ${target}`);
@@ -2150,31 +2191,31 @@ async function advanceToNextPage(
       await gotoForgiving(page, target, NAVIGATION_TIMEOUT_MS);
     } catch (e) {
       console.warn(`[scrape] pagination(url): navigation failed — ${(e as Error).message}`);
-      return false;
+      return "stalled";
     }
     if (itemSelector) {
       try {
         await page.waitForSelector(itemSelector, { timeout: cfg.settleMs * 4 });
       } catch {
         console.info("[scrape] pagination(url): no items on next page — stopping");
-        return false;
+        return "end";
       }
       const sigAfter = await firstItemSignature(page, itemSelector);
       if (sigAfter && sigAfter === signatureBefore) {
         console.info("[scrape] pagination(url): content identical to previous page — stopping");
-        return false;
+        return "end";
       }
     } else {
       await page.waitForTimeout(cfg.settleMs);
     }
     await page.waitForTimeout(300);
-    return true;
+    return "advanced";
   }
 
   const btn = await page.$(cfg.nextSelector).catch(() => null);
   if (!btn) {
     console.info("[scrape] pagination: next button not found — stopping");
-    return false;
+    return "end";
   }
   const isDisabled = await btn
     .evaluate((el) => {
@@ -2189,14 +2230,14 @@ async function advanceToNextPage(
     .catch(() => false);
   if (isDisabled) {
     console.info("[scrape] pagination: next button is disabled — stopping");
-    return false;
+    return "end";
   }
 
   try {
     await btn.click({ timeout: 4_000 });
   } catch (e) {
     console.warn(`[scrape] pagination: click failed — ${(e as Error).message}`);
-    return false;
+    return "stalled";
   }
 
   if (itemSelector) {
@@ -2212,14 +2253,14 @@ async function advanceToNextPage(
       );
     } catch {
       console.info("[scrape] pagination: content did not change after click — stopping");
-      return false;
+      return "stalled";
     }
   } else {
     await page.waitForTimeout(cfg.settleMs);
   }
   // small extra settle for downstream queries
   await page.waitForTimeout(300);
-  return true;
+  return "advanced";
 }
 
 async function firstItemSignature(
@@ -2989,7 +3030,7 @@ export async function handleScrapeJob(
   // Only the sweep driver sets this; the HTTP route cannot. Everything the
   // scheduled gate does hangs off it, so it is read once, here.
   const scheduled = readScheduledFlag(job.payload);
-  const runMode: RunMode = { scheduled, abort: createAbortToken<ScrapeResult>() };
+  const runMode: RunMode = { scheduled, abort: createAbortToken<ScrapeResult>(), walks: [] };
 
   if (!scrapeRunId) {
     console.error("[scrape] No scrapeRunId in job payload:", job.id);
@@ -3344,7 +3385,7 @@ async function executeScrape(
   setupScript: string | null = null,
   loadMoreSelector: string | null = null,
   browserOverrides: BrowserOverrides | null = null,
-  runMode: RunMode = { scheduled: false, abort: createAbortToken<ScrapeResult>() },
+  runMode: RunMode = { scheduled: false, abort: createAbortToken<ScrapeResult>(), walks: [] },
   listingTargets: ListingTarget[] = [{ url: site.siteUrl }],
 ): Promise<ScrapeResult> {
   const scrapeStartedAt = Date.now();
@@ -3400,6 +3441,7 @@ async function executeScrape(
         listingStats,
         runMode.abort,
         targetUrl,
+        runMode.walks,
       );
       context.pageLoaded = true;
 
@@ -3572,6 +3614,7 @@ async function executeScrape(
         revealSelector,
         pagination,
         runMode.abort,
+        runMode.walks,
       );
 
       // If nothing matched, give the page a chance: scroll to bottom to trigger
@@ -3596,6 +3639,7 @@ async function executeScrape(
         rawFieldsList = await extractRawFieldsFromListingPage(
           page, fieldMappings, listingSelector, itemSelector, revealSelector, pagination,
           runMode.abort,
+          runMode.walks,
         );
       }
 
@@ -3938,6 +3982,8 @@ async function executeScrape(
     const plan = planScheduledPersist(rows.length, previousCount, {
       minPrevious: sweepConfig.dropMinPrevious,
       keepRatio: sweepConfig.dropKeepRatio,
+    }, {
+      paginationTruncated: runMode.walks.some(isTruncatedWalk),
     });
 
     if (plan.mode === "oversize") {
@@ -3963,10 +4009,18 @@ async function executeScrape(
       // listings, and put both counts on the run so the sweep item and the
       // report can say what was refused. validJobs is the refused count; jobCount
       // stays 0 because nothing was saved.
+      //
+      // Or (worker/lib/paginationGuard.ts): the listing walk stalled on a full
+      // page the site offered a successor to, so the unread pages' listings
+      // would be deleted however the counts compare.
       const message =
-        `Refusing to replace ${plan.previousCount} listings with ${plan.rowCount} — ` +
-        `below ${Math.round(plan.thresholds.keepRatio * 100)}% of the previous count, ` +
-        `previous listings left untouched`;
+        plan.reason === "pagination_truncated"
+          ? `Refusing to replace ${plan.previousCount} listings with ${plan.rowCount} — ` +
+            `pagination stalled on a full page the site offered a next page for, ` +
+            `previous listings left untouched`
+          : `Refusing to replace ${plan.previousCount} listings with ${plan.rowCount} — ` +
+            `below ${Math.round(plan.thresholds.keepRatio * 100)}% of the previous count, ` +
+            `previous listings left untouched`;
       console.error(`[scrape] ${message}`);
       return await failScrapeRun(scrapeRunId, site.id, {
         error: message,
@@ -4242,7 +4296,7 @@ function createTimeoutPromise(
   scrapeRunId: string,
   siteId: string,
   fieldMappingsRaw: unknown,
-  runMode: RunMode = { scheduled: false, abort: createAbortToken<ScrapeResult>() },
+  runMode: RunMode = { scheduled: false, abort: createAbortToken<ScrapeResult>(), walks: [] },
 ): { promise: Promise<ScrapeResult>; cancel: () => void } {
   const { scheduled } = runMode;
   let timerId: ReturnType<typeof setTimeout>;
