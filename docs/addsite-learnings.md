@@ -3572,3 +3572,86 @@
   typography/footnote plugins. The rule: never anchor a pattern to the first character of a line
   when the page may replace that character. **Home:** `recipes/setupscript-patterns.md` §6.3, read
   with `LRN-SETUP-18`.
+
+---
+
+## LRN-SETUP-21 — a posting whose whole body is an image: unextractable, not a bad selector
+
+- **Date / site:** 2026-09-24 · bontour.co.il/5.
+- **Signal:** `description` fill 0.67 on a 6-job page whose other four rows extract perfectly. The
+  two empty rows use the SAME `itemSelector`, the SAME body container, and the container is present
+  and non-empty in the DOM — so every instinct says the selector is wrong for those rows.
+- **Mechanism:** the employer pasted the ad as a rendered image.
+  `<div class=drushimin><img src="/imgs/site/ntext/vip.png" alt="" /></div>` — one `<img>`, empty
+  `alt`, no text node anywhere. `structuredText()` correctly returns `''`.
+- **Diagnose in one line** before spending the remediation budget on selectors:
+  ```js
+  [...document.querySelectorAll(ITEM_SEL)].map(i => {
+    const b = i.querySelector(BODY_SEL);
+    return [i.querySelector('h4')?.textContent.trim(),
+            (b?.textContent || '').trim().length, b?.querySelectorAll('img').length];
+  })
+  // [..., ['…VIP בשדה התעופה', 0, 1]]  → 0 chars, 1 image = nothing to extract
+  ```
+- **Verdict:** ship the row on title + apply path and say so in `adminNote`; do NOT invent a
+  description from the title, the filename or the `alt`, and do NOT drop the row — it is a real
+  opening with a real apply path. Watch the completeness gate instead: enough image-only rows and
+  `description` falls under 0.6 and the SITE fails, which is the right answer for a board that is
+  mostly pictures. Never OCR into a stored field.
+- **Generalizes to:** small-employer and agency boards that publish ad creatives (very common
+  alongside `li`/accordion markup), and to any per-row field whose value is only in an image.
+  **Home:** `recipes/setupscript-patterns.md` §7.
+
+---
+
+## LRN-AGE-3 — when a site has no dates, image `Last-Modified` beats a sitemap `lastmod`
+
+- **Date / site:** 2026-09-24 · bontour.co.il/5 (no `publishDate` on any job → no `ageBucket`, every
+  posting renders as fresh — the `LRN-AGE-1` situation).
+- **The signal that looks right and is worthless:** `sitemap.xml` carried a `lastmod` on all 63
+  URLs — **the same frozen `2020-12-20T11:27:10+00:00` on every one**, the careers page included.
+  A generator stamped it once. Read as staleness it would have argued for SKIP on a board that is
+  actually maintained. Always check whether the sitemap's `lastmod` values VARY before believing one.
+- **The signal that worked:** `curl.exe -sI` each image the postings themselves embed and read
+  `Last-Modified` — a real file mtime on the origin, per posting, that no CMS rewrites:
+  `natbag.png 2026-06-22`, `BT_MIS_36.png 2025-12-23`, `vip.png 2023-04-19`,
+  `employees sadran.png 2022-09-21`. Newest edit ~3 months old → the board is maintained, and the
+  spread names WHICH posting is the old one rather than judging the site as a whole.
+- **Caveat:** an mtime is when the file was uploaded, not when the job opened, and a text-only
+  posting leaves no trace this way. It is evidence for the owner's call (`§10`), never a gate.
+- **Generalizes to:** any dateless board that serves its own images — which is most small-employer
+  boards. Costs one HEAD request per image. **Home:** `addsite2.md` §10, read with `LRN-AGE-1`.
+
+---
+
+## LRN-HQ-6 — a thin-but-COMPLETE company profile is not a finished one: read the contact and about pages yourself
+
+- **Date / site:** 2026-09-27 · bontour.co.il (onboarded 09-24; both defects found by the owner on review, three days later).
+- **Signal:** `company-profile` reported `WRITTEN / COMPLETE` with homepage + about + logo, and
+  `withCity: 0`. `COMPLETE` is computed from which columns are non-null, so it says nothing about
+  whether the values are the RIGHT ones — and a null HQ city looks like "this company publishes no
+  address", which is a real and common case (`LRN-HQ-4`). Both readings were wrong here.
+- **What one manual fetch of two pages found, that the capture could not:**
+  - `/2007/צור-קשר` prints the head office in full — `בון תור בע"מ / הפלדה 7 / אור יהודה / 60218`.
+    `pickContactUrl()` had already resolved that page correctly; all four address extractors then
+    returned nothing, because the address is **split one line per element** and no single line
+    satisfies any of them. `הפלדה 7` is **7 characters** against `extractCompactAddressLines`'
+    `< 8` floor — one character. (`הפלדה 17`, 8 chars, is extracted.) `אור יהודה` has no digit,
+    `60218` has no letter, there is no `כתובת:` label and no street noun, and the page's only
+    `ld+json` is a `BreadcrumbList`. `אור יהודה` is a verbatim `city.csv` entry, so nothing but the
+    reading was missing.
+  - `/1/אודותינו` opens with the two paragraphs that describe the company — founded 1988, the
+    largest transport operator in Israel, ~7,000 daily journeys — at **101 and 106 characters**.
+    `extractAboutText` filters candidates to `length >= 120`, so both were dropped before ranking,
+    and "longest in the lede" then stored the **client list** instead. Plausible prose, wrong
+    paragraph, and no gate looks at it.
+- **Rule:** when `companyHqCity`/`companyHqAddress` come back null, or the stored `about` reads like
+  a detail rather than a description, **open the contact page and the about page and read them**
+  before accepting the capture. Two fetches. Then write what you found through the operator routes —
+  `PUT /company-hq-city` for the city (the ONLY path that runs the `city.csv` gate server-side and
+  records `evidence: {kind: "operator"}`) and `PUT /company-profile?force=1` for the address and the
+  about text, sending **only** those keys, since the write is presence-based and an absent key leaves
+  its column alone (a `null` would clear the logo).
+- **Generalizes to:** every site whose profile comes back thin, and specifically to Israeli contact
+  pages, which conventionally print street / city / postcode as separate lines with no label and no
+  `רחוב`. **Home:** `company-profile.md` §4.
