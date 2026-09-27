@@ -43,9 +43,20 @@ import {
   planApplyLoginSkip,
   planScheduledPersist,
   planScrapeFailure,
+  readDetailMode,
   readScheduledFlag,
   type WithheldWrite,
 } from "../lib/scheduledRun";
+import {
+  PENDING_DETAIL_KEY,
+  buildCarriedRawFields,
+  indexStoredRows,
+  isCarryEligible,
+  planDetailFetch,
+  stampFetched,
+  type DetailMode,
+  type FetchReason,
+} from "../lib/detailPlan";
 import {
   isTruncatedWalk,
   newPaginationWalk,
@@ -126,6 +137,13 @@ interface RunMode {
    * scheduled persist. See worker/lib/paginationGuard.ts.
    */
   walks: PaginationWalk[];
+  /**
+   * "incremental" carries unchanged jobs' detail text forward; "full" visits
+   * every detail page. Read from the payload by readDetailMode, which returns
+   * "incremental" only for a scheduled payload that asks for it — the manual
+   * path is always "full". See worker/lib/detailPlan.ts.
+   */
+  detailMode: DetailMode;
 }
 
 /** Scrape execution context for error categorization */
@@ -1465,7 +1483,6 @@ async function extractRawFieldsWithPageFlow(
   listingSelector: string | null,
   itemSelector: string | null,
   revealSelector: string | null = null,
-  formCaptureConfig: FormCaptureConfig | null = null,
   pagination: PaginationConfig | null = null,
   setupScript: string | null = null,
   loadMoreSelector: string | null = null,
@@ -1491,8 +1508,6 @@ async function extractRawFieldsWithPageFlow(
   /** Out-param: each paginated walk is appended. See worker/lib/paginationGuard.ts. */
   walks: PaginationWalk[] | null = null,
 ): Promise<Record<string, string>[]> {
-  const rawFieldsList: Record<string, string>[] = [];
-
   // Navigate to the first page flow URL (listing page)
   const listingStep = pageFlow[0];
   await gotoForgiving(page, listingUrlOverride ?? listingStep.url, NAVIGATION_TIMEOUT_MS);
@@ -1807,6 +1822,52 @@ async function extractRawFieldsWithPageFlow(
   const uniqueUrls = [...new Set(detailUrls)];
   console.info(`[scrape] Found ${uniqueUrls.length} unique detail page URLs (${detailUrls.length} total)`);
 
+  // Card SEEDS, not records. The detail pages are visited later, by
+  // visitDetailPages, and only after executeScrape has decided the listing
+  // refusal — a refused night must fetch nothing and carry nothing, and until
+  // this split every detail page had already been paid for before the refusal
+  // was even asked (worker/lib/detailPlan.ts). A seed is the card's
+  // listing-scope fields plus the URL its detail page lives at.
+  const seeds = uniqueUrls.map((url) => ({
+    ...(listingFieldsByUrl[url] ?? {}),
+    _detailUrl: url,
+    [PENDING_DETAIL_KEY]: "1",
+  }));
+  return dedupeAndCapRawFields(seeds);
+}
+
+// ---------------------------------------------------------------------------
+// Detail pages -- the second half of a multi-page flow
+// ---------------------------------------------------------------------------
+
+/**
+ * Visit the detail page of each seed and return one raw record per visit,
+ * seeded with the card's listing-scope fields. The loop is the one that used
+ * to close extractRawFieldsWithPageFlow, moved unchanged; what changed is who
+ * calls it and when — executeScrape, after the listing refusal, with only the
+ * seeds the fetch-or-carry plan chose to fetch.
+ */
+async function visitDetailPages(
+  page: Page,
+  seeds: Array<Record<string, string>>,
+  fieldMappings: Record<string, FieldMappingEntry>,
+  pageFlow: PageFlowStep[],
+  formCaptureConfig: FormCaptureConfig | null,
+  setupScript: string | null,
+): Promise<Record<string, string>[]> {
+  const { detailFields } = classifyFieldsByPage(fieldMappings, pageFlow);
+  const detailStep = pageFlow[1]!;
+  const rawFieldsList: Record<string, string>[] = [];
+  const uniqueUrls: string[] = [];
+  const listingFieldsByUrl: Record<string, Record<string, string>> = {};
+  for (const seed of seeds) {
+    const url = seed._detailUrl ?? "";
+    uniqueUrls.push(url);
+    const card = { ...seed };
+    delete card[PENDING_DETAIL_KEY];
+    listingFieldsByUrl[url] = card;
+  }
+
   // Visit each detail page sequentially (do NOT process concurrently)
   for (let urlIdx = 0; urlIdx < uniqueUrls.length; urlIdx++) {
     const detailUrl = uniqueUrls[urlIdx];
@@ -1998,7 +2059,14 @@ async function extractRawFieldsWithPageFlow(
     }
   }
 
-  return dedupeAndCapRawFields(rawFieldsList);
+  // A visit that threw produced a record with no card fields. It still belongs
+  // to the listing page its card came from, which the next night's listing
+  // check reads out of rawData.
+  for (const r of rawFieldsList) {
+    const card = listingFieldsByUrl[r._detailUrl ?? ""];
+    if (card && card[LISTING_URL_TAG] && !r[LISTING_URL_TAG]) r[LISTING_URL_TAG] = card[LISTING_URL_TAG]!;
+  }
+  return rawFieldsList;
 }
 
 // ---------------------------------------------------------------------------
@@ -3030,7 +3098,12 @@ export async function handleScrapeJob(
   // Only the sweep driver sets this; the HTTP route cannot. Everything the
   // scheduled gate does hangs off it, so it is read once, here.
   const scheduled = readScheduledFlag(job.payload);
-  const runMode: RunMode = { scheduled, abort: createAbortToken<ScrapeResult>(), walks: [] };
+  const runMode: RunMode = {
+    scheduled,
+    abort: createAbortToken<ScrapeResult>(),
+    walks: [],
+    detailMode: readDetailMode(job.payload),
+  };
 
   if (!scrapeRunId) {
     console.error("[scrape] No scrapeRunId in job payload:", job.id);
@@ -3290,6 +3363,33 @@ async function readPreviousListingCounts(siteId: string): Promise<Map<string, nu
  * would carry one job's city onto another, and inventing a place is the one
  * outcome this whole path exists to prevent.
  */
+/**
+ * The site's stored rows' rawData, for the fetch-or-carry plan. A failed read
+ * returns nothing, which makes every card "new" — the run fetches every detail
+ * page, as every night used to. Failing towards fetching is the only safe way
+ * to fail: failing towards carrying would publish stored text unchecked.
+ */
+async function readStoredRawData(siteId: string): Promise<Array<{ rawData: unknown }>> {
+  try {
+    return await prisma.job.findMany({ where: { siteId }, select: { rawData: true } });
+  } catch (err) {
+    console.warn(
+      "[scrape] could not read stored rows for the detail plan; fetching every detail page:",
+      err instanceof Error ? err.message : String(err),
+    );
+    return [];
+  }
+}
+
+/** `_meta.savedAt` — which config a stored row was fetched under. */
+function getConfigSavedAt(fieldMappingsRaw: unknown): string | null {
+  if (!fieldMappingsRaw || typeof fieldMappingsRaw !== "object") return null;
+  const meta = (fieldMappingsRaw as Record<string, unknown>)["_meta"];
+  if (!meta || typeof meta !== "object") return null;
+  const savedAt = (meta as Record<string, unknown>)["savedAt"];
+  return typeof savedAt === "string" && savedAt.length > 0 ? savedAt : null;
+}
+
 async function readPreviousLocations(siteId: string): Promise<Map<string, PreviousLocation>> {
   try {
     const rows = await prisma.job.findMany({
@@ -3385,7 +3485,7 @@ async function executeScrape(
   setupScript: string | null = null,
   loadMoreSelector: string | null = null,
   browserOverrides: BrowserOverrides | null = null,
-  runMode: RunMode = { scheduled: false, abort: createAbortToken<ScrapeResult>(), walks: [] },
+  runMode: RunMode = { scheduled: false, abort: createAbortToken<ScrapeResult>(), walks: [], detailMode: "full" },
   listingTargets: ListingTarget[] = [{ url: site.siteUrl }],
 ): Promise<ScrapeResult> {
   const scrapeStartedAt = Date.now();
@@ -3434,7 +3534,6 @@ async function executeScrape(
         listingSelector,
         itemSelector,
         revealSelector,
-        formCaptureConfig,
         pagination,
         setupScript,
         loadMoreSelector,
@@ -3448,9 +3547,12 @@ async function executeScrape(
       // Multi-page may visit detail pages and capture per-job form data inline,
       // but a single-step pageFlow leaves us back on the listing page with the
       // form embedded there. Capture once and attach to every record.
+      // Not for card seeds: a multi-step flow's detail pages have not been
+      // visited yet, and the same fallback runs after them (executeScrape).
       if (
         formCaptureConfig &&
         rawFieldsList.length > 0 &&
+        !rawFieldsList.some((r) => r[PENDING_DETAIL_KEY] === "1") &&
         !rawFieldsList.some((r) => r["_formData"])
       ) {
         // A single-step pageFlow leaves us on the listing page (no detail/apply
@@ -3770,6 +3872,106 @@ async function executeScrape(
   if (maxJobs && rawFieldsList.length > maxJobs) {
     console.info(`[scrape] Limiting to ${maxJobs} of ${rawFieldsList.length} extracted records (maxJobs)`);
     rawFieldsList = rawFieldsList.slice(0, maxJobs);
+  }
+
+  // ---- Detail pages: fetch or carry (worker/lib/detailPlan.ts) ------------
+  //
+  // Only now, with the listing refusal behind us: a refused night has returned
+  // above having visited no detail page and built no carried row. A multi-step
+  // flow's extractor returned card seeds; each is either fetched (its detail
+  // page visited, as every night used to) or carried (its stored detail fields
+  // laid under tonight's card). Carried rows are ordinary raw records from here
+  // on — the same normalise, validate, drop guard and one transaction as the
+  // rest. On a "full" run — every manual scrape, the Saturday pass, a site
+  // that is not eligible — the plan fetches everything and reads nothing.
+  const pendingSeeds = rawFieldsList.filter((r) => r[PENDING_DETAIL_KEY] === "1");
+  if (pendingSeeds.length > 0) {
+    const scope = classifyFieldsByPage(fieldMappings, pageFlow);
+    const eligible = isCarryEligible({
+      listingFields: Object.keys(scope.listingFields),
+      detailFields: Object.keys(scope.detailFields),
+    });
+    const configSavedAt = getConfigSavedAt(site.fieldMappings);
+    const detailNow = new Date();
+    const index =
+      runMode.detailMode === "incremental" && eligible
+        ? indexStoredRows(await readStoredRawData(site.id))
+        : indexStoredRows([]);
+    const detailPlan = planDetailFetch({
+      seeds: pendingSeeds,
+      index,
+      mode: runMode.detailMode,
+      eligible,
+      configSavedAt,
+      now: detailNow,
+    });
+
+    const reasons = new Map<FetchReason, number>();
+    for (const d of detailPlan.decisions) {
+      if (d.action === "fetch") reasons.set(d.reason, (reasons.get(d.reason) ?? 0) + 1);
+    }
+    console.info(
+      `[scrape] detail pages (${runMode.detailMode}${eligible ? "" : ", not eligible"}): ` +
+        `fetch ${detailPlan.fetched}, carry ${detailPlan.carried}` +
+        (reasons.size > 0 ? ` — ${[...reasons].map(([r, n]) => `${r} ${n}`).join(", ")}` : ""),
+    );
+
+    const toFetch = detailPlan.decisions.flatMap((d) => (d.action === "fetch" ? [d.seed] : []));
+    const visited = await visitDetailPages(
+      page,
+      toFetch,
+      fieldMappings,
+      pageFlow,
+      formCaptureConfig,
+      setupScript,
+    );
+    const visitedByUrl = new Map(visited.map((r) => [r._detailUrl ?? "", r]));
+
+    // Card order, as the listing showed it. A dead detail page produced no
+    // record, and drops out here exactly as it always has.
+    const detailRecords: Record<string, string>[] = [];
+    for (const d of detailPlan.decisions) {
+      if (d.action === "carry") {
+        detailRecords.push(buildCarriedRawFields(d.seed, d.stored));
+        continue;
+      }
+      const rec = visitedByUrl.get(d.seed._detailUrl ?? "");
+      if (rec) detailRecords.push(stampFetched(rec, d.seed, configSavedAt, detailNow));
+    }
+
+    // The fallback extractOneTarget skips for seeds: a flow whose detail visits
+    // captured no apply form takes one from the page it ended on, as before.
+    if (
+      formCaptureConfig &&
+      detailRecords.length > 0 &&
+      !detailRecords.some((r) => r["_formData"])
+    ) {
+      const formData = await extractFormDataOrFallback(page, formCaptureConfig, pageFlow.length <= 1);
+      if (formData) for (const r of detailRecords) r["_formData"] = formData;
+    }
+
+    rawFieldsList = dedupeAndCapRawFields([
+      ...rawFieldsList.filter((r) => r[PENDING_DETAIL_KEY] !== "1"),
+      ...detailRecords,
+    ]);
+
+    // Recorded now, while the run is still ours to annotate: these are not
+    // terminal-status columns, so they do not compete with the timeout handler.
+    await prisma.scrapeRun
+      .update({
+        where: { id: scrapeRunId },
+        data: {
+          detailMode: runMode.detailMode,
+          detailsFetched: toFetch.length,
+          detailsCarried: detailPlan.carried,
+        },
+      })
+      .catch((err: unknown) => {
+        console.warn(
+          "[scrape] could not record detail counts:",
+          err instanceof Error ? err.message : String(err),
+        );
+      });
   }
 
   console.info(`[scrape] Extracted ${rawFieldsList.length} raw job records`);
@@ -4296,7 +4498,7 @@ function createTimeoutPromise(
   scrapeRunId: string,
   siteId: string,
   fieldMappingsRaw: unknown,
-  runMode: RunMode = { scheduled: false, abort: createAbortToken<ScrapeResult>(), walks: [] },
+  runMode: RunMode = { scheduled: false, abort: createAbortToken<ScrapeResult>(), walks: [], detailMode: "full" },
 ): { promise: Promise<ScrapeResult>; cancel: () => void } {
   const { scheduled } = runMode;
   let timerId: ReturnType<typeof setTimeout>;
