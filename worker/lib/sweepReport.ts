@@ -101,7 +101,11 @@ export type SkippedSite = { siteUrl: string; reason: string; kind?: "fresh" };
  * Warning types whose value is WHICH site they happened to. Everything else is
  * a count: a fleet-wide quality signal, acted on by fixing a rule once.
  */
-const WARNINGS_THAT_NAME_SITES: ReadonlySet<string> = new Set(["job_count_drop", "near_timeout"]);
+const WARNINGS_THAT_NAME_SITES: ReadonlySet<string> = new Set([
+  "job_count_drop",
+  "near_timeout",
+  "detail_fingerprint_churn",
+]);
 
 export type ReportOptions = {
   timeZone: string;
@@ -109,6 +113,11 @@ export type ReportOptions = {
   skipped?: readonly SkippedSite[];
   /** The undersize guard's thresholds, so the report applies the rule the run did. */
   dropThresholds?: DropThresholds;
+  /**
+   * The night's detail mode (worker/lib/detailPlan.ts). Absent on nights from
+   * before incremental fetching, which print no Details section.
+   */
+  detailMode?: "full" | "incremental";
 };
 
 /**
@@ -427,6 +436,13 @@ export function needsAttention(
       add(i, `policy status is now restricting (${policyMove}) although the job did not complete`);
     }
 
+    // Carry-forward silently off for this site: every known card changed
+    // fingerprint tonight, so nothing was carried. The run says so itself
+    // (detailPlan.fingerprintChurnWarning); carrying nothing for any other
+    // reason — the first night, a full night, an ineligible site — is by design.
+    const churn = (i.warnings ?? []).map(String).find((w) => w.startsWith("detail_fingerprint_churn:"));
+    if (churn) add(i, `carry-forward is off: ${churn.slice(churn.indexOf(":") + 1).trim()}`);
+
     if (i.defect) add(i, `DEFECT: ${i.defect}`);
   }
 
@@ -538,6 +554,31 @@ export function renderSweepReport(
   lines.push(`  ${counters.listingsProtected} site(s) kept listings a manual run would have deleted`);
   lines.push(`  ${counters.wouldHavePromoted} would have been promoted, ${counters.wouldHaveDemoted} demoted`);
   lines.push(`  ${counters.skippedConflict} skipped (an operator was already scraping)`);
+
+  // --- Details -------------------------------------------------------------
+  // Fetched versus carried (worker/lib/detailPlan.ts): how many detail pages
+  // the night visited, and how many unchanged jobs kept their stored text.
+  // After the queue, so a clean night's first screen is unchanged.
+  if (opts.detailMode) {
+    lines.push("");
+    lines.push(`Details (${opts.detailMode === "full" ? "full refresh" : "incremental"})`);
+    const measured = items.filter(
+      (i) => typeof i.detailsFetched === "number" || typeof i.detailsCarried === "number",
+    );
+    if (measured.length === 0) {
+      lines.push("  no site visited detail pages");
+    } else {
+      lines.push(
+        `  fetched ${counters.detailsFetched ?? 0}, carried ${counters.detailsCarried ?? 0} across ${measured.length} site(s)`,
+      );
+      lines.push("  fetched / carried per site:");
+      const sorted = [...measured].sort((a, b) => (b.detailsFetched ?? 0) - (a.detailsFetched ?? 0));
+      for (const i of sorted) {
+        const pair = `${i.detailsFetched ?? 0} / ${i.detailsCarried ?? 0}`;
+        lines.push(`    ${pair.padStart(9)}  ${i.siteUrl}`);
+      }
+    }
+  }
 
   // --- Warnings ----------------------------------------------------------
   // Each run's own ScrapeRun.warnings, grouped by type. Surfaced, not counted

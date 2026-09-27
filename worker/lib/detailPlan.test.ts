@@ -14,6 +14,7 @@ import {
   buildCarriedRawFields,
   cardFingerprint,
   detailModeFor,
+  fingerprintChurnWarning,
   indexStoredRows,
   isCarryEligible,
   isFullDetailRun,
@@ -280,6 +281,43 @@ check("the weekly full pass is the Saturday 02:00 Jerusalem run", () => {
   // Saturday of winter time.
   assert(detailModeFor(new Date("2026-10-31T00:30:00Z")) === "full", "Sat 31 Oct 02:30, the night after the switch to winter time");
   assert(detailModeFor(new Date("2026-03-27T23:30:00Z")) === "full", "Sat 28 Mar 02:30 IDT, the night after the switch to summer time");
+});
+
+check("fingerprint churn: a site where carry-forward is silently off", () => {
+  // A card field that changes every night (a relative date, a view counter)
+  // makes every known card look changed. Nothing is ever carried and nothing
+  // says so — the site just costs what it always did. That has to be named.
+  const known = (n: number) => Array.from({ length: n }, (_, i) => seed({ externalJobId: `/career/${i}`, _detailUrl: `${URL_A}${i}` }));
+  const rowsFor = (seeds: Array<Record<string, string>>) => seeds.map((s) => stored({}, s));
+  const tonight = (seeds: Array<Record<string, string>>) => seeds.map((s) => ({ ...s, title: `${s.title} (לפני יום)` }));
+
+  const s3 = known(3);
+  const churn = plan(tonight(s3), rowsFor(s3));
+  const w = fingerprintChurnWarning(churn, { mode: "incremental", eligible: true });
+  assert(!!w && w.startsWith("detail_fingerprint_churn:"), `three known cards, all changed, none carried -> named (got ${w})`);
+
+  const s2 = known(2);
+  assert(
+    fingerprintChurnWarning(plan(tonight(s2), rowsFor(s2)), { mode: "incremental", eligible: true }) === null,
+    "two is too few to call it churn — two real retitles happen",
+  );
+  const mixed = plan([...tonight(s3), ...known(4).slice(3)], [...rowsFor(s3), ...rowsFor(known(4).slice(3))]);
+  assert(
+    fingerprintChurnWarning(mixed, { mode: "incremental", eligible: true }) === null,
+    "one card carried means fingerprints do match — not churn",
+  );
+  assert(
+    fingerprintChurnWarning(plan(s3, []), { mode: "incremental", eligible: true }) === null,
+    "all new (the first night: no fingerprints stored) is not churn",
+  );
+  assert(
+    fingerprintChurnWarning(plan(tonight(s3), rowsFor(s3), { mode: "full" }), { mode: "full", eligible: true }) === null,
+    "a full night carries nothing by design",
+  );
+  assert(
+    fingerprintChurnWarning(plan(tonight(s3), rowsFor(s3), { eligible: false }), { mode: "incremental", eligible: false }) === null,
+    "an ineligible site carries nothing by design",
+  );
 });
 
 check("which past runs count as a full refresh, for Saturday's selection", () => {

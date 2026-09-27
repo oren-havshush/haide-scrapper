@@ -466,6 +466,45 @@ check("skipped sites and warnings are listed", () => {
   assert(none.detailsFetched === null && none.detailsCarried === null, "no site measured -> NULL, not 0");
   const policy = computeCounters(sweep({ kind: "POLICY" }), items);
   assert(policy.detailsFetched === null && policy.detailsCarried === null, "a policy sweep fetches no detail pages");
+
+  // --- the report's view: a night shows fetched versus carried --------------
+  const inc = renderSweepReport(sweep(), items, { timeZone: TZ, detailMode: "incremental" });
+  assert(
+    inc.includes("Details (incremental)"),
+    "the section names the night's mode",
+  );
+  assert(inc.includes("fetched 134, carried 49 across 2 site(s)"), "and totals it over the sites that measured");
+  assert(inc.includes("2 / 49") && inc.includes("https://a.test"), "each measuring site: fetched / carried");
+  assert(inc.includes("132 / 0") && inc.includes("https://b.test"), "including one that carried nothing");
+  assert(!/\/ \d+\s+https:\/\/c\.test/.test(inc), "a site that visits no detail pages is not listed");
+  assert(
+    inc.indexOf("Details (") > inc.indexOf("Needs attention ("),
+    "below the attention queue: the first screen stays the verdict and the queue",
+  );
+  const sat = renderSweepReport(sweep(), items, { timeZone: TZ, detailMode: "full" });
+  assert(sat.includes("Details (full refresh)"), "the Saturday night says it is the full refresh");
+  const old = renderSweepReport(sweep(), ok(2), { timeZone: TZ });
+  assert(!old.includes("Details ("), "a night from before detail modes prints no section");
+  const noDetail = renderSweepReport(sweep(), ok(2), { timeZone: TZ, detailMode: "incremental" });
+  assert(noDetail.includes("no site visited detail pages"), "a measured night with no multi-step site says so");
+
+  // --- churn is named in the queue ---------------------------------------------
+  const churn = item({
+    siteId: "z",
+    siteUrl: "https://churn.test",
+    detailsFetched: 30,
+    detailsCarried: 0,
+    warnings: ["detail_fingerprint_churn: none of 30 known card(s) kept its fingerprint"],
+  });
+  const q = needsAttention(sweep(), [churn], { timeZone: TZ });
+  assert(
+    q.some((a) => a.siteUrl === "https://churn.test" && a.why.includes("fingerprint")),
+    "a site where carry-forward is silently off is in Needs attention",
+  );
+  assert(
+    needsAttention(sweep(), [item({ detailsFetched: 30, detailsCarried: 0 })], { timeZone: TZ }).length === 0,
+    "carrying nothing without the warning (first night, full night, ineligible site) is not",
+  );
 }
 
 if (failures > 0) {

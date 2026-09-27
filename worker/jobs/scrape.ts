@@ -50,6 +50,7 @@ import {
 import {
   PENDING_DETAIL_KEY,
   buildCarriedRawFields,
+  fingerprintChurnWarning,
   indexStoredRows,
   isCarryEligible,
   planDetailFetch,
@@ -4042,6 +4043,7 @@ async function executeScrape(
   // on — the same normalise, validate, drop guard and one transaction as the
   // rest. On a "full" run — every manual scrape, the Saturday pass, a site
   // that is not eligible — the plan fetches everything and reads nothing.
+  let detailChurnWarning: string | null = null;
   const pendingSeeds = rawFieldsList.filter((r) => r[PENDING_DETAIL_KEY] === "1");
   if (pendingSeeds.length > 0) {
     const scope = classifyFieldsByPage(fieldMappings, pageFlow);
@@ -4064,6 +4066,7 @@ async function executeScrape(
       now: detailNow,
     });
 
+    detailChurnWarning = fingerprintChurnWarning(detailPlan, { mode: runMode.detailMode, eligible });
     const reasons = new Map<FetchReason, number>();
     for (const d of detailPlan.decisions) {
       if (d.action === "fetch") reasons.set(d.reason, (reasons.get(d.reason) ?? 0) + 1);
@@ -4558,6 +4561,8 @@ async function executeScrape(
     // that has more than one, and the only place a cross-page dedup collapse
     // is attributable to the page it happened on.
     scrapeWarnings.push(...listingWarnings);
+    // Carry-forward silently off for this site tonight (worker/lib/detailPlan.ts).
+    if (detailChurnWarning) scrapeWarnings.push(detailChurnWarning);
     // TIER 1 — cards shown on the listing vs rows actually written. The gap is
     // never an error on its own: true duplicate postings, dead detail pages
     // skipped by design, validator rejects, the maxJobs cap and cards with no

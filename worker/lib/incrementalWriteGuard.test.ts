@@ -102,6 +102,19 @@ assert(
   "the run records its mode and both counts",
 );
 
+// ---------------------------------------------------------------------------
+// 5. The report's anomaly reaches the report
+// ---------------------------------------------------------------------------
+
+assert(
+  /detailChurnWarning = fingerprintChurnWarning\(detailPlan, \{ mode: runMode\.detailMode, eligible \}\)/.test(execute),
+  "the run computes the churn warning from tonight's plan",
+);
+assert(
+  /if \(detailChurnWarning\) scrapeWarnings\.push\(detailChurnWarning\)/.test(execute),
+  "and writes it with the run's warnings, where the sweep item copies it from",
+);
+
 if (failures > 0) {
   console.error(`\n${failures} assertion(s) failed`);
   process.exit(1);

@@ -180,6 +180,8 @@ export async function closeSweep(args: {
   items: ReportItem[];
   /** Selection exclusions, named in the report's Ran section. Scrape sweep only. */
   skipped?: SkippedSite[];
+  /** The night's detail mode, for the report's Details section. Scrape sweep only. */
+  detailMode?: "full" | "incremental";
 }): Promise<string> {
   const finishedAt = new Date();
 
@@ -198,6 +200,7 @@ export async function closeSweep(args: {
   const logText = renderSweepReport(sweepRow, args.items, {
     timeZone: sweepConfig.timezone,
     skipped: args.skipped,
+    detailMode: args.detailMode,
     // The thresholds the worker's undersize guard read, so the report's drop
     // rule is the same rule.
     dropThresholds: {

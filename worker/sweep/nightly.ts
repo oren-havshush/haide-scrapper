@@ -658,6 +658,7 @@ async function realRun(mode: Mode): Promise<number> {
     if (!found) {
       await closeSweep({
         kind: "SCRAPE",
+        detailMode,
         sweepId: sweep.id,
         trigger: sweep.trigger,
         startedAt: sweep.startedAt,
@@ -768,6 +769,7 @@ async function realRun(mode: Mode): Promise<number> {
       // report and counters instead of a bare FAILED row.
       const failedText = await closeSweep({
         kind: "SCRAPE",
+        detailMode,
         sweepId: sweep.id,
         trigger: sweep.trigger,
         startedAt: sweep.startedAt,
@@ -817,6 +819,7 @@ async function realRun(mode: Mode): Promise<number> {
       log(`[sweep] HALT: ${haltReason}`);
       const haltedText = await closeSweep({
         kind: "SCRAPE",
+        detailMode,
         sweepId: sweep.id,
         trigger: sweep.trigger,
         startedAt: sweep.startedAt,
@@ -839,6 +842,7 @@ async function realRun(mode: Mode): Promise<number> {
   // path cannot compute them differently.
   const reportText = await closeSweep({
     kind: "SCRAPE",
+    detailMode,
     sweepId: sweep.id,
     trigger: sweep.trigger,
     startedAt: sweep.startedAt,

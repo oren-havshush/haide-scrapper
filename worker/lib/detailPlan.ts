@@ -212,6 +212,34 @@ export function planDetailFetch(args: {
   return { decisions, fetched: decisions.length - carried, carried };
 }
 
+/** Known cards that must all have changed before a night counts as churn. */
+const CHURN_MIN_KNOWN = 3;
+
+/**
+ * A site where carry-forward is silently off: on an incremental night, an
+ * eligible site's known cards ALL came back with a changed fingerprint and
+ * nothing was carried. The likely cause is a card field that changes every
+ * night (a relative date, a view count), and the only symptom otherwise is a
+ * site that costs what it always did. Returned as a run warning, which the
+ * nightly report names in its attention queue.
+ *
+ * Not churn: the first night (no fingerprints stored — "no_fingerprint"), a
+ * full night or an ineligible site (nothing is carried by design), two or
+ * fewer changed cards (real retitles happen), or any night that carried one.
+ */
+export function fingerprintChurnWarning(
+  plan: { decisions: DetailDecision[]; carried: number },
+  ctx: { mode: DetailMode; eligible: boolean },
+): string | null {
+  if (ctx.mode !== "incremental" || !ctx.eligible || plan.carried > 0) return null;
+  const changed = plan.decisions.filter((d) => d.action === "fetch" && d.reason === "fingerprint_changed").length;
+  if (changed < CHURN_MIN_KNOWN) return null;
+  return (
+    `detail_fingerprint_churn: none of ${changed} known card(s) kept its fingerprint — ` +
+    `a card field likely changes every night, so nothing is carried`
+  );
+}
+
 // ---------------------------------------------------------------------------
 // Building the rows
 // ---------------------------------------------------------------------------
