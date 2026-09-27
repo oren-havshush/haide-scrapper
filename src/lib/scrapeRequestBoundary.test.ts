@@ -13,7 +13,8 @@
 
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { readScheduledFlag } from "../../worker/lib/scheduledRun";
+import { readDetailMode, readScheduledFlag } from "../../worker/lib/scheduledRun";
+import { buildScrapeJobRow } from "./scrapeJobRow";
 
 let failures = 0;
 function assert(cond: boolean, msg: string) {
@@ -111,6 +112,32 @@ assert(
   readScheduledFlag({ scrapeRunId: "run_abc", scheduled: true }),
   "and an in-process sweep payload still reads as scheduled — the guard is not just 'always false'",
 );
+
+// --- the detail mode: the same boundary, for the same reason ---------------
+//
+// "incremental" makes a run publish stored detail text instead of fetching it
+// (worker/lib/detailPlan.ts). Only the sweep driver may ask for that, and only
+// on a scheduled run; the dashboard always fetches everything.
+
+assert(!/detailMode/.test(route), "the route does not mention detailMode, so it cannot forward one");
+assert(
+  /detailMode\?: "incremental" \| "full"/.test(builder),
+  "the builder takes detailMode as a typed option",
+);
+assert(
+  /\.\.\.\(input\.scheduled && input\.detailMode === "incremental" \? \{ detailMode: "incremental" \} : \{\}\)/.test(builder),
+  "and writes it only as a literal, only on a scheduled row",
+);
+{
+  const manual = buildScrapeJobRow({ siteId: "s", scrapeRunId: "r", detailMode: "incremental" });
+  assert(!("detailMode" in manual.payload), "a manual row never carries detailMode, even when asked");
+  assert(readDetailMode(manual.payload) === "full", "so the worker fetches everything");
+  const sweep = buildScrapeJobRow({ siteId: "s", scrapeRunId: "r", scheduled: true, detailMode: "incremental" });
+  assert(readDetailMode(sweep.payload) === "incremental", "the sweep's incremental row reads as incremental");
+  const saturday = buildScrapeJobRow({ siteId: "s", scrapeRunId: "r", scheduled: true, detailMode: "full" });
+  assert(!("detailMode" in saturday.payload), "a full sweep row says nothing — full is the default");
+  assert(readDetailMode(saturday.payload) === "full", "and reads as full");
+}
 
 if (failures > 0) {
   console.error(`\n${failures} assertion(s) failed`);

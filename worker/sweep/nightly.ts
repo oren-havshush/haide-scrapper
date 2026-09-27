@@ -44,6 +44,8 @@ import {
   type DrainVerdict,
 } from "../lib/drainProbe";
 import { readScheduledFlag } from "../lib/scheduledRun";
+import { isFullDetailRun, type DetailMode } from "../lib/detailPlan";
+import { parseNightlyArgs, resolveDetailMode, type NightlyMode } from "../lib/nightlyArgs";
 import {
   createBreakerState,
   recordOutcome,
@@ -64,25 +66,10 @@ import {
 // Arguments
 // ---------------------------------------------------------------------------
 
-type Mode =
-  | { kind: "dry-run" }
-  | { kind: "single"; siteId: string }
-  | { kind: "fleet" };
-
-function parseArgs(argv: string[]): Mode {
-  const dryRun = argv.includes("--dry-run");
-  const now = argv.includes("--now");
-  const siteIdx = argv.indexOf("--site");
-  const siteId = siteIdx >= 0 ? argv[siteIdx + 1] : undefined;
-
-  if (dryRun) return { kind: "dry-run" };
-  if (siteId) {
-    if (!now) throw new Error("--site requires --now (it runs the scheduled path for real)");
-    return { kind: "single", siteId };
-  }
-  if (now) return { kind: "fleet" };
-  throw new Error("one of --dry-run, --now, or --site <id> --now is required");
-}
+// Parsed in worker/lib/nightlyArgs.ts, where it can be tested: its defaults
+// are the detail-fetch policy (incremental on weekday nights, full on the
+// Saturday run and on --site).
+type Mode = Exclude<NightlyMode, { kind: "dry-run" } | { kind: "dry-run-details" }>;
 
 const log = (line: string) => console.info(line);
 
@@ -90,7 +77,13 @@ const log = (line: string) => console.info(line);
 // Selection, from the database
 // ---------------------------------------------------------------------------
 
-async function loadSelectableSites(): Promise<SelectableSite[]> {
+/**
+ * @param opts.fullPass  the Saturday pass: a site counts as fresh only if its
+ *   last successful run fetched every detail page (isFullDetailRun), so one
+ *   scraped incrementally on Friday is still refreshed. Every other night
+ *   counts any successful run, as before.
+ */
+async function loadSelectableSites(opts: { fullPass: boolean } = { fullPass: false }): Promise<SelectableSite[]> {
   const sites = await prisma.site.findMany({
     where: { status: { in: [...SWEEP_SITE_STATUSES] } },
     select: { id: true, siteUrl: true, status: true, fieldMappings: true },
@@ -100,7 +93,7 @@ async function loadSelectableSites(): Promise<SelectableSite[]> {
   // because "success" is a definition, not a status — see sweepSelection.ts.
   const runs = await prisma.scrapeRun.findMany({
     where: { siteId: { in: sites.map((s) => s.id) } },
-    select: { siteId: true, status: true, failureCategory: true, createdAt: true },
+    select: { siteId: true, status: true, failureCategory: true, createdAt: true, detailMode: true },
     orderBy: { createdAt: "desc" },
   });
 
@@ -109,6 +102,7 @@ async function loadSelectableSites(): Promise<SelectableSite[]> {
   for (const r of runs) {
     if (r.status === "IN_PROGRESS") continue; // not an outcome yet
     if (!lastAttempt.has(r.siteId)) lastAttempt.set(r.siteId, r.createdAt);
+    if (opts.fullPass && !isFullDetailRun(r.detailMode)) continue;
     if (!lastSuccess.has(r.siteId) && isSuccessfulRun(r)) lastSuccess.set(r.siteId, r.createdAt);
   }
 
@@ -138,6 +132,9 @@ type SiteResult = {
   scrapedCount: number | null;
   /** The run's ScrapeRun.warnings, read after the handler has returned. */
   warnings: string[] | null;
+  /** The run's detail pages fetched / carried. Absent or NULL: no detail phase. */
+  detailsFetched?: number | null;
+  detailsCarried?: number | null;
   newestJobAt: Date | null;
   siteStatus: string;
   wouldDemoteTo: string | null;
@@ -342,6 +339,7 @@ async function waitForJobTerminal(
 
 async function runOneSite(
   site: { id: string; siteUrl: string },
+  detailMode: DetailMode,
   opts?: { probe?: (workerJobId: string) => Promise<DrainVerdict> },
 ): Promise<SiteResult> {
   const startedAt = new Date();
@@ -358,7 +356,7 @@ async function runOneSite(
   let defect: string | null = null;
 
   try {
-    const run = await createScrapeRun(site.id, { scheduled: true });
+    const run = await createScrapeRun(site.id, { scheduled: true, detailMode });
     scrapeRunId = run.id;
   } catch (err) {
     if (err instanceof ConflictError) {
@@ -470,7 +468,7 @@ async function runOneSite(
   // returns, so a read taken when the run first went terminal could miss them.
   const runRow = await prisma.scrapeRun.findUnique({
     where: { id: scrapeRunId },
-    select: { validJobs: true, warnings: true },
+    select: { validJobs: true, warnings: true, detailsFetched: true, detailsCarried: true },
   });
   const warnings = Array.isArray(runRow?.warnings)
     ? runRow.warnings.map((w) => String(w))
@@ -488,6 +486,8 @@ async function runOneSite(
     failureCategory: waited.failureCategory,
     jobsAfter: after.jobCount,
     scrapedCount: runRow?.validJobs ?? null,
+    detailsFetched: runRow?.detailsFetched ?? null,
+    detailsCarried: runRow?.detailsCarried ?? null,
     warnings,
     newestJobAt: after.newestJobAt,
     siteStatus: after.status,
@@ -512,6 +512,8 @@ function toScrapeReportItem(r: SiteResult): ReportItem {
     jobsBefore: r.jobsBefore,
     jobsAfter: r.jobsAfter,
     scrapedCount: r.scrapedCount,
+    detailsFetched: r.detailsFetched ?? null,
+    detailsCarried: r.detailsCarried ?? null,
     warnings: r.warnings,
     newestJobAt: r.newestJobAt,
     siteStatus: r.siteStatus,
@@ -621,8 +623,11 @@ async function realRun(mode: Mode): Promise<number> {
 
   const single = mode.kind === "single" ? mode.siteId : null;
   const now = new Date();
+  // Incremental on weekday nights, full on the Saturday run and on --site
+  // (worker/lib/nightlyArgs.ts). Decided once, so every site tonight agrees.
+  const detailMode = resolveDetailMode(mode, now);
 
-  log(`=== nightly sweep ${single ? `--site ${single}` : "--now"} ===`);
+  log(`=== nightly sweep ${single ? `--site ${single}` : "--now"} (detail pages: ${detailMode}) ===`);
 
   // --- pre-flight ------------------------------------------------------
   const reaped = await reapOrphanedScrapeRuns(SWEEP_REAP_OPTIONS);
@@ -669,7 +674,7 @@ async function realRun(mode: Mode): Promise<number> {
     queue = [found];
     log(`[sweep] single-site mode: ${found.siteUrl}`);
   } else {
-    const { selected, excluded } = selectSitesForSweep(await loadSelectableSites(), {
+    const { selected, excluded } = selectSitesForSweep(await loadSelectableSites({ fullPass: detailMode === "full" }), {
       now,
       freshWindowMs: sweepConfig.freshWindowHours * 3_600_000,
     });
@@ -703,6 +708,7 @@ async function realRun(mode: Mode): Promise<number> {
     const isProbe = results.length === 0;
     const result = await runOneSite(
       site,
+      detailMode,
       isProbe
         ? {
             probe: (jobId) =>
@@ -720,6 +726,9 @@ async function realRun(mode: Mode): Promise<number> {
       `[sweep] <- ${result.outcome}` +
         (result.failureCategory ? ` (${result.failureCategory})` : "") +
         ` jobs ${result.jobsBefore} -> ${result.jobsAfter}` +
+        (result.detailsFetched != null || result.detailsCarried != null
+          ? ` details fetched ${result.detailsFetched ?? 0} carried ${result.detailsCarried ?? 0}`
+          : "") +
         (result.outcome === "suspicious_drop" ? ` REFUSED scraped ${result.scrapedCount ?? "?"}` : "") +
         ` site ${result.siteStatus}` +
         (result.wouldPromoteTo ? ` WOULD PROMOTE -> ${result.wouldPromoteTo}` : "") +
@@ -738,6 +747,8 @@ async function realRun(mode: Mode): Promise<number> {
         jobsBefore: result.jobsBefore,
         jobsAfter: result.jobsAfter,
         scrapedCount: result.scrapedCount,
+        detailsFetched: result.detailsFetched ?? null,
+        detailsCarried: result.detailsCarried ?? null,
         // Omitted rather than null: a Json? column takes Prisma.JsonNull, not null,
         // and an absent key is already NULL.
         ...(result.warnings ? { warnings: result.warnings } : {}),
@@ -868,9 +879,57 @@ async function realRun(mode: Mode): Promise<number> {
 
 // ---------------------------------------------------------------------------
 
+// ---------------------------------------------------------------------------
+// Dry run of one site's detail plan — READ ONLY
+// ---------------------------------------------------------------------------
+
+/**
+ * `--site <id> --dry-run-details`: walk the site's listing in a browser, read
+ * its stored rows, and print which detail pages tonight would fetch and which
+ * it would carry — then exit. No sweep row, no ScrapeRun, no job, no detail
+ * page visited. Pinned write-free, with the scrape-side functions it reaches,
+ * by worker/lib/sweepDriverGuard.test.ts.
+ *
+ * scrape.ts is imported here, not at the top: it pulls in the browser stack,
+ * which the ordinary sweep never needs in this process.
+ */
+async function dryRunDetails(siteId: string, detailMode: DetailMode): Promise<number> {
+  log(`=== nightly --site ${siteId} --dry-run-details (READ ONLY, detail pages: ${detailMode}) ===`);
+  const { planDetailsReadOnly } = await import("../jobs/scrape");
+  const r = await planDetailsReadOnly(siteId, detailMode);
+
+  log(`site           ${r.siteUrl}`);
+  if (!r.multiStep) {
+    log("no detail pages: this site's pageFlow has a single step, so there is nothing to fetch or carry");
+    return 0;
+  }
+  log(`config savedAt ${r.configSavedAt ?? "(none — nothing can be carried)"}`);
+  log(`eligible       ${r.eligible ? "yes" : "no — every detail page is fetched (no title on the card, or no detail-scope field)"}`);
+  for (const u of r.perUrl) {
+    log(`listing        ${u.url}  cards ${u.cards}${u.seen !== null ? ` (seen ${u.seen})` : ""}${u.error ? `  ERROR ${u.error}` : ""}`);
+  }
+  log(`pagination     ${r.paginationTruncated ? "TRUNCATED — the pagination guard would refuse this night" : "whole"}`);
+  log(
+    `refusal        ${r.listingOutcome === "persist" ? "none" : `${r.listingOutcome.toUpperCase()} — ${r.listingDetail ?? ""} (a refused night fetches and carries nothing)`}`,
+  );
+  log(`stored rows    ${r.storedRows}`);
+  log(`plan           fetch ${r.fetched}, carry ${r.carried}`);
+  for (const [reason, n] of r.reasons) log(`  fetch: ${reason.padEnd(20)} ${n}`);
+  for (const d of r.decisions) {
+    log(`  ${d.action === "carry" ? "carry" : "FETCH"} ${(d.reason ?? "").padEnd(20)} ${d.url}  ${d.title}`);
+  }
+  log("wrote nothing.");
+  return 0;
+}
+
 async function main() {
-  const mode = parseArgs(process.argv.slice(2));
-  const code = mode.kind === "dry-run" ? await dryRun() : await realRun(mode);
+  const parsed = parseNightlyArgs(process.argv.slice(2));
+  const code =
+    parsed.kind === "dry-run"
+      ? await dryRun()
+      : parsed.kind === "dry-run-details"
+        ? await dryRunDetails(parsed.siteId, resolveDetailMode(parsed, new Date()))
+        : await realRun(parsed);
   await prisma.$disconnect();
   process.exit(code);
 }

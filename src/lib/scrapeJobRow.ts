@@ -26,6 +26,13 @@ export type ScrapeJobRowInput = {
    * src/lib/scrapeRequestBoundary.test.ts.
    */
   scheduled?: boolean;
+  /**
+   * "incremental" lets the run carry unchanged jobs' detail text forward
+   * instead of fetching it (worker/lib/detailPlan.ts). Written only on a
+   * scheduled row, and only as the literal; "full" is the default and is
+   * never written. The route cannot reach it, for the same reason as above.
+   */
+  detailMode?: "incremental" | "full";
 };
 
 export function buildScrapeJobRow(input: ScrapeJobRowInput) {
@@ -40,6 +47,7 @@ export function buildScrapeJobRow(input: ScrapeJobRowInput) {
       // Omitted entirely on a manual run, so every job already in the queue
       // reads as manual and readScheduledFlag needs no migration.
       ...(input.scheduled ? { scheduled: true } : {}),
+      ...(input.scheduled && input.detailMode === "incremental" ? { detailMode: "incremental" } : {}),
     },
   };
 }

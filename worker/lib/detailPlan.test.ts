@@ -16,6 +16,7 @@ import {
   detailModeFor,
   indexStoredRows,
   isCarryEligible,
+  isFullDetailRun,
   planDetailFetch,
   seedFingerprint,
   stampFetched,
@@ -279,6 +280,18 @@ check("the weekly full pass is the Saturday 02:00 Jerusalem run", () => {
   // Saturday of winter time.
   assert(detailModeFor(new Date("2026-10-31T00:30:00Z")) === "full", "Sat 31 Oct 02:30, the night after the switch to winter time");
   assert(detailModeFor(new Date("2026-03-27T23:30:00Z")) === "full", "Sat 28 Mar 02:30 IDT, the night after the switch to summer time");
+});
+
+check("which past runs count as a full refresh, for Saturday's selection", () => {
+  // On the Saturday pass a site is "fresh" only if its last successful run
+  // fetched every detail page. A run from before this existed did (NULL).
+  assert(isFullDetailRun("full"), "a full run is");
+  assert(isFullDetailRun(null), "a run from before detail modes existed fetched everything");
+  assert(!isFullDetailRun("incremental"), "an incremental run is not");
+  assert(
+    !isFullDetailRun("something-else"),
+    "an unknown value is not proof of a full fetch — it fails towards refreshing the site",
+  );
 });
 
 if (failures > 0) {

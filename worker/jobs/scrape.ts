@@ -3363,6 +3363,164 @@ async function readPreviousListingCounts(siteId: string): Promise<Map<string, nu
  * would carry one job's city onto another, and inventing a place is the one
  * outcome this whole path exists to prevent.
  */
+/** What `nightly.ts --site <id> --dry-run-details` prints. */
+export type DetailRehearsal = {
+  siteUrl: string;
+  mode: DetailMode;
+  /** False for a listing-only site: it has no detail pages to plan. */
+  multiStep: boolean;
+  eligible: boolean;
+  configSavedAt: string | null;
+  /** What the listing refusal would decide on these cards. */
+  listingOutcome: "persist" | "soft_fail" | "rethrow";
+  listingDetail: string | null;
+  perUrl: Array<{ url: string; cards: number; seen: number | null; error: string | null }>;
+  /** Any listing walk the pagination guard would refuse. */
+  paginationTruncated: boolean;
+  storedRows: number;
+  fetched: number;
+  carried: number;
+  reasons: Array<[FetchReason, number]>;
+  decisions: Array<{ action: "fetch" | "carry"; reason: FetchReason | null; url: string; title: string }>;
+};
+
+/**
+ * READ-ONLY rehearsal of one site's fetch-or-carry split, for
+ * `nightly.ts --site <id> --dry-run-details`.
+ *
+ * Walks the listing with the real extractor, reads the stored rows through the
+ * one reader, and runs the real plan — then stops. It visits no detail page,
+ * creates no ScrapeRun, and writes nothing: its body, the extractor's and the
+ * reader's are pinned write-free by worker/lib/sweepDriverGuard.test.ts, the
+ * same promise --dry-run makes.
+ */
+export async function planDetailsReadOnly(siteId: string, mode: DetailMode): Promise<DetailRehearsal> {
+  const site = await prisma.site.findUnique({ where: { id: siteId } });
+  if (!site) throw new Error(`site ${siteId} not found`);
+
+  const fieldMappings = parseFieldMappings(site.fieldMappings);
+  const pageFlow = parsePageFlow(site.pageFlow);
+  const configSavedAt = getConfigSavedAt(site.fieldMappings);
+  const empty: DetailRehearsal = {
+    siteUrl: site.siteUrl,
+    mode,
+    multiStep: false,
+    eligible: false,
+    configSavedAt,
+    listingOutcome: "persist",
+    listingDetail: null,
+    perUrl: [],
+    paginationTruncated: false,
+    storedRows: 0,
+    fetched: 0,
+    carried: 0,
+    reasons: [],
+    decisions: [],
+  };
+  if (pageFlow.length < 2) return empty;
+
+  const { listingSelector, itemSelector, revealSelector } = getStructuralSelectors(site.fieldMappings);
+  const pagination = getPaginationConfig(site.fieldMappings);
+  const setupScript = getSetupScript(site.fieldMappings);
+  const loadMoreSelector = getLoadMoreSelector(site.fieldMappings);
+  const browserOverrides = getBrowserOverrides(site.fieldMappings);
+  const listingTargets = resolveListingTargets({
+    siteUrl: site.siteUrl,
+    listingUrls: getListingUrls(site.fieldMappings),
+  });
+
+  const browser = await launchBrowser();
+  try {
+    const { page } = await createPage(browser, browserOverrides ?? undefined);
+    await page.addInitScript(
+      'if(typeof __name==="undefined"){globalThis.__name=function(fn){return fn}}',
+    );
+
+    const walks: PaginationWalk[] = [];
+    const perUrl: ListingUrlResult[] = [];
+    for (const target of listingTargets) {
+      const stats: { listingItemsSeen: number | null } = { listingItemsSeen: null };
+      try {
+        const items = await extractRawFieldsWithPageFlow(
+          page,
+          fieldMappings,
+          pageFlow,
+          listingSelector,
+          itemSelector,
+          revealSelector,
+          pagination,
+          setupScript,
+          loadMoreSelector,
+          stats,
+          null,
+          target.url,
+          walks,
+        );
+        for (const r of items) r[LISTING_URL_TAG] = target.url;
+        perUrl.push({ url: target.url, items, seen: stats.listingItemsSeen, error: null });
+      } catch (err) {
+        perUrl.push({
+          url: target.url,
+          items: [],
+          seen: null,
+          error: err instanceof Error ? err.message : String(err),
+        });
+      }
+    }
+
+    const merged = mergeListingResults(perUrl);
+    const seeds = dedupeAndCapRawFields(merged.items).filter((r) => r[PENDING_DETAIL_KEY] === "1");
+    const listing = decideListingOutcome({
+      perUrl,
+      targets: listingTargets,
+      previous: await readPreviousListingCounts(site.id),
+      scheduled: true,
+      savedByUrl: savedCountsByUrl(seeds),
+    });
+
+    const scope = classifyFieldsByPage(fieldMappings, pageFlow);
+    const eligible = isCarryEligible({
+      listingFields: Object.keys(scope.listingFields),
+      detailFields: Object.keys(scope.detailFields),
+    });
+    const storedRows = await readStoredRawData(site.id);
+    const detailPlan = planDetailFetch({
+      seeds,
+      index: indexStoredRows(storedRows),
+      mode,
+      eligible,
+      configSavedAt,
+      now: new Date(),
+    });
+
+    const reasons = new Map<FetchReason, number>();
+    for (const d of detailPlan.decisions) {
+      if (d.action === "fetch") reasons.set(d.reason, (reasons.get(d.reason) ?? 0) + 1);
+    }
+    return {
+      ...empty,
+      multiStep: true,
+      eligible,
+      listingOutcome: listing.kind,
+      listingDetail: listing.kind === "persist" ? null : listing.error,
+      perUrl: perUrl.map((r) => ({ url: r.url, cards: r.items.length, seen: r.seen, error: r.error })),
+      paginationTruncated: walks.some(isTruncatedWalk),
+      storedRows: storedRows.length,
+      fetched: detailPlan.fetched,
+      carried: detailPlan.carried,
+      reasons: [...reasons],
+      decisions: detailPlan.decisions.map((d) => ({
+        action: d.action,
+        reason: d.action === "fetch" ? d.reason : null,
+        url: d.seed._detailUrl ?? "",
+        title: (d.seed.title ?? "").replace(/\s+/g, " ").trim().slice(0, 60),
+      })),
+    };
+  } finally {
+    await closeBrowser(browser);
+  }
+}
+
 /**
  * The site's stored rows' rawData, for the fetch-or-carry plan. A failed read
  * returns nothing, which makes every card "new" — the run fetches every detail

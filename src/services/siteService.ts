@@ -463,7 +463,7 @@ export async function saveSiteConfig(
  */
 export async function createScrapeRun(
   siteId: string,
-  options?: { maxJobs?: number; scheduled?: boolean },
+  options?: { maxJobs?: number; scheduled?: boolean; detailMode?: "incremental" | "full" },
 ) {
   const site = await prisma.site.findUnique({ where: { id: siteId } });
   if (!site) {
@@ -518,6 +518,7 @@ export async function createScrapeRun(
         scrapeRunId: run.id,
         maxJobs: options?.maxJobs,
         scheduled: options?.scheduled,
+        detailMode: options?.detailMode,
       }),
     });
 

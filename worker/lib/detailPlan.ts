@@ -260,7 +260,18 @@ export function stampFetched(
 // The weekly full pass
 // ---------------------------------------------------------------------------
 
-const JERUSALEM_WEEKDAY = new Intl.DateTimeFormat("en-US", {
+/**
+ * Whether a past run fetched every detail page — what the Saturday pass's
+ * selection counts as "fresh". NULL is a run from before detail modes existed
+ * (all of which fetched everything) or on a site with no detail pages. An
+ * unrecognised value proves nothing, so it does not count: failing that way
+ * refreshes a site, failing the other way would skip its weekly refresh.
+ */
+export function isFullDetailRun(detailMode: string | null): boolean {
+  return detailMode === null || detailMode === "full";
+}
+
+const JERUSALEM_WEEKDAY =new Intl.DateTimeFormat("en-US", {
   timeZone: "Asia/Jerusalem",
   weekday: "short",
 });

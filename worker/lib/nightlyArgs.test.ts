@@ -1,0 +1,79 @@
+// Run: npx tsx worker/lib/nightlyArgs.test.ts
+//
+// The driver's command line, and which detail mode each invocation runs in.
+// The defaults are the policy: the timer's `--now` is incremental except on
+// the Saturday run; `--site --now` is the verification step after a config
+// change, so it is full unless told otherwise.
+
+import { parseNightlyArgs, resolveDetailMode, type NightlyMode } from "./nightlyArgs";
+
+let failures = 0;
+function assert(cond: boolean, msg: string) {
+  if (!cond) {
+    console.error("FAIL:", msg);
+    failures++;
+  }
+}
+function throws(fn: () => unknown): boolean {
+  try {
+    fn();
+    return false;
+  } catch {
+    return true;
+  }
+}
+
+const SAT = new Date("2026-09-25T23:00:00Z"); // Sat 26 Sep 02:00 IDT
+const WED = new Date("2026-09-29T23:00:00Z"); // Wed 30 Sep 02:00 IDT
+
+const p = (s: string) => parseNightlyArgs(s.split(" ").filter(Boolean));
+const same = (a: NightlyMode, b: NightlyMode) => JSON.stringify(a) === JSON.stringify(b);
+
+// --- the existing forms, unchanged -------------------------------------------
+assert(same(p("--dry-run"), { kind: "dry-run" }), "--dry-run");
+assert(same(p("--now"), { kind: "fleet", detailOverride: null }), "--now is the fleet");
+assert(same(p("--site abc --now"), { kind: "single", siteId: "abc", detailOverride: null }), "--site abc --now");
+assert(throws(() => p("--site abc")), "--site without --now still refuses — it runs the scheduled path for real");
+assert(throws(() => p("")), "no arguments refuses");
+
+// --- the detail flags ----------------------------------------------------------
+assert(
+  same(p("--now --full-details"), { kind: "fleet", detailOverride: "full" }),
+  "--full-details forces a full fleet night",
+);
+assert(
+  same(p("--site abc --now --incremental-details"), { kind: "single", siteId: "abc", detailOverride: "incremental" }),
+  "--incremental-details on one site",
+);
+assert(throws(() => p("--now --full-details --incremental-details")), "both flags at once is refused, not guessed");
+assert(throws(() => p("--dry-run --full-details")), "the fleet dry run has no detail phase to force");
+
+// --- the read-only detail rehearsal ----------------------------------------
+assert(
+  same(p("--site abc --dry-run-details"), { kind: "dry-run-details", siteId: "abc", detailOverride: null }),
+  "--site abc --dry-run-details",
+);
+assert(
+  same(p("--site abc --dry-run-details --full-details"), { kind: "dry-run-details", siteId: "abc", detailOverride: "full" }),
+  "it takes an override too",
+);
+assert(throws(() => p("--dry-run-details")), "--dry-run-details needs a site");
+assert(throws(() => p("--site abc --now --dry-run-details")), "and never together with --now");
+assert(throws(() => p("--site --now")), "a --site with no id is refused");
+
+// --- which mode ----------------------------------------------------------------
+const mode = (s: string, at: Date) => resolveDetailMode(p(s), at);
+assert(mode("--now", WED) === "incremental", "a weekday fleet night is incremental");
+assert(mode("--now", SAT) === "full", "the Saturday fleet night is full");
+assert(mode("--now --full-details", WED) === "full", "unless forced");
+assert(mode("--now --incremental-details", SAT) === "incremental", "either way");
+assert(mode("--site abc --now", WED) === "full", "--site defaults to full: it is the check after a config change");
+assert(mode("--site abc --now --incremental-details", WED) === "incremental", "and can be asked for incremental");
+assert(mode("--site abc --dry-run-details", WED) === "incremental", "the rehearsal shows the night's own mode by default");
+assert(mode("--site abc --dry-run-details", SAT) === "full", "which on a Saturday is full");
+
+if (failures > 0) {
+  console.error(`\n${failures} assertion(s) failed`);
+  process.exit(1);
+}
+console.info("nightlyArgs: incremental on weekday nights, full on Saturday and on --site");

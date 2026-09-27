@@ -73,6 +73,41 @@ for (const call of WRITE_CALLS) {
   );
 }
 
+// --dry-run-details (incremental detail fetching) is the same promise for one
+// site's fetch-or-carry plan: it walks the listing in a browser, reads the
+// stored rows, prints the split, and writes nothing — no ScrapeRun, no sweep
+// row, no job. Checked the same way, on the driver function AND on every
+// scrape-side function it reaches, since the walk itself lives in scrape.ts.
+{
+  const dryDetails = functionBody(driver, "dryRunDetails");
+  assert(dryDetails.length > 300, `dryRunDetails' body was extracted (${dryDetails.length} chars)`);
+  const scrapeSrc = strip(readFileSync(join(ROOT, "worker", "jobs", "scrape.ts"), "utf8"));
+  const walker = functionBody(scrapeSrc, "planDetailsReadOnly");
+  const pageFlow = functionBody(scrapeSrc, "extractRawFieldsWithPageFlow");
+  const stored = functionBody(scrapeSrc, "readStoredRawData");
+  assert(walker.length > 800, `planDetailsReadOnly was extracted from scrape.ts (${walker.length} chars)`);
+  assert(pageFlow.length > 2000, `extractRawFieldsWithPageFlow was extracted (${pageFlow.length} chars)`);
+  assert(stored.length > 100, `readStoredRawData was extracted (${stored.length} chars)`);
+  assert(dryDetails.includes("planDetailsReadOnly("), "dryRunDetails calls the read-only walker");
+  assert(walker.includes("extractRawFieldsWithPageFlow("), "which walks with the real extractor");
+  assert(walker.includes("readStoredRawData("), "and reads the stored rows through the one reader");
+  assert(!walker.includes("visitDetailPages("), "and visits no detail page");
+  for (const [name, body] of [
+    ["dryRunDetails", dryDetails],
+    ["planDetailsReadOnly", walker],
+    ["extractRawFieldsWithPageFlow", pageFlow],
+    ["readStoredRawData", stored],
+  ] as const) {
+    for (const call of [...WRITE_CALLS, "refuseListingRun(", "failScrapeRun(", "$transaction("]) {
+      assert(!body.includes(call), `${name} contains no ${call} — --dry-run-details must be read-only`);
+    }
+  }
+  // It must not reach realRun's machinery at all.
+  for (const call of ["runOneSite(", "closeSweep(", "reapOrphanedScrapeRuns("]) {
+    assert(!dryDetails.includes(call), `dryRunDetails does not call ${call}`);
+  }
+}
+
 // resolveStaleSweeps is the one shared helper dryRun calls that CAN write, so
 // it must be called in its reporting mode.
 assert(
@@ -104,8 +139,12 @@ assert(
 // ---------------------------------------------------------------------------
 
 assert(
-  /createScrapeRun\([^)]*\{\s*scheduled:\s*true\s*\}\)/.test(driver.replace(/\s+/g, " ")),
+  /createScrapeRun\([^)]*\{\s*scheduled:\s*true\s*(,\s*detailMode\s*)?\}\)/.test(driver.replace(/\s+/g, " ")),
   "the driver passes scheduled: true",
+);
+assert(
+  /createScrapeRun\([^)]*\{\s*scheduled:\s*true\s*,\s*detailMode\s*\}\)/.test(driver.replace(/\s+/g, " ")),
+  "and the night's detail mode with it (worker/lib/detailPlan.ts)",
 );
 
 // Nothing on the request path may originate the flag. scrapeJobRow.ts is
