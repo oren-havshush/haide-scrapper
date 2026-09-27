@@ -22,6 +22,7 @@ import {
   planApplyLoginSkip,
   planScheduledPersist,
   planScrapeFailure,
+  readDetailMode,
   readScheduledFlag,
 } from "./scheduledRun";
 import { sweepConfig } from "../../src/lib/config";
@@ -324,6 +325,39 @@ assert(
   "only a real boolean counts; a string would let JSON round-tripping decide site writes",
 );
 assert(!readScheduledFlag([{ scheduled: true }]), "an array payload is not a payload");
+
+// ---------------------------------------------------------------------------
+// The detail mode — incremental only when the driver says so
+// ---------------------------------------------------------------------------
+//
+// Carrying stored text forward is a scheduled-only behaviour. The manual path
+// always fetches everything, so the only payload that may read "incremental"
+// is one that is also scheduled — which only worker/sweep/nightly.ts writes.
+
+check("readDetailMode", () => {
+  assert(
+    readDetailMode({ scheduled: true, detailMode: "incremental" }) === "incremental",
+    "the driver's incremental payload is incremental",
+  );
+  assert(readDetailMode({ scheduled: true, detailMode: "full" }) === "full", "its full payload is full");
+  assert(readDetailMode({ scheduled: true }) === "full", "a scheduled payload that says nothing is full");
+  assert(
+    readDetailMode({ scheduled: false, detailMode: "incremental" }) === "full",
+    "a manual payload is full whatever it says — the dashboard always fetches everything",
+  );
+  assert(readDetailMode({ detailMode: "incremental" }) === "full", "so is one with no scheduled flag");
+  assert(
+    readDetailMode({ scheduled: "true", detailMode: "incremental" }) === "full",
+    "a string flag is not the flag",
+  );
+  assert(
+    readDetailMode({ scheduled: true, detailMode: "INCREMENTAL" }) === "full",
+    "only the exact value counts",
+  );
+  assert(readDetailMode(null) === "full", "no payload is full");
+  assert(readDetailMode(undefined) === "full", "nor is an absent one");
+  assert(readDetailMode([{ scheduled: true, detailMode: "incremental" }]) === "full", "an array is not a payload");
+});
 
 if (failures > 0) {
   console.error(`\n${failures} assertion(s) failed`);

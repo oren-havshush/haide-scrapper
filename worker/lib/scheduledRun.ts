@@ -298,3 +298,17 @@ export function readScheduledFlag(payload: unknown): boolean {
   if (!payload || typeof payload !== "object" || Array.isArray(payload)) return false;
   return (payload as Record<string, unknown>).scheduled === true;
 }
+
+/**
+ * The detail mode a SCRAPE job runs in (worker/lib/detailPlan.ts).
+ *
+ * "incremental" — carry unchanged jobs' detail text forward — only for a
+ * payload that is ALSO scheduled, which only worker/sweep/nightly.ts writes.
+ * Everything else is "full": the manual path always fetches every detail page,
+ * and a malformed or ambiguous payload must fail towards fetching, never
+ * towards publishing stored text as if it were tonight's.
+ */
+export function readDetailMode(payload: unknown): "full" | "incremental" {
+  if (!readScheduledFlag(payload)) return "full";
+  return (payload as Record<string, unknown>).detailMode === "incremental" ? "incremental" : "full";
+}
