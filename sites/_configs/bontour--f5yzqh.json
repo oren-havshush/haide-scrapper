@@ -1,0 +1,59 @@
+{
+  "_exportedAt": "2026-09-27T07:42:01.333Z",
+  "_note": "Mirror of the live config. The DB is authoritative; the worker never reads this file. setupScript lives alongside in <slug>.setup.js.",
+  "id": "cmufmkja3000g01nytsf5yzqh",
+  "siteUrl": "https://www.bontour.co.il/5/%D7%93%D7%A8%D7%95%D7%A9%D7%99%D7%9D",
+  "companyName": "בון תור",
+  "status": "ACTIVE",
+  "setupScriptFile": "bontour--f5yzqh.setup.js",
+  "pageFlow": [],
+  "fieldMappings": {
+    "_meta": {
+      "savedAt": "2026-09-27T07:36:18.611Z",
+      "pagination": null,
+      "formCapture": null,
+      "listingUrls": null,
+      "itemSelector": "li.drushimhead",
+      "minPublishDate": null,
+      "minPublishDays": null,
+      "revealSelector": null,
+      "listingSelector": null,
+      "applyLoginReason": null,
+      "browserOverrides": null,
+      "loadMoreSelector": null,
+      "locationFallback": null,
+      "originalMappings": null,
+      "applyRequiresLogin": false
+    },
+    "title": {
+      "source": "auto",
+      "selector": "h4",
+      "confidence": 0.95
+    },
+    "location": {
+      "source": "auto",
+      "selector": ".__ai-location",
+      "confidence": 0.85
+    },
+    "description": {
+      "source": "auto",
+      "selector": ".__ai-description",
+      "confidence": 0.85
+    },
+    "requirements": {
+      "source": "auto",
+      "selector": ".__ai-requirements",
+      "confidence": 0.8
+    },
+    "externalJobId": {
+      "source": "auto",
+      "selector": ".__ai-jobid",
+      "confidence": 0.9
+    },
+    "applicationInfo": {
+      "source": "auto",
+      "selector": ".__ai-applicationInfo",
+      "confidence": 0.9
+    }
+  }
+}
