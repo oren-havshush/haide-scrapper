@@ -77,6 +77,13 @@ export type ReportItem = {
   scrapedCount?: number | null;
   /** Scrape phase: the run's own ScrapeRun.warnings, "type: detail" strings. */
   warnings?: readonly string[] | null;
+  /**
+   * Scrape phase, sites that visit detail pages: how many the run fetched and
+   * how many it carried forward unchanged (worker/lib/detailPlan.ts). NULL when
+   * the site visits no detail pages or the run never reached that phase.
+   */
+  detailsFetched?: number | null;
+  detailsCarried?: number | null;
   defect?: string | null;
 };
 
@@ -137,6 +144,13 @@ export type SweepCounters = {
   listingRefusals: number;
   /** Sites that returned nothing and had nothing. Not drift either. */
   noJobs: number;
+  /**
+   * Detail pages fetched / carried across the night. NULL when no site
+   * measured them — every night before incremental fetching fetched all of
+   * them, so 0 would be false of it.
+   */
+  detailsFetched: number | null;
+  detailsCarried: number | null;
 };
 
 /** A withheld SKIP is carried as its own outcome rather than a column. */
@@ -188,6 +202,8 @@ export function computeCounters(sweep: ReportSweep, items: ReportItem[]): SweepC
       listingsProtected: 0,
       listingRefusals: 0,
       noJobs: 0,
+      detailsFetched: null,
+      detailsCarried: null,
     };
   }
   // The three shapes `soft_failure` covers, kept apart. One is a problem, one
@@ -204,7 +220,22 @@ export function computeCounters(sweep: ReportSweep, items: ReportItem[]): SweepC
     wouldHaveDemoted: items.filter((i) => i.wouldDemoteTo).length,
     wouldHavePromoted: items.filter((i) => i.wouldPromoteTo).length,
     listingsProtected: items.filter(protectedListings).length,
+    detailsFetched: sumMeasured(items, (i) => i.detailsFetched),
+    detailsCarried: sumMeasured(items, (i) => i.detailsCarried),
   };
+}
+
+/** Sum of the values that were measured; NULL when none was. */
+function sumMeasured(
+  items: ReportItem[],
+  pick: (i: ReportItem) => number | null | undefined,
+): number | null {
+  let total: number | null = null;
+  for (const i of items) {
+    const v = pick(i);
+    if (typeof v === "number") total = (total ?? 0) + v;
+  }
+  return total;
 }
 
 /**

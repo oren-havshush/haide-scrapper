@@ -187,6 +187,15 @@ model ScrapeRun {
   error           String?
   failureCategory String?
   warnings        Json?
+  /// "full" | "incremental" — whether this run re-fetched every detail page or
+  /// carried unchanged jobs' detail text forward (worker/lib/detailPlan.ts).
+  /// NULL on runs before incremental fetching existed, and on sites that visit
+  /// no detail pages. TEXT, not an enum, like ScrapeSweep.kind.
+  detailMode      String?
+  /// Detail pages this run visited / carried forward. NULL when it reached no
+  /// detail phase — never 0 for "not measured".
+  detailsFetched  Int?
+  detailsCarried  Int?
   createdAt       DateTime        @default(now())
   completedAt     DateTime?
 
@@ -310,6 +319,12 @@ model ScrapeSweep {
   /// scripts/sweepCountersSchema.test.ts pins the two together.
   listingRefusals   Int @default(0)
   noJobs            Int @default(0)
+  /// Detail pages fetched / carried forward across the night's sites
+  /// (worker/lib/detailPlan.ts). NULLABLE, unlike the counters above: every
+  /// night before this existed fetched every detail page, so 0 would be false
+  /// of every earlier row. NULL means not measured.
+  detailsFetched    Int?
+  detailsCarried    Int?
 
   haltedAt   DateTime?
   haltReason String?
@@ -361,6 +376,11 @@ model ScrapeSweepItem {
   /// Scrape phase: the run's own ScrapeRun.warnings ("type: detail" strings),
   /// copied so the item is readable without the run. NULL when it had none.
   warnings       Json?
+  /// Scrape phase: the run's ScrapeRun.detailsFetched / detailsCarried, copied
+  /// so the item is readable without the run. NULL when the site visits no
+  /// detail pages or the run never reached that phase.
+  detailsFetched Int?
+  detailsCarried Int?
   startedAt      DateTime?
   finishedAt     DateTime?
 

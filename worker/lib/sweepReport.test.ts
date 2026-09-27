@@ -448,6 +448,26 @@ check("skipped sites and warnings are listed", () => {
   );
 });
 
+{
+  // Detail pages fetched vs carried (worker/lib/detailPlan.ts), summed over the
+  // sites that measured them. A site that visits no detail pages says nothing,
+  // and a night where nobody measured anything is NULL, not 0: 0 would claim
+  // "fetched nothing", which no earlier night can truthfully say.
+  const items = [
+    item({ siteId: "a", siteUrl: "https://a.test", detailsFetched: 2, detailsCarried: 49 }),
+    item({ siteId: "b", siteUrl: "https://b.test", detailsFetched: 132, detailsCarried: 0 }),
+    item({ siteId: "c", siteUrl: "https://c.test" }),
+    item({ siteId: "d", siteUrl: "https://d.test", detailsFetched: null, detailsCarried: null }),
+  ];
+  const c = computeCounters(sweep(), items);
+  assert(c.detailsFetched === 134, `detailsFetched sums the sites that measured it (got ${c.detailsFetched})`);
+  assert(c.detailsCarried === 49, `detailsCarried too (got ${c.detailsCarried})`);
+  const none = computeCounters(sweep(), ok(3));
+  assert(none.detailsFetched === null && none.detailsCarried === null, "no site measured -> NULL, not 0");
+  const policy = computeCounters(sweep({ kind: "POLICY" }), items);
+  assert(policy.detailsFetched === null && policy.detailsCarried === null, "a policy sweep fetches no detail pages");
+}
+
 if (failures > 0) {
   console.error(`\n${failures} assertion(s) failed`);
   process.exit(1);

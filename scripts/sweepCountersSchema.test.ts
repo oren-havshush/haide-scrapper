@@ -98,6 +98,49 @@ console.log("# and a migration adds them");
   );
 }
 
+// --- and one for the detail counters ------------------------------------------
+console.log("# the detail-fetch counters have columns and a migration");
+{
+  for (const key of ["detailsFetched", "detailsCarried"]) {
+    assert(counterKeys.includes(key), `${key} is a counter`);
+    assert(columns.has(key), `${key} is a ScrapeSweep column`);
+  }
+  const itemBlock = /model ScrapeSweepItem \{([\s\S]*?)\n\}/.exec(schema)?.[1] ?? "";
+  const runBlock = /model ScrapeRun \{([\s\S]*?)\n\}/.exec(schema)?.[1] ?? "";
+  const nullableInt = (block: string, key: string) =>
+    block.split("\n").some((line) => {
+      const parts = line.trim().split(/\s+/);
+      return parts[0] === key && parts[1] === "Int?";
+    });
+  for (const key of ["detailsFetched", "detailsCarried"]) {
+    assert(nullableInt(itemBlock, key), `ScrapeSweepItem.${key} is a nullable Int`);
+    assert(nullableInt(runBlock, key), `ScrapeRun.${key} is a nullable Int`);
+  }
+  assert(
+    runBlock.split("\n").some((l) => l.trim().split(/\s+/).join(" ").startsWith("detailMode String?")),
+    "ScrapeRun.detailMode is a nullable String",
+  );
+
+  const dir = join(ROOT, "prisma", "migrations", "20260927000000_add_detail_fetch_counters");
+  let sql = "";
+  try {
+    sql = readFileSync(join(dir, "migration.sql"), "utf8");
+  } catch {
+    /* reported below */
+  }
+  assert(sql.length > 0, "the detail-counter migration exists");
+  for (const table of ["ScrapeSweep", "ScrapeSweepItem", "ScrapeRun"]) {
+    assert(sql.includes(`ALTER TABLE "${table}"`), `it alters ${table}`);
+  }
+  for (const key of ["detailsFetched", "detailsCarried", "detailMode"]) {
+    assert(sql.includes(`ADD COLUMN "${key}"`), `it adds ${key}`);
+  }
+  // NULLABLE, deliberately unlike listingRefusals/noJobs: every earlier night
+  // fetched every detail page, so a default 0 would be a false statement about
+  // every existing row. NULL says "not measured", which is the truth.
+  assert(!sql.includes("NOT NULL"), "nothing in it is NOT NULL — 0 would be false of every past row");
+}
+
 if (failures > 0) {
   console.error(`\n${failures} assertion(s) failed`);
   process.exit(1);
