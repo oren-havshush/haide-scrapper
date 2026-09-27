@@ -3655,3 +3655,74 @@
 - **Generalizes to:** every site whose profile comes back thin, and specifically to Israeli contact
   pages, which conventionally print street / city / postcode as separate lines with no label and no
   `רחוב`. **Home:** `company-profile.md` §4.
+
+## LRN-LANG-1 — a second language on one board is usually a second set of RECORDS, not a translation layer: count the whole board before deciding
+
+- **Date / site:** 2026-09-27, keshet-teamim.co.il (Civi board `W8PF7U4EUE`, src 12790).
+- **Signal:** a supermarket chain's board mixes Hebrew and Russian job cards. The obvious readings
+  are both wrong, and the board's own paging decides which wrong answer you get. At the default
+  **20 rows** the visible set is 3 Hebrew / 17 Russian, which reads as "the Russian ones are the real
+  postings and Hebrew is incidental". The footer says **37 משרות**; loaded in full it is
+  **18 Hebrew / 19 Russian**, and the roles pair up almost one-to-one. **Deciding a language policy
+  off page 1 inverts the conclusion.** Set the rows param first (`&r=500`, or merge `&p=2..N`), then count.
+- **The language switcher is a decoy.** The wrapper site has a `עבר`/`рус` dropdown and the board URL
+  takes `&lang=`, so this looks like a UI-localised single record set. It is not: `lang=he`, `lang=ru`
+  and no param all return **the identical 37 promo ids with the same Hebrew UI**. Body language is a
+  property of each posting, set by whoever typed it. Test the param before believing it.
+- **Pairs are NOT equivalents, so "scrape one language" is not de-duplication.** 16 roles exist as two
+  independent Civi records with different content: `קופאי/ת` 876017 names 10 branches against RU
+  826252's 15 and **neither list is a subset** (RU adds הדר/חורב חיפה, עכו, יוקנעם, כרמיאל, גבעת ברנר;
+  HE has באר שבע, RU does not); `ירקן/ית` 733499 names 3 against RU 872198's 9 with only אשדוד shared.
+  Either language alone publishes a narrower truth than the employer advertises. Nothing links a pair —
+  Civi has no translation-group id — so there is no key to merge them on.
+- **Rule:** enumerate the whole board, group the postings by role, and put the three counts
+  (both-languages / A-only / B-only) in front of the owner before building. It is their call, not a
+  default. Then filter on **positive evidence** — keep a card because its title carries the language
+  you chose, never because it failed a blacklist of the one you didn't — and name the dropped
+  one-language-only roles by id in the `adminNote`, since those are real vacancies that no longer ship.
+  Keshet: Hebrew only, 18 of 37, with 3 Russian-only roles (קב"ט 732712, robotic-centre picker
+  660704, evening stockers 929089) recorded as not published.
+- **Two traps while extracting locations from such a board:**
+  - A pin line that is a **sentence** must never be fed to `normalizeLocations` whole:
+    `📍המרכז הרובוטי ממוקם בקרית חיים` returns **`אזור מרכז`**, because `המרכז` hits the region alias —
+    a Haifa-bay facility filed under the Center. Gate on segment length and read the city after an
+    explicit locative (`ממוקם ב…`) instead.
+  - A **title tail** is not a location. `קופאי/ת ראשי/ת - אחראי/ת משמרת` normalises to **`משמרת`**,
+    a real `city.csv` moshav — the ordinary-Hebrew-word collision `LRN-LOC-4` warns about, arriving
+    through a rule that looked safe because it was gated on "canonicalises".
+- **Generalizes to:** any board serving an Israeli audience in a second language — Russian, Arabic or
+  Amharic retail/care/logistics boards especially — and to every ATS whose page size hides most of
+  the set behind a rows selector. Language is not itself a scope filter: geography is
+  (`LRN-SETUP-5`, Netafim). Nothing about this is written into `addsite2.md`; the policy is per-site
+  and belongs in the `adminNote`.
+
+## LRN-HQ-7 — an HQ taken from an external registry: `operator` provenance DISCARDS the evidence URL, so the adminNote is the only record of where it came from
+
+- **Date / site:** 2026-09-27, keshet-teamim.co.il (`קשת טעמים`).
+- **Situation:** the company's own site was unreachable for the capture (Cloudflare blocking our IP),
+  so the HQ came from the Justice Ministry corporations registry on guidestar.org.il instead of from
+  the employer's contact page. That is a legitimate source, but it is **outside** the company's own
+  publication, so how it got there has to survive.
+- **Signal:** it does not survive on the site row. `saveCompanyHqCity()` composes the provenance
+  **server-side** and stores `skill <url>` for a skill-accepted city but the bare string `operator`
+  for a human-supplied one — `evidence.url` is accepted by the schema, is genuinely useful as an
+  audit of the call, and is then **thrown away**. So a registry-sourced HQ is indistinguishable on
+  the row from one somebody typed from memory, and six months later nothing can tell you which.
+- **Rule:** when an HQ comes from anywhere other than the employer's own site, pass `evidence.url`
+  anyway (it costs nothing and is the honest description of the call) **and write the source into the
+  `adminNote` in the same session** — registry name, record/company number and URL. That note is the
+  only durable provenance. Say plainly which part was verified: here the registry record's entity
+  name (`קשת טעמים בע"מ`, company 513238402) was confirmed against the static HTML `<title>`, while
+  the street line was transcribed by a human from the rendered page and was never machine-read.
+- **Cross-check the city against what the employer already published**, because that is free and it
+  is the half that fragments the dashboard filter. Here job `839034 חשב/ת שכר` — a head-office role —
+  prints `מיקום המשרה: עכו`, which independently supports עכו as the HQ city. A registry address
+  whose city contradicts every job the site publishes is a wrong-entity signal, not a better source
+  (`LRN-CO-1`, and the vendor-identity rule in CLAUDE.md).
+- **Note the gate only covers the city.** `PUT /company-hq-city` canonicalises against `city.csv`,
+  rejects a region, and stores the canonical spelling. `companyHqAddress` goes through
+  `PUT /company-profile?force=1` and is gated by **nothing** — no format check, no consistency check
+  against the city. A typo in the street line ships silently.
+- **Generalizes to:** every HQ that does not come from the company's own pages — registries, news
+  articles, LinkedIn, a manager's say-so — and to any operator write whose justification lives
+  outside the value being written.
