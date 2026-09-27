@@ -497,6 +497,25 @@ text lands in; they never rewrite the employer's words (publish content as-is).
 
 Recipe for a page that prints every job as one block of prose: setupScript §13, `LRN-SETUP-16`.
 
+**Language gate — Hebrew and English only (owner, 2026-09-27):**
+Onboard a posting only when it is written in **Hebrew or English**. Every other language —
+Russian, Arabic, Amharic, French — is **dropped**. This is a fleet rule, not a per-site call.
+
+- **Filter on positive evidence**: keep a card because its title carries Hebrew or Latin script,
+  never because it failed a test for the language you were excluding. A third language you did
+  not anticipate must drop by default rather than slip through.
+- **Count before you filter, and record the cost.** Enumerate the WHOLE board first — page 1 can
+  invert the picture (keshet showed 3 HE / 17 RU on page 1 and 18 / 19 across the full set) — then
+  name every dropped one-language-only role **by id in the `adminNote`**. Those are real vacancies
+  that stop shipping.
+- **A role published in two languages is not a duplicate.** The two records are usually
+  independent, with branch or scope lists that differ and neither a subset of the other, and
+  nothing links them (no translation-group id). Dropping the non-Hebrew one loses whatever it said
+  that its pair did not. The rule accepts that loss; say so in the note rather than implying the
+  records were equivalent.
+- Cite `LRN-LANG-1`, which holds the measurements. Standing exception: alut's `alut-915276`
+  (Arabic, Hura) predates the rule and was kept by owner decision.
+
 **Coverage gate — MANDATORY:**
 Establish the true total before submitting. Never silently ship only page 1.
 ```

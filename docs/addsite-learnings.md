@@ -3675,13 +3675,29 @@
   HE has באר שבע, RU does not); `ירקן/ית` 733499 names 3 against RU 872198's 9 with only אשדוד shared.
   Either language alone publishes a narrower truth than the employer advertises. Nothing links a pair —
   Civi has no translation-group id — so there is no key to merge them on.
-- **Rule:** enumerate the whole board, group the postings by role, and put the three counts
-  (both-languages / A-only / B-only) in front of the owner before building. It is their call, not a
-  default. Then filter on **positive evidence** — keep a card because its title carries the language
-  you chose, never because it failed a blacklist of the one you didn't — and name the dropped
-  one-language-only roles by id in the `adminNote`, since those are real vacancies that no longer ship.
-  Keshet: Hebrew only, 18 of 37, with 3 Russian-only roles (קב"ט 732712, robotic-centre picker
-  660704, evening stockers 929089) recorded as not published.
+- **FLEET RULE (owner, 2026-09-27): onboard Hebrew and English postings only. Every other
+  language is dropped.** This supersedes the "it is their call, not a default" wording this entry
+  carried when it was written — the call has been made once, for the fleet, and it is no longer a
+  per-site question. Russian, Arabic, Amharic, French: dropped, whatever the counts say.
+  `addsite2.md` §6.2 carries the rule; this entry is the evidence behind it.
+  - **Filter on positive evidence, never a blacklist** — keep a card because its title carries
+    Hebrew or Latin script, never because it failed a test for the language you were excluding. A
+    third language you did not think of must drop by default, not slip through.
+  - **The counting is still required**, because it is what tells you what the rule costs on this
+    board. Enumerate the whole board, group by role, and **name every dropped one-language-only
+    role by id in the `adminNote`** — those are real vacancies that stop shipping, and page 1 can
+    invert the picture (3 HE / 17 RU visible on keshet, 18 / 19 across the full set).
+  - **A role that exists in two languages is not a duplicate**, so dropping the non-Hebrew record
+    loses whatever it said that its pair did not — on keshet, 5 branches of `קופאי/ת`. Record that
+    too; the rule accepts the loss, it does not pretend there is none.
+  - Keshet: Hebrew only, 18 of 37, with 3 Russian-only roles (קב"ט 732712, robotic-centre picker
+    660704, evening stockers 929089) recorded as not published.
+  - **Standing exception — alut** (`app-civi--rl8rui`, Civi FPEVT4D67N/8315): `alut-915276`, an
+    Arabic posting for Arabic-speaking communication kindergartens in Hura, predates the rule and
+    was kept by owner decision on 2026-09-27. Counts there are 45 Hebrew-only / 1 Arabic-only /
+    0 paired, so nothing is duplicated by keeping it and no Hebrew row covers חורה. Noted in that
+    site's `adminNote`. The site carries **no language filter**, so a future non-Hebrew posting on
+    that board would also ship — a known gap, not a second exception.
 - **Two traps while extracting locations from such a board:**
   - A pin line that is a **sentence** must never be fed to `normalizeLocations` whole:
     `📍המרכז הרובוטי ממוקם בקרית חיים` returns **`אזור מרכז`**, because `המרכז` hits the region alias —
@@ -3693,8 +3709,8 @@
 - **Generalizes to:** any board serving an Israeli audience in a second language — Russian, Arabic or
   Amharic retail/care/logistics boards especially — and to every ATS whose page size hides most of
   the set behind a rows selector. Language is not itself a scope filter: geography is
-  (`LRN-SETUP-5`, Netafim). Nothing about this is written into `addsite2.md`; the policy is per-site
-  and belongs in the `adminNote`.
+  (`LRN-SETUP-5`, Netafim). The policy is now fleet-wide and lives in `addsite2.md` §6.2; what
+  still belongs in the `adminNote` is this board's counts and the ids it drops.
 
 ## LRN-HQ-7 — an HQ taken from an external registry: `operator` provenance DISCARDS the evidence URL, so the adminNote is the only record of where it came from
 
@@ -3726,3 +3742,89 @@
 - **Generalizes to:** every HQ that does not come from the company's own pages — registries, news
   articles, LinkedIn, a manager's say-so — and to any operator write whose justification lives
   outside the value being written.
+
+## LRN-LOC-16 — `normalizeLocations()` gating the value is not the worker gating the value: when EVERY part fails to resolve, the raw injected string ships as the location
+
+- **Date / site:** 2026-09-27, app.civi.co.il (`אלו״ט`, Civi board FPEVT4D67N/8315).
+- **Situation:** ALUT is a nationwide non-profit — 46 postings naming ~25 towns, no per-job location
+  field and no HQ that would be honest to hardcode. The only statement of place is the job title, so
+  the location has to be parsed out of text, which is the thing CLAUDE.md says was tried and removed.
+- **The comment that is wrong.** The keshet-teamim setupScript (`app-civi--tvlqmp.setup.js`, shipped
+  the same day) reasons: *"normalizeLocations() canonicalises vs city.csv and DROPS the rest, so
+  generous tokens are safe."* The first clause is true — `normalizeLocations()` ends with
+  `out.filter(v => CANONICAL.has(v))` and genuinely cannot return an off-list value. The conclusion
+  does not follow, because the worker does not use that return value alone:
+
+  ```ts
+  // worker/lib/jobLocation.ts — resolveJobLocation()
+  const list = normalizeLocations(extracted);
+  return { location: list[0] ?? extracted, locations: list, source: "extracted" };
+  ```
+
+  `?? extracted`. When the list comes back **empty**, the job's primary `location` is the raw string
+  the setupScript injected. Measured, not reasoned:
+
+  | injected | `normalizeLocations` | stored `location` |
+  |---|---|---|
+  | `פולג` (keshet's own off-vocabulary branch key) | `[]` | **`פולג`** |
+  | `הדסים` (an ALUT campus, not a town) | `[]` | **`הדסים`** |
+  | `פולג, הדסים` | `[]` | **`פולג, הדסים`** — the whole blob, commas and all |
+  | `פולג, נתניה` | `["נתניה"]` | `נתניה` — one survivor is enough to hold the gate |
+
+  So "generous tokens" are safe **only while at least one token per job resolves**. The day an
+  employer opens a site whose name is not on `city.csv` — a campus, a kibbutz, a rebranded park — that
+  job ships a location the dashboard's city filter has no bucket for, and nothing repairs it.
+- **Why no gate catches it later.** `verify-location-csv` is an onboarding step; nothing re-runs it.
+  A site that passed on day one starts leaking the first night a new posting appears, silently.
+- **Rule:** never inject a location token that was not checked against the vocabulary **at config
+  time**. Match the ad against a **closed table** written into the setupScript, whose every canonical
+  value was verified verbatim on BOTH `CSV files/city.csv` and the worker's own list (they differ in
+  29 spellings, `LRN-LOC-4` — a value on only one of them is dropped by the worker and then leaks
+  raw through the same `?? extracted`). A place that is not in the table yields **no location**, so
+  the branch is unreachable by construction. The cost is a town the employer opens next year reading
+  `Unknown` until the table is extended: missing, never wrong.
+- **And match whole words, never substrings.** This board is a clean demonstration of the collision
+  CLAUDE.md names. Substring-matching `city.csv` against its 46 titles produced `מעון` (a real
+  `city.csv` entry) out of `עו״ס מעון` and `למעונות יום`, `מנות` out of `באומנות`, `עופר` out of
+  `כפר עופרים`, and `מסלול` out of `מסלול התמחות`. Tokenise on Hebrew word boundaries, match the
+  longest window first, and peel one or two prefix letters (`בלמוהכש`) off the first word so
+  `בנתניה`, `ובאר שבע` and `באבן יהודה` resolve while `למעונות` cannot.
+- **Two narrow extensions that stay honest.** (1) A body line is read only when **every** word on it
+  is consumed by a place match and at least two places are found — `846791` states its eight towns on
+  line 2 of the description, and no prose sentence clears that bar. (2) `בפריסה ארצית` / `ברחבי הארץ`
+  is taken from the **title only**, where it is the job's own scope; the worker's gazetteer excludes
+  that phrase from its prose scan precisely because in a body it usually describes a shuttle service
+  (`NATIONWIDE_LOCATION`).
+- **Result:** 32 of 46 postings located, 14 `Unknown`, `verify-location-csv` exit 0, and all 77
+  values re-checked against **their own** ad rather than a probe page. The worker gazetteer alone
+  reached 9 of 46 and several of those were partial — `985461` names three towns and the bare
+  multi-word scan returned only `פתח תקווה`.
+- **Generalizes to:** every multi-site employer whose board has no location field — care providers,
+  retail chains, staffing agencies, municipalities — and to **any** `setupScript`-injected location
+  anywhere in the fleet, which all reach the same `?? extracted`. The comment in
+  `app-civi--tvlqmp.setup.js` should be read as describing an invariant it does not have.
+
+## LRN-COV-8 — a Civi board paginates at 20 and the page count is sitting in the `profRefresh()` call; `&p=` past the end re-serves the last page
+
+- **Date / site:** 2026-09-27, app.civi.co.il (`אלו״ט`, board FPEVT4D67N/8315), after
+  keshet-teamim hit the identical trap on a different board hours earlier.
+- **Signal:** the board renders exactly **20** `.proflist .thumb` cards and looks complete. It is
+  not: this one has **46** postings over 3 pages, so page 1 alone would have published 20 of 46 —
+  and `addsite2-recipes/spa-frameworks.md#civi` says nothing about pagination, so a config built
+  straight from the recipe ships the loss with every gate green.
+- **The count is printed.** The pager emits `profRefresh(<page>, 20, <pages>, "")` — the third
+  argument is the total page count (`3` here). That is the ground truth `LRN-COV-5` asks for, on the
+  page, for free. `20` cards exactly is the tell that there is a page 2.
+- **Fix:** merge later pages inside the `setupScript` with same-origin `fetch(href + '&p=' + n)` and
+  `document.importNode`. Do **not** call `profRefresh()` — it does `location.assign()` and destroys
+  the script's own execution context. `&p=` beyond the last page **re-serves the last page**
+  (`p=4` returned the same 6 rows as `p=3`), so a fixed loop bound over-counts; stop as soon as a
+  page contributes no new `openPromo` id, which also guards a server that ignores `&p=` entirely.
+- **While you are in there, the apply form varies per posting.** The recipe's static five-field
+  capture is a superset, not a description: across these 46 pages the `form.Form .field[data-id]`
+  set came in **four** shapes — 32 `name/phone/email/cciittyy/cv`, 10 without `cciittyy`, 1 without
+  `cv`, and **3 with no CV upload at all**. Read the fields per job into `.__ai-applicationInfo`
+  alongside that posting's own action URL; a hardcoded list tells three applicants they can attach a
+  CV when they cannot.
+- **Generalizes to:** every Civi board (the platform paginates, not the tenant), and to any listing
+  whose item count is exactly the page size — that is a coverage question, never a job count.

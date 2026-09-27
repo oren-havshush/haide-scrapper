@@ -413,10 +413,42 @@ await Promise.all(items.map(async (item) => {
 ```
 
 Replace `HARDCODE_CITY_HERE` with the company's HQ city (e.g. `כפר סבא`). Civi boards carry no
-per-job location field — the HQ is the correct default for single-office employers.
+per-job location field — the HQ is the correct default for **single-office** employers.
+
+**It is the wrong default for a multi-site one**, and a nationwide employer is common on this
+platform (אלו"ט: 46 postings naming ~25 towns). There the place is stated in the **title**, and
+the only safe way to read it is a **closed table written into the setupScript** whose every
+canonical value was checked verbatim against BOTH `CSV files/city.csv` and the worker's list,
+matched **whole-word** with one or two Hebrew prefix letters peeled off. A token outside the
+table must inject **nothing**: `resolveJobLocation()` returns `location: list[0] ?? extracted`,
+so an injected value that `normalizeLocations()` cannot resolve ships **raw** as the job's
+location — the gate you were relying on is not the one the worker applies. Substring matching
+against `city.csv` is not usable: on this board it produced `מעון` out of `למעונות` and `עופר`
+out of `כפר עופרים`. Full rule and the measured table: `LRN-LOC-16`, `sites/alut/notes.md`.
 
 ### formCapture
-Capture the static form from any detail page as a site-level fallback. The per-job
+
+**The field set varies per posting — read it per job, do not hardcode the five below.**
+On אלו"ט's 46 pages the `form.Form .field[data-id]` set came in four shapes: 32
+`name/phone/email/cciittyy/cv`, 10 without `cciittyy`, 1 without `cv`, and **3 with no CV
+upload at all** (`LRN-COV-8`). Build `fields` from the fetched detail document inside the
+setupScript, alongside that posting's own `actionUrl`:
+
+```js
+var fl = [{ name: 'Form_submitted', label: '', tagName: 'INPUT', required: false, fieldType: 'hidden' }];
+[].forEach.call(doc.querySelectorAll('form.Form .field[data-id]'), function (f) {
+  var lb = f.querySelector('.label'), ip = f.querySelector('input,textarea,select');
+  fl.push({
+    name: f.getAttribute('data-id'),
+    label: lb ? lb.textContent.replace(/[*]|\s*:\s*$/g, '').replace(/\s+/g, ' ').trim() : '',
+    tagName: ip ? ip.tagName : 'INPUT',
+    required: !!(lb && lb.querySelector('.required')),
+    fieldType: ip ? (ip.getAttribute('type') || ip.tagName.toLowerCase()) : 'text'
+  });
+});
+```
+
+Then capture the **superset** as the site-level fallback. The per-job
 `.__ai-applicationInfo` blob (injected above) carries the exact per-job URL, which takes
 precedence in the dashboard. Use `formSelector: "form.Form"` with a sample `actionUrl`
 (`/promo/id=<any_job_id>&src=<SRC>`):
@@ -438,6 +470,48 @@ precedence in the dashboard. Use `formSelector: "form.Form"` with a sample `acti
 
 ### pageFlow
 `[]` — no pageFlow needed. All enrichment happens inside the setupScript via same-origin fetch.
+
+### Pagination — the board stops at 20 and does not look like it (`LRN-COV-8`)
+
+**Exactly 20 `.thumb` cards means there is a page 2.** Civi paginates at 20 and the page
+is otherwise complete-looking; two boards shipped page-1-only before this was noticed
+(keshet-teamim 20 of 37, אלו"ט would have been 20 of 46).
+
+The total is printed in the pager: `profRefresh(<page>, 20, <pages>, "")` — the **third**
+argument is the page count. Read it, and emit `coverage: <extracted>/<total>` from it.
+
+Merge the later pages **inside the setupScript**, before the per-item loop:
+
+```js
+var list = document.querySelector('.proflist');
+if (list && document.querySelectorAll(SEL).length >= 20) {
+  var have = {}, cur = document.querySelectorAll(SEL);
+  for (var i = 0; i < cur.length; i++) { var k0 = idOf(cur[i]); if (k0) have[k0] = 1; }
+  for (var p = 2; p <= 25; p++) {
+    var base = location.href, u = base.replace(/([?&])p=\d+/, '$1p=' + p), added = 0;
+    if (u === base) u = base + '&p=' + p;
+    try {
+      var rows = new DOMParser().parseFromString(await (await fetch(u)).text(), 'text/html')
+        .querySelectorAll(SEL);
+      for (var q = 0; q < rows.length; q++) {
+        var k = idOf(rows[q]);
+        if (!k || have[k]) continue;
+        have[k] = 1;
+        list.appendChild(document.importNode(rows[q], true));
+        added++;
+      }
+    } catch (e) {}
+    if (!added) break;          // p past the end RE-SERVES the last page
+  }
+}
+```
+
+Two things that are not optional:
+- **Never call `profRefresh()`** to turn the page — it does `location.assign()` and destroys
+  the setupScript's own execution context.
+- **Stop on "no new id", not on a page count.** `&p=` beyond the last page returns the last
+  page again (`p=4` = `p=3`), so a fixed bound duplicates; the id check also covers a server
+  that ignores `&p=` entirely.
 
 ### Pitfalls (`LRN-SPA-11`)
 
