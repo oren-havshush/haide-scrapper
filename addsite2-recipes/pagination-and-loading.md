@@ -41,6 +41,11 @@ action will look identical in structure but return a tiny subset. Use the action
 that returns the highest count. Cite: `LRN-COV-2` (tigbur.co.il — `tb_get_hot_jobs`
 returned 5 jobs; `tb_get_jobs` returned 576).
 
+> **Scope first (owner rule, addsite2 §6.2, `LRN-COV-9`):** ship only the jobs a visitor
+> can reach in the listing. REST, a feed or a `found_posts` count may return MORE than the
+> page shows — those extra posts are hidden jobs, not missed ones. Use these endpoints to
+> supply fields for the jobs the page shows, and take the job SET from the listing.
+
 **WordPress REST API — the PREFERRED path for ANY WordPress job board.**
 Before fighting a "load more" button, an empty `ul.job_listings`, or per-job detail
 navigation, check the built-in WP REST API. It returns **every** post (no pagination

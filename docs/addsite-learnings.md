@@ -3836,3 +3836,40 @@
   CV when they cannot.
 - **Generalizes to:** every Civi board (the platform paginates, not the tenant), and to any listing
   whose item count is exactly the page size — that is a coverage question, never a job count.
+
+## LRN-COV-9 — `found_posts` larger than the page is not a coverage gap: paging with no control on the page returns HIDDEN jobs
+
+- **Date / site:** 2026-09-28, medulla.co.il `/new-jobs/` (recruitment agency, `noo_job` CPT).
+- **Signal:** the listing renders 200 `article.elementor-post` cards; the source says
+  `"found_posts":660,"max_num_pages":4`. `/new-jobs/page/N/` re-serves the same 200, but
+  JetSmartFilters answers `?jsf=epro-posts&pagenum=2..4` with 460 more.
+- **What went wrong:** I read 660 as the total and shipped all 660. Rendered in a browser, the page
+  shows exactly 200 cards and **no** pagination link, load-more button or result count. The
+  "pagination" strings in the HTML are a JetSmartFilters template in a script config that the page
+  never places. Filters cap at 200 too (Tel Aviv: 397 matches, 200 shown). The 460 unreachable
+  jobs were all published 2020-11..2025-05; the visible 200 run 2025-05..2026-09. The employer
+  had retired them from its listing. 459 of the 510 "over a year old" jobs were these.
+- **Fix:** ship only the page's own cards (owner rule, addsite2 §6.2). A manual scrape replaced
+  658 with 199. Before building on any paging, render the page and find the control that
+  reaches it; a URL that answers 200 proves nothing.
+- **Still useful:** the CPT has no REST route, and the RSS feed `/jobs/feed/?paged=N` (10 per page,
+  `content:encoded`, `pubDate`) supplies bodies and dates for the visible cards. Parse it as
+  `text/xml` in the page — as `text/html`, CDATA becomes a comment and `<link>` a void tag. Stop
+  reading once every card has a body (~20 pages, ~10 s). The feed pages by `post_date`, and posts
+  sharing a timestamp repeat and skip, so fetch the detail page for any card the feed missed.
+- **Generalizes to:** every listing where a count, a REST route, a feed or a sitemap is larger than
+  what the page shows. That gap is the employer's choice, not ours to fill.
+
+## LRN-LANG-2 — titles set in Unicode "mathematical bold" have no Latin letters: store them as plain letters, then run the language gate
+
+- **Date / site:** 2026-09-28, medulla.co.il.
+- **Signal:** 7 English titles like `𝐃𝐞𝐯𝐎𝐩𝐬 𝐄𝐧𝐠𝐢𝐧𝐞𝐞𝐫` (U+1D400 block, pasted from LinkedIn) were
+  silently dropped by the addsite2 §6.2 language gate. Those code points are `\p{L}` but
+  Script=Common, so the "at least one Hebrew or Latin letter" test finds none.
+- **Fix (owner, 2026-09-28):** store them as plain letters, then gate the stored title. Map only
+  that block through NFKC (𝐃→D): `title.replace(MATH, c => c.normalize('NFKC'))`, with `MATH`
+  built from `String.fromCodePoint(0x1D400)`..`(0x1D7FF)` and the `u` flag. NFKC on the whole
+  title would also rewrite other compatibility characters the employer wrote on purpose. Styled
+  letters also break search and read as garbage on screen readers.
+- **Generalizes to:** every site using the language gate — styled-Unicode titles are common on
+  recruiter boards that copy from LinkedIn.
