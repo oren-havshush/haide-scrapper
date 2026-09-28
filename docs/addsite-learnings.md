@@ -3873,3 +3873,33 @@
   letters also break search and read as garbage on screen readers.
 - **Generalizes to:** every site using the language gate — styled-Unicode titles are common on
   recruiter boards that copy from LinkedIn.
+
+---
+
+## LRN-LOGO-3 — an ad agency's CLIENT carousel supplied the logo, because the agency's own mark is a small CSS background
+- **Date / site:** 2026-09-28 · interaction.co.il/careers (`cmul4v85u000001ogfre99vxv`), digital ad agency, 8 jobs.
+- **Signal:** `/company-profile` reported `WRITTEN COMPLETE … logo` and stored
+  `mifalpaislogo2018glowwhite_….webp` (alt `MANUI_PAIS_logo_cyan_2018`), the Mifal HaPais logo, one of
+  ~20 client logos in the homepage "our clients" strip. The only warning was about contrast.
+- **Cause:** the same outcome as `LRN-LOGO-1`, by a third road. The agency's wordmark is not an `<img>` or
+  an inline `<svg>`: it is a CSS `background-image` on `a.name-logo` (Figma-export theme "flowmotheme",
+  image hosted on firebasestorage.googleapis.com), 226x26. The harvest does not read it, and the upload
+  route's 64px floor would refuse it anyway. With the own mark out of reach, the best "logo" match was
+  a client's. **An agency's homepage is full of other companies' logos, and that is the point of the page.**
+- **Fix (manual):** the header wordmark exists nowhere larger (every page draws the same 226x26 webp, no
+  SVG), but the WordPress media library (`/wp-json/wp/v2/media`) held `Artboard-1@4x.png`: the full-colour
+  wordmark plus tagline "INSPIRED BY PEOPLE. DRIVEN BY TECH", drawn small on a 512x512 transparent canvas.
+  Cropped to its opaque pixels (+4px margin) from the original image, not a screenshot: 505x95, clears the
+  64px floor with no upscaling and reads on white and dark. Uploaded via `POST /company-logo`, owner's
+  choice, tagline kept as part of the artwork. Rejected: padding the 226x26 header wordmark to 64px (white
+  letters, invisible on a white page); the 512x512 "iN" site icon (`cropped-IN.png`), which was the interim
+  logo. There is no API path that clears a logo (`companyLogoPath` is accepted only by that upload route),
+  so replacing it is the only way to remove a wrong one without going on the box. **When the header logo is
+  too small, list the media library before settling for a monogram or padding.**
+- **Trap found while fixing it:** Caddy's `handle_path /logos/*` sets `Cache-Control: public, max-age=86400`
+  on every response, 404 included, and Cloudflare caches it. Requesting `/logos/<id>.png` before that file
+  exists pins a 404 at the edge for a day, and the logo then appears broken even after a successful upload
+  (origin 200, edge `cf-cache-status: HIT` 404). Do not probe a logo URL before its upload has succeeded.
+- **Generalizes to:** agencies (ads, PR, branding, web studios), and any company that shows a "clients"/
+  "partners" strip, including importers (`LRN-LOGO-1`). Look at the captured logo and compare its alt/filename
+  with `companyName` before accepting `withLogo: 1`. **Home:** `/company-profile` §0 logo row.

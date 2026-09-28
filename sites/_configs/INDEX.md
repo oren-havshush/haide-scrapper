@@ -31,6 +31,7 @@ from top-level params, so a setupScript left only inside `_meta` is dropped.
 | Gtech | ACTIVE | 6 | 4590 | `gtech--7udl8v` |
 | Hylabs | ACTIVE | 4 | 502 | `hylabs--gyocvt` |
 | IPV Security | ACTIVE | 6 | 3307 | `news-ipvsecurity--5knkts` |
+| Interaction | ACTIVE | 7 | 4541 | 1 | `interaction--e99vxv` |
 | LEASE4U | ACTIVE | 8 | 6532 | `freesbe--6cznyg` |
 | Mentee Robotics | ACTIVE | 8 | 7617 | `comeet--lfseiu` |
 | Mobileye | ACTIVE | 9 | 6318 | `mobileye--6xnl0n` |
