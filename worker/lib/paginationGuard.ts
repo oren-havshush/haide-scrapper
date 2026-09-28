@@ -61,3 +61,34 @@ export function isTruncatedWalk(walk: PaginationWalk | null | undefined): boolea
   const last = pages[pages.length - 1]!;
   return pageSize > 0 && last >= pageSize;
 }
+
+/**
+ * A walk that stalled on its FIRST page while the site has more listings
+ * stored than that page showed.
+ *
+ * isTruncatedWalk cannot judge one page — there is no page size to compare —
+ * and the ratio guard passes half. 2026-09-27, ashtrom's rehearsal: page 1
+ * showed 15 cards, "next" was enabled and clicked, the page never moved, and
+ * 30 listings were stored. 15 is not below half of 30, so a scheduled run
+ * would have committed 15 and deleted 15 live listings.
+ *
+ * The stored count is the evidence the page size would have been: if the
+ * site already publishes more than page 1 showed, the offered next page is
+ * where they are. Stored equal or fewer loses nothing, and is not refused.
+ * On a site with several listing URLs the count is the site's, not the
+ * page's, so a first-page stall on any one of them is refused — the
+ * conservative side of a question the four paginated sites today never ask.
+ */
+export function isFirstPageStall(walk: PaginationWalk | null | undefined, storedCount: number): boolean {
+  if (!walk || walk.stoppedBy !== "stalled") return false;
+  if (walk.pageCounts.length !== 1) return false;
+  return storedCount > walk.pageCounts[0]!;
+}
+
+/** Whether any of a run's walks refuses a scheduled persist. */
+export function isPaginationTruncated(
+  walks: ReadonlyArray<PaginationWalk>,
+  storedCount: number,
+): boolean {
+  return walks.some((w) => isTruncatedWalk(w) || isFirstPageStall(w, storedCount));
+}

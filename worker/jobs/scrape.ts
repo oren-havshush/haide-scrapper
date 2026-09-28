@@ -59,7 +59,7 @@ import {
   type FetchReason,
 } from "../lib/detailPlan";
 import {
-  isTruncatedWalk,
+  isPaginationTruncated,
   newPaginationWalk,
   type AdvanceOutcome,
   type PaginationWalk,
@@ -3505,7 +3505,7 @@ export async function planDetailsReadOnly(siteId: string, mode: DetailMode): Pro
       listingOutcome: listing.kind,
       listingDetail: listing.kind === "persist" ? null : listing.error,
       perUrl: perUrl.map((r) => ({ url: r.url, cards: r.items.length, seen: r.seen, error: r.error })),
-      paginationTruncated: walks.some(isTruncatedWalk),
+      paginationTruncated: isPaginationTruncated(walks, storedRows.length),
       storedRows: storedRows.length,
       fetched: detailPlan.fetched,
       carried: detailPlan.carried,
@@ -4346,7 +4346,7 @@ async function executeScrape(
       minPrevious: sweepConfig.dropMinPrevious,
       keepRatio: sweepConfig.dropKeepRatio,
     }, {
-      paginationTruncated: runMode.walks.some(isTruncatedWalk),
+      paginationTruncated: isPaginationTruncated(runMode.walks, previousCount),
     });
 
     if (plan.mode === "oversize") {
@@ -4379,7 +4379,7 @@ async function executeScrape(
       const message =
         plan.reason === "pagination_truncated"
           ? `Refusing to replace ${plan.previousCount} listings with ${plan.rowCount} — ` +
-            `pagination stalled on a full page the site offered a next page for, ` +
+            `pagination stalled before the listing's last page (a next page was offered and never arrived), ` +
             `previous listings left untouched`
           : `Refusing to replace ${plan.previousCount} listings with ${plan.rowCount} — ` +
             `below ${Math.round(plan.thresholds.keepRatio * 100)}% of the previous count, ` +

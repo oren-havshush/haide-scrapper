@@ -7,7 +7,7 @@
 
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { isTruncatedWalk, newPaginationWalk, type PaginationWalk } from "./paginationGuard";
+import { isPaginationTruncated, isTruncatedWalk, newPaginationWalk, type PaginationWalk } from "./paginationGuard";
 import { planScheduledPersist } from "./scheduledRun";
 
 let failures = 0;
@@ -88,6 +88,39 @@ check("the plan refuses a truncated walk", () => {
   );
 });
 
+check("a first-page stall, judged against what the site has stored", () => {
+  // ashtrom, 2026-09-27 rehearsal: page 1 showed 15 cards, the click on an
+  // enabled "next" never moved the page, and 30 listings were stored. The
+  // rule above cannot judge one page (no page size), and the ratio guard lets
+  // 15 of 30 through (not below half) — so the run would have committed 15 and
+  // deleted 15 live listings.
+  const ashtrom = walk([15], "stalled");
+  assert(isPaginationTruncated([ashtrom], 30), "15 seen on a stalled first page, 30 stored -> refused");
+  assert(
+    planScheduledPersist(15, 30, undefined, { paginationTruncated: isPaginationTruncated([ashtrom], 30) }).mode ===
+      "suspicious_drop",
+    "and the plan refuses it — the ratio guard alone commits exactly this",
+  );
+  assert(planScheduledPersist(15, 30).mode === "commit", "(which is what it did before this rule)");
+
+  // Where it must not fire.
+  assert(!isPaginationTruncated([ashtrom], 15), "stored equal to what page 1 showed: nothing to lose");
+  assert(!isPaginationTruncated([ashtrom], 10), "stored fewer: the site grew, nothing to lose");
+  assert(!isPaginationTruncated([ashtrom], 0), "nothing stored: a first run loses nothing");
+  assert(!isPaginationTruncated([walk([15], "end")], 30), "a first page the listing ENDED is the ratio guard's call");
+  assert(!isPaginationTruncated([walk([15], "maxPages")], 30), "maxPages 1 is the config's own bound");
+  assert(!isPaginationTruncated([walk([15], "aborted")], 30), "the deadline refuses on its own");
+  assert(!isPaginationTruncated([], 30), "no pagination configured");
+
+  // The multi-page rule is unchanged, and either rule refuses.
+  assert(isPaginationTruncated([walk([15, 15], "stalled")], 0), "a stall on a full later page is still truncated");
+  assert(!isPaginationTruncated([walk([15, 6], "stalled")], 30), "a stall on a partial later page is still the end");
+  assert(
+    isPaginationTruncated([walk([15, 15, 15, 6], "end"), walk([15], "stalled")], 60),
+    "any walk refusing refuses the run",
+  );
+});
+
 check("scrape.ts records the walk and hands it to the plan", () => {
   const src = readFileSync(join(__dirname, "..", "jobs", "scrape.ts"), "utf8");
   const calls = src.split("await advanceToNextPage(").length - 1;
@@ -96,7 +129,7 @@ check("scrape.ts records the walk and hands it to the plan", () => {
   const recorded = src.split("walk.stoppedBy = outcome").length - 1;
   assert(recorded === 2, `both loops record why they stopped (found ${recorded})`);
   assert(
-    /planScheduledPersist\(rows\.length, previousCount, \{[\s\S]*?\}, \{\s*paginationTruncated: runMode\.walks\.some\(isTruncatedWalk\)/.test(src),
+    /planScheduledPersist\(rows\.length, previousCount, \{[\s\S]*?\}, \{\s*paginationTruncated: isPaginationTruncated\(runMode\.walks, previousCount\)/.test(src),
     "the scheduled persist plan is given the walk's verdict",
   );
 });
