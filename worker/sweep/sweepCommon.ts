@@ -11,10 +11,12 @@ import { createDrainTracker, type DrainVerdict, type QueueFacts } from "../lib/d
 import {
   computeCounters,
   renderSweepReport,
+  sweepDate,
   type ReportItem,
   type ReportSweep,
   type SkippedSite,
 } from "../lib/sweepReport";
+import { sendSweepMail, type MailOutcome } from "../lib/sweepMail";
 
 export type SweepKind = "SCRAPE" | "POLICY";
 
@@ -169,6 +171,15 @@ export async function cancelPendingJobById(
  * Returns the report text so the caller prints it last: `journalctl` then ends
  * with the same string the row holds.
  */
+/** A ScrapeSweep row update, as closeSweep issues it. */
+export type SweepRowUpdate = { where: { id: string }; data: Record<string, unknown> };
+
+/** closeSweep's side effects, injectable so a test can watch them without a database. */
+export type CloseSweepDeps = {
+  update?: (a: SweepRowUpdate) => Promise<unknown>;
+  send?: (a: { kind: SweepKind; date: string; logText: string; items: ReportItem[] }) => Promise<MailOutcome>;
+};
+
 export async function closeSweep(args: {
   kind: SweepKind;
   sweepId: string;
@@ -182,7 +193,9 @@ export async function closeSweep(args: {
   skipped?: SkippedSite[];
   /** The night's detail mode, for the report's Details section. Scrape sweep only. */
   detailMode?: "full" | "incremental";
-}): Promise<string> {
+}, deps: CloseSweepDeps = {}): Promise<string> {
+  const update = deps.update ?? ((a: SweepRowUpdate) => prisma.scrapeSweep.update(a));
+  const send = deps.send ?? ((a: Parameters<typeof sendSweepMail>[0]) => sendSweepMail(a));
   const finishedAt = new Date();
 
   const sweepRow: ReportSweep = {
@@ -209,7 +222,7 @@ export async function closeSweep(args: {
     },
   });
 
-  await prisma.scrapeSweep.update({
+  await update({
     where: { id: args.sweepId },
     data: {
       status: args.status,
@@ -221,6 +234,31 @@ export async function closeSweep(args: {
       logText,
     },
   });
+
+  // The report by email (worker/lib/sweepMail.ts), both sweep kinds. AFTER the
+  // row above is written, so the report is safe whatever the mail does. The
+  // sender never throws by contract; the try is for the contract being broken,
+  // and the emailStatus write has its own, because a mail must never cost the
+  // night its closed sweep.
+  let emailStatus: string;
+  try {
+    const mail = await send({
+      kind: args.kind,
+      date: sweepDate(args.startedAt, sweepConfig.timezone),
+      logText,
+      items: args.items,
+    });
+    emailStatus = mail.emailStatus;
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    console.error(`[mail] !! report NOT emailed — the sender threw: ${msg}`);
+    emailStatus = `failed: sender threw — ${msg}`.slice(0, 500);
+  }
+  try {
+    await update({ where: { id: args.sweepId }, data: { emailStatus } });
+  } catch (err) {
+    console.error(`[mail] could not record emailStatus "${emailStatus}": ${err instanceof Error ? err.message : String(err)}`);
+  }
 
   return logText;
 }

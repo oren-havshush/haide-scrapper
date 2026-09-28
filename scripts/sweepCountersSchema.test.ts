@@ -63,7 +63,9 @@ for (const key of ["listingRefusals", "noJobs"]) {
 console.log("# the write is still a spread of the whole object");
 {
   const common = readFileSync(join(ROOT, "worker", "sweep", "sweepCommon.ts"), "utf8");
-  const update = /prisma\.scrapeSweep\.update\(\{[\s\S]*?\n  \}\);/.exec(common)?.[0] ?? "";
+  // closeSweep's row write goes through its injectable `update` (defaulting to
+  // prisma.scrapeSweep.update) so a test can watch it; either spelling is it.
+  const update = /(?:prisma\.scrapeSweep\.update|await update)\(\{[\s\S]*?\n  \}\);/.exec(common)?.[0] ?? "";
   assert(update.length > 100, "the closeSweep update was found");
   assert(
     /\.\.\.counters/.test(update),
