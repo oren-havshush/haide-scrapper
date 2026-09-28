@@ -125,6 +125,7 @@ from top-level params, so a setupScript left only inside `_meta` is dropped.
 | מסוף שירותי לוגיסטיקה | ACTIVE | 3 | 534 | `masof--2bfcz7` |
 | מקדונלדס | ACTIVE | 4 | — | `mcdonalds--x0odyk` |
 | מרכז האקדמי פרס | ACTIVE | 4 | 2397 | `pac--4xvfi9` |
+| מתן שירותי בריאות וסיעוד מתקדמים | ACTIVE | 7 | 5796 | `app-civi--cc1wag` |
 | נאות המושבה - גולדנקייר | ACTIVE | 3 | 700 | `gcare--2uvz1w` |
 | נטלי | ACTIVE | 7 | 7964 | `app-civi--ai732i` |
 | נטפים | ACTIVE | 8 | 6573 | `comeet--4q2aga` |

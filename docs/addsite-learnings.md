@@ -3903,3 +3903,17 @@
 - **Generalizes to:** agencies (ads, PR, branding, web studios), and any company that shows a "clients"/
   "partners" strip, including importers (`LRN-LOGO-1`). Look at the captured logo and compare its alt/filename
   with `companyName` before accepting `withLogo: 1`. **Home:** `/company-profile` §0 logo row.
+
+## LRN-SPA-15 — a Civi promo URL can 302 to Civi's 404 without the board's session cookie
+
+- **Date / site:** 2026-09-28, app.civi.co.il (מתן שירותי בריאות וסיעוד מתקדמים, board YDDG8SGXNC/14794).
+- **Signal:** a cookieless `curl` of `promo/id=696586&src=14794` and `promo/id=821334&src=14794` answered
+  `302 → https://app.civi.co.il/?ERROR 404`, while the other 18 promos on the board answered 200.
+  Clicking those cards in a browser, or fetching them from inside the board page, returns the full ad.
+- **Fix:** none needed. The recipe's setupScript `fetch()`es from inside the rendered board, so it sends the
+  board's session cookie; all 20 were scraped with full bodies. Do not drop a job because an out-of-page
+  probe 404s. Probe detail pages the way the worker reads them: in-page, after loading the board.
+- **Generalises to:** every Civi board, and any same-origin ATS whose detail pages depend on a session.
+  Out-of-page gates (`detail-reach`, a `curl` survey) can report a page as dead when it isn't.
+  The logo capture on this site also stored the homepage's hamburger-menu icon (`LRN-LOGO-3` shape): look
+  at the stored `/logos/<id>.png` before accepting `withLogo: 1`.
