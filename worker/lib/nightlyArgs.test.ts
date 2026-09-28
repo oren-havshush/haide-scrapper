@@ -61,6 +61,12 @@ assert(throws(() => p("--dry-run-details")), "--dry-run-details needs a site");
 assert(throws(() => p("--site abc --now --dry-run-details")), "and never together with --now");
 assert(throws(() => p("--site --now")), "a --site with no id is refused");
 
+// --- the one-off mail test ------------------------------------------------------
+assert(same(p("--test-email"), { kind: "test-email" }), "--test-email sends the latest stored report and exits");
+assert(throws(() => p("--test-email --now")), "it never runs a sweep");
+assert(throws(() => p("--test-email --site abc")), "and takes no site");
+assert(throws(() => p("--test-email --dry-run")), "and is not combined with a dry run");
+
 // --- which mode ----------------------------------------------------------------
 const mode = (s: string, at: Date) => resolveDetailMode(p(s), at);
 assert(mode("--now", WED) === "incremental", "a weekday fleet night is incremental");

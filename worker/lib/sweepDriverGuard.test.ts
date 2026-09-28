@@ -108,6 +108,19 @@ for (const call of WRITE_CALLS) {
   }
 }
 
+// --test-email (step 11) re-sends the latest STORED report through the mailer
+// and exits. It reads a sweep row and its items; it records nothing — not even
+// emailStatus, which belongs to the night that produced the report.
+{
+  const test = functionBody(driver, "testEmail");
+  assert(test.length > 300, `testEmail's body was extracted (${test.length} chars)`);
+  assert(test.includes("sendSweepMail("), "testEmail sends through the one sender");
+  for (const call of WRITE_CALLS) {
+    assert(!test.includes(call), `testEmail contains no ${call} — it only reads and sends`);
+  }
+  assert(!/emailStatus\s*:/.test(test), "and builds no emailStatus field to write — it only prints the result");
+}
+
 // resolveStaleSweeps is the one shared helper dryRun calls that CAN write, so
 // it must be called in its reporting mode.
 assert(

@@ -325,6 +325,11 @@ model ScrapeSweep {
   /// of every earlier row. NULL means not measured.
   detailsFetched    Int?
   detailsCarried    Int?
+  /// What happened when the report was emailed (worker/lib/sweepMail.ts):
+  /// "sent", "sent (warning: …)", "skipped: …" or "failed: HTTP <status>
+  /// <code>: <message>". NULL on sweeps from before email, and when no send was
+  /// attempted. A failed send is recorded here and never thrown into the sweep.
+  emailStatus       String?
 
   haltedAt   DateTime?
   haltReason String?

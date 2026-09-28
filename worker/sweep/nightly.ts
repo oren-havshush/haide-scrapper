@@ -52,7 +52,8 @@ import {
   shouldAlertSoftFailures,
   SOFT_FAILURE_ALERT_RATIO,
 } from "../lib/sweepBreaker";
-import type { ReportItem, SkippedSite } from "../lib/sweepReport";
+import { sweepDate, type ReportItem, type SkippedSite } from "../lib/sweepReport";
+import { sendSweepMail } from "../lib/sweepMail";
 import {
   cancelPendingJobById,
   closeSweep,
@@ -926,14 +927,76 @@ async function dryRunDetails(siteId: string, detailMode: DetailMode): Promise<nu
   return 0;
 }
 
+// ---------------------------------------------------------------------------
+// One-off mail test — reads, sends, records nothing
+// ---------------------------------------------------------------------------
+
+/**
+ * `--test-email`: send the most recent stored report through the mailer and
+ * exit, printing the mailer's response. Reads the sweep row and its items; it
+ * writes nothing — not even emailStatus, which belongs to the night that
+ * produced the report. Pinned by worker/lib/sweepDriverGuard.test.ts.
+ */
+async function testEmail(): Promise<number> {
+  log("=== nightly --test-email (sends the latest stored report; writes nothing) ===");
+  const sweep = await prisma.scrapeSweep.findFirst({
+    where: { logText: { not: null } },
+    orderBy: { startedAt: "desc" },
+    select: { id: true, kind: true, startedAt: true, logText: true },
+  });
+  if (!sweep || !sweep.logText) {
+    log("[mail] no stored report to send");
+    return 1;
+  }
+  const rows = await prisma.scrapeSweepItem.findMany({
+    where: { sweepId: sweep.id },
+    orderBy: { startedAt: "asc" },
+    select: {
+      siteId: true,
+      phase: true,
+      outcome: true,
+      failureCategory: true,
+      jobsBefore: true,
+      jobsAfter: true,
+      newestJobAt: true,
+      siteStatus: true,
+      wouldDemoteTo: true,
+      wouldPromoteTo: true,
+      scrapedCount: true,
+      detailsFetched: true,
+      detailsCarried: true,
+    },
+  });
+  // siteId is not a foreign key; a deleted site keeps its id in the CSV.
+  const sites = await prisma.site.findMany({
+    where: { id: { in: rows.map((r) => r.siteId) } },
+    select: { id: true, siteUrl: true },
+  });
+  const urlOf = new Map(sites.map((s) => [s.id, s.siteUrl]));
+  const items: ReportItem[] = rows.map((r) => ({ ...r, siteUrl: urlOf.get(r.siteId) ?? r.siteId }));
+  const kind = sweep.kind === "POLICY" ? "POLICY" : "SCRAPE";
+  const date = sweepDate(sweep.startedAt, sweepConfig.timezone);
+  log(`[mail] sending sweep ${sweep.id} (${kind}, ${date}, ${items.length} item(s))`);
+
+  const outcome = await sendSweepMail({ kind, date, logText: sweep.logText, items });
+  log(`[mail] result   ${outcome.emailStatus}`);
+  log(`[mail] http     ${outcome.httpStatus ?? "-"}`);
+  // The mailer's data carries recipients, attachment name and size, client and
+  // source — nothing secret. The token is never part of it.
+  log(`[mail] data     ${JSON.stringify(outcome.data)}`);
+  return outcome.emailStatus.startsWith("sent") ? 0 : 1;
+}
+
 async function main() {
   const parsed = parseNightlyArgs(process.argv.slice(2));
   const code =
     parsed.kind === "dry-run"
       ? await dryRun()
-      : parsed.kind === "dry-run-details"
-        ? await dryRunDetails(parsed.siteId, resolveDetailMode(parsed, new Date()))
-        : await realRun(parsed);
+      : parsed.kind === "test-email"
+        ? await testEmail()
+        : parsed.kind === "dry-run-details"
+          ? await dryRunDetails(parsed.siteId, resolveDetailMode(parsed, new Date()))
+          : await realRun(parsed);
   await prisma.$disconnect();
   process.exit(code);
 }

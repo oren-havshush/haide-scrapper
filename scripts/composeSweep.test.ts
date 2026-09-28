@@ -119,9 +119,23 @@ console.log("# 3 — one environment block, shared by anchor");
     "SWEEP_POLICY_MAX_PER_NIGHT",
     "SWEEP_DROP_MIN_PREVIOUS",
     "SWEEP_DROP_KEEP_RATIO",
+    // The report by email (worker/lib/sweepMail.ts).
+    "HAIDE_MAILER_URL",
+    "HAIDE_MAILER_TOKEN",
+    "SWEEP_EMAIL_TO",
   ]) {
     assert(key in sEnv, `the shared environment carries ${key}`);
   }
+  // The token comes from the server's .env and nowhere else: no default that
+  // could be a real value, and never a literal in the file.
+  assert(
+    String(sEnv.HAIDE_MAILER_TOKEN) === "${HAIDE_MAILER_TOKEN:-}",
+    `the token is passed through from .env with an empty default (got ${JSON.stringify(sEnv.HAIDE_MAILER_TOKEN)})`,
+  );
+  assert(
+    String(sEnv.SWEEP_EMAIL_TO) === "${SWEEP_EMAIL_TO:-info@haide-jobs.co.il}",
+    `the recipient defaults to info@haide-jobs.co.il (got ${JSON.stringify(sEnv.SWEEP_EMAIL_TO)})`,
+  );
 
   // The compose default overrides the one in src/lib/config.ts, so it is the
   // number that actually applies in production. 260 minutes from 02:00 stops

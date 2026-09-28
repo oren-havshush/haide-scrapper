@@ -10,17 +10,20 @@
 //   --site <id> --dry-run-details  read-only rehearsal of one site's
 //                                fetch-or-carry split, in the night's own mode.
 //   --full-details / --incremental-details   override any of the above.
+//   --test-email                 one-off: email the latest stored report, then exit.
 
 import { detailModeFor, type DetailMode } from "./detailPlan";
 
 export type NightlyMode =
   | { kind: "dry-run" }
+  | { kind: "test-email" }
   | { kind: "dry-run-details"; siteId: string; detailOverride: DetailMode | null }
   | { kind: "single"; siteId: string; detailOverride: DetailMode | null }
   | { kind: "fleet"; detailOverride: DetailMode | null };
 
 export function parseNightlyArgs(argv: string[]): NightlyMode {
   const dryRun = argv.includes("--dry-run");
+  const testEmail = argv.includes("--test-email");
   const dryRunDetails = argv.includes("--dry-run-details");
   const now = argv.includes("--now");
   const full = argv.includes("--full-details");
@@ -35,6 +38,12 @@ export function parseNightlyArgs(argv: string[]): NightlyMode {
     throw new Error("--site needs a site id");
   }
 
+  if (testEmail) {
+    if (dryRun || dryRunDetails || now || siteIdx >= 0 || detailOverride) {
+      throw new Error("--test-email stands alone: it sends the latest stored report and exits");
+    }
+    return { kind: "test-email" };
+  }
   if (dryRun) {
     if (detailOverride) throw new Error("--dry-run has no detail phase; use --site <id> --dry-run-details");
     return { kind: "dry-run" };
@@ -54,7 +63,7 @@ export function parseNightlyArgs(argv: string[]): NightlyMode {
 
 /** The detail mode an invocation runs in. `startedAt` decides the fleet's default. */
 export function resolveDetailMode(mode: NightlyMode, startedAt: Date): DetailMode {
-  if (mode.kind === "dry-run") return detailModeFor(startedAt);
+  if (mode.kind === "dry-run" || mode.kind === "test-email") return detailModeFor(startedAt);
   if (mode.detailOverride) return mode.detailOverride;
   if (mode.kind === "single") return "full";
   return detailModeFor(startedAt);

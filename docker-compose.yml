@@ -31,6 +31,13 @@ x-worker-env: &worker-env
   # many listings with fewer than this share of them.
   SWEEP_DROP_MIN_PREVIOUS: ${SWEEP_DROP_MIN_PREVIOUS:-10}
   SWEEP_DROP_KEEP_RATIO: ${SWEEP_DROP_KEEP_RATIO:-0.5}
+  # The report by email, through the haide-jobs WordPress mailer
+  # (worker/lib/sweepMail.ts). URL and token live only in the server's .env;
+  # unset means the report is not emailed, with one log line. The recipient is
+  # a comma list, and every address must be on the mailer's allowlist.
+  HAIDE_MAILER_URL: ${HAIDE_MAILER_URL:-}
+  HAIDE_MAILER_TOKEN: ${HAIDE_MAILER_TOKEN:-}
+  SWEEP_EMAIL_TO: ${SWEEP_EMAIL_TO:-info@haide-jobs.co.il}
 
 services:
   db:
