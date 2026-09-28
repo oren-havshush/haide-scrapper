@@ -1,0 +1,65 @@
+{
+  "_exportedAt": "2026-09-28T14:05:26.909Z",
+  "_note": "Mirror of the live config. The DB is authoritative; the worker never reads this file. setupScript lives alongside in <slug>.setup.js.",
+  "id": "cmulapra0000e01ogrcyutag5",
+  "siteUrl": "https://www.budget.co.il/%D7%90%D7%95%D7%93%D7%95%D7%AA-%D7%91%D7%90%D7%93%D7%92%D7%98/25795-2/",
+  "companyName": "באדג'ט",
+  "status": "ACTIVE",
+  "setupScriptFile": "budget--yutag5.setup.js",
+  "pageFlow": [],
+  "fieldMappings": {
+    "_meta": {
+      "savedAt": "2026-09-28T13:55:57.270Z",
+      "pagination": null,
+      "formCapture": null,
+      "listingUrls": null,
+      "itemSelector": "#haide-jobs-root [data-haide-job]",
+      "minPublishDate": null,
+      "minPublishDays": null,
+      "revealSelector": null,
+      "listingSelector": null,
+      "applyLoginReason": null,
+      "browserOverrides": null,
+      "loadMoreSelector": null,
+      "locationFallback": null,
+      "originalMappings": null,
+      "applyRequiresLogin": false
+    },
+    "title": {
+      "source": "MANUAL",
+      "selector": ".__ai-title",
+      "confidence": 1,
+      "capturedOnUrl": "https://www.budget.co.il/%D7%90%D7%95%D7%93%D7%95%D7%AA-%D7%91%D7%90%D7%93%D7%92%D7%98/25795-2/"
+    },
+    "location": {
+      "source": "MANUAL",
+      "selector": ".__ai-location",
+      "confidence": 1,
+      "capturedOnUrl": "https://www.budget.co.il/%D7%90%D7%95%D7%93%D7%95%D7%AA-%D7%91%D7%90%D7%93%D7%92%D7%98/25795-2/"
+    },
+    "description": {
+      "source": "MANUAL",
+      "selector": ".__ai-description",
+      "confidence": 1,
+      "capturedOnUrl": "https://www.budget.co.il/%D7%90%D7%95%D7%93%D7%95%D7%AA-%D7%91%D7%90%D7%93%D7%92%D7%98/25795-2/"
+    },
+    "requirements": {
+      "source": "MANUAL",
+      "selector": ".__ai-requirements",
+      "confidence": 1,
+      "capturedOnUrl": "https://www.budget.co.il/%D7%90%D7%95%D7%93%D7%95%D7%AA-%D7%91%D7%90%D7%93%D7%92%D7%98/25795-2/"
+    },
+    "externalJobId": {
+      "source": "MANUAL",
+      "selector": "[data-haide-job-id]",
+      "confidence": 1,
+      "capturedOnUrl": "https://www.budget.co.il/%D7%90%D7%95%D7%93%D7%95%D7%AA-%D7%91%D7%90%D7%93%D7%92%D7%98/25795-2/"
+    },
+    "applicationInfo": {
+      "source": "MANUAL",
+      "selector": ".__ai-apply-email",
+      "confidence": 1,
+      "capturedOnUrl": "https://www.budget.co.il/%D7%90%D7%95%D7%93%D7%95%D7%AA-%D7%91%D7%90%D7%93%D7%92%D7%98/25795-2/"
+    }
+  }
+}
