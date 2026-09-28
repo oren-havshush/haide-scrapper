@@ -149,6 +149,9 @@ export interface BrowserOverrides {
   // to hydrate the listing (e.g. bezeq.co.il: page is www., job data is on
   // d-api.). Maps directly to Playwright's `bypassCSP` newContext option.
   bypassCSP?: boolean;
+  // Wait this long before every page load for the site (worker/lib/requestDelay.ts).
+  // Not a context option: scrape.ts wraps the page with pacePage after createPage.
+  requestDelayMs?: number;
 }
 
 export async function createPage(

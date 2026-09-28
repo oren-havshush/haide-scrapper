@@ -8,6 +8,7 @@
  */
 
 import type { ConsoleMessage, Page } from "playwright";
+import { paceFetchIn, pacerFor } from "./requestDelay";
 
 /** Long-running scripts (load-more loops with sleeps) need more than the 30s default. */
 const SETUP_SCRIPT_TIMEOUT_MS = 90_000;
@@ -48,13 +49,30 @@ export async function runSetupScript(page: Page, script: string): Promise<void> 
     // just resolves immediately.
     page.setDefaultTimeout(SETUP_SCRIPT_TIMEOUT_MS);
     try {
-      await page.evaluate(async (src: string) => {
-        const AsyncFunction = Object.getPrototypeOf(
-          async function () {},
-        ).constructor as new (body: string) => () => Promise<unknown>;
-        const fn = new AsyncFunction(src);
-        await fn();
-      }, script);
+      // A site with browserOverrides.requestDelayMs gets its setup script's own
+      // fetches spaced by the same gap, for the duration of the script only —
+      // the shim is restored afterwards, so the site's own later fetches (a
+      // pagination click's data request) are not slowed. The shim ships by
+      // source because it runs in the page. See worker/lib/requestDelay.ts.
+      const delayMs = pacerFor(page)?.delayMs ?? 0;
+      await page.evaluate(
+        async (a: { src: string; delayMs: number; pace: string }) => {
+          const AsyncFunction = Object.getPrototypeOf(
+            async function () {},
+          ).constructor as new (body: string) => () => Promise<unknown>;
+          const fn = new AsyncFunction(a.src);
+          const restore =
+            a.delayMs > 0
+              ? (new Function(`return (${a.pace})`)() as (w: unknown, d: number) => () => void)(window, a.delayMs)
+              : null;
+          try {
+            await fn();
+          } finally {
+            if (restore) restore();
+          }
+        },
+        { src: script, delayMs, pace: paceFetchIn.toString() },
+      );
     } finally {
       // Restore even when the script throws. A site whose jobs span several
       // listing pages runs this once per page, and a raised default left behind

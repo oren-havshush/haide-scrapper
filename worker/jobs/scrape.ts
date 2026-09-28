@@ -2,6 +2,7 @@ import { prisma } from "../../src/lib/prisma";
 import type { WorkerJob, Site } from "../../src/generated/prisma/client";
 import { Prisma } from "../../src/generated/prisma/client";
 import { launchBrowser, createPage, closeBrowser, type BrowserOverrides } from "../lib/playwright";
+import { beforeClickLoad, createPacer, pacePage, readRequestDelayMs } from "../lib/requestDelay";
 import {
   normalizeJobRecord,
   resolveMetaMinPublishDate,
@@ -360,6 +361,7 @@ async function clickLoadMoreUntilStable(
       break;
     }
     try {
+      await beforeClickLoad(page, "load-more");
       await btn.click({ timeout: 4_000 });
     } catch (e) {
       console.warn(`[scrape] loadMore: click failed — ${(e as Error).message}`);
@@ -2303,6 +2305,7 @@ async function advanceToNextPage(
   }
 
   try {
+    await beforeClickLoad(page, "pagination");
     await btn.click({ timeout: 4_000 });
   } catch (e) {
     console.warn(`[scrape] pagination: click failed — ${(e as Error).message}`);
@@ -2473,9 +2476,12 @@ function getBrowserOverrides(fieldMappingsRaw: unknown): BrowserOverrides | null
     overrides.bypassCSP = true;
   }
 
-  if (!overrides.userAgent && !overrides.extraHeaders && !overrides.bypassCSP) return null;
+  const requestDelayMs = readRequestDelayMs(src["requestDelayMs"]);
+  if (requestDelayMs !== null) overrides.requestDelayMs = requestDelayMs;
+
+  if (!overrides.userAgent && !overrides.extraHeaders && !overrides.bypassCSP && !overrides.requestDelayMs) return null;
   console.info(
-    `[scrape] browserOverrides present: userAgent=${overrides.userAgent ? "yes" : "no"} extraHeaders=${Object.keys(overrides.extraHeaders ?? {}).length} bypassCSP=${overrides.bypassCSP ? "yes" : "no"}`,
+    `[scrape] browserOverrides present: userAgent=${overrides.userAgent ? "yes" : "no"} extraHeaders=${Object.keys(overrides.extraHeaders ?? {}).length} bypassCSP=${overrides.bypassCSP ? "yes" : "no"} requestDelayMs=${overrides.requestDelayMs ?? 0}`,
   );
   return overrides;
 }
@@ -3433,6 +3439,8 @@ export async function planDetailsReadOnly(siteId: string, mode: DetailMode): Pro
   const browser = await launchBrowser();
   try {
     const { page } = await createPage(browser, browserOverrides ?? undefined);
+    // Before every page load for this site: worker/lib/requestDelay.ts.
+    if (browserOverrides?.requestDelayMs) pacePage(page, createPacer(browserOverrides.requestDelayMs));
     await page.addInitScript(
       'if(typeof __name==="undefined"){globalThis.__name=function(fn){return fn}}',
     );
@@ -3659,6 +3667,8 @@ async function executeScrape(
   const browser = await launchBrowser();
   setBrowser(browser);
   const { page } = await createPage(browser, browserOverrides ?? undefined);
+  // Before every page load for this site: worker/lib/requestDelay.ts.
+  if (browserOverrides?.requestDelayMs) pacePage(page, createPacer(browserOverrides.requestDelayMs));
 
   // Inject __name shim so tsx-transpiled function decorators don't crash
   // inside page.evaluate calls that run in the browser context.

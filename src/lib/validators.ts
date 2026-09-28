@@ -270,6 +270,12 @@ export const updateSiteConfigSchema = z.object({
       // data subdomain (bezeq.co.il pattern). Maps to Playwright's
       // `newContext({ bypassCSP: true })`.
       bypassCSP: z.boolean().optional(),
+      // Milliseconds the worker waits before EVERY page load for this site —
+      // listing, pagination click, detail page — and between the setup
+      // script's own fetches. For sites that throttle the server after a burst
+      // of loads (ashtrom). Manual and scheduled runs alike. See
+      // worker/lib/requestDelay.ts.
+      requestDelayMs: z.number().int().min(0).max(15_000).optional(),
     })
     .optional(),
   // Login-gated apply flow flag. Set by onboarding when the apply path forces

@@ -381,7 +381,7 @@ export async function saveSiteConfig(
       | { type: "url"; param: string; start?: number; step?: number; maxPages?: number; settleMs?: number };
     setupScript?: string;
     loadMoreSelector?: string;
-    browserOverrides?: { userAgent?: string; extraHeaders?: Record<string, string>; bypassCSP?: boolean };
+    browserOverrides?: { userAgent?: string; extraHeaders?: Record<string, string>; bypassCSP?: boolean; requestDelayMs?: number };
     applyRequiresLogin?: boolean;
     applyLoginReason?: string;
     minPublishDate?: string;
