@@ -1,15 +1,15 @@
-// keshet-teamim (Civi board W8PF7U4EUE / src 12790) — HEBREW postings only.
-// Most roles are published twice, as two independent Civi records with different
-// branch lists. Owner call 2026-09-27: publish the Hebrew one. LRN-LANG-1.
-// Symbols via String.fromCharCode: an escape written here decodes to a raw char.
+// keshet-teamim (Civi W8PF7U4EUE/12790). addsite2 §6.2 language gate, LRN-LANG-1:
+// keep a card only if its TITLE has a Hebrew or Latin letter and no letter of any
+// other script (Common/Inherited are neutral). Most roles are also posted in Russian.
+// Build symbols with String.fromCharCode: a backslash-u escape here decodes to a raw char.
 var C = String.fromCharCode;
 var SEL = '.proflist .thumb';
-var CYR = new RegExp('[' + C(0x400) + '-' + C(0x4ff) + ']');
-var HEB = new RegExp('[' + C(0x590) + '-' + C(0x5ff) + ']');
+var KEEP = /(?=\p{L})[\p{sc=Hebrew}\p{sc=Latin}]/u;
+var ALIEN = /(?![\p{sc=Hebrew}\p{sc=Latin}\p{sc=Common}\p{sc=Inherited}])\p{L}/u;
 var PIN = C(0xd83d, 0xdccd);
 var NBSP = C(0xa0);
-// NB: the dash must stay LAST — '+-' before another char is a RANGE, and
-// \x2B-• swallows Hebrew, which silently emptied every heading test.
+// NB: the dash must stay LAST: '+-' before another char is a RANGE that swallows
+// Hebrew, which silently emptied every heading test.
 var LEAD = new RegExp('^[\\s*>' + C(0x2022) + C(0x25aa) + C(0x2714) + C(0x2705) + C(0x23f0) + C(0x270d) + C(0x200e) + C(0x200f) + '+-]+');
 var DESC_LABEL = /^(?:תיאור\s+(?:התפקיד|המשרה|העבודה)|תחומי\s+אחריות(?:\s+בתפקיד\s+כוללים)?|התפקיד\s+כולל)\s*:?\s*$/;
 var REQ_LABEL = /^(?:דרישות(?:\s+התפקיד|\s+המשרה)?|כישורים(?:\s+נדרשים)?|הדרישות)\s*:?\s*$/;
@@ -48,9 +48,7 @@ function splitBody(body, startInReq) {
   return { d: desc.join('\n\n').trim(), r: req.join('\n\n').trim() };
 }
 
-// normalizeLocations() canonicalises vs city.csv and DROPS the rest, so generous
-// tokens are safe. A long pin segment is a SENTENCE, never fed in whole:
-// "המרכז הרובוטי" hits alias מרכז and would ship אזור מרכז for a Kiryat Haim site.
+// Long pin segments are sentences, never fed whole: "המרכז הרובוטי" hits alias מרכז.
 function citiesOf(body) {
   var out = [];
   function add(v) {
@@ -90,10 +88,8 @@ function idOf(el) {
   return m ? m[1] : '';
 }
 
-// The board paginates at 20 (37 postings 2026-09-27), so page 1 alone is a silent
-// coverage loss. Merge later pages by fetch: profRefresh() does location.assign()
-// and would kill this context. Stop when a page adds no new id, which also guards
-// a server that ignores &p=.
+// Paginates at 20 rows. Merge later pages by fetch (profRefresh() navigates and would
+// kill this context); stop when a page adds no new id.
 var list = document.querySelector('.proflist');
 if (list && document.querySelectorAll(SEL).length >= 20) {
   var have = {}, cur = document.querySelectorAll(SEL);
@@ -127,8 +123,8 @@ await Promise.all(items.map(async function (item) {
   var jobId = m[1], srcId = m[2];
   var lt = (item.querySelector('.title') || {}).textContent || '';
 
-  // Hebrew only on POSITIVE evidence; a third language drops by default.
-  if (!HEB.test(lt) || CYR.test(lt)) { item.remove(); return; }
+  // Letters only: digits, punctuation and emoji are neutral; an unknown script drops.
+  if (!KEEP.test(lt) || ALIEN.test(lt)) { item.remove(); return; }
 
   var title = lt.replace(/\s+/g, ' ').trim();
   var descr = '', req = '', fields = [];

@@ -501,9 +501,16 @@ Recipe for a page that prints every job as one block of prose: setupScript §13,
 Onboard a posting only when it is written in **Hebrew or English**. Every other language —
 Russian, Arabic, Amharic, French — is **dropped**. This is a fleet rule, not a per-site call.
 
-- **Filter on positive evidence**: keep a card because its title carries Hebrew or Latin script,
-  never because it failed a test for the language you were excluding. A third language you did
-  not anticipate must drop by default rather than slip through.
+- **The test, on the TITLE: keep a posting only if it has at least one Hebrew or Latin letter AND no
+  letter from any other script.** Letters only — digits, punctuation (`׳` `״`), emoji, niqqud and
+  Common/Inherited-script letters (e.g. U+02BC `ʼ`) are neutral. A third script you did not
+  anticipate drops by default. In a setupScript:
+  `/(?=\p{L})[\p{sc=Hebrew}\p{sc=Latin}]/u` must match and
+  `/(?![\p{sc=Hebrew}\p{sc=Latin}\p{sc=Common}\p{sc=Inherited}])\p{L}/u` must not.
+  "Carries Hebrew or Latin" alone is not enough: it passes `Кассир в Payro` (a Latin brand name in a
+  Russian title) and `גננת / معلمة`; a Hebrew-range/Cyrillic-range pair of checks passes the Arabic one.
+- **Script cannot tell English from French, Spanish or German** — a Latin-script title in another
+  language passes the test above. Dropping those is a reviewer's call per posting; no gate enforces it.
 - **Count before you filter, and record the cost.** Enumerate the WHOLE board first — page 1 can
   invert the picture (keshet showed 3 HE / 17 RU on page 1 and 18 / 19 across the full set) — then
   name every dropped one-language-only role **by id in the `adminNote`**. Those are real vacancies

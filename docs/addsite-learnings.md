@@ -3680,9 +3680,15 @@
   carried when it was written — the call has been made once, for the fleet, and it is no longer a
   per-site question. Russian, Arabic, Amharic, French: dropped, whatever the counts say.
   `addsite2.md` §6.2 carries the rule; this entry is the evidence behind it.
-  - **Filter on positive evidence, never a blacklist** — keep a card because its title carries
-    Hebrew or Latin script, never because it failed a test for the language you were excluding. A
-    third language you did not think of must drop by default, not slip through.
+  - **Filter on positive evidence, never a blacklist — tightened 2026-09-28 (owner):** keep a card
+    only if its title has at least one Hebrew or Latin letter AND no letter from any other script
+    (digits, punctuation, emoji, niqqud and Common/Inherited letters such as U+02BC are neutral).
+    Both weaker forms failed on real-shaped titles in a 17-case test: "carries Hebrew or Latin"
+    kept 5 wrong (`Кассир в Payro`, `Работа в Office`, `קופאי/ת – Кассир`, `גננת / معلمة`, a Greek
+    letter + Latin), and keshet's original Hebrew-range/Cyrillic-range pair kept `גננת / معلمة` and
+    dropped English-only titles. The Common exemption is load-bearing: without it `צʼיפס` (U+02BC
+    apostrophe, category Lm) drops. **Limit:** script cannot tell English from French or Spanish;
+    those pass the test and are a reviewer's call.
   - **The counting is still required**, because it is what tells you what the rule costs on this
     board. Enumerate the whole board, group by role, and **name every dropped one-language-only
     role by id in the `adminNote`** — those are real vacancies that stop shipping, and page 1 can
@@ -3690,8 +3696,10 @@
   - **A role that exists in two languages is not a duplicate**, so dropping the non-Hebrew record
     loses whatever it said that its pair did not — on keshet, 5 branches of `קופאי/ת`. Record that
     too; the rule accepts the loss, it does not pretend there is none.
-  - Keshet: Hebrew only, 18 of 37, with 3 Russian-only roles (קב"ט 732712, robotic-centre picker
-    660704, evening stockers 929089) recorded as not published.
+  - Keshet: runs the tightened test since 2026-09-28 (it previously kept Hebrew titles only, so it
+    would have dropped English postings). Board unchanged: 18 of 37 kept, all Hebrew; 19 Russian
+    dropped, including 3 Russian-only roles (קב"ט 732712, robotic-centre picker 660704, evening
+    stockers 929089) recorded as not published.
   - **Standing exception — alut** (`app-civi--rl8rui`, Civi FPEVT4D67N/8315): `alut-915276`, an
     Arabic posting for Arabic-speaking communication kindergartens in Hura, predates the rule and
     was kept by owner decision on 2026-09-27. Counts there are 45 Hebrew-only / 1 Arabic-only /

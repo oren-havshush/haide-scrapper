@@ -1,5 +1,5 @@
 {
-  "_exportedAt": "2026-09-27T09:55:02.267Z",
+  "_exportedAt": "2026-09-28T07:26:11.353Z",
   "_note": "Mirror of the live config. The DB is authoritative; the worker never reads this file. setupScript lives alongside in <slug>.setup.js.",
   "id": "cmujkzuwp000s01ny0stvlqmp",
   "siteUrl": "https://app.civi.co.il/promos/id=W8PF7U4EUE&src=12790",
@@ -9,7 +9,7 @@
   "pageFlow": [],
   "fieldMappings": {
     "_meta": {
-      "savedAt": "2026-09-27T08:54:56.912Z",
+      "savedAt": "2026-09-28T07:22:47.154Z",
       "pagination": null,
       "formCapture": {
         "fields": [
