@@ -1,0 +1,77 @@
+{
+  "_exportedAt": "2026-09-28T13:30:46.186Z",
+  "_note": "Mirror of the live config. The DB is authoritative; the worker never reads this file. setupScript lives alongside in <slug>.setup.js.",
+  "id": "cmul75pw2000601og8kki7nq2",
+  "siteUrl": "https://www.bina.org.il/wanted/",
+  "companyName": "בינ\"ה",
+  "status": "ACTIVE",
+  "setupScriptFile": "bina--ki7nq2.setup.js",
+  "pageFlow": [],
+  "fieldMappings": {
+    "_meta": {
+      "savedAt": "2026-09-28T12:23:33.323Z",
+      "pagination": null,
+      "formCapture": null,
+      "listingUrls": null,
+      "itemSelector": "#jobs div.job",
+      "minPublishDate": null,
+      "minPublishDays": null,
+      "revealSelector": null,
+      "listingSelector": null,
+      "applyLoginReason": null,
+      "browserOverrides": null,
+      "loadMoreSelector": null,
+      "locationFallback": null,
+      "originalMappings": null,
+      "applyRequiresLogin": false
+    },
+    "title": {
+      "source": "MANUAL",
+      "selector": ".__ai-title",
+      "confidence": 1,
+      "capturedOnUrl": "https://www.bina.org.il/wanted/"
+    },
+    "deadline": {
+      "source": "MANUAL",
+      "selector": ".__ai-deadline",
+      "confidence": 1,
+      "capturedOnUrl": "https://www.bina.org.il/wanted/"
+    },
+    "location": {
+      "source": "MANUAL",
+      "selector": ".__ai-location",
+      "confidence": 1,
+      "capturedOnUrl": "https://www.bina.org.il/wanted/"
+    },
+    "description": {
+      "source": "MANUAL",
+      "selector": ".__ai-description",
+      "confidence": 1,
+      "capturedOnUrl": "https://www.bina.org.il/wanted/"
+    },
+    "publishDate": {
+      "source": "MANUAL",
+      "selector": ".__ai-publishdate",
+      "confidence": 1,
+      "capturedOnUrl": "https://www.bina.org.il/wanted/"
+    },
+    "requirements": {
+      "source": "MANUAL",
+      "selector": ".__ai-requirements",
+      "confidence": 1,
+      "capturedOnUrl": "https://www.bina.org.il/wanted/"
+    },
+    "externalJobId": {
+      "source": "MANUAL",
+      "selector": ".__ai-eid",
+      "confidence": 1,
+      "capturedOnUrl": "https://www.bina.org.il/wanted/"
+    },
+    "applicationInfo": {
+      "source": "MANUAL",
+      "selector": ".__ai-apply",
+      "confidence": 1,
+      "capturedOnUrl": "https://www.bina.org.il/wanted/"
+    }
+  }
+}

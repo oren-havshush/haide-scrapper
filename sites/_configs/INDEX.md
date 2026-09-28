@@ -33,6 +33,7 @@ from top-level params, so a setupScript left only inside `_meta` is dropped.
 | IPV Security | ACTIVE | 6 | 3307 | `news-ipvsecurity--5knkts` |
 | Interaction | ACTIVE | 7 | 4541 | 1 | `interaction--e99vxv` |
 | LEASE4U | ACTIVE | 8 | 6532 | `freesbe--6cznyg` |
+| Medulla | ACTIVE | 8 | 7954 | 1 | `medulla--m2u5xb` |
 | Mentee Robotics | ACTIVE | 8 | 7617 | `comeet--lfseiu` |
 | Mobileye | ACTIVE | 9 | 6318 | `mobileye--6xnl0n` |
 | Ness-Tech | ACTIVE | 12 | 2989 | `ness-tech--w43uor` |
@@ -68,6 +69,7 @@ from top-level params, so a setupScript left only inside `_meta` is dropped.
 | אמביאנס קוסמטיקה רפואית | ACTIVE | 3 | 505 | `yafa-maximov--v1max5` |
 | אנשים ומחשבים | ACTIVE | 5 | 2645 | `pc--51eg8t` |
 | אשטרום | ACTIVE | 8 | 1341 | `ashtrom--9nr6ww` |
+| בינ"ה | ACTIVE | 8 | 7390 | 1 | `bina--ki7nq2` |
 | בית אקשטיין | ACTIVE | 4 | — | `b-e--kmx6nt` |
 | בית חולים אורטופדי אליון | ACTIVE | 4 | 1576 | `alyn--el7arg` |
 | בן & ג’ריס | ACTIVE | 5 | 1215 | `benjerry--12brnw` |
@@ -149,6 +151,7 @@ from top-level params, so a setupScript left only inside `_meta` is dropped.
 | קידום | ACTIVE | 8 | 6139 | `kidum--wb3q8e` |
 | קימאמה | ACTIVE | 6 | 2719 | `campkimama--lz6kls` |
 | קישורית | ACTIVE | 3 | 370 | `kishurit--gjuja3` |
+| קשת טעמים | ACTIVE | 7 | 7722 | 1 | `app-civi--tvlqmp` |
 | רזאל מערכות | ACTIVE | 5 | 1337 | `razel--i12d2f` |
 | רכבת ישראל | ACTIVE | 6 | — | `railcareer-adamtotal--52najw` |
 | רנואר | ACTIVE | 6 | 6535 | `renuar--vjy3cn` |
