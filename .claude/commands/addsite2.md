@@ -509,6 +509,15 @@ Russian, Arabic, Amharic, French — is **dropped**. This is a fleet rule, not a
   `/(?![\p{sc=Hebrew}\p{sc=Latin}\p{sc=Common}\p{sc=Inherited}])\p{L}/u` must not.
   "Carries Hebrew or Latin" alone is not enough: it passes `Кассир в Payro` (a Latin brand name in a
   Russian title) and `גננת / معلمة`; a Hebrew-range/Cyrillic-range pair of checks passes the Arabic one.
+- **Store styled "mathematical" letters as plain letters, then test (owner, 2026-09-28).** Titles
+  pasted from LinkedIn often use the Mathematical Alphanumeric Symbols block, U+1D400–U+1D7FF
+  (`𝐃𝐞𝐯𝐎𝐩𝐬 𝐄𝐧𝐠𝐢𝐧𝐞𝐞𝐫`). Those code points are letters of the Common script, so the test above
+  finds no Latin letter and silently drops an English posting, and if kept, they break search and
+  screen readers. Map only that block through NFKC and store the result:
+  `title.replace(MATH, function (c) { return c.normalize('NFKC'); })`, with
+  `MATH = new RegExp('[' + String.fromCodePoint(0x1D400) + '-' + String.fromCodePoint(0x1D7FF) + ']', 'gu')`.
+  Never NFKC the whole title — that also rewrites compatibility characters the employer chose.
+  Build the range with `String.fromCodePoint`, not a `\u{…}` escape in the file (CLAUDE.md). `LRN-LANG-2`.
 - **Script cannot tell English from French, Spanish or German** — a Latin-script title in another
   language passes the test above. Dropping those is a reviewer's call per posting; no gate enforces it.
 - **Count before you filter, and record the cost.** Enumerate the WHOLE board first — page 1 can
@@ -532,6 +541,20 @@ Establish the true total before submitting. Never silently ship only page 1.
 #   coverage: <url>=28/28, <url>=8/8, <url>=1/1  → site 37/37
 ```
 If extracted < total and you haven't handled pagination → read `addsite2-recipes/pagination-and-loading.md`.
+
+**Ship only what a visitor sees (owner rule, 2026-09-28).** The "total" above is the jobs a
+visitor can reach in the site's own job listing: the cards on the page, plus every page or
+batch reachable through a control the page actually shows — a page link, a "load more"
+button, infinite scroll. Follow that paging; never paging the page does not offer.
+- An endpoint that returns more than the listing shows — `found_posts`, a `pagenum`/`page`
+  query parameter with no link on the page, a REST route, a feed, a sitemap — is **not** a
+  coverage source. The extra jobs are hidden, and they are usually the ones the employer
+  retired. Such a source may still supply a *field* (a body, a date) for a job the page shows.
+- Prove the paging is reachable before building on it: render the page and find the control
+  (a link, a button, a scroll trigger that loads more), not just a URL that answers 200.
+- Filters and search do not count as paging: a filtered view is a subset of the same listing.
+Reference: medulla.co.il shows its newest 200 with no pagination control; `?jsf=epro-posts&pagenum=2..4`
+returned 460 more, all over a year old. They were shipped, then removed (`LRN-COV-9`).
 
 **LANDMINE:** `externalJobId` must survive a re-scrape unchanged. Test: scrape twice, compare ids.
 
@@ -644,6 +667,22 @@ Signal to capture: there is no captured form yet and you can see a real apply fo
 2. Find and interact with the apply form (click "Apply", wait for modal if needed).
 3. Capture the form structure (action URL, method, input field names and types).
 → Read `addsite2-recipes/form-capture.md` for the full capture-form.ts script and fallback flow.
+
+**Always capture hidden fields (owner rule, 2026-09-28).** Every `<input type="hidden">` in the
+apply form goes into `formCapture.fields` (`fieldType: "hidden"`), never filtered out. The
+employer's handler needs them to accept the submission and to know which job it is for:
+Elementor `post_id` / `form_id` / `queried_id`, CF7 `_wpcf7` / `_wpcf7_unit_tag` /
+`_wpcf7_container_post`, a per-job `Job` / `job_id`. Skip only `submit` / `button` / `reset` /
+`image`.
+- **Values cannot be stored yet.** Neither the config schema (`src/lib/validators.ts`) nor the
+  worker's live extraction has a `value`, and zod silently strips one if sent. So record, in
+  `adminNote`, each hidden field's value, and say which values are **static** (the same on every
+  job, e.g. Elementor `form_id`) and which are **per-job** (the job's post id, its title), with
+  where each per-job value comes from.
+- A browser-generated token (`g-recaptcha-response`, `_wpcf7_recaptcha_response`) is captured by
+  name too, but a server-side submit cannot replay it (`LRN-APPLY-10`).
+Reference: medulla.co.il (Elementor popup form: `post_id=18642`, `form_id=723b7d` static;
+`queried_id` = job post id, `form_fields[Job]` = `Job: <title>` per job).
 
 > **Detail-page-only Tier-A fields (description/requirements):** if the listing
 > page lacks `description` or `requirements` but the detail page has them, do NOT
@@ -1047,7 +1086,7 @@ Pre-reading all recipes defeats the lean-core cost goal.
 
 1. **Code wins over prose.** If a script exits 2, the site is not ACTIVE. Not even if the HTML looks good.
 2. **`verify-config` is not optional.** Every PUT must be followed by a successful `verify-config`.
-3. **Coverage line is mandatory.** Emit `coverage: X/Y` for every site. Never silently ship page-1-only.
+3. **Coverage line is mandatory.** Emit `coverage: X/Y` for every site. Never silently ship page-1-only. `Y` is what a visitor can reach through the listing's own controls — never jobs only an unlinked endpoint returns (§6.2, `LRN-COV-9`).
 4. **externalJobId must be stable AND verified by code.** Never mark ACTIVE without a passing `verify-jobids` (exit 0). The id is the dedup key: raw-title reuse, index-based, or all-identical ids are blockers. Prefer `h-<hash>` synthesis (recipe §3). Prose intent is not enough — the gate checks the real values.
 5. **Apply path is mandatory for ACTIVE.** No form + no email + no URL = SKIP, not ACTIVE.
 6. **Location values must be verified by code, not by fill rate.** Never mark ACTIVE without a passing `verify-location-csv` (exit 0). A 100% location fill says nothing about correctness — no other gate reads the values, and nothing auto-repairs a wrong one. Cite: `LRN-LOC-4`, `LRN-WP-3`.

@@ -136,9 +136,11 @@ Cite: `LRN-FORM-3`.
     hasRecaptcha: /recaptcha|g-recaptcha/i.test(f.innerHTML)
       || !!f.querySelector('[name="g-recaptcha-response"],.g-recaptcha,[data-sitekey]'),
     hasFile: !!f.querySelector('input[type="file"]'),
+    // hidden inputs are KEPT, with their value (addsite2 §8 hidden-field rule)
     fields: [...f.querySelectorAll('input,select,textarea')]
-      .filter(e => !['hidden','submit','button','reset','image'].includes(e.type))
-      .map(e => e.name + ':' + (e.type || e.tagName.toLowerCase()))
+      .filter(e => !['submit','button','reset','image'].includes(e.type))
+      .map(e => e.name + ':' + (e.type || e.tagName.toLowerCase())
+        + (e.type === 'hidden' ? '=' + e.value : ''))
   }));
   ```
 - **Generalizes to:** any multi-form apply page (Formidable/WP/Elementor), especially
@@ -204,14 +206,18 @@ const form = await p.evaluate(() => {
     b.querySelectorAll('input,select,textarea').length - 
     a.querySelectorAll('input,select,textarea').length)[0];
   if (!best) return null;
+  // Hidden inputs are KEPT (addsite2 §8): the employer's handler needs them to accept
+  // and route the submission. `value` is printed for the operator — the config schema
+  // cannot store it yet, so record static values in adminNote.
   const fields = Array.from(best.querySelectorAll('input,select,textarea'))
-    .filter(el => !['hidden','submit','button','reset','image'].includes(
+    .filter(el => !['submit','button','reset','image'].includes(
       (el as HTMLInputElement).type ?? ''))
     .map(el => ({
       name: (el as HTMLInputElement).name || el.id || el.className.split(' ')[0],
       type: (el as HTMLInputElement).type ?? el.tagName.toLowerCase(),
       required: (el as HTMLInputElement).required,
-      label: document.querySelector(`label[for="${el.id}"]`)?.textContent?.trim() ?? ''
+      label: document.querySelector(`label[for="${el.id}"]`)?.textContent?.trim() ?? '',
+      ...((el as HTMLInputElement).type === 'hidden' ? { value: (el as HTMLInputElement).value } : {})
     }));
   return {
     actionUrl: best.action,
@@ -260,7 +266,7 @@ them, the dashboard shows the apply form **missing the whole question** (e.g. a 
 const groups = {};
 for (const el of form.querySelectorAll('input,select,textarea')) {
   const type = el.type || el.tagName.toLowerCase();
-  if (['submit','button','image','reset','hidden'].includes(type)) continue;
+  if (['submit','button','image','reset'].includes(type)) continue; // hidden is kept (§8)
   if (type === 'radio') {
     (groups[el.name] ??= { name: el.name, fieldType: 'radio', tagName: 'input',
       required: el.required, label: questionLabelFor(el), options: [] })
