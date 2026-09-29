@@ -15,160 +15,171 @@ anything else is drift that was never mirrored. Cite: `LRN-API-4`.
 Restore: PUT the JSON back to `/api/sites/{id}/config`, adding `setupScript` from
 the matching `.setup.js` as a top-level field — `saveSiteConfig` rebuilds `_meta`
 from top-level params, so a setupScript left only inside `_meta` is dropped.
+**`listingUrls` behaves the same way**: on a site whose Pages column is above 1 it
+must be re-sent as a TOP-LEVEL key too, or the restore silently turns a company's
+several listing pages back into one and stops publishing the rest.
 
-| Company | Status | Fields | setupScript chars | File |
-| --- | --- | --- | --- | --- |
-| AGAS 3K | ACTIVE | 4 | 1049 | `agas--vfl5da` |
-| AIG | ACTIVE | 4 | — | `aig--0rlmdf` |
-| BDO | ACTIVE | 10 | 2810 | `bdo-career-hunterhrms--dgrgrm` |
-| Biopharmax | ACTIVE | 8 | 6183 | `biopharmax--slnx1p` |
-| CALANIT by one | ACTIVE | 8 | 7364 | `calanit--4tq06k` |
-| ERN | ACTIVE | 6 | 7423 | `ern--tcdrkt` |
-| ESO Group | ACTIVE | 4 | 577 | `eso-group--mgz38v` |
-| Eimsys | ACTIVE | 4 | 302 | `eimsys--an8gzs` |
-| Fritz | ACTIVE | 5 | 5110 | `fritz--wafrzk` |
-| G STAT | ACTIVE | 5 | 1682 | `g-stat--yvpgzk` |
-| Gtech | ACTIVE | 6 | 4590 | `gtech--7udl8v` |
-| Hylabs | ACTIVE | 4 | 502 | `hylabs--gyocvt` |
-| IPV Security | ACTIVE | 6 | 3307 | `news-ipvsecurity--5knkts` |
+| Company | Status | Fields | setupScript chars | Pages | File |
+| --- | --- | --- | --- | --- | --- |
+| AGAS 3K | ACTIVE | 4 | 1049 | 1 | `agas--vfl5da` |
+| AIG | ACTIVE | 4 | — | 1 | `aig--0rlmdf` |
+| BDO | ACTIVE | 10 | 2810 | 1 | `bdo-career-hunterhrms--dgrgrm` |
+| Biopharmax | ACTIVE | 8 | 6183 | 1 | `biopharmax--slnx1p` |
+| CALANIT by one | ACTIVE | 8 | 7364 | 1 | `calanit--4tq06k` |
+| DHL Express | ACTIVE | 7 | 3442 | 1 | `dhl--mwqiig` |
+| ERN | ACTIVE | 6 | 7423 | 1 | `ern--tcdrkt` |
+| ESO Group | ACTIVE | 4 | 577 | 1 | `eso-group--mgz38v` |
+| Eimsys | ACTIVE | 4 | 302 | 1 | `eimsys--an8gzs` |
+| Fritz | ACTIVE | 5 | 5110 | 1 | `fritz--wafrzk` |
+| G STAT | ACTIVE | 5 | 1682 | 1 | `g-stat--yvpgzk` |
+| Gtech | ACTIVE | 6 | 4590 | 1 | `gtech--7udl8v` |
+| Hylabs | ACTIVE | 4 | 502 | 1 | `hylabs--gyocvt` |
+| IPV Security | ACTIVE | 6 | 3307 | 1 | `news-ipvsecurity--5knkts` |
 | Interaction | ACTIVE | 7 | 4541 | 1 | `interaction--e99vxv` |
-| LEASE4U | ACTIVE | 8 | 6532 | `freesbe--6cznyg` |
+| LEASE4U | ACTIVE | 8 | 6532 | 1 | `freesbe--6cznyg` |
 | Medulla | ACTIVE | 8 | 7954 | 1 | `medulla--m2u5xb` |
-| Mentee Robotics | ACTIVE | 8 | 7617 | `comeet--lfseiu` |
-| Mobileye | ACTIVE | 9 | 6318 | `mobileye--6xnl0n` |
-| Ness-Tech | ACTIVE | 12 | 2989 | `ness-tech--w43uor` |
-| Novilis Software Systems | ACTIVE | 4 | 905 | `novilis--1u1jp3` |
-| On Line | ACTIVE | 4 | 857 | `oneline--dqdxkb` |
-| One Technologies | ACTIVE | 4 | 2733 | `one1--m39rer` |
-| Personetics | ACTIVE | 5 | 1426 | `personetics--ovj4kr` |
-| RISCO Group | ACTIVE | 6 | — | `riscogroup--y39afy` |
-| Rad | ACTIVE | 5 | 878 | `rad--ncqy5u` |
-| Rapyd | ACTIVE | 9 | — | `rapyd--udr6ty` |
-| TADIRAN GROUP | ACTIVE | 7 | 2620 | `topmatch--1z5jpw` |
-| TCMCAREER | ACTIVE | 7 | 3387 | `tcmcareer--7zncwp` |
-| Tender Loving Care | ACTIVE | 4 | 1240 | `tl-care--cylsu8` |
-| ToTali | ACTIVE | 6 | 3739 | `totali--duk823` |
-| Top Match | ACTIVE | 6 | 759 | `topmatch--f67z41` |
-| Unitask | ACTIVE | 6 | 6543 | `unitask-inc--wsxup8` |
-| Waterfall Security | ACTIVE | 8 | 5161 | `waterfall-security--jam3c9` |
-| YES | ACTIVE | 7 | — | `yes--ekwenb` |
-| YKM | ACTIVE | 8 | 4431 | `ykm--gxcmnf` |
-| bank mizrahi tefahot | ACTIVE | 10 | — | `mizrahi-tefahot--a0zkf2` |
-| go mobile | ACTIVE | 6 | 1081 | `gomobile--zpvjhq` |
-| inManage | ACTIVE | 4 | 4219 | `inmanage--zjbxnf` |
-| א.ב מתכננים | ACTIVE | 7 | 243 | `abt-industry--ldemj3` |
-| אביבים השמה | ACTIVE | 6 | 3739 | `avivim-hr--f3d9j7` |
-| אגד | ACTIVE | 7 | 5669 | `egged--4qc6cy` |
-| אדוויס | ACTIVE | 6 | 2334 | `advice--eq0sxw` |
-| אופרייט | ACTIVE | 6 | 7093 | `opl--u03od8` |
-| איי פורס בע"מ | ACTIVE | 9 | 7966 | `iforc--jtz6km` |
-| אלביט מערכות | ACTIVE | 9 | 7741 | `elbitsystemscareer--kjk1e7` |
-| אלובין תעשייות אלומיניום בע״מ | ACTIVE | 6 | 2373 | `alubin--r73xau` |
-| אליקטרוניקס בע''מ | ACTIVE | 4 | 722 | `eliktronics--erhzvq` |
-| אלקטרה | ACTIVE | 7 | 1823 | `electra--cgkf66` |
-| אמביאנס קוסמטיקה רפואית | ACTIVE | 3 | 505 | `yafa-maximov--v1max5` |
-| אנשים ומחשבים | ACTIVE | 5 | 2645 | `pc--51eg8t` |
-| אפטר סקול | ACTIVE | 5 | 5946 | `etgarim2000--zsyc2z` |
-| אשטרום | ACTIVE | 8 | 1341 | `ashtrom--9nr6ww` |
-| באדג'ט | ACTIVE | 6 | 5566 | `budget--yutag5` |
+| Mentee Robotics | ACTIVE | 8 | 7617 | 1 | `comeet--lfseiu` |
+| Mobileye | ACTIVE | 9 | 6318 | 1 | `mobileye--6xnl0n` |
+| Ness-Tech | ACTIVE | 12 | 2989 | 1 | `ness-tech--w43uor` |
+| Novilis Software Systems | ACTIVE | 4 | 905 | 1 | `novilis--1u1jp3` |
+| On Line | ACTIVE | 4 | 857 | 1 | `oneline--dqdxkb` |
+| One Technologies | ACTIVE | 4 | 2733 | 1 | `one1--m39rer` |
+| Personetics | ACTIVE | 5 | 1426 | 1 | `personetics--ovj4kr` |
+| RISCO Group | ACTIVE | 6 | — | 1 | `riscogroup--y39afy` |
+| Rad | ACTIVE | 5 | 878 | 1 | `rad--ncqy5u` |
+| Rapyd | ACTIVE | 9 | — | 1 | `rapyd--udr6ty` |
+| TADIRAN GROUP | ACTIVE | 7 | 2620 | 1 | `topmatch--1z5jpw` |
+| TCMCAREER | ACTIVE | 7 | 3387 | 1 | `tcmcareer--7zncwp` |
+| Tender Loving Care | ACTIVE | 4 | 1240 | 1 | `tl-care--cylsu8` |
+| ToTali | ACTIVE | 6 | 3739 | 1 | `totali--duk823` |
+| Top Match | ACTIVE | 6 | 759 | 1 | `topmatch--f67z41` |
+| Unitask | ACTIVE | 6 | 6543 | 1 | `unitask-inc--wsxup8` |
+| Waterfall Security | ACTIVE | 8 | 5161 | 1 | `waterfall-security--jam3c9` |
+| YES | ACTIVE | 7 | — | 1 | `yes--ekwenb` |
+| YKM | ACTIVE | 8 | 4431 | 1 | `ykm--gxcmnf` |
+| bank mizrahi tefahot | ACTIVE | 10 | — | 1 | `mizrahi-tefahot--a0zkf2` |
+| go mobile | ACTIVE | 6 | 1081 | 1 | `gomobile--zpvjhq` |
+| inManage | ACTIVE | 4 | 4219 | 1 | `inmanage--zjbxnf` |
+| safelog | ACTIVE | 5 | 2570 | 1 | `safelog--bd8461` |
+| א.ב מתכננים | ACTIVE | 7 | 243 | 1 | `abt-industry--ldemj3` |
+| אביבים השמה | ACTIVE | 6 | 3739 | 1 | `avivim-hr--f3d9j7` |
+| אגד | ACTIVE | 7 | 5669 | 1 | `egged--4qc6cy` |
+| אדוויס | ACTIVE | 6 | 2334 | 1 | `advice--eq0sxw` |
+| אופרייט | ACTIVE | 6 | 7093 | 1 | `opl--u03od8` |
+| איי פורס בע"מ | ACTIVE | 9 | 7966 | 1 | `iforc--jtz6km` |
+| אלביט מערכות | ACTIVE | 9 | 7741 | 1 | `elbitsystemscareer--kjk1e7` |
+| אלו"ט | ACTIVE | 7 | 7994 | 1 | `app-civi--rl8rui` |
+| אלובין תעשייות אלומיניום בע״מ | ACTIVE | 6 | 2373 | 1 | `alubin--r73xau` |
+| אליקטרוניקס בע''מ | ACTIVE | 4 | 722 | 1 | `eliktronics--erhzvq` |
+| אלקטרה | ACTIVE | 7 | 1823 | 1 | `electra--cgkf66` |
+| אמביאנס קוסמטיקה רפואית | ACTIVE | 3 | 505 | 1 | `yafa-maximov--v1max5` |
+| אנשים ומחשבים | ACTIVE | 5 | 2645 | 1 | `pc--51eg8t` |
+| אפטר סקול | ACTIVE | 5 | 5946 | 1 | `etgarim2000--zsyc2z` |
+| אשטרום | ACTIVE | 8 | 1341 | 1 | `ashtrom--9nr6ww` |
+| באדג'ט | ACTIVE | 6 | 5566 | 1 | `budget--yutag5` |
+| בון תור | ACTIVE | 6 | 6241 | 1 | `bontour--f5yzqh` |
 | בינ"ה | ACTIVE | 8 | 7390 | 1 | `bina--ki7nq2` |
-| בית אקשטיין | ACTIVE | 4 | — | `b-e--kmx6nt` |
-| בית חולים אורטופדי אליון | ACTIVE | 4 | 1576 | `alyn--el7arg` |
-| בן & ג’ריס | ACTIVE | 5 | 1215 | `benjerry--12brnw` |
-| בנק הפועלים | ACTIVE | 6 | 4172 | `bankhapoalim--39tiof` |
-| גולדברג פרושן ושות' רואי חשבון | ACTIVE | 5 | 4236 | `goldpro--1pf5j6` |
-| גזית | ACTIVE | 7 | 7944 | `gazit--gejiix` |
-| גילאר | ACTIVE | 6 | — | `gilar--h7463m` |
-| גלוברנדס | ACTIVE | 6 | 1635 | `globrands--5akm6u` |
-| האקדמית רמת גן | ACTIVE | 5 | 1124 | `landing-iac--3cdlhs` |
-| הארה תוכניות העשרה בע"מ | ACTIVE | 6 | 6423 | `heara--xhar00` |
-| הבנק הבינלאומי | ACTIVE | 6 | 4541 | `fibi--4j7v1x` |
-| החברה לאמנות ותרבות | ACTIVE | 5 | 1559 | `tarbut-herzliya--zvh6d2` |
-| החברה לשירותי איכות הסביבה | ACTIVE | 8 | 6846 | `enviro-services--4z2yxo` |
-| המרכז האקדמי לוינסקי־וינגייט | ACTIVE | 6 | 4210 | `l-w--qajne1` |
-| הספארי | ACTIVE | 5 | 1599 | `safari--6r81oc` |
-| הקריה האקדמית אונו | ACTIVE | 6 | 4051 | `ono--o8qwd8` |
-| הראל ביטוח ופיננסים | ACTIVE | 7 | 5527 | `adamtotal--cemdht` |
-| ויסוצקי | ACTIVE | 6 | 777 | `app-civi--jgqwu7` |
-| חברת החשמל | ACTIVE | 8 | 3910 | `iec--7d28yg` |
-| חיותא | ACTIVE | 3 | — | `chayuta--6foa66` |
-| חמת | ACTIVE | 7 | 3390 | `hamat-group--4ris60` |
-| טכניון | ACTIVE | 10 | — | `technion--8nqtph` |
-| טלכלל | ACTIVE | 6 | 4062 | `teleclalcc--n6k1yl` |
-| טמבור | ACTIVE | 5 | 2580 | `tambour--2nwjvz` |
-| יזמקו | ACTIVE | 7 | 6661 | `yazamco--vwexjk` |
-| יעדים סוכנות לביטוח | ACTIVE | 5 | 1027 | `yeadim-bit--sh82rc` |
-| יעל גרופ | ACTIVE | 8 | 3283 | `yaelgroup--rdvk6e` |
-| יקב טפרברג | ACTIVE | 3 | 889 | `teperbergwinery--unqlym` |
-| יקב סוכנות לביטוח | ACTIVE | 5 | — | `yekev--j5qpe6` |
-| ישראייר | ACTIVE | 5 | 363 | `lp-vp4-me--qo0him` |
-| ישרוטל | ACTIVE | 6 | 7421 | `isrotel--dkz1ac` |
-| כלי זמר | ACTIVE | 6 | 5974 | `kley-zemer--t2o5co` |
-| כלל | ACTIVE | 7 | 1460 | `clalbit--tz9kd4` |
-| כמיפל | ACTIVE | 4 | 1525 | `chemipal--ellr7p` |
-| כפיר מעליות | ACTIVE | 7 | 1979 | `app-civi--buhdfj` |
-| כפר המכביה | ACTIVE | 7 | 5238 | `app-civi--fdmziu` |
-| כפר הנוער כנות | ACTIVE | 5 | 1578 | `naamat--3s0g1d` |
-| לילית קוסמטיקה | ACTIVE | 4 | 1091 | `lilit--jrzaf3` |
-| לין ביכלר ראשי | ACTIVE | 6 | — | `l-b--ksvcq8` |
-| מגדל חברה לביטוח | ACTIVE | 6 | 3094 | `my-migdal--6mdmh5` |
-| מגדל שוקי הון | ACTIVE | 4 | 3372 | `msh--fdohdt` |
-| מדנס סוכנות לביטוח | ACTIVE | 7 | 4379 | `madanes--1wzqn7` |
-| מוזיאון ישראל | ACTIVE | 6 | 3801 | `imj--442rnv` |
-| מי אביבים | ACTIVE | 9 | 7970 | `mei-avivim--5afgkc` |
-| מי עדן | ACTIVE | 5 | 4162 | `campaigns-meyeden--6u5xb3` |
-| מי שבע | ACTIVE | 5 | 1645 | `mey7--scshwy` |
-| מילואות | ACTIVE | 7 | 7931 | `milouot--dbfy4p` |
-| מיקוד ביטחון ישראל בע''מ | ACTIVE | 7 | 3272 | `mikud-avtaha--x1f85a` |
-| מכון התקנים הישראלי | ACTIVE | 5 | 525 | `sii--t7eowl` |
-| מכון ויצמן למדע | ACTIVE | 6 | 1886 | `weizmann--lx3ol0` |
-| מנועי בית שמש | ACTIVE | 6 | 3232 | `comeet--18183k` |
-| מנרב | ACTIVE | 5 | 3145 | `minrav--hkk5r9` |
-| מסוף שירותי לוגיסטיקה | ACTIVE | 3 | 534 | `masof--2bfcz7` |
-| מקדונלדס | ACTIVE | 4 | — | `mcdonalds--x0odyk` |
-| מרכז האקדמי פרס | ACTIVE | 4 | 2397 | `pac--4xvfi9` |
-| מתן שירותי בריאות וסיעוד מתקדמים | ACTIVE | 7 | 5796 | `app-civi--cc1wag` |
-| נאות המושבה - גולדנקייר | ACTIVE | 3 | 700 | `gcare--2uvz1w` |
-| נטלי | ACTIVE | 7 | 7964 | `app-civi--ai732i` |
-| נטפים | ACTIVE | 8 | 6573 | `comeet--4q2aga` |
-| נירלט | ACTIVE | 7 | 4592 | `nirlat--xluh8r` |
-| סיני סטור | ACTIVE | 3 | 1002 | `sinaistore--uxgr3o` |
-| סלקום | ACTIVE | 6 | 2255 | `cellcom--ugxfm3` |
-| סמלת | ACTIVE | 8 | — | `samelet--i6xe7r` |
-| עמותת איכות בשיקום | ACTIVE | 4 | 686 | `eychut--6336w9` |
-| ענבי ציון | ACTIVE | 4 | — | `anvei-zion--tkz1xm` |
-| פוליכד | ACTIVE | 3 | 315 | `polycad--is4jw2` |
-| פליינג קרגו | ACTIVE | 9 | 7325 | `flying-cargo--pyuhhh` |
-| פרופורציה | ACTIVE | 7 | 3530 | `proportsia--msnicc` |
-| פתרונות עדיפים-ביטוח | ACTIVE | 6 | 4489 | `adifim--26vavw` |
-| צ'יטה שליחויות | ACTIVE | 4 | 332 | `chitadelivery--xpwqf1` |
-| קבוצת אמנת- Sysnet | ACTIVE | 3 | — | `amanet--ihg3a3` |
-| קבוצת ויזל - פוקס | ACTIVE | 4 | 2133 | `dreamjobs--43loqz` |
-| קבוצת ח.י | ACTIVE | 4 | — | `hye--9i2hm3` |
-| קבוצת טובול | ACTIVE | 6 | 1231 | `tuboul--hvbine` |
-| קבוצת יוניון | ACTIVE | 8 | 5649 | `unioncareer--mhsr2v` |
-| קבוצת כהנא | ACTIVE | 6 | 2074 | `kahane--8cvjyo` |
-| קבוצת כלמוביל | ACTIVE | 6 | 5430 | `colmobil--39frf6` |
-| קבוצת שגריר שרותי רכב בעמ | ACTIVE | 6 | 2367 | `shagrir--i3nkhe` |
-| קדמי ביטוח | ACTIVE | 5 | 1209 | `kedmi770--e2pnpm` |
-| קופת חולים מכבי | ACTIVE | 6 | 2407 | `maccabi4u--eazu8j` |
-| קידום | ACTIVE | 8 | 6139 | `kidum--wb3q8e` |
-| קימאמה | ACTIVE | 6 | 2719 | `campkimama--lz6kls` |
-| קישורית | ACTIVE | 3 | 370 | `kishurit--gjuja3` |
+| בית אקשטיין | ACTIVE | 4 | — | 1 | `b-e--kmx6nt` |
+| בית חולים אורטופדי אליון | ACTIVE | 4 | 1576 | 1 | `alyn--el7arg` |
+| בן & ג’ריס | ACTIVE | 5 | 1215 | 1 | `benjerry--12brnw` |
+| בנק הפועלים | ACTIVE | 6 | 4172 | 1 | `bankhapoalim--39tiof` |
+| גולדברג פרושן ושות' רואי חשבון | ACTIVE | 5 | 4236 | 1 | `goldpro--1pf5j6` |
+| גזית | ACTIVE | 7 | 7944 | 1 | `gazit--gejiix` |
+| גילאר | ACTIVE | 6 | — | 1 | `gilar--h7463m` |
+| גלוברנדס | ACTIVE | 6 | 1635 | 1 | `globrands--5akm6u` |
+| דומיסיל יבוא וייצוא בע"מ | ACTIVE | 6 | 5566 | 1 | `domicile--chpkcu` |
+| האקדמית רמת גן | ACTIVE | 5 | 1124 | 1 | `landing-iac--3cdlhs` |
+| הארה תוכניות העשרה בע"מ | ACTIVE | 6 | 6423 | 1 | `heara--xhar00` |
+| הבנק הבינלאומי | ACTIVE | 6 | 4541 | 1 | `fibi--4j7v1x` |
+| החברה לאמנות ותרבות | ACTIVE | 5 | 1559 | 1 | `tarbut-herzliya--zvh6d2` |
+| החברה לשירותי איכות הסביבה | ACTIVE | 8 | 6846 | 1 | `enviro-services--4z2yxo` |
+| המרכז האקדמי לוינסקי־וינגייט | ACTIVE | 6 | 4210 | 1 | `l-w--qajne1` |
+| הספארי | ACTIVE | 5 | 1599 | 1 | `safari--6r81oc` |
+| הפניקס בית השקעות | ACTIVE | 8 | 4646 | 1 | `xnes--z0huih` |
+| הקריה האקדמית אונו | ACTIVE | 6 | 4051 | 1 | `ono--o8qwd8` |
+| הראל ביטוח ופיננסים | ACTIVE | 7 | 5527 | 1 | `adamtotal--cemdht` |
+| וילי פוד | ACTIVE | 8 | 2768 | 1 | `willi-food--tsircs` |
+| ויסוצקי | ACTIVE | 6 | 777 | 1 | `app-civi--jgqwu7` |
+| חברת החשמל | ACTIVE | 8 | 3910 | 1 | `iec--7d28yg` |
+| חיותא | ACTIVE | 3 | — | 1 | `chayuta--6foa66` |
+| חלילית | ACTIVE | 6 | 4757 | 1 | `halilit--0vwgee` |
+| חמת | ACTIVE | 7 | 3390 | 1 | `hamat-group--4ris60` |
+| טכניון | ACTIVE | 10 | — | 1 | `technion--8nqtph` |
+| טלכלל | ACTIVE | 6 | 4062 | 1 | `teleclalcc--n6k1yl` |
+| טמבור | ACTIVE | 5 | 2580 | 1 | `tambour--2nwjvz` |
+| יזמקו | ACTIVE | 7 | 6661 | 1 | `yazamco--vwexjk` |
+| יעדים סוכנות לביטוח | ACTIVE | 5 | 1027 | 1 | `yeadim-bit--sh82rc` |
+| יעל גרופ | ACTIVE | 8 | 3283 | 1 | `yaelgroup--rdvk6e` |
+| יקב טפרברג | ACTIVE | 3 | 889 | 1 | `teperbergwinery--unqlym` |
+| יקב סוכנות לביטוח | ACTIVE | 5 | — | 1 | `yekev--j5qpe6` |
+| ישראייר | ACTIVE | 5 | 363 | 1 | `lp-vp4-me--qo0him` |
+| ישרוטל | ACTIVE | 6 | 7421 | 1 | `isrotel--dkz1ac` |
+| כלי זמר | ACTIVE | 6 | 5974 | 1 | `kley-zemer--t2o5co` |
+| כלל | ACTIVE | 7 | 1460 | 1 | `clalbit--tz9kd4` |
+| כמיפל | ACTIVE | 4 | 1525 | 1 | `chemipal--ellr7p` |
+| כפיר מעליות | ACTIVE | 7 | 1979 | 1 | `app-civi--buhdfj` |
+| כפר המכביה | ACTIVE | 7 | 5238 | 1 | `app-civi--fdmziu` |
+| לילית קוסמטיקה | ACTIVE | 4 | 1091 | 1 | `lilit--jrzaf3` |
+| לין ביכלר ראשי | ACTIVE | 6 | — | 1 | `l-b--ksvcq8` |
+| מגדל חברה לביטוח | ACTIVE | 6 | 3094 | 1 | `my-migdal--6mdmh5` |
+| מגדל שוקי הון | ACTIVE | 4 | 3372 | 1 | `msh--fdohdt` |
+| מדנס סוכנות לביטוח | ACTIVE | 7 | 4379 | 1 | `madanes--1wzqn7` |
+| מוזיאון ישראל | ACTIVE | 6 | 3801 | 1 | `imj--442rnv` |
+| מי אביבים | ACTIVE | 9 | 7970 | 1 | `mei-avivim--5afgkc` |
+| מי עדן | ACTIVE | 5 | 4162 | 1 | `campaigns-meyeden--6u5xb3` |
+| מי שבע | ACTIVE | 5 | 1645 | 1 | `mey7--scshwy` |
+| מילואות | ACTIVE | 7 | 7931 | 1 | `milouot--dbfy4p` |
+| מיקוד ביטחון ישראל בע''מ | ACTIVE | 7 | 3272 | 1 | `mikud-avtaha--x1f85a` |
+| מכון התקנים הישראלי | ACTIVE | 5 | 525 | 1 | `sii--t7eowl` |
+| מכון ויצמן למדע | ACTIVE | 6 | 1886 | 1 | `weizmann--lx3ol0` |
+| מנועי בית שמש | ACTIVE | 6 | 3232 | 1 | `comeet--18183k` |
+| מנרב | ACTIVE | 5 | 3145 | 1 | `minrav--hkk5r9` |
+| מסוף שירותי לוגיסטיקה | ACTIVE | 3 | 534 | 1 | `masof--2bfcz7` |
+| מקדונלדס | ACTIVE | 4 | — | 1 | `mcdonalds--x0odyk` |
+| מרכז האקדמי פרס | ACTIVE | 4 | 2397 | 1 | `pac--4xvfi9` |
+| מתן שירותי בריאות וסיעוד מתקדמים | ACTIVE | 7 | 5796 | 1 | `app-civi--cc1wag` |
+| נאות המושבה - גולדנקייר | ACTIVE | 3 | 700 | 1 | `gcare--2uvz1w` |
+| נטלי | ACTIVE | 7 | 7964 | 1 | `app-civi--ai732i` |
+| נטפים | ACTIVE | 8 | 6573 | 1 | `comeet--4q2aga` |
+| נירלט | ACTIVE | 7 | 6577 | 1 | `nirlat--xluh8r` |
+| נעמת | ACTIVE | 6 | 6028 | 1 | `naamat--3s0g1d` |
+| סיני סטור | ACTIVE | 3 | 1002 | 1 | `sinaistore--uxgr3o` |
+| סלקום | ACTIVE | 6 | 2255 | 1 | `cellcom--ugxfm3` |
+| סמלת | ACTIVE | 8 | — | 1 | `samelet--i6xe7r` |
+| עמותת איכות בשיקום | ACTIVE | 4 | 686 | 1 | `eychut--6336w9` |
+| ענבי ציון | ACTIVE | 4 | — | 1 | `anvei-zion--tkz1xm` |
+| פוליכד | ACTIVE | 3 | 315 | 1 | `polycad--is4jw2` |
+| פליינג קרגו | ACTIVE | 9 | 7325 | 1 | `flying-cargo--pyuhhh` |
+| פרופורציה | ACTIVE | 7 | 3530 | 1 | `proportsia--msnicc` |
+| פתרונות עדיפים-ביטוח | ACTIVE | 6 | 4489 | 1 | `adifim--26vavw` |
+| צ'יטה שליחויות | ACTIVE | 4 | 332 | 1 | `chitadelivery--xpwqf1` |
+| קבוצת אמנת- Sysnet | ACTIVE | 3 | — | 1 | `amanet--ihg3a3` |
+| קבוצת ויזל - פוקס | ACTIVE | 4 | 2133 | 1 | `dreamjobs--43loqz` |
+| קבוצת ח.י | ACTIVE | 4 | — | 1 | `hye--9i2hm3` |
+| קבוצת טובול | ACTIVE | 6 | 1231 | 1 | `tuboul--hvbine` |
+| קבוצת יוניון | ACTIVE | 8 | 5649 | 1 | `unioncareer--mhsr2v` |
+| קבוצת כהנא | ACTIVE | 6 | 2074 | 1 | `kahane--8cvjyo` |
+| קבוצת כלמוביל | ACTIVE | 6 | 5430 | 1 | `colmobil--39frf6` |
+| קבוצת שגריר שרותי רכב בעמ | ACTIVE | 6 | 2367 | 1 | `shagrir--i3nkhe` |
+| קדמי ביטוח | ACTIVE | 5 | 1209 | 1 | `kedmi770--e2pnpm` |
+| קופת חולים מכבי | ACTIVE | 6 | 2407 | 1 | `maccabi4u--eazu8j` |
+| קידום | ACTIVE | 8 | 6139 | 1 | `kidum--wb3q8e` |
+| קימאמה | ACTIVE | 6 | 2719 | 1 | `campkimama--lz6kls` |
+| קישורית | ACTIVE | 3 | 370 | 1 | `kishurit--gjuja3` |
 | קשת טעמים | ACTIVE | 7 | 7722 | 1 | `app-civi--tvlqmp` |
-| רזאל מערכות | ACTIVE | 5 | 1337 | `razel--i12d2f` |
-| רכבת ישראל | ACTIVE | 6 | — | `railcareer-adamtotal--52najw` |
-| רנואר | ACTIVE | 6 | 6535 | `renuar--vjy3cn` |
-| רשות שדות התעופה | ACTIVE | 5 | 761 | `iaa--676m0e` |
-| ש.ב שמירה וביטחון | ACTIVE | 3 | — | `sbisrael--u0j3bu` |
-| ש.ל.ה שירותי רפואה | ACTIVE | 6 | 2199 | `clalitsmile--xsxv25` |
-| שטראוס | ACTIVE | 6 | — | `strauss-group--oeqo46` |
-| שמרד אלקטרוניקה | ACTIVE | 4 | 1536 | `shamrad--dv1p94` |
-| תיגבור כח אדם | ACTIVE | 9 | 8000 | `tigbur--iobe0d` |
-| תייקום תקשורת | ACTIVE | 5 | 1351 | `tiecom--uy0ibi` |
-| תכלית ייעוץ עסקי | ACTIVE | 4 | — | `tachlit-biz--rw2x0o` |
-| תמה גרופ | ACTIVE | 4 | 2240 | `tama--rwlfxm` |
-| תמורה | ACTIVE | 4 | 6170 | `tmuralife--m6phhu` |
-| תנובה | ACTIVE | 5 | 1994 | `tnuva--7145ri` |
-| תפקיד פלוס | ACTIVE | 6 | 967 | `tafkid-plus--ioqkzw` |
-| תקשוב | ACTIVE | 6 | 5841 | `tikshoov--bo7eqx` |
+| רזאל מערכות | ACTIVE | 5 | 1337 | 1 | `razel--i12d2f` |
+| רכבת ישראל | ACTIVE | 6 | — | 1 | `railcareer-adamtotal--52najw` |
+| רנואר | ACTIVE | 7 | 7879 | 3 | `renuar--vjy3cn` |
+| רשות שדות התעופה | ACTIVE | 5 | 761 | 1 | `iaa--676m0e` |
+| ש.ב שמירה וביטחון | ACTIVE | 3 | — | 1 | `sbisrael--u0j3bu` |
+| ש.ל.ה שירותי רפואה | ACTIVE | 6 | 2199 | 1 | `clalitsmile--xsxv25` |
+| שטראוס | ACTIVE | 6 | — | 1 | `strauss-group--oeqo46` |
+| שמרד אלקטרוניקה | ACTIVE | 4 | 1536 | 1 | `shamrad--dv1p94` |
+| תיגבור כח אדם | ACTIVE | 9 | 8000 | 1 | `tigbur--iobe0d` |
+| תייקום תקשורת | ACTIVE | 5 | 1351 | 1 | `tiecom--uy0ibi` |
+| תכלית ייעוץ עסקי | ACTIVE | 4 | — | 1 | `tachlit-biz--rw2x0o` |
+| תמה גרופ | ACTIVE | 4 | 2240 | 1 | `tama--rwlfxm` |
+| תמורה | ACTIVE | 4 | 6170 | 1 | `tmuralife--m6phhu` |
+| תנובה | ACTIVE | 5 | 1994 | 1 | `tnuva--7145ri` |
+| תפקיד פלוס | ACTIVE | 6 | 967 | 1 | `tafkid-plus--ioqkzw` |
+| תקשוב | ACTIVE | 6 | 5841 | 1 | `tikshoov--bo7eqx` |
