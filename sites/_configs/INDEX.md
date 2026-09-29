@@ -26,6 +26,7 @@ several listing pages back into one and stops publishing the rest.
 | BDO | ACTIVE | 10 | 2810 | 1 | `bdo-career-hunterhrms--dgrgrm` |
 | Biopharmax | ACTIVE | 8 | 6183 | 1 | `biopharmax--slnx1p` |
 | CALANIT by one | ACTIVE | 8 | 7364 | 1 | `calanit--4tq06k` |
+| Ceragon | ACTIVE | 8 | 7483 | 1 | `comeet--ty14e5` |
 | DHL Express | ACTIVE | 7 | 3442 | 1 | `dhl--mwqiig` |
 | ERN | ACTIVE | 6 | 7423 | 1 | `ern--tcdrkt` |
 | ESO Group | ACTIVE | 4 | 577 | 1 | `eso-group--mgz38v` |

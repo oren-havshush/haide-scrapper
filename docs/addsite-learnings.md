@@ -4003,3 +4003,25 @@
   fetched once before the replacement.
 - **Rule:** run `/company-profile` §3's `--dry-run` and open the logo BEFORE the real run, including when
   it is invoked from `addsite2.md` §14. **Home:** `addsite2.md` §14.
+
+## LRN-SPA-16 — Comeet: filter a global board by the country in `COMPANY_POSITIONS_DATA`, not by the group heading
+- Date: 2026-09-29
+- Site: comeet.com/jobs/ceragon/D3.003 (Ceragon; embedded on ceragon.com/about-ceragon/careers)
+- **Signal:** a worldwide board — 44 positions, 14 in Israel (Rosh Ha'ayin), the rest India,
+  Romania, Paraguay, US, UK, Norway. Unlike netafim (`LRN-SPA-10`), the group headings here are
+  **departments** (Admin, R&D, IT, ...), so netafim's "drop rows under a non-Israeli heading"
+  filter would drop every row. The country is only in the row's printed location
+  (`Israel Rosh Ha'ayin`) and in the board's own data.
+- **Fix:** the page defines `window.COMPANY_POSITIONS_DATA` (camelCased in the page, snake_case
+  in the raw HTML), one object per position with `uid` and `location.{country,city}`. Key it by
+  the UID taken from the row href, keep `country === 'IL'`, remove the other `<li>`s before
+  extraction, and map `location.city` to the city.csv spelling; fall back to the printed
+  location's `^Israel` when the global is absent. Record the dropped UIDs per country in
+  `adminNote`.
+- **Also:** an employer can type a benefits block ("Why Join Us?") inside its Requirements
+  section. Label routing sends the whole block to `requirements`; split it at the benefits
+  heading and send the tail to `description`.
+- **Also:** QA flags `location "ראש העין" not found in detail page body` on every job. That is
+  expected when the board prints the English city name. Settle it from the board data (country,
+  city, street) and note it; it is not a mapping error.
+- **Generalizes to:** every multinational Comeet tenant whose group headings are departments.
