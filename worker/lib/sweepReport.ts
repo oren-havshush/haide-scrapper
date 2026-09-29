@@ -66,6 +66,12 @@ export type ReportItem = {
   siteStatus: string;
   wouldDemoteTo: string | null;
   wouldPromoteTo: string | null;
+  /**
+   * The activation gate's own reason for a withheld promotion or demotion
+   * (withheld.gateReason), printed after the verdict. In memory only — the
+   * sweep item row has no column for it; the stored report carries it.
+   */
+  gateReason?: string | null;
   /** Policy phase only: the site's scrapingPolicyStatus before and after tonight. */
   policyStatusBefore?: string | null;
   policyStatusAfter?: string | null;
@@ -262,6 +268,12 @@ export function isStaleButGreen(item: ReportItem, sweepStartedAt: Date): boolean
   return item.newestJobAt.getTime() < sweepStartedAt.getTime();
 }
 
+/** " (gate: <reason>)" when the activation gate gave one; empty otherwise. */
+export function gateSuffix(i: { gateReason?: string | null }): string {
+  const r = (i.gateReason ?? "").trim();
+  return r ? ` (gate: ${r})` : "";
+}
+
 /** A site that had listings and now reports none. */
 function zeroedOut(i: ReportItem): boolean {
   return i.jobsBefore > 0 && i.jobsAfter === 0;
@@ -348,8 +360,8 @@ export function needsAttention(
   };
 
   for (const i of items) {
-    if (i.wouldPromoteTo) add(i, `would have promoted to ${i.wouldPromoteTo} — a human promotes`);
-    if (i.wouldDemoteTo) add(i, `would have demoted to ${i.wouldDemoteTo}`);
+    if (i.wouldPromoteTo) add(i, `would have promoted to ${i.wouldPromoteTo}${gateSuffix(i)} — a human promotes`);
+    if (i.wouldDemoteTo) add(i, `would have demoted to ${i.wouldDemoteTo}${gateSuffix(i)}`);
     if (i.outcome === WITHHELD_SKIP_OUTCOME) add(i, "would have been SKIPPED (login-gated apply)");
     // A refused drop and a listing refusal protected their listings too, but
     // each has its own line below with both counts; the generic one beside it
@@ -554,6 +566,12 @@ export function renderSweepReport(
   lines.push(`  ${counters.listingsProtected} site(s) kept listings a manual run would have deleted`);
   lines.push(`  ${counters.wouldHavePromoted} would have been promoted, ${counters.wouldHaveDemoted} demoted`);
   lines.push(`  ${counters.skippedConflict} skipped (an operator was already scraping)`);
+  // Each withheld verdict by name, with the gate's reason: the counts alone
+  // send a human to the run log to find out which site and why.
+  for (const i of items) {
+    if (i.wouldPromoteTo) lines.push(`    ${i.siteUrl} — would promote to ${i.wouldPromoteTo}${gateSuffix(i)}`);
+    if (i.wouldDemoteTo) lines.push(`    ${i.siteUrl} — would demote to ${i.wouldDemoteTo}${gateSuffix(i)}`);
+  }
 
   // --- Details -------------------------------------------------------------
   // Fetched versus carried (worker/lib/detailPlan.ts): how many detail pages

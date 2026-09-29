@@ -145,22 +145,31 @@ const args = { kind: "SCRAPE" as const, date: "2026-09-29", logText: REPORT, ite
         jobsAfter: 57,
         scrapedCount: 30,
         wouldDemoteTo: "REVIEW",
+        gateReason: "externalJobId fill 0.40 < 0.9",
         detailsFetched: null,
         detailsCarried: null,
       }),
+      item({ siteUrl: "https://c.test", jobsBefore: 8, jobsAfter: 5, scrapedCount: 5, wouldPromoteTo: "ACTIVE", gateReason: "all gates pass" }),
+      item({ siteUrl: "https://d.test", jobsBefore: null as unknown as number, jobsAfter: 5 }),
     ]);
     assert(csv.startsWith(BOM), "starts with a UTF-8 BOM, so Excel opens the Hebrew correctly");
     const rows = csv.slice(1).split("\r\n");
     assert(
-      rows[0] === "site URL,outcome,category,jobs before,jobs after,scraped count,withheld action,fetched,carried",
-      `the header row (${rows[0]})`,
+      rows[0] === "site URL,outcome,category,jobs before,jobs after,diff,scraped count,withheld action,fetched,carried",
+      `the header row, diff right after jobs after (${rows[0]})`,
     );
-    assert(rows[1] === "https://a.test/jobs,success,,10,12,12,,2,10", `a plain row (${rows[1]})`);
+    assert(rows[1] === "https://a.test/jobs,success,,10,12,2,12,,2,10", `a plain row, diff +2 written as 2 (${rows[1]})`);
     assert(
-      rows[2] === '"https://b.test/משרות, ""כל""",suspicious_drop,suspicious_drop,57,57,30,would demote to REVIEW,,',
-      `a row that needs quoting, with Hebrew and a withheld demotion (${rows[2]})`,
+      rows[2] ===
+        '"https://b.test/משרות, ""כל""",suspicious_drop,suspicious_drop,57,57,0,30,would demote to REVIEW (gate: externalJobId fill 0.40 < 0.9),,',
+      `quoting, Hebrew, diff 0, and the withheld demotion with the gate's reason (${rows[2]})`,
     );
-    assert(rows.length === 4 && rows[3] === "", "CRLF line endings, one row per site, trailing newline");
+    assert(
+      rows[3] === "https://c.test,success,,8,5,-3,5,would promote to ACTIVE (gate: all gates pass),2,10",
+      `a signed negative diff, and a withheld promotion with its reason (${rows[3]})`,
+    );
+    assert(rows[4] === "https://d.test,success,,,5,,12,,2,10", `diff is empty when a side is null (${rows[4]})`);
+    assert(rows.length === 6 && rows[5] === "", "CRLF line endings, one row per site, trailing newline");
   });
 
   await check("sent", async () => {

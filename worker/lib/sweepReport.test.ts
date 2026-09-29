@@ -488,6 +488,31 @@ check("skipped sites and warnings are listed", () => {
   const noDetail = renderSweepReport(sweep(), ok(2), { timeZone: TZ, detailMode: "incremental" });
   assert(noDetail.includes("no site visited detail pages"), "a measured night with no multi-step site says so");
 
+  // --- the gate's reason travels with its verdict --------------------------------
+  // A "would have promoted/demoted" line with no reason sends a human to the
+  // run log to find out why; the gate already said, in withheld.gateReason.
+  const promo = item({ siteId: "p", siteUrl: "https://safari.test", wouldPromoteTo: "ACTIVE", gateReason: "all gates pass (fill 1.00)" });
+  const demo = item({ siteId: "q", siteUrl: "https://bio.test", wouldDemoteTo: "REVIEW", gateReason: "jobCount 1 < 3" });
+  const queue = needsAttention(sweep(), [promo, demo], { timeZone: TZ });
+  const whyOf = (u: string) => queue.find((a) => a.siteUrl === u)?.why ?? "";
+  assert(
+    whyOf("https://safari.test").includes("would have promoted to ACTIVE (gate: all gates pass (fill 1.00))"),
+    `the promotion names the gate's reason (${whyOf("https://safari.test")})`,
+  );
+  assert(
+    whyOf("https://bio.test").includes("would have demoted to REVIEW (gate: jobCount 1 < 3)"),
+    `the demotion names the gate's reason (${whyOf("https://bio.test")})`,
+  );
+  const noReason = needsAttention(sweep(), [item({ wouldDemoteTo: "REVIEW" })], { timeZone: TZ })[0]?.why ?? "";
+  assert(noReason.includes("would have demoted to REVIEW") && !noReason.includes("(gate:"), "no reason, no empty parentheses");
+  const gateText = renderSweepReport(sweep(), [promo, demo], { timeZone: TZ });
+  const gateSection = gateText.slice(gateText.indexOf("\nGate\n"));
+  assert(
+    gateSection.includes("https://safari.test — would promote to ACTIVE (gate: all gates pass (fill 1.00))") &&
+      gateSection.includes("https://bio.test — would demote to REVIEW (gate: jobCount 1 < 3)"),
+    "the Gate section names each withheld verdict with its reason",
+  );
+
   // --- churn is named in the queue ---------------------------------------------
   const churn = item({
     siteId: "z",

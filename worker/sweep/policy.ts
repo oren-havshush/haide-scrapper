@@ -22,6 +22,7 @@
 // and Part 1a's non-destructive dispatcher protects it regardless.
 
 import "dotenv/config";
+import { parseTriggerLabel } from "../lib/nightlyArgs";
 import { prisma } from "../../src/lib/prisma";
 import { policyConfig, sweepConfig } from "../../src/lib/config";
 import { selectDuePolicyReviews, type PolicyCandidate } from "../../src/lib/policySelection";
@@ -120,7 +121,7 @@ async function dryRun(): Promise<number> {
 // The real run
 // ---------------------------------------------------------------------------
 
-async function realRun(): Promise<number> {
+async function realRun(trigger: string): Promise<number> {
   if (!sweepConfig.enabled) {
     log("[policy] SWEEP_ENABLED=false — refusing to run.");
     return 0;
@@ -147,7 +148,7 @@ async function realRun(): Promise<number> {
   const sweep = await prisma.scrapeSweep.create({
     data: {
       kind: "POLICY",
-      trigger: "manual",
+      trigger,
       status: "RUNNING",
       startedAt,
       selectedCount: selected.length,
@@ -301,7 +302,9 @@ async function main() {
   const now = argv.includes("--now");
   if (!dry && !now) throw new Error("one of --dry-run or --now is required");
 
-  const code = dry ? await dryRun() : await realRun();
+  // --trigger timer from the systemd unit; absent is manual. worker/lib/nightlyArgs.ts.
+  const trigger = parseTriggerLabel(argv);
+  const code = dry ? await dryRun() : await realRun(trigger);
   await prisma.$disconnect();
   process.exit(code);
 }

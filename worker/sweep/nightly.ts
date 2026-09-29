@@ -45,7 +45,7 @@ import {
 } from "../lib/drainProbe";
 import { readScheduledFlag } from "../lib/scheduledRun";
 import { isFullDetailRun, type DetailMode } from "../lib/detailPlan";
-import { parseNightlyArgs, resolveDetailMode, type NightlyMode } from "../lib/nightlyArgs";
+import { parseNightlyArgs, parseTriggerLabel, resolveDetailMode, type NightlyMode } from "../lib/nightlyArgs";
 import {
   createBreakerState,
   recordOutcome,
@@ -140,6 +140,8 @@ type SiteResult = {
   siteStatus: string;
   wouldDemoteTo: string | null;
   wouldPromoteTo: string | null;
+  /** The activation gate's reason for a withheld promotion or demotion. */
+  gateReason?: string | null;
   wouldSkip: string | null;
   /**
    * The ScrapeRun's raw terminal status.
@@ -494,6 +496,7 @@ async function runOneSite(
     siteStatus: after.status,
     wouldDemoteTo: typeof withheld.wouldDemoteTo === "string" ? withheld.wouldDemoteTo : null,
     wouldPromoteTo: typeof withheld.wouldPromoteTo === "string" ? withheld.wouldPromoteTo : null,
+    gateReason: typeof withheld.gateReason === "string" ? withheld.gateReason : null,
     wouldSkip,
     runStatus: waited.status,
     finishedAt: new Date(),
@@ -520,6 +523,7 @@ function toScrapeReportItem(r: SiteResult): ReportItem {
     siteStatus: r.siteStatus,
     wouldDemoteTo: r.wouldDemoteTo,
     wouldPromoteTo: r.wouldPromoteTo,
+    gateReason: r.gateReason ?? null,
     policyStatusBefore: null,
     policyStatusAfter: null,
     // In-memory only. The dashboard re-reads items from the database, which has
@@ -616,7 +620,7 @@ async function dryRun(): Promise<number> {
 // Real runs
 // ---------------------------------------------------------------------------
 
-async function realRun(mode: Mode): Promise<number> {
+async function realRun(mode: Mode, trigger: string): Promise<number> {
   if (!sweepConfig.enabled) {
     log("[sweep] SWEEP_ENABLED=false — refusing to run.");
     return 0;
@@ -642,7 +646,9 @@ async function realRun(mode: Mode): Promise<number> {
   const sweep = await prisma.scrapeSweep.create({
     data: {
       kind: "SCRAPE",
-      trigger: single ? "manual-single" : "manual",
+      // --trigger (worker/lib/nightlyArgs.ts): "timer" from the systemd unit,
+      // "manual" by default; a --site run is suffixed, as it always was.
+      trigger: single ? `${trigger}-single` : trigger,
       status: "RUNNING",
       startedAt: now,
     },
@@ -996,7 +1002,7 @@ async function main() {
         ? await testEmail()
         : parsed.kind === "dry-run-details"
           ? await dryRunDetails(parsed.siteId, resolveDetailMode(parsed, new Date()))
-          : await realRun(parsed);
+          : await realRun(parsed, parseTriggerLabel(process.argv.slice(2)));
   await prisma.$disconnect();
   process.exit(code);
 }

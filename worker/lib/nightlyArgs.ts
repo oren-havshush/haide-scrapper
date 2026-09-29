@@ -68,3 +68,18 @@ export function resolveDetailMode(mode: NightlyMode, startedAt: Date): DetailMod
   if (mode.kind === "single") return "full";
   return detailModeFor(startedAt);
 }
+
+/**
+ * `--trigger <label>`: who started this sweep, recorded on the ScrapeSweep row
+ * and printed on the report's trigger line. Absent means "manual" — a human
+ * at a shell. The systemd units pass `--trigger timer`; night one, before
+ * this, recorded its timer run as "manual". Shared by nightly.ts and policy.ts.
+ */
+export function parseTriggerLabel(argv: string[]): string {
+  const idx = argv.indexOf("--trigger");
+  if (idx < 0) return "manual";
+  const label = argv[idx + 1];
+  if (!label || label.startsWith("--")) throw new Error("--trigger needs a label, e.g. --trigger timer");
+  if (!/^[a-z0-9_-]{1,32}$/.test(label)) throw new Error(`--trigger label must be a-z0-9_- (got ${JSON.stringify(label)})`);
+  return label;
+}

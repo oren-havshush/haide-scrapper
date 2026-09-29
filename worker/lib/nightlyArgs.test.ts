@@ -5,7 +5,9 @@
 // the Saturday run; `--site --now` is the verification step after a config
 // change, so it is full unless told otherwise.
 
-import { parseNightlyArgs, resolveDetailMode, type NightlyMode } from "./nightlyArgs";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
+import { parseNightlyArgs, parseTriggerLabel, resolveDetailMode, type NightlyMode } from "./nightlyArgs";
 
 let failures = 0;
 function assert(cond: boolean, msg: string) {
@@ -66,6 +68,25 @@ assert(same(p("--test-email"), { kind: "test-email" }), "--test-email sends the 
 assert(throws(() => p("--test-email --now")), "it never runs a sweep");
 assert(throws(() => p("--test-email --site abc")), "and takes no site");
 assert(throws(() => p("--test-email --dry-run")), "and is not combined with a dry run");
+
+// --- the trigger label ---------------------------------------------------------
+// Night one's timer run was recorded as "manual": the drivers hard-coded it.
+assert(parseTriggerLabel(["--now"]) === "manual", "absent is manual — a human at a shell");
+assert(parseTriggerLabel(["--now", "--trigger", "timer"]) === "timer", "the timer units pass --trigger timer");
+assert(parseTriggerLabel(["--trigger", "timer", "--now"]) === "timer", "anywhere on the line");
+assert(throws(() => parseTriggerLabel(["--now", "--trigger"])), "--trigger with no label is refused");
+assert(throws(() => parseTriggerLabel(["--now", "--trigger", "--site"])), "a flag is not a label");
+assert(throws(() => parseTriggerLabel(["--now", "--trigger", "Timer Night!"])), "labels are a-z0-9_- only");
+assert(same(p("--now --trigger timer"), { kind: "fleet", detailOverride: null }), "and the mode parse ignores it");
+{
+  const strip = (s: string) => s.replace(/\/\*[\s\S]*?\*\//g, "").replace(/\/\/.*$/gm, "");
+  const nightly = strip(readFileSync(join(__dirname, "..", "sweep", "nightly.ts"), "utf8"));
+  const policy = strip(readFileSync(join(__dirname, "..", "sweep", "policy.ts"), "utf8"));
+  for (const [name, src] of [["nightly.ts", nightly], ["policy.ts", policy]] as const) {
+    assert(src.includes("parseTriggerLabel("), `${name} reads --trigger`);
+    assert(!/trigger:\s*"manual"/.test(src), `${name} no longer hard-codes trigger "manual"`);
+  }
+}
 
 // --- which mode ----------------------------------------------------------------
 const mode = (s: string, at: Date) => resolveDetailMode(p(s), at);

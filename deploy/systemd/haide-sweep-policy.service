@@ -25,7 +25,7 @@ WorkingDirectory=@REMOTE_DIR@
 TimeoutStartSec=120min
 
 ExecStart=/usr/bin/docker compose run --name haide-sweep-policy -T sweep \
-    node_modules/.bin/tsx worker/sweep/policy.ts --now
+    node_modules/.bin/tsx worker/sweep/policy.ts --now --trigger timer
 
 ExecStopPost=-/bin/sh -c 'docker rm -f haide-sweep-policy >/dev/null 2>&1 || true'
 

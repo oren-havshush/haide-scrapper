@@ -14,7 +14,7 @@
 // as an emailStatus string, which the caller records on the sweep row, and the
 // failures are logged loudly. The token is never logged in any form.
 
-import type { ReportItem } from "./sweepReport";
+import { gateSuffix, type ReportItem } from "./sweepReport";
 
 export type MailKind = "SCRAPE" | "POLICY";
 
@@ -78,6 +78,7 @@ const CSV_HEADER = [
   "category",
   "jobs before",
   "jobs after",
+  "diff",
   "scraped count",
   "withheld action",
   "fetched",
@@ -93,10 +94,18 @@ function csvCell(v: string | number | null | undefined): string {
 /** What the scheduled gate withheld from this site, in words; empty when nothing. */
 function withheldAction(i: ReportItem): string {
   const parts: string[] = [];
-  if (i.wouldPromoteTo) parts.push(`would promote to ${i.wouldPromoteTo}`);
-  if (i.wouldDemoteTo) parts.push(`would demote to ${i.wouldDemoteTo}`);
+  if (i.wouldPromoteTo) parts.push(`would promote to ${i.wouldPromoteTo}${gateSuffix(i)}`);
+  if (i.wouldDemoteTo) parts.push(`would demote to ${i.wouldDemoteTo}${gateSuffix(i)}`);
   if (i.outcome === "withheld_skip") parts.push("would skip (login-gated apply)");
   return parts.join("; ");
+}
+
+/** Jobs after minus jobs before, signed; empty when either side is missing. */
+function jobsDiff(i: ReportItem): number | null {
+  const before = i.jobsBefore as number | null | undefined;
+  const after = i.jobsAfter as number | null | undefined;
+  if (typeof before !== "number" || typeof after !== "number") return null;
+  return after - before;
 }
 
 /** One row per site, UTF-8 with a BOM, CRLF line endings — what Excel expects. */
@@ -110,6 +119,7 @@ export function buildSweepCsv(items: ReportItem[]): string {
         i.failureCategory,
         i.jobsBefore,
         i.jobsAfter,
+        jobsDiff(i),
         i.scrapedCount,
         withheldAction(i),
         i.detailsFetched,

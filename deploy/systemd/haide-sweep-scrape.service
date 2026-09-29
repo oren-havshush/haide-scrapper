@@ -37,7 +37,7 @@ TimeoutStartSec=330min
 # instead, so it survives a timeout or a kill long enough to be inspected, and
 # is cleaned up either way.
 ExecStart=/usr/bin/docker compose run --name haide-sweep-scrape -T sweep \
-    node_modules/.bin/tsx worker/sweep/nightly.ts --now
+    node_modules/.bin/tsx worker/sweep/nightly.ts --now --trigger timer
 
 # Runs on success, on failure, and after a TimeoutStartSec kill. Without it a
 # timed-out sweep leaves a container holding the name, and the NEXT night's
