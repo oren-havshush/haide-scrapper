@@ -3917,3 +3917,34 @@
   Out-of-page gates (`detail-reach`, a `curl` survey) can report a page as dead when it isn't.
   The logo capture on this site also stored the homepage's hamburger-menu icon (`LRN-LOGO-3` shape): look
   at the stored `/logos/<id>.png` before accepting `withLogo: 1`.
+
+---
+
+## LRN-HQ-8 — a COMPLETE profile with three wrong fields: an idiom read as a city, a client's emblem as the logo, a staff bio as the about
+
+- **Date / site:** 2026-09-29 · etgarim2000.co.il (אפטר סקול / אתגרים הדרכות בע"מ).
+- **Signal:** `company-profile` reported `WRITTEN COMPLETE … city=יובל`, and every gate was green. All
+  three content fields were wrong:
+  - **HQ city `יובל`, address `יצאנו לדרך לפני מעל חצי יובל, עם 3`** — "half a jubilee" (25 years)
+    on the about page. `יובל` is a real city.csv entry (a moshav), so the city gate passed it.
+  - **Logo** — `שוהם-לוגו-2-1.png`, the Shoham local council's emblem: a municipality this company
+    works for (the `LRN-LOGO-3` client-carousel shape, here a client-authority logo).
+  - **About** — the deputy CEO's personal bio from the team section, not company copy.
+- **What was true, on the site's own pages:** contact page `רח’ החרש, 8 רמת השרון 4726208`; about page
+  opens with a company sentence; the real logo is WordPress's own `site_logo` — `GET /wp-json/` →
+  `site_logo` (a media id) → `/wp-json/wp/v2/media/<id>` → `source_url`. The header shows only an
+  animated transparent GIF, so no `<img>` scan can find it.
+- **Fix (operator paths, no extractor change — see the company-extract follow-up):** `POST /company-logo`
+  with the site_logo PNG; `PUT /company-hq-city` (`skill` + contact-page URL); `PUT /company-profile?force=1`
+  with only `companyHqAddress` + `companyAbout`, both verbatim from the pages.
+- **A replaced logo stays stale at the edge for up to a day.** The `LRN-LOGO-3` trap, with a real image
+  instead of a 404: the replacement keeps the same `/logos/<id>.png` URL, and the capture's wrong image was
+  already cached (`max-age=86400`). After the upload the origin served the new PNG (`?cb=` request:
+  69,891 bytes, `cf-cache-status: MISS`), while the plain URL still returned the old 16,644-byte emblem
+  (`HIT`, `Age: 492`), so the dashboard kept showing it. Verify a replacement with a cache-busting query,
+  never the plain URL.
+- **Rule:** `COMPLETE` means three fields are non-empty, not that they are right. On every capture, read
+  the stored address — if it is not an address (a sentence, no street/number/zip), the city derived from it
+  is suspect regardless of the city gate — look at `/logos/<id>.png`, and read the about text.
+- **Generalises to:** any WordPress site (`site_logo` is the owner-declared logo — try it before cropping);
+  any about page whose prose contains a word that is also a place (`יובל`, and the `LRN-HQ-4` family).

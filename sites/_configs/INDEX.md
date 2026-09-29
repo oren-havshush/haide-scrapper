@@ -68,6 +68,7 @@ from top-level params, so a setupScript left only inside `_meta` is dropped.
 | אלקטרה | ACTIVE | 7 | 1823 | `electra--cgkf66` |
 | אמביאנס קוסמטיקה רפואית | ACTIVE | 3 | 505 | `yafa-maximov--v1max5` |
 | אנשים ומחשבים | ACTIVE | 5 | 2645 | `pc--51eg8t` |
+| אפטר סקול | ACTIVE | 5 | 5946 | `etgarim2000--zsyc2z` |
 | אשטרום | ACTIVE | 8 | 1341 | `ashtrom--9nr6ww` |
 | באדג'ט | ACTIVE | 6 | 5566 | `budget--yutag5` |
 | בינ"ה | ACTIVE | 8 | 7390 | 1 | `bina--ki7nq2` |
