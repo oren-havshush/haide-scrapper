@@ -4040,3 +4040,19 @@
   means some visitors (desktop or mobile) still see it, so it ships (addsite2 §6.2, what a visitor
   sees). Check the classes, not `getComputedStyle`: the latter answers for the worker's viewport only.
 - **Generalizes to:** every Elementor jobs page built from sections rather than a CPT loop.
+
+## LRN-FORM-11
+- **Date / site:** 2026-09-29, 4chef.co.il `/pages/דרושים-ב-4chef` (Shopify page, 6 jobs in one accordion).
+- **Signal:** the apply popup is a normal Shopify contact form (`form#contact_form`,
+  `action="/contact#contact_form"`, `contact[full_name]` …) and its CV `<input type="file">` has **no
+  `name`**. The page JS cancels the native submit and `fetch`es a multipart POST to
+  `/apps/matat-verifone/jobs/apply` (an app proxy) with different field names: `name` (first + last
+  joined), `email`, `phone`, `position` (the job's `data-roleval`), `message` (city prepended), `cv`.
+- **Trap:** capturing the visible `<form>` stores the wrong endpoint and drops the CV field, since a
+  field without a `name` is never submitted. Every gate passes: `formStatus` reads CAPTURED either way.
+- **Fix:** read the submit handler (search the page for `fetch(` / `FormData` near the form ids) and
+  build a static `formCapture` from what the JS actually sends; point `formSelector` at the real
+  endpoint (`form[action*="matat-verifone"]`) so it matches nothing and the static fields are used
+  (LRN-APPLY-7). Record the field mapping and the client-only fields (consent checkbox) in `adminNote`.
+- **Generalizes to:** any form whose file input lacks a `name`, or whose submit button calls
+  `preventDefault` — Shopify themes most often, since the native contact form cannot accept files.

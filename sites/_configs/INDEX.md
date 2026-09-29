@@ -21,6 +21,7 @@ several listing pages back into one and stops publishing the rest.
 
 | Company | Status | Fields | setupScript chars | Pages | File |
 | --- | --- | --- | --- | --- | --- |
+| 4Chef | ACTIVE | 5 | 3777 | 1 | `4chef--fbqr3s` |
 | AGAS 3K | ACTIVE | 4 | 1049 | 1 | `agas--vfl5da` |
 | AIG | ACTIVE | 4 | — | 1 | `aig--0rlmdf` |
 | BDO | ACTIVE | 10 | 2810 | 1 | `bdo-career-hunterhrms--dgrgrm` |
