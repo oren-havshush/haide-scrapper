@@ -75,7 +75,9 @@ export const TX_MAX_WAIT_MS = 10_000;
  */
 export type DropThresholds = { minPrevious: number; keepRatio: number };
 
-export const DEFAULT_DROP_THRESHOLDS: DropThresholds = { minPrevious: 10, keepRatio: 0.5 };
+// minPrevious 3, not 10, since night one (2026-09-29): biopharmax went 4 -> 1
+// unattended, under a minimum of 10 that exempted every site with fewer.
+export const DEFAULT_DROP_THRESHOLDS: DropThresholds = { minPrevious: 3, keepRatio: 0.5 };
 
 /**
  * A new listing count that is a fraction of what the site had.

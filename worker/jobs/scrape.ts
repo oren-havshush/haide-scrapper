@@ -3,6 +3,7 @@ import type { WorkerJob, Site } from "../../src/generated/prisma/client";
 import { Prisma } from "../../src/generated/prisma/client";
 import { launchBrowser, createPage, closeBrowser, type BrowserOverrides } from "../lib/playwright";
 import { beforeClickLoad, createPacer, pacePage, readRequestDelayMs } from "../lib/requestDelay";
+import { newExtractGuard, onExplicitZeroMatch, zeroMatchRefusal, type ExtractGuard } from "../lib/zeroMatch";
 import {
   normalizeJobRecord,
   resolveMetaMinPublishDate,
@@ -146,6 +147,8 @@ interface RunMode {
    * path is always "full". See worker/lib/detailPlan.ts.
    */
   detailMode: DetailMode;
+  /** Zero-match guard: a scheduled run never auto-detects (worker/lib/zeroMatch.ts). */
+  extract: ExtractGuard;
 }
 
 /** Scrape execution context for error categorization */
@@ -1282,6 +1285,8 @@ async function extractRawFieldsFromListingPage(
   abort: AbortToken<unknown> | null = null,
   /** Out-param: this walk is appended, so the persist step can judge it. */
   walks: PaginationWalk[] | null = null,
+  /** The run's zero-match guard (worker/lib/zeroMatch.ts). */
+  guard: ExtractGuard | null = null,
 ): Promise<Record<string, string>[]> {
   // If pagination is configured, repeat extraction per page and merge.
   // We dedupe across pages so the same item from page 1 doesn't double up if
@@ -1311,6 +1316,7 @@ async function extractRawFieldsFromListingPage(
         listingSelector,
         itemSelector,
         revealSelector,
+        guard,
       );
       console.info(
         `[scrape] pagination page ${pageIdx}: extracted ${pageResults.length} items`,
@@ -1347,6 +1353,7 @@ async function extractRawFieldsFromListingPage(
     listingSelector,
     itemSelector,
     revealSelector,
+    guard,
   );
 }
 
@@ -1356,6 +1363,8 @@ async function extractRawFieldsFromListingPageOnce(
   listingSelector: string | null,
   itemSelector: string | null,
   revealSelector: string | null = null,
+  /** The run's zero-match guard (worker/lib/zeroMatch.ts); null keeps today's fallback. */
+  guard: ExtractGuard | null = null,
 ): Promise<Record<string, string>[]> {
   // Preferred path: explicit itemSelector from extension container setup.
   // Field selectors are relative to each item element.
@@ -1395,6 +1404,13 @@ async function extractRawFieldsFromListingPageOnce(
         `[scrape] Explicit item-scoped extraction: ${explicitDeduped.length} records`,
       );
       return explicitDeduped;
+    }
+    if (matchedItemCount === 0) {
+      // worker/lib/zeroMatch.ts: on a scheduled run a configured selector
+      // that matches nothing is refused, never auto-detected (biopharmax's
+      // "EN" job, night one). The manual path falls through, as before.
+      console.warn(`[scrape] item selector matched nothing: ${listingSelector ?? "body"} ${itemSelector}`);
+      if (onExplicitZeroMatch(guard, `${listingSelector ?? "body"} ${itemSelector}`) === "refuse") return [];
     }
     console.warn("[scrape] Explicit itemSelector matched 0 items, falling through to auto-detect");
   }
@@ -1510,6 +1526,8 @@ async function extractRawFieldsWithPageFlow(
   listingUrlOverride: string | null = null,
   /** Out-param: each paginated walk is appended. See worker/lib/paginationGuard.ts. */
   walks: PaginationWalk[] | null = null,
+  /** The run's zero-match guard, for the single-step branch (worker/lib/zeroMatch.ts). */
+  guard: ExtractGuard | null = null,
 ): Promise<Record<string, string>[]> {
   // Navigate to the first page flow URL (listing page)
   const listingStep = pageFlow[0];
@@ -1562,6 +1580,7 @@ async function extractRawFieldsWithPageFlow(
       pagination,
       abort,
       walks,
+      guard,
     );
   }
 
@@ -3110,6 +3129,7 @@ export async function handleScrapeJob(
     abort: createAbortToken<ScrapeResult>(),
     walks: [],
     detailMode: readDetailMode(job.payload),
+    extract: newExtractGuard(scheduled),
   };
 
   if (!scrapeRunId) {
@@ -3652,7 +3672,7 @@ async function executeScrape(
   setupScript: string | null = null,
   loadMoreSelector: string | null = null,
   browserOverrides: BrowserOverrides | null = null,
-  runMode: RunMode = { scheduled: false, abort: createAbortToken<ScrapeResult>(), walks: [], detailMode: "full" },
+  runMode: RunMode = { scheduled: false, abort: createAbortToken<ScrapeResult>(), walks: [], detailMode: "full", extract: newExtractGuard(false) },
   listingTargets: ListingTarget[] = [{ url: site.siteUrl }],
 ): Promise<ScrapeResult> {
   const scrapeStartedAt = Date.now();
@@ -3710,6 +3730,7 @@ async function executeScrape(
         runMode.abort,
         targetUrl,
         runMode.walks,
+        runMode.extract,
       );
       context.pageLoaded = true;
 
@@ -3886,6 +3907,7 @@ async function executeScrape(
         pagination,
         runMode.abort,
         runMode.walks,
+        runMode.extract,
       );
 
       // If nothing matched, give the page a chance: scroll to bottom to trigger
@@ -3911,6 +3933,7 @@ async function executeScrape(
           page, fieldMappings, listingSelector, itemSelector, revealSelector, pagination,
           runMode.abort,
           runMode.walks,
+          runMode.extract,
         );
       }
 
@@ -4034,6 +4057,13 @@ async function executeScrape(
   }
   if (listingOutcome.kind === "soft_fail") {
     return await refuseListingRun(scrapeRunId, listingOutcome);
+  }
+  // A scheduled run whose configured item selector matched nothing, and that
+  // ended with no rows, is refused as structure_changed: nothing stored, the
+  // previous listings kept, no auto-detect fallback (worker/lib/zeroMatch.ts).
+  const zeroMatch = zeroMatchRefusal(runMode.extract, rawFieldsList.length);
+  if (zeroMatch) {
+    return await refuseListingRun(scrapeRunId, zeroMatch);
   }
   const listingWarnings = listingOutcome.warnings;
 
@@ -4671,7 +4701,7 @@ function createTimeoutPromise(
   scrapeRunId: string,
   siteId: string,
   fieldMappingsRaw: unknown,
-  runMode: RunMode = { scheduled: false, abort: createAbortToken<ScrapeResult>(), walks: [], detailMode: "full" },
+  runMode: RunMode = { scheduled: false, abort: createAbortToken<ScrapeResult>(), walks: [], detailMode: "full", extract: newExtractGuard(false) },
 ): { promise: Promise<ScrapeResult>; cancel: () => void } {
   const { scheduled } = runMode;
   let timerId: ReturnType<typeof setTimeout>;

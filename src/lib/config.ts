@@ -66,7 +66,7 @@ export const sweepConfig = {
    * the sweep driver, so it must be in the worker's compose environment block.
    */
   get dropMinPrevious(): number {
-    return strictNumber(process.env.SWEEP_DROP_MIN_PREVIOUS, 10, (n) => Number.isInteger(n) && n >= 1);
+    return strictNumber(process.env.SWEEP_DROP_MIN_PREVIOUS, 3, (n) => Number.isInteger(n) && n >= 1);
   },
   /** Undersize guard: refuse a new count below this share of the previous one. Default 0.5. */
   get dropKeepRatio(): number {

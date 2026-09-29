@@ -381,7 +381,13 @@ export function needsAttention(
     if (i.outcome === "hard_failure") add(i, `failed (${i.failureCategory ?? "unknown"})`);
 
     // --- scrape phase: drift and drops ---
-    if (i.outcome === "soft_failure" && isListingRefusal(i.failureCategory)) {
+    // A configured item selector that matched nothing (worker/lib/zeroMatch.ts):
+    // refused, rows kept, and named as what it is rather than as generic drift.
+    const zeroMatch = (i.warnings ?? []).map(String).find((w) => w.startsWith("item_selector_zero_match:"));
+    if (i.outcome === "soft_failure" && zeroMatch) {
+      const sel = zeroMatch.slice(zeroMatch.indexOf(":") + 1).trim();
+      add(i, `item selector matched nothing (${sel}) — nothing written, ${i.jobsAfter} listing(s) kept, no auto-detect`);
+    } else if (i.outcome === "soft_failure" && isListingRefusal(i.failureCategory)) {
       const detail = (i.warnings ?? [])
         .map((w) => String(w))
         .filter((w) => w.startsWith("listing_url"))

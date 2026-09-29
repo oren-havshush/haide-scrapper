@@ -137,6 +137,12 @@ console.log("# 3 — one environment block, shared by anchor");
     `the recipient defaults to info@haide-jobs.co.il (got ${JSON.stringify(sEnv.SWEEP_EMAIL_TO)})`,
   );
 
+  // The undersize guard's minimum: 3 since night one (was 10).
+  assert(
+    String(sEnv.SWEEP_DROP_MIN_PREVIOUS) === "${SWEEP_DROP_MIN_PREVIOUS:-3}",
+    `the compose default for the drop minimum is 3 (got ${sEnv.SWEEP_DROP_MIN_PREVIOUS})`,
+  );
+
   // The compose default overrides the one in src/lib/config.ts, so it is the
   // number that actually applies in production. 260 minutes from 02:00 stops
   // enqueueing at 06:20 — see worker/lib/sweepBudget.test.ts.
