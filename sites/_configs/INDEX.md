@@ -102,6 +102,7 @@ from top-level params, so a setupScript left only inside `_meta` is dropped.
 | יקב טפרברג | ACTIVE | 3 | 889 | `teperbergwinery--unqlym` |
 | יקב סוכנות לביטוח | ACTIVE | 5 | — | `yekev--j5qpe6` |
 | ישראייר | ACTIVE | 5 | 363 | `lp-vp4-me--qo0him` |
+| ישרוטל | ACTIVE | 6 | 7421 | `isrotel--dkz1ac` |
 | כלי זמר | ACTIVE | 6 | 5974 | `kley-zemer--t2o5co` |
 | כלל | ACTIVE | 7 | 1460 | `clalbit--tz9kd4` |
 | כמיפל | ACTIVE | 4 | 1525 | `chemipal--ellr7p` |

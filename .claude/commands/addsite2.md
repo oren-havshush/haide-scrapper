@@ -1015,11 +1015,25 @@ If yes → append to `docs/addsite-learnings.md`:
 ## 14. Step 11 — Company profile (ACTIVE sites only)
 
 Onboarding decides whether the site is worth having; this decides **which company**
-its jobs belong to. Hand off to the `/company-profile` skill:
+its jobs belong to. Hand off to the `/company-profile` skill — dry run, look, then write:
 
 ```bash
+# 1) Dry run: scrapes and prints, writes nothing
+npx tsx scripts/company-profile.ts --site $SITE_ID --dry-run --no-llm --out profile.jsonl
+# 2) LOOK, per company-profile.md §3.1: open the would-be logo, read the about text,
+#    check the city against every street address the company prints
+# 3) Only then, the real run
 npx tsx scripts/company-profile.ts --site $SITE_ID
 ```
+
+**Never skip step 2.** `COMPLETE` and `withLogo: 1` say a field landed, not that it is
+right: every gate checks shape, and none can tell whose logo it is. Three captures in two
+days each stored a wrong logo while reporting `COMPLETE`: a client's logo (`LRN-LOGO-3`), a
+client's emblem with a wrong city and about text (`LRN-HQ-8`), and a modal's close button ✕,
+from a real run made straight from this section (`LRN-LOGO-4`). A wrong logo is public at
+once, and the plain `/logos/<id>.png` URL stays cached at the edge for up to a day after it
+is replaced, so fixing it afterwards does not unpublish it. If the dry run shows a wrong
+value, fix it before the real run (company-profile.md §4), or run nothing and say why.
 
 **Run it LAST, and only on the ACTIVE path.** A site that ended SKIPPED, REVIEW or
 REQUEUE must not be captured — it would spend a browser session on a site whose jobs

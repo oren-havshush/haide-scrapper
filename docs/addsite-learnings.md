@@ -3948,3 +3948,36 @@
   is suspect regardless of the city gate — look at `/logos/<id>.png`, and read the about text.
 - **Generalises to:** any WordPress site (`site_logo` is the owner-declared logo — try it before cropping);
   any about page whose prose contains a word that is also a place (`יובל`, and the `LRN-HQ-4` family).
+
+## LRN-CO-4 — a hub with more than 10 listing pages: `listingUrls` is capped at 10, so the setupScript pools the pages, all or nothing
+- **Date / site:** 2026-09-29 · isrotel.co.il/careers/ (`cmum9uga5000001qu1qdkz1ac`), hotel chain, 104 jobs.
+- **Signal:** the §2.3 hub shape (hub → one page per hotel/area → one page per job), but 14 area pages
+  are needed for coverage. The PUT with 15 `listingUrls` returned `VALIDATION_ERROR: Too big: expected
+  array to have <=10 items` (`src/lib/validators.ts`, `.max(10)`, no stated reason) and wrote nothing.
+- **Owner decision:** listing = the hub; the setupScript reads the hub's area cards, fetches each area page,
+  and appends its job cards (deduped by path) — the §2.3 "not a setupScript" option, taken knowingly.
+- **The risk §2.3 names, closed:** a dead area page would silently unpublish its jobs, because the scheduled
+  drop guard only refuses below 50% of the stored count (`DEFAULT_DROP_THRESHOLDS`) and one area is ~10%.
+  So ANY failed area page makes the script empty the grid: 0 items → `empty_results`, nothing deleted,
+  and a console warning naming the URL (surfaced by `runSetupScript`). A thrown error would not do it:
+  `runSetupScript` catches it and extraction carries on.
+- **Trap inside the fix:** this site answers an unknown URL with a **redirect to the hub and HTTP 200**, so
+  `r.ok` never fails and a dead page reads as "no jobs". The first version of the guard passed that case
+  (104 items with a bogus area injected). Treat `r.redirected` as a failure, and require an area page to
+  contain at least one job card. Test the failure path by injecting a dead link, not by reading the code.
+- **Generalizes to:** any employer with more than 10 department/branch listing pages; any fetch-based
+  pooling on a CMS that soft-404s (Umbraco here). **Home:** `addsite2.md` §2.3.
+
+## LRN-LOGO-4 — the capture stored a modal's close button (✕) as the logo
+- **Date / site:** 2026-09-29 · isrotel.co.il (`cmum9uga5000001qu1qdkz1ac`).
+- **Signal:** `/company-profile` reported `WRITTEN COMPLETE … logo` with `companyLogoSourceUrl: null`; the
+  stored `/logos/<id>.png` (5,442 bytes, valid PNG) is a black ✕ — a close icon, not a logo. Every gate
+  checks shape, and a close icon has the right shape.
+- **Why it shipped:** the capture was run for real straight from `addsite2.md` §14, skipping
+  `/company-profile` §3's dry run and look. The look would have caught it in one glance.
+- **Fix:** the site's own `og:image`, `https://www.isrotel.co.il/media/27429/logois.png` (the blue
+  "Isrotel / ישרוטל" square), uploaded via `POST /company-logo`. The plain URL then kept serving the ✕
+  from the Cloudflare edge (`HIT`, `max-age=86400`), exactly as `LRN-HQ-8` describes — it had been
+  fetched once before the replacement.
+- **Rule:** run `/company-profile` §3's `--dry-run` and open the logo BEFORE the real run, including when
+  it is invoked from `addsite2.md` §14. **Home:** `addsite2.md` §14.
