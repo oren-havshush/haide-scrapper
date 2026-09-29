@@ -1,0 +1,183 @@
+{
+  "_exportedAt": "2026-09-29T10:46:30.755Z",
+  "_note": "Mirror of the live config. The DB is authoritative; the worker never reads this file. setupScript lives alongside in <slug>.setup.js.",
+  "id": "cmumiip28000801qu66zoe4h3",
+  "siteUrl": "https://www.jafora.co.il/jobs/",
+  "companyName": "יפאורה תבורי בע\"מ",
+  "status": "ACTIVE",
+  "setupScriptFile": "jafora--zoe4h3.setup.js",
+  "pageFlow": [],
+  "fieldMappings": {
+    "_meta": {
+      "savedAt": "2026-09-29T10:08:49.989Z",
+      "pagination": null,
+      "formCapture": {
+        "fields": [
+          {
+            "name": "_wpcf7",
+            "label": "",
+            "tagName": "INPUT",
+            "required": false,
+            "fieldType": "hidden"
+          },
+          {
+            "name": "_wpcf7_version",
+            "label": "",
+            "tagName": "INPUT",
+            "required": false,
+            "fieldType": "hidden"
+          },
+          {
+            "name": "_wpcf7_locale",
+            "label": "",
+            "tagName": "INPUT",
+            "required": false,
+            "fieldType": "hidden"
+          },
+          {
+            "name": "_wpcf7_unit_tag",
+            "label": "",
+            "tagName": "INPUT",
+            "required": false,
+            "fieldType": "hidden"
+          },
+          {
+            "name": "_wpcf7_container_post",
+            "label": "",
+            "tagName": "INPUT",
+            "required": false,
+            "fieldType": "hidden"
+          },
+          {
+            "name": "_wpcf7_posted_data_hash",
+            "label": "",
+            "tagName": "INPUT",
+            "required": false,
+            "fieldType": "hidden"
+          },
+          {
+            "name": "_wpcf7cf_hidden_group_fields",
+            "label": "",
+            "tagName": "INPUT",
+            "required": false,
+            "fieldType": "hidden"
+          },
+          {
+            "name": "_wpcf7cf_hidden_groups",
+            "label": "",
+            "tagName": "INPUT",
+            "required": false,
+            "fieldType": "hidden"
+          },
+          {
+            "name": "_wpcf7cf_visible_groups",
+            "label": "",
+            "tagName": "INPUT",
+            "required": false,
+            "fieldType": "hidden"
+          },
+          {
+            "name": "_wpcf7cf_repeaters",
+            "label": "",
+            "tagName": "INPUT",
+            "required": false,
+            "fieldType": "hidden"
+          },
+          {
+            "name": "_wpcf7cf_steps",
+            "label": "",
+            "tagName": "INPUT",
+            "required": false,
+            "fieldType": "hidden"
+          },
+          {
+            "name": "_wpcf7cf_options",
+            "label": "",
+            "tagName": "INPUT",
+            "required": false,
+            "fieldType": "hidden"
+          },
+          {
+            "name": "_wpcf7_recaptcha_response",
+            "label": "",
+            "tagName": "INPUT",
+            "required": false,
+            "fieldType": "hidden"
+          },
+          {
+            "name": "job-number",
+            "label": "job number",
+            "tagName": "TEXTAREA",
+            "required": false,
+            "fieldType": "hidden"
+          },
+          {
+            "name": "your-file",
+            "label": "your file",
+            "tagName": "INPUT",
+            "required": true,
+            "fieldType": "file"
+          },
+          {
+            "name": "acceptance-pripol",
+            "label": "בשליחת הטופס הנני מאשר.ת כי קראתי והבנתי את מדיניות הפרטיות באתר",
+            "tagName": "INPUT",
+            "required": false,
+            "fieldType": "checkbox"
+          }
+        ],
+        "method": "POST",
+        "actionUrl": "https://www.jafora.co.il/jobs/#wpcf7-f463-o1",
+        "formSelector": "form.wpcf7-form:has(input[name=\"your-file\"])"
+      },
+      "listingUrls": null,
+      "itemSelector": "#haide-jobs-root [data-haide-job]",
+      "minPublishDate": null,
+      "minPublishDays": null,
+      "revealSelector": null,
+      "listingSelector": null,
+      "applyLoginReason": null,
+      "browserOverrides": null,
+      "loadMoreSelector": null,
+      "locationFallback": null,
+      "originalMappings": null,
+      "applyRequiresLogin": false
+    },
+    "title": {
+      "source": "MANUAL",
+      "selector": ".__ai-title",
+      "confidence": 1,
+      "capturedOnUrl": "https://www.jafora.co.il/jobs/"
+    },
+    "location": {
+      "source": "MANUAL",
+      "selector": ".__ai-location",
+      "confidence": 1,
+      "capturedOnUrl": "https://www.jafora.co.il/jobs/"
+    },
+    "description": {
+      "source": "MANUAL",
+      "selector": ".__ai-description",
+      "confidence": 1,
+      "capturedOnUrl": "https://www.jafora.co.il/jobs/"
+    },
+    "requirements": {
+      "source": "MANUAL",
+      "selector": ".__ai-requirements",
+      "confidence": 1,
+      "capturedOnUrl": "https://www.jafora.co.il/jobs/"
+    },
+    "externalJobId": {
+      "source": "MANUAL",
+      "selector": "[data-haide-job-id]",
+      "confidence": 1,
+      "capturedOnUrl": "https://www.jafora.co.il/jobs/"
+    },
+    "applicationInfo": {
+      "source": "MANUAL",
+      "selector": ".__ai-applicationInfo",
+      "confidence": 1,
+      "capturedOnUrl": "https://www.jafora.co.il/jobs/"
+    }
+  }
+}

@@ -110,6 +110,7 @@ several listing pages back into one and stops publishing the rest.
 | יזמקו | ACTIVE | 7 | 6661 | 1 | `yazamco--vwexjk` |
 | יעדים סוכנות לביטוח | ACTIVE | 5 | 1027 | 1 | `yeadim-bit--sh82rc` |
 | יעל גרופ | ACTIVE | 8 | 3283 | 1 | `yaelgroup--rdvk6e` |
+| יפאורה תבורי בע"מ | ACTIVE | 6 | 5295 | 1 | `jafora--zoe4h3` |
 | יקב טפרברג | ACTIVE | 3 | 889 | 1 | `teperbergwinery--unqlym` |
 | יקב סוכנות לביטוח | ACTIVE | 5 | — | 1 | `yekev--j5qpe6` |
 | ישראייר | ACTIVE | 5 | 363 | 1 | `lp-vp4-me--qo0him` |
