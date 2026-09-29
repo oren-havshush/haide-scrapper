@@ -2850,6 +2850,28 @@
 
 ---
 
+## LRN-FORM-10 — a footer newsletter with two consent boxes hits the probe's 3-field bar
+
+- **Date / site:** 2026-09-29 · tarbut-nz.co.il (WordPress + Elementor).
+- **Signal:** `addsite-qa` → `NEEDS_MANUAL` → `REVIEW` ("apply form exists on page but isn't
+  captured") with every Tier-A fill at `1.00` and 7 of 8 jobs carrying a `mailto:` apply path.
+- **Cause:** `probeDetail` counts non-hidden fields per `<form>`, and `maxFormFields >= 3` is tested
+  **before** `anyEmail`. The only POST form on every page is the footer
+  `form.elementor-form[name="רישום לניוזלטר"]`: one email input + two consent checkboxes = exactly 3.
+  The probe also picked the one job with no email (phone-only), which made the verdict look plausible.
+- **Arbitration:** list every `<form>` on a detail page with its `name` and inputs. If the only
+  3-field form is a site-wide newsletter (same form on the listing and every detail page, email +
+  checkboxes, no file/name/phone field), it is not an apply path: re-run with `--no-probe` to get
+  the email-based verdict (`EMAIL`, exit 0) and record both runs in `adminNote`. Do not "capture" the
+  newsletter as `formCapture`.
+- **Not fixed in the probe:** a 3-field bar with no newsletter check will keep producing this on
+  Elementor sites with consent boxes. Same shape as LRN-FORM-9 (probe precedence masks a good path);
+  sibling of LRN-APPLY-5, which is the capture-time version.
+- **Generalizes to:** WordPress/Elementor sites with a consented newsletter in the footer. **Home:**
+  `addsite2.md` §12 (REVIEW-is-remediable list).
+
+---
+
 ## LRN-CO-1 — the employer is whoever the posting says it is; ownership is not employment
 
 - **Date / site:** 2026-09-22 · careers.mobileye.com (corrected the same day, after shipping it wrong).

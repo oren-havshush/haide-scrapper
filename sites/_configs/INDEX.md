@@ -93,6 +93,7 @@ several listing pages back into one and stops publishing the rest.
 | הבנק הבינלאומי | ACTIVE | 6 | 4541 | 1 | `fibi--4j7v1x` |
 | החברה לאמנות ותרבות | ACTIVE | 5 | 1559 | 1 | `tarbut-herzliya--zvh6d2` |
 | החברה לשירותי איכות הסביבה | ACTIVE | 8 | 6846 | 1 | `enviro-services--4z2yxo` |
+| החברה לתרבות ופנאי נס ציונה | ACTIVE | 8 | 6119 | 1 | `tarbut-nz--0dv9x3` |
 | המרכז האקדמי לוינסקי־וינגייט | ACTIVE | 6 | 4210 | 1 | `l-w--qajne1` |
 | הספארי | ACTIVE | 5 | 1599 | 1 | `safari--6r81oc` |
 | הפניקס בית השקעות | ACTIVE | 8 | 4646 | 1 | `xnes--z0huih` |
