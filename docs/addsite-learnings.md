@@ -4025,3 +4025,18 @@
   expected when the board prints the English city name. Settle it from the board data (country,
   city, street) and note it; it is not a mapping error.
 - **Generalizes to:** every multinational Comeet tenant whose group headings are departments.
+
+## LRN-COV-10 — a job section Elementor hides at every breakpoint is a retired job: the DOM still carries it
+
+- **Date / site:** 2026-09-29, limedigital.co.il `/jobs/` (Elementor page, one inner section per job).
+- **Signal:** `innerText` shows 4 jobs; the DOM carries 6 job sections with 6 Apply buttons. The two
+  extra (PEOPLE OPERATIONS MANAGER, אחראי סושיאל מדיה) sit in a top section classed
+  `elementor-hidden-desktop elementor-hidden-tablet elementor-hidden-mobile`. It is how an Elementor
+  editor "removes" a job without deleting it. The English page still listed the social-media role,
+  which is how it showed as stale.
+- **Trap:** a selector or `textContent` scan ships the hidden jobs; nothing in the gates notices,
+  because they have titles, bodies and the shared apply form.
+- **Fix:** skip a job only when an ancestor carries ALL THREE hidden classes. One or two of them
+  means some visitors (desktop or mobile) still see it, so it ships (addsite2 §6.2, what a visitor
+  sees). Check the classes, not `getComputedStyle`: the latter answers for the worker's viewport only.
+- **Generalizes to:** every Elementor jobs page built from sections rather than a CPT loop.

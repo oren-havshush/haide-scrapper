@@ -38,6 +38,7 @@ several listing pages back into one and stops publishing the rest.
 | IPV Security | ACTIVE | 6 | 3307 | 1 | `news-ipvsecurity--5knkts` |
 | Interaction | ACTIVE | 7 | 4541 | 1 | `interaction--e99vxv` |
 | LEASE4U | ACTIVE | 8 | 6532 | 1 | `freesbe--6cznyg` |
+| Lime Digital | ACTIVE | 6 | 5282 | 1 | `limedigital--svqtde` |
 | Medulla | ACTIVE | 8 | 7954 | 1 | `medulla--m2u5xb` |
 | Mentee Robotics | ACTIVE | 8 | 7617 | 1 | `comeet--lfseiu` |
 | Mobileye | ACTIVE | 9 | 6318 | 1 | `mobileye--6xnl0n` |
