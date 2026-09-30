@@ -137,10 +137,11 @@ console.log("# 3 — one environment block, shared by anchor");
     `the recipient defaults to info@haide-jobs.co.il (got ${JSON.stringify(sEnv.SWEEP_EMAIL_TO)})`,
   );
 
-  // The undersize guard's minimum: 3 since night one (was 10).
+  // The undersize guard's minimum: 10 (3 for one night refused real churn on
+  // small sites; the zero-match guard covers what the lower floor was for).
   assert(
-    String(sEnv.SWEEP_DROP_MIN_PREVIOUS) === "${SWEEP_DROP_MIN_PREVIOUS:-3}",
-    `the compose default for the drop minimum is 3 (got ${sEnv.SWEEP_DROP_MIN_PREVIOUS})`,
+    String(sEnv.SWEEP_DROP_MIN_PREVIOUS) === "${SWEEP_DROP_MIN_PREVIOUS:-10}",
+    `the compose default for the drop minimum is 10 (got ${sEnv.SWEEP_DROP_MIN_PREVIOUS})`,
   );
 
   // The compose default overrides the one in src/lib/config.ts, so it is the

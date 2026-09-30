@@ -207,8 +207,8 @@ assert(planScheduledPersist(MAX_ROWS, MAX_ROWS).mode === "commit", "the cap itse
 
 check("the undersize guard", () => {
   assert(
-    DEFAULT_DROP_THRESHOLDS.minPrevious === 3 && DEFAULT_DROP_THRESHOLDS.keepRatio === 0.5,
-    "the defaults are 3 previous listings and half of them (lowered from 10 after night one: biopharmax 4 -> 1 went through)",
+    DEFAULT_DROP_THRESHOLDS.minPrevious === 10 && DEFAULT_DROP_THRESHOLDS.keepRatio === 0.5,
+    "the defaults are 10 previous listings and half of them (3 for one night refused real churn on small sites)",
   );
 
   const p = planScheduledPersist(8, 433);
@@ -221,11 +221,14 @@ check("the undersize guard", () => {
   // The boundaries, both sides of each threshold.
   assert(planScheduledPersist(4, 10).mode === "suspicious_drop", "10 -> 4 is below half of 10");
   assert(planScheduledPersist(5, 10).mode === "commit", "10 -> 5 is exactly half, and commits");
-  assert(planScheduledPersist(1, 2).mode === "commit", "2 previous is under the minimum; any drop commits");
-  assert(planScheduledPersist(1, 3).mode === "suspicious_drop", "3 -> 1 is below half of the minimum site");
-  assert(planScheduledPersist(1, 4).mode === "suspicious_drop", "biopharmax, night one: 4 -> 1 now refuses");
-  assert(planScheduledPersist(5, 8).mode === "commit", "iaa, night one: 8 -> 5 is not below half, and commits");
-  assert(planScheduledPersist(4, 7).mode === "commit", "milouot, night one: 7 -> 4 commits");
+  assert(planScheduledPersist(1, 9).mode === "commit", "9 previous is under the minimum; any drop commits");
+  assert(planScheduledPersist(4, 10).mode === "suspicious_drop", "10 is the smallest site the guard judges");
+  // Night two (2026-09-30), under the one-night floor of 3: both drops were
+  // real, and both were refused. Under 10 they commit, as ordinary churn on a
+  // small site should. The case the lower floor was meant for — a selector
+  // matching nothing — is refused by worker/lib/zeroMatch.ts instead.
+  assert(planScheduledPersist(2, 5).mode === "commit", "pac, night two: 5 -> 2 commits");
+  assert(planScheduledPersist(2, 6).mode === "commit", "bankhapoalim, night two: 6 -> 2 commits");
   assert(planScheduledPersist(216, 433).mode === "suspicious_drop", "433 -> 216 is below half");
   assert(planScheduledPersist(217, 433).mode === "commit", "433 -> 217 is not");
   assert(planScheduledPersist(900, 433).mode === "commit", "growth is never a drop");
@@ -246,8 +249,8 @@ check("the undersize guard", () => {
 
   assert(isSuspiciousDrop(433, 8), "isSuspiciousDrop is the same rule the plan applies");
   assert(!isSuspiciousDrop(433, 217), "on both sides");
-  assert(!isSuspiciousDrop(2, 0), "including the minimum");
-  assert(isSuspiciousDrop(3, 0), "which is now 3");
+  assert(!isSuspiciousDrop(9, 0), "including the minimum");
+  assert(isSuspiciousDrop(10, 0), "which is 10");
 });
 
 check("SWEEP_DROP_* from the environment", () => {
@@ -263,7 +266,7 @@ check("SWEEP_DROP_* from the environment", () => {
   };
   try {
     set(undefined, undefined);
-    assert(sweepConfig.dropMinPrevious === 3, `unset minimum is 3 (got ${sweepConfig.dropMinPrevious})`);
+    assert(sweepConfig.dropMinPrevious === 10, `unset minimum is 10 (got ${sweepConfig.dropMinPrevious})`);
     assert(sweepConfig.dropKeepRatio === 0.5, "unset ratio is 0.5");
 
     set("25", "0.7");
@@ -278,7 +281,7 @@ check("SWEEP_DROP_* from the environment", () => {
     }
     for (const bad of ["", "abc", "0", "-3", "2.5", "10x"]) {
       set(bad, "0.5");
-      assert(sweepConfig.dropMinPrevious === 3, `minimum "${bad}" falls back to 3 (got ${sweepConfig.dropMinPrevious})`);
+      assert(sweepConfig.dropMinPrevious === 10, `minimum "${bad}" falls back to 10 (got ${sweepConfig.dropMinPrevious})`);
     }
   } finally {
     set(saved.min, saved.ratio);

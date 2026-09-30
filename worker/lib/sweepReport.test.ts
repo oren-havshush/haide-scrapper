@@ -404,12 +404,12 @@ check("a committed drop is named", () => {
     "433 -> 217 is not below half",
   );
   assert(
-    needsAttention(sweep(), [item({ jobsBefore: 2, jobsAfter: 0 })]).filter((a) => a.why.includes("listings fell")).length === 0,
-    "a site under the 3-listing minimum is not a drop",
+    needsAttention(sweep(), [item({ jobsBefore: 9, jobsAfter: 1 })]).length === 0,
+    "a site under the 10-listing minimum is not a drop",
   );
   assert(
-    needsAttention(sweep(), [item({ jobsBefore: 9, jobsAfter: 1 })]).length === 1,
-    "9 -> 1 is one now: the minimum fell from 10 to 3 after night one",
+    needsAttention(sweep(), [item({ jobsBefore: 6, jobsAfter: 2 })]).length === 0,
+    "bankhapoalim's 6 -> 2 (night two, real) is ordinary churn",
   );
   assert(
     needsAttention(sweep(), [item({ phase: "policy", outcome: "success", jobsBefore: 40, jobsAfter: 4 })])

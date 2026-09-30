@@ -75,9 +75,11 @@ export const TX_MAX_WAIT_MS = 10_000;
  */
 export type DropThresholds = { minPrevious: number; keepRatio: number };
 
-// minPrevious 3, not 10, since night one (2026-09-29): biopharmax went 4 -> 1
-// unattended, under a minimum of 10 that exempted every site with fewer.
-export const DEFAULT_DROP_THRESHOLDS: DropThresholds = { minPrevious: 3, keepRatio: 0.5 };
+// minPrevious 10. It was 3 for one night (2026-09-29, after biopharmax's 4 -> 1),
+// and that refused ordinary churn on small sites — pac 5 -> 2 and bankhapoalim
+// 6 -> 2, both real. What the lower floor was for, a selector that matches
+// nothing, is refused by worker/lib/zeroMatch.ts instead.
+export const DEFAULT_DROP_THRESHOLDS: DropThresholds = { minPrevious: 10, keepRatio: 0.5 };
 
 /**
  * A new listing count that is a fraction of what the site had.
