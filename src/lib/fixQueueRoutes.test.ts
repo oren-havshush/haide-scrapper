@@ -52,6 +52,15 @@ assert(/source: "MANUAL"/.test(createBody), "createFixItem writes source MANUAL 
 assert(!/input\.source|body\.source|\.\.\.input/.test(createBody), "and never takes a source (or a spread) from its input");
 assert(/resolvedBy: "MANUAL"/.test(svc), "an operator's resolve is recorded as resolvedBy MANUAL");
 
+// The Log-fix dialog's site list. Found in the 1a smoke run (2026-09-30): with
+// no empty option, a controlled value of "" left the browser showing the one
+// filtered site as selected, so clicking it fired no change and "Log fix"
+// stayed disabled. An explicit empty first option keeps nothing pre-selected.
+const dialog = read("components/fixes/LogFixDialog.tsx");
+const siteSelect = dialog.slice(dialog.indexOf("value={siteId}"), dialog.indexOf("</select>", dialog.indexOf("value={siteId}")));
+assert(siteSelect.length > 0, "the dialog's site select was found");
+assert(/<option value="" disabled>/.test(siteSelect), "the site list starts with an empty, disabled option");
+
 if (failures > 0) {
   console.error(`\n${failures} assertion(s) failed`);
   process.exit(1);

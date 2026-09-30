@@ -74,6 +74,11 @@ export function LogFixDialog({ open, onOpenChange, onSave, isSaving, error }: Lo
               disabled={isSaving}
               size={6}
             >
+              {/* Without an empty option the browser shows the first site as
+                  selected while siteId is still "", and clicking it fires no change. */}
+              <option value="" disabled>
+                {siteRows.length === 0 ? "No site matches" : "Choose a site"}
+              </option>
               {siteRows.map((s) => (
                 <option key={s.id} value={s.id}>
                   {s.siteUrl} ({s.status})
