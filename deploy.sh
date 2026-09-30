@@ -271,6 +271,28 @@ fi
 echo "==> Running database backup..."
 docker compose --profile backup run --rm -T db-backup || echo "WARNING: Backup failed (non-fatal)"
 
+# --- Prune old deploy images (owner, 2026-10-01) -------------------------------
+#
+# Each deploy leaves ~2.4 GB of image layers no other image shares; on
+# 2026-09-30 the disk reached 89% of 48 GB. Only a deploy that passed its health
+# check reaches this point — the rollback branch above has already exited.
+#
+# Keeps the three most recent deploy tags per image. Only tags starting
+# "deploy-" are ever listed, so the two tags a rollback reads are never named
+# here; removing a deploy tag that shares its image with one of them only
+# removes the tag. Build cache older than 72 hours goes too. Nothing in this
+# block can fail the deploy: every step reports and carries on.
+echo "==> Pruning old deploy images (keeping the three most recent per image)..."
+for svc in web worker; do
+  IMAGE="${COMPOSE_PROJECT}-${svc}"
+  old=$(docker images "$IMAGE" --format '{{.Tag}}' 2>/dev/null | grep '^deploy-' | sort -r | tail -n +4) || old=""
+  for tag in $old; do
+    docker rmi "$IMAGE:$tag" >/dev/null || echo "WARNING: could not remove $IMAGE:$tag (non-fatal)"
+  done
+done
+docker builder prune -f --filter until=72h >/dev/null || echo "WARNING: build-cache prune failed (non-fatal)"
+# --- end prune
+
 echo "==> Deploy $DEPLOY_TAG complete! Services running:"
 docker compose ps
 
