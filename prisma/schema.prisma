@@ -140,6 +140,57 @@ model Site {
   /// When the one-shot capture ran. NULL <=> never attempted. This is the
   /// field that separates "not attempted" from "attempted, found nothing".
   companyProfileAt DateTime?
+
+  /// The onboarding skill's cohort tag (addsite2 phase two, step 1a). Set at
+  /// creation by addsite3 only; NULL means addsite2 or older. TEXT, not an enum,
+  /// so a later skill name needs no migration.
+  onboardingSkill String?
+
+  fixItems FixItem[]
+}
+
+/// What a site needed fixing after it went ACTIVE (addsite2 phase two, step 1a).
+enum FixField {
+  JOB_ID
+  APPLY
+  TITLE
+  DESCRIPTION
+  DATE
+  LOCATION
+  COVERAGE
+  COMPANY
+  OTHER
+}
+
+/// Who opened (or closed) a fix item: an operator, or a nightly value check.
+enum FixSource {
+  MANUAL
+  CHECK
+}
+
+/// One post-ACTIVE fix, open until resolved. The cohort score
+/// (src/lib/fixScore.ts) counts these per site in the 14 days after activeAt.
+model FixItem {
+  id         String     @id @default(cuid())
+  siteId     String
+  site       Site       @relation(fields: [siteId], references: [id], onDelete: Cascade)
+  field      FixField
+  source     FixSource
+  /// The check code (CHECK), or the operator's short label (MANUAL).
+  code       String
+  detail     String?
+  /// The jobs a check named, when it named any.
+  jobIds     Json?
+  openedAt   DateTime   @default(now())
+  resolvedAt DateTime?
+  /// CHECK when a check's code vanished (worker/lib/fixQueuePlan.ts); MANUAL
+  /// when an operator resolved it. A MANUAL item is never closed by a check.
+  resolvedBy FixSource?
+  minutes    Int?
+  operator   String?
+  note       String?
+
+  @@index([siteId, resolvedAt])
 }
 
 model Job {

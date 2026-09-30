@@ -61,7 +61,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const site = await createSite(parsed.data.siteUrl);
+    const site = await createSite(parsed.data.siteUrl, { onboardingSkill: parsed.data.onboardingSkill });
     return successResponse(site, 201);
   } catch (error) {
     return formatErrorResponse(error);

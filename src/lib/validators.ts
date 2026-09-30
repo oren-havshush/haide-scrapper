@@ -29,6 +29,11 @@ function hasControlCharacter(s: string): boolean {
 
 export const createSiteSchema = z.object({
   siteUrl: z.url(),
+  /**
+   * The onboarding skill's cohort tag (addsite2 phase two, step 1a). Set by
+   * addsite3 only; absent means addsite2 or older, stored as NULL.
+   */
+  onboardingSkill: z.string().min(1).max(64).optional(),
 });
 
 export const updateSiteSchema = z.object({

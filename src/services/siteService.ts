@@ -25,13 +25,14 @@ const STATUS_TIMESTAMP_MAP: Record<string, string> = {
   SKIPPED: "skippedAt",
 };
 
-export async function createSite(siteUrl: string) {
+export async function createSite(siteUrl: string, opts: { onboardingSkill?: string } = {}) {
   try {
     const site = await prisma.site.create({
       data: {
         siteUrl,
         status: "ANALYZING",
         analyzingAt: new Date(),
+        onboardingSkill: opts.onboardingSkill ?? null,
       },
     });
 
