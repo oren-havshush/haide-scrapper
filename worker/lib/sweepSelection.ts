@@ -49,6 +49,14 @@ export const HARD_FAILURE_CATEGORIES = ["timeout", "other"] as const;
  */
 export const SUSPICIOUS_DROP = "suspicious_drop";
 
+/**
+ * The fill guard's refusal (scheduledRun.ts isFieldFillDrop): the count held,
+ * a field's text did not, and nothing was written. The same outcome as a
+ * refused count drop — a decision with the listings kept — and the report
+ * tells the two apart by category.
+ */
+export const FIELD_FILL_DROP = "field_fill_drop";
+
 export type Outcome = "success" | "hard_failure" | "soft_failure" | "suspicious_drop" | "other";
 
 export function classifyOutcome(run: {
@@ -56,7 +64,7 @@ export function classifyOutcome(run: {
   failureCategory: string | null;
 }): Outcome {
   if (isSuccessfulRun(run)) return "success";
-  if (run.failureCategory === SUSPICIOUS_DROP) return "suspicious_drop";
+  if (run.failureCategory === SUSPICIOUS_DROP || run.failureCategory === FIELD_FILL_DROP) return "suspicious_drop";
   if (
     run.status === "FAILED" &&
     run.failureCategory != null &&

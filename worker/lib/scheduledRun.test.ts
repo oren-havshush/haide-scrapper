@@ -13,9 +13,11 @@
 import {
   ACTIVATION_GATE_NOTE_PREFIX,
   DEFAULT_DROP_THRESHOLDS,
+  FIELD_FILL_THRESHOLD,
   INSERT_BATCH,
   MAX_ROWS,
   chunkRows,
+  isFieldFillDrop,
   isSuspiciousDrop,
   mayOverwriteAdminNote,
   planActivationGate,
@@ -365,6 +367,52 @@ check("readDetailMode", () => {
   assert(readDetailMode(null) === "full", "no payload is full");
   assert(readDetailMode(undefined) === "full", "nor is an absent one");
   assert(readDetailMode([{ scheduled: true, detailMode: "incremental" }]) === "full", "an array is not a payload");
+});
+
+// ---------------------------------------------------------------------------
+// field_fill_drop — the count holds but the text is gone
+// ---------------------------------------------------------------------------
+//
+// 2026-09-30: personetics' 12 per-job fetches all failed with
+// ERR_HTTP2_PROTOCOL_ERROR, and the scheduled run committed 12 rows with no
+// description over 12 that had one. The count guard cannot see that — 12 -> 12.
+// Description fill falling from at or above the activation gate's 60% to below
+// it is refused, and the stored rows are kept.
+
+check("field_fill_drop", () => {
+  assert(FIELD_FILL_THRESHOLD === 0.6, `the threshold is the activation gate's 60% (got ${FIELD_FILL_THRESHOLD})`);
+
+  const fill = (pf: number, pt: number, nf: number, nt: number) => ({
+    description: { previous: { filled: pf, total: pt }, next: { filled: nf, total: nt } },
+  });
+  const plan = (rows: number, prev: number, f?: ReturnType<typeof fill>) =>
+    planScheduledPersist(rows, prev, DEFAULT_DROP_THRESHOLDS, { paginationTruncated: false }, f);
+
+  const pers = plan(12, 12, fill(12, 12, 0, 12));
+  assert(pers.mode === "field_fill_drop", `personetics, 12/12 -> 0/12, is refused (got ${pers.mode})`);
+  if (pers.mode === "field_fill_drop") {
+    assert(pers.field === "description", "naming the field");
+    assert(pers.previousFill === 1 && pers.newFill === 0, `with both fills (${pers.previousFill} -> ${pers.newFill})`);
+    assert(pers.rowCount === 12 && pers.previousCount === 12, "and both counts");
+  }
+
+  assert(plan(10, 10, fill(6, 10, 5, 10)).mode === "field_fill_drop", "60% -> 50% crosses the bar and is refused");
+  assert(plan(10, 10, fill(6, 10, 6, 10)).mode === "commit", "60% -> 60% stays on it and commits");
+  assert(plan(10, 10, fill(10, 10, 6, 10)).mode === "commit", "100% -> 60% is a fall, but not below the bar");
+  assert(plan(10, 10, fill(5, 10, 0, 10)).mode === "commit", "a site already below 60% never met the bar: commits");
+  assert(plan(5, 0, fill(0, 0, 0, 5)).mode === "commit", "nothing stored, nothing to protect: commits");
+  assert(plan(12, 12).mode === "commit", "no fill given (the manual shape) commits as before");
+  assert(plan(12, 12, fill(12, 12, 0, 0)).mode === "commit", "no new rows to measure is not a fill verdict");
+
+  assert(
+    plan(8, 433, fill(433, 433, 0, 8)).mode === "suspicious_drop",
+    "a count refusal comes first — the report names the bigger fault",
+  );
+  assert(plan(MAX_ROWS + 1, 12, fill(12, 12, 0, MAX_ROWS + 1)).mode === "oversize", "so does the cap");
+
+  assert(isFieldFillDrop({ filled: 12, total: 12 }, { filled: 0, total: 12 }), "isFieldFillDrop: the personetics shape");
+  assert(!isFieldFillDrop({ filled: 0, total: 0 }, { filled: 0, total: 12 }), "isFieldFillDrop: nothing stored");
+  assert(!isFieldFillDrop({ filled: 12, total: 12 }, { filled: 0, total: 0 }), "isFieldFillDrop: nothing new");
 });
 
 if (failures > 0) {

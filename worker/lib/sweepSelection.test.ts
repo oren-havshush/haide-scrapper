@@ -118,6 +118,14 @@ assert(
   );
   assert(!isSuccessfulRun(refused), "and never a success — the site stays due tomorrow");
   assert(classifyOutcome(refused) !== "hard_failure", "nor a hard failure — it is a decision, not a fault");
+
+  // The fill guard's refusal: the same kind of decision, listings kept.
+  const fillDrop = { status: "FAILED", failureCategory: "field_fill_drop" };
+  assert(
+    classifyOutcome(fillDrop) === "suspicious_drop",
+    `a refused fill drop is a refusal too, not "other" (got ${classifyOutcome(fillDrop)})`,
+  );
+  assert(!isSuccessfulRun(fillDrop), "and never a success — the site stays due tomorrow");
 }
 
 // ---------------------------------------------------------------------------

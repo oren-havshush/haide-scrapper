@@ -389,6 +389,37 @@ check("a refused drop is named with both counts", () => {
   );
 });
 
+check("a refused fill drop has its own line", () => {
+  // personetics, 2026-09-30: 12 -> 12, every description lost to HTTP/2 errors.
+  const refused = item({
+    siteId: "p",
+    siteUrl: "https://personetics.test",
+    outcome: "suspicious_drop",
+    failureCategory: "field_fill_drop",
+    jobsBefore: 12,
+    jobsAfter: 12,
+    scrapedCount: 12,
+    warnings: ["field_fill_drop: description fill fell 100% -> 0% (0 of 12 scraped, 12 of 12 stored)"],
+  });
+  const lines = needsAttention(sweep(), [refused]);
+  assert(lines.length === 1, "a refused fill drop needs attention");
+  assert(
+    lines[0]?.why ===
+      "description fill fell 100% -> 0% (0 of 12 scraped, 12 of 12 stored) — nothing written, 12 listing(s) kept",
+    `named as a fill drop with both fills (got "${lines[0]?.why}")`,
+  );
+  assert(!(lines[0]?.why ?? "").includes("suspicious drop refused"), "not as a count drop, which it is not");
+  const c = computeCounters(sweep(), [refused]);
+  assert(c.ok === 0 && c.failed === 0 && c.silentDrift === 0, "not ok, not a hard failure, not drift");
+  assert(c.listingsProtected === 1, "and it protected the site's listings");
+
+  const bare = needsAttention(sweep(), [{ ...refused, warnings: [] }]);
+  assert(
+    bare[0]?.why === "description fill fell below 60% — nothing written, 12 listing(s) kept",
+    `without its warning it is still named for what it is (got "${bare[0]?.why}")`,
+  );
+});
+
 check("a committed drop is named", () => {
   // What maccabi4u looked like before the guard: success, 433 -> 8.
   const committed = item({ siteId: "c", siteUrl: "https://committed.test", jobsBefore: 433, jobsAfter: 8 });

@@ -36,6 +36,7 @@ import {
 } from "../lib/listingTargets";
 import {
   ACTIVATION_GATE_NOTE_PREFIX,
+  FIELD_FILL_THRESHOLD,
   INSERT_BATCH,
   TX_MAX_WAIT_MS,
   TX_TIMEOUT_MS,
@@ -2563,7 +2564,8 @@ function getFormCaptureConfig(
  */
 const ACTIVATION_THRESHOLDS = {
   title: 0.8,
-  description: 0.6,
+  // Shared with the scheduled fill guard (scheduledRun.ts isFieldFillDrop).
+  description: FIELD_FILL_THRESHOLD,
   externalJobId: 0.9,
 } as const;
 
@@ -4420,11 +4422,22 @@ async function executeScrape(
     // one site at a time and an operator's manual scrape of the same site is
     // refused while this run is active, so nothing else writes these rows now.
     const previousCount = await prisma.job.count({ where: { siteId: site.id } });
+    // Description fill, stored and new, for the fill guard (isFieldFillDrop).
+    // Whitespace-only counts as empty on both sides, as in the activation gate.
+    const previousDescribed = await prisma.job.count({
+      where: { siteId: site.id, description: { not: null }, NOT: { description: "" } },
+    });
+    const newDescribed = rows.filter((r) => typeof r.description === "string" && r.description.trim().length > 0).length;
     const plan = planScheduledPersist(rows.length, previousCount, {
       minPrevious: sweepConfig.dropMinPrevious,
       keepRatio: sweepConfig.dropKeepRatio,
     }, {
       paginationTruncated: isPaginationTruncated(runMode.walks, previousCount),
+    }, {
+      description: {
+        previous: { filled: previousDescribed, total: previousCount },
+        next: { filled: newDescribed, total: rows.length },
+      },
     });
 
     if (plan.mode === "oversize") {
@@ -4468,6 +4481,26 @@ async function executeScrape(
         failureCategory: "suspicious_drop",
         scheduled,
         counts: { totalJobs: validatedRecords.length, validJobs: plan.rowCount, invalidJobs: invalidCount },
+      });
+    }
+
+    if (plan.mode === "field_fill_drop") {
+      // The count held and the text did not (worker/lib/scheduledRun.ts
+      // isFieldFillDrop) — personetics, 2026-09-30, every per-job fetch lost to
+      // an HTTP/2 error. Refuse, keep the described rows, and put both fills on
+      // the run's warnings so the report can name them.
+      const pct = (f: number) => `${Math.round(f * 100)}%`;
+      const fills =
+        `${plan.field} fill fell ${pct(plan.previousFill)} -> ${pct(plan.newFill)} ` +
+        `(${plan.next.filled} of ${plan.next.total} scraped, ${plan.previous.filled} of ${plan.previous.total} stored)`;
+      const message = `Refusing to replace ${plan.previousCount} listings: ${fills}, previous listings left untouched`;
+      console.error(`[scrape] ${message}`);
+      return await failScrapeRun(scrapeRunId, site.id, {
+        error: message,
+        failureCategory: "field_fill_drop",
+        scheduled,
+        counts: { totalJobs: validatedRecords.length, validJobs: plan.rowCount, invalidJobs: invalidCount },
+        warnings: [`field_fill_drop: ${fills}`],
       });
     }
 
@@ -4919,6 +4952,8 @@ async function failScrapeRun(
      * left as they are.
      */
     counts?: { totalJobs: number; validJobs: number; invalidJobs: number };
+    /** Written to ScrapeRun.warnings, for the sweep report (field_fill_drop). */
+    warnings?: string[];
   },
 ): Promise<ScrapeResult> {
   const decision = planScrapeFailure({ scheduled: details.scheduled });
@@ -4936,6 +4971,7 @@ async function failScrapeRun(
         failureCategory: details.failureCategory,
         completedAt: new Date(),
         ...(details.counts ?? {}),
+        ...(details.warnings && details.warnings.length > 0 ? { warnings: details.warnings } : {}),
       },
     });
 

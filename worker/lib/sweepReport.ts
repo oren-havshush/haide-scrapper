@@ -11,8 +11,9 @@
 // wouldHavePromoted and listingsProtected — the three numbers that say what the
 // gate saved, silently absent from exactly the nights something went wrong.
 
-import { DEFAULT_DROP_THRESHOLDS, isSuspiciousDrop, type DropThresholds } from "./scheduledRun";
+import { DEFAULT_DROP_THRESHOLDS, FIELD_FILL_THRESHOLD, isSuspiciousDrop, type DropThresholds } from "./scheduledRun";
 import { LISTING_SOFT_CATEGORIES } from "./listingTargets";
+import { FIELD_FILL_DROP } from "./sweepSelection";
 
 /**
  * A multi-page site that refused to publish a partial set. Soft, like drift,
@@ -413,7 +414,15 @@ export function needsAttention(
         `silent drift (${i.failureCategory ?? "unknown"}): ${i.jobsAfter} listing(s) on the site, newest ${newest}`,
       );
     }
-    if (i.outcome === "suspicious_drop") {
+    if (i.outcome === "suspicious_drop" && i.failureCategory === FIELD_FILL_DROP) {
+      // The count held and the text did not (scheduledRun.ts isFieldFillDrop).
+      // The run's warning carries both fills; without it, still say what it is.
+      const w = (i.warnings ?? []).map(String).find((x) => x.startsWith(`${FIELD_FILL_DROP}:`));
+      const what = w
+        ? w.slice(w.indexOf(":") + 1).trim()
+        : `description fill fell below ${Math.round(FIELD_FILL_THRESHOLD * 100)}%`;
+      add(i, `${what} — nothing written, ${i.jobsAfter} listing(s) kept`);
+    } else if (i.outcome === "suspicious_drop") {
       add(
         i,
         `suspicious drop refused: scraped ${i.scrapedCount ?? "?"}, had ${i.jobsBefore} — ` +

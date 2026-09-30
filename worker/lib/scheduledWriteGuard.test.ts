@@ -238,6 +238,28 @@ assert(
   "and the catch block defers to the transaction too — the belt to the handler's braces",
 );
 
+{
+  // field_fill_drop (scheduledRun.ts) protects nothing unless the scheduled
+  // branch measures both fills, hands them to the plan, and refuses on the new
+  // mode before the transaction can open.
+  const call = src.indexOf("planScheduledPersist(rows.length");
+  const callText = call >= 0 ? src.slice(call, src.indexOf("});", call) + 3) : "";
+  assert(callText.length > 0, "the scheduled branch calls planScheduledPersist");
+  assert(/description:\s*\{\s*previous:/.test(callText), `and passes the description fill (${callText.slice(0, 80)}…)`);
+  const refuse = src.indexOf('plan.mode === "field_fill_drop"');
+  const commit = src.indexOf("beginCommit(runMode.abort");
+  assert(refuse > call && refuse < commit, "field_fill_drop is refused before the commit window opens");
+  const branch = refuse >= 0 ? src.slice(refuse, src.indexOf("\n    }\n", refuse)) : "";
+  assert(branch.includes('failureCategory: "field_fill_drop"'), "under its own category");
+  assert(branch.includes("failScrapeRun("), "through failScrapeRun, which keeps a scheduled run's listings");
+  assert(/warnings:\s*\[/.test(branch), "with a warning carrying both fills, for the report");
+  assert(GATED.failScrapeRun.includes("warnings"), "and failScrapeRun writes that warning to the run");
+  assert(
+    /description:\s*FIELD_FILL_THRESHOLD/.test(src),
+    "the activation gate and the fill guard share one 60%, so they cannot drift apart",
+  );
+}
+
 if (failures > 0) {
   console.error(`\n${failures} assertion(s) failed`);
   process.exit(1);

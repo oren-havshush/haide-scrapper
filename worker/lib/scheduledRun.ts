@@ -99,6 +99,37 @@ export function isSuspiciousDrop(
   return previousCount >= thresholds.minPrevious && newCount < previousCount * thresholds.keepRatio;
 }
 
+/**
+ * The activation gate's description threshold (decideActivationStatus in
+ * worker/jobs/scrape.ts reads it from here), and the line the fill guard below
+ * will not let a scheduled run cross downwards.
+ */
+export const FIELD_FILL_THRESHOLD = 0.6;
+
+/** How many rows carry a non-empty value for a field, out of how many. */
+export type FillCount = { filled: number; total: number };
+
+/**
+ * A field that was filled at or above the threshold on the stored rows and is
+ * below it on the rows this run would write.
+ *
+ * 2026-09-30: personetics' 12 per-job fetches all failed with
+ * ERR_HTTP2_PROTOCOL_ERROR, and the scheduled run replaced 12 described rows
+ * with 12 bare ones. The count guard cannot see that — 12 -> 12. Crossing the
+ * line is what the activation gate would demote the site for, so an unattended
+ * run does not publish it; a site that was below the line already is not made
+ * worse by staying there. Nothing stored, or nothing new to measure, is no
+ * verdict at all.
+ */
+export function isFieldFillDrop(
+  previous: FillCount,
+  next: FillCount,
+  threshold: number = FIELD_FILL_THRESHOLD,
+): boolean {
+  if (previous.total <= 0 || next.total <= 0) return false;
+  return previous.filled / previous.total >= threshold && next.filled / next.total < threshold;
+}
+
 export type PersistPlan =
   /** Nothing to write. Reported as `empty_results`; listings are left alone. */
   | { mode: "empty" }
@@ -116,6 +147,21 @@ export type PersistPlan =
       previousCount: number;
       thresholds: DropThresholds;
     }
+  /**
+   * The count held but a field's fill fell through FIELD_FILL_THRESHOLD
+   * (isFieldFillDrop). Nothing is deleted and nothing written.
+   */
+  | {
+      mode: "field_fill_drop";
+      field: "description";
+      /** Fill as a fraction, 0..1. */
+      previousFill: number;
+      newFill: number;
+      previous: FillCount;
+      next: FillCount;
+      rowCount: number;
+      previousCount: number;
+    }
   /** Delete + insert in one transaction, in this many `createMany` batches. */
   | { mode: "commit"; rowCount: number; batches: number };
 
@@ -126,12 +172,16 @@ export type PersistPlan =
  *   page (isTruncatedWalk). Refused whatever the counts say — the unread pages'
  *   listings would be deleted, and 2026-09-24's 57 -> 30 cleared the ratio. A
  *   site with nothing stored loses nothing, so it still commits.
+ * @param fill           description fill of the stored rows and of the rows this
+ *   run would write (isFieldFillDrop). Judged after the count refusals, so a
+ *   433 -> 8 is reported as the drop it is. Omitted, nothing is judged.
  */
 export function planScheduledPersist(
   rowCount: number,
   previousCount: number,
   thresholds: DropThresholds = DEFAULT_DROP_THRESHOLDS,
   walk: { paginationTruncated: boolean } = { paginationTruncated: false },
+  fill?: { description: { previous: FillCount; next: FillCount } },
 ): PersistPlan {
   if (rowCount <= 0) return { mode: "empty" };
   if (rowCount > MAX_ROWS) return { mode: "oversize", rowCount, limit: MAX_ROWS };
@@ -140,6 +190,19 @@ export function planScheduledPersist(
   }
   if (isSuspiciousDrop(previousCount, rowCount, thresholds)) {
     return { mode: "suspicious_drop", reason: "ratio", rowCount, previousCount, thresholds };
+  }
+  if (fill && isFieldFillDrop(fill.description.previous, fill.description.next)) {
+    const { previous, next } = fill.description;
+    return {
+      mode: "field_fill_drop",
+      field: "description",
+      previousFill: previous.filled / previous.total,
+      newFill: next.filled / next.total,
+      previous,
+      next,
+      rowCount,
+      previousCount,
+    };
   }
   return { mode: "commit", rowCount, batches: Math.ceil(rowCount / INSERT_BATCH) };
 }
