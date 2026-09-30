@@ -9,6 +9,7 @@ import {
 import { isCanonicalLocation, isRegionLocation, normalizeLocations } from "@/lib/locations";
 import { buildScrapeJobRow } from "@/lib/scrapeJobRow";
 import { findListingRunsBySiteIds } from "@/lib/listingRun";
+import { markFirstActive } from "@/lib/firstDates";
 import type { PaginationParams } from "@/lib/types";
 import type { SiteStatus } from "@/generated/prisma/enums";
 import { emitEvent } from "@/services/eventService";
@@ -247,6 +248,12 @@ export async function updateSiteStatus(siteId: string, newStatus: SiteStatus) {
       where: { id: siteId },
       data: updateData,
     });
+  }
+
+  // The first move to ACTIVE, kept once (step A): activeAt is rewritten by
+  // every later move, so the fix score's window is anchored on this.
+  if (newStatus === "ACTIVE") {
+    await markFirstActive(siteId, updatedSite.activeAt ?? new Date());
   }
 
   // Emit SSE event for status change

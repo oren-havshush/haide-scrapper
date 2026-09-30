@@ -31,9 +31,14 @@ interface Job {
   applicationInfo: string | null;
   rawData: Record<string, string> | null;
   validationStatus: string | null;
+  /** When the row was written — every scrape re-creates rows, so: last seen. */
   createdAt: string;
+  /** Step A: carried from the previous row; null before the first night after deploy. */
+  firstSeenAt: string | null;
   site: JobSite;
 }
+
+const fmtDay = (iso: string | null) => (iso ? new Date(iso).toLocaleDateString() : "—");
 
 interface JobsTableProps {
   jobs: Job[];
@@ -209,6 +214,10 @@ function ExpandedDetail({ job }: { job: Job }) {
 
   return (
     <div className="px-4 py-3 space-y-3 bg-[#0a0a0a] border-t border-[#27272a]">
+      <div className="flex gap-6 text-xs text-[#a1a1aa]">
+        <span>First seen: {fmtDay(job.firstSeenAt)}</span>
+        <span>Last seen: {fmtDay(job.createdAt)}</span>
+      </div>
       <DetailSection label="Description" value={job.description} />
       <DetailSection label="Requirements / Skills" value={job.requirements} />
       <DetailSection label="Department" value={job.department} />
@@ -389,7 +398,8 @@ export function JobsTable({
             <TableHead className="w-[160px]">Location</TableHead>
             <TableHead className="w-[120px]">Job ID</TableHead>
             <TableHead className="w-[140px]">Site</TableHead>
-            <TableHead className="w-[100px]">Scraped</TableHead>
+            <TableHead className="w-[100px]">First seen</TableHead>
+            <TableHead className="w-[100px]">Last seen</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -432,12 +442,15 @@ export function JobsTable({
                     </Link>
                   </TableCell>
                   <TableCell className="text-sm" style={{ color: "#a1a1aa" }}>
-                    {new Date(job.createdAt).toLocaleDateString()}
+                    {fmtDay(job.firstSeenAt)}
+                  </TableCell>
+                  <TableCell className="text-sm" style={{ color: "#a1a1aa" }}>
+                    {fmtDay(job.createdAt)}
                   </TableCell>
                 </TableRow>
                 {isExpanded && (
                   <TableRow key={`${job.id}-detail`}>
-                    <TableCell colSpan={6} className="p-0">
+                    <TableCell colSpan={7} className="p-0">
                       <ExpandedDetail job={job} />
                     </TableCell>
                   </TableRow>

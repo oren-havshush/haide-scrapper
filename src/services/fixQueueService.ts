@@ -17,6 +17,7 @@ const siteSelect = {
   status: true,
   createdAt: true,
   activeAt: true,
+  firstActiveAt: true,
   onboardingSkill: true,
 } as const;
 

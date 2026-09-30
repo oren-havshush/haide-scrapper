@@ -35,6 +35,12 @@ export type ScoreSite = {
   status: string;
   createdAt: Date;
   activeAt: Date | null;
+  /**
+   * Step A: the first move to ACTIVE, written once and never again. activeAt
+   * is rewritten by every fix that sets the site ACTIVE, so a window on it
+   * restarted at each fix. Absent or null falls back to activeAt.
+   */
+  firstActiveAt?: Date | null;
   onboardingSkill: string | null;
 };
 
@@ -121,6 +127,11 @@ export type ScoreReport = {
   comparableCheckCodes: string[];
 };
 
+/** Where a site's window starts: its first move to ACTIVE, else its latest. */
+function windowAnchor(site: ScoreSite): Date | null {
+  return site.firstActiveAt ?? site.activeAt;
+}
+
 export function cohortOf(site: ScoreSite, bounds: CohortBounds): Cohort {
   if (site.onboardingSkill === "addsite3") return "test";
   if (site.onboardingSkill != null) return "none";
@@ -143,7 +154,7 @@ export function scoreSite(
   },
 ): SiteScore {
   const days = opts.days ?? FIX_WINDOW_DAYS;
-  const start = site.activeAt?.getTime() ?? null;
+  const start = windowAnchor(site)?.getTime() ?? null;
   const end = start === null ? null : start + days * DAY_MS;
   const inWindow = (i: ScoreItem) =>
     start !== null && end !== null && i.siteId === site.id && i.openedAt.getTime() >= start && i.openedAt.getTime() < end;
@@ -201,7 +212,7 @@ export function scoreCohorts(
 
   // A code compares only if it was live before the earliest scored window
   // opened — then it was live for every window of both cohorts.
-  const starts = scored.map((s) => s.activeAt?.getTime()).filter((t): t is number => typeof t === "number");
+  const starts = scored.map((s) => windowAnchor(s)?.getTime()).filter((t): t is number => typeof t === "number");
   const earliest = starts.length ? Math.min(...starts) : null;
   const comparableCheckCodes = Object.entries(opts.checkCodeLiveFrom ?? {})
     .filter(([, liveFrom]) => earliest !== null && liveFrom.getTime() <= earliest)

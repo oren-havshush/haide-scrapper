@@ -62,6 +62,8 @@ interface Site {
   fieldMappings: Record<string, unknown> | null;
   adminNote: string | null;
   createdAt: string;
+  /** Step A: the first completed scrape, written once. */
+  firstScrapedAt: string | null;
   latestScrapeRun: LatestScrapeRun | null;
   listingRun: ListingRun | null;
   scrapingPolicyStatus: PolicyStatusValue;
@@ -464,6 +466,8 @@ export function SitesTable({
             >
               Date Added <SortIndicator column="createdAt" sortBy={sortBy} sortOrder={sortOrder} />
             </TableHead>
+            <TableHead className="w-[120px]">First scraped</TableHead>
+            <TableHead className="w-[120px]">Last scraped</TableHead>
             <TableHead className="w-[220px]">Note</TableHead>
             <TableHead className="w-[220px]">Policy Review</TableHead>
             <TableHead className="w-[200px]">Actions</TableHead>
@@ -613,6 +617,13 @@ export function SitesTable({
                 </TableCell>
                 <TableCell className="text-sm" style={{ color: "#a1a1aa" }}>
                   {new Date(site.createdAt).toLocaleString([], { month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" })}
+                </TableCell>
+                <TableCell className="text-sm" style={{ color: "#a1a1aa" }}>
+                  {site.firstScrapedAt ? new Date(site.firstScrapedAt).toLocaleDateString() : "—"}
+                </TableCell>
+                <TableCell className="text-sm" style={{ color: "#a1a1aa" }}>
+                  {/* The run the site is publishing (src/lib/listingRun.ts). */}
+                  {site.listingRun?.completedAt ? new Date(site.listingRun.completedAt).toLocaleDateString() : "—"}
                 </TableCell>
                 <TableCell>
                   <button

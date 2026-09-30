@@ -217,6 +217,30 @@ eq(FIX_WINDOW_DAYS, 14, "the window is fourteen days");
   eq([plainCheck.items, plainCheck.minutes], [0, 0], "a nightly check's item is still not in the primary score");
 }
 
+// --- step A: the window is anchored on firstActiveAt --------------------------
+// A fix sets the site ACTIVE again, which rewrites activeAt. Anchored on
+// activeAt, the window restarted at every fix and the fix's own item fell
+// before it (kahane, 2026-09-30). firstActiveAt is written once and never again.
+{
+  const first = D("2026-10-06T08:00:00Z");
+  const fixedAt = D("2026-10-09T08:00:00Z");
+  const s = site({ firstActiveAt: first, activeAt: new Date(fixedAt.getTime() + 2 * 60_000) });
+  const fixItem = item({ source: "CHECK", code: "auto:PUT /api/sites/[id]/config", field: "COVERAGE", openedAt: fixedAt, minutes: 2, minutesEstimated: true });
+  const r = scoreSite(s, [fixItem], { now: NOW, bounds });
+  eq(r.windowStart?.toISOString(), first.toISOString(), "the window starts at firstActiveAt, not the latest activeAt");
+  eq([r.items, r.minutes], [1, 2], "so the item the fix itself opened is counted");
+  const legacy = scoreSite(site({ firstActiveAt: null }), [], { now: NOW, bounds });
+  eq(legacy.windowStart?.toISOString(), D("2026-10-06T08:00:00Z").toISOString(), "a site without firstActiveAt falls back to activeAt");
+
+  const late = site({ id: "t", siteUrl: "https://t.test", onboardingSkill: "addsite3", createdAt: D("2026-11-10T00:00:00Z"), firstActiveAt: D("2026-09-01T00:00:00Z"), activeAt: D("2026-11-11T00:00:00Z") });
+  const rep = scoreCohorts([late], [], {
+    now: NOW,
+    bounds,
+    checkCodeLiveFrom: { apply_replay_token: D("2026-10-01T00:00:00Z") },
+  });
+  eq(rep.comparableCheckCodes, [], "the comparable-code cut-off uses firstActiveAt too");
+}
+
 // --- cohort summaries: median minutes, mean items, over complete windows ------
 {
   const mk = (id: string, day: number) =>

@@ -146,6 +146,13 @@ model Site {
   /// so a later skill name needs no migration.
   onboardingSkill String?
 
+  /// The first move to ACTIVE (step A). Written once, where NULL, and never
+  /// again: activeAt is rewritten by every later move to ACTIVE, so the fix
+  /// score's 14-day window is anchored here. src/lib/firstDates.ts.
+  firstActiveAt DateTime?
+  /// The first completed scrape that wrote jobs (step A). Written once.
+  firstScrapedAt DateTime?
+
   fixItems FixItem[]
   apiCalls SiteApiCall[]
 }
@@ -245,6 +252,11 @@ model Job {
   scrapeRunId      String
   scrapeRun        ScrapeRun @relation(fields: [scrapeRunId], references: [id])
   createdAt        DateTime  @default(now())
+  /// When this job was first seen (step A). Every scrape re-creates the rows,
+  /// so createdAt is when it was LAST seen; this is carried from the previous
+  /// row with the same identity (worker/lib/firstSeen.ts). Nullable and
+  /// additive: the public site reads this table directly.
+  firstSeenAt      DateTime?
 
   @@index([siteId])
   @@index([scrapeRunId])

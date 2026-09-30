@@ -1,4 +1,6 @@
 import { prisma } from "../../src/lib/prisma";
+import { markFirstActive, markFirstScraped } from "../../src/lib/firstDates";
+import { firstSeenFor } from "../lib/firstSeen";
 import type { WorkerJob, Site } from "../../src/generated/prisma/client";
 import { Prisma } from "../../src/generated/prisma/client";
 import { launchBrowser, createPage, closeBrowser, type BrowserOverrides } from "../lib/playwright";
@@ -3016,6 +3018,8 @@ function buildJobRows(args: {
   previousLocations: Map<string, PreviousLocation>;
   siteId: string;
   scrapeRunId: string;
+  /** This run's time: firstSeenAt for a job never seen before. */
+  seenAt: Date;
 }): Prisma.JobCreateManyInput[] {
   return args.records.map(({ normalized, validation }, idx) => {
     // Deliberately the EXTRACTED id, not the synthesised one, so a manual
@@ -3063,6 +3067,9 @@ function buildJobRows(args: {
           : validation.status,
       siteId: args.siteId,
       scrapeRunId: args.scrapeRunId,
+      // Carried from the previous row with the same identity (the `previous`
+      // lookup above); now only for a job never seen before.
+      firstSeenAt: firstSeenFor(previous, args.seenAt),
     };
   });
 }
@@ -3117,14 +3124,19 @@ async function applyActivationGate(args: {
   // every run. A note the gate wrote itself is fair game; a human's is not.
   const writeNote = gate.status === "REVIEW" && mayOverwriteAdminNote(current?.adminNote);
 
+  const gateAt = new Date();
   await prisma.site.update({
     where: { id: args.siteId },
     data: {
       status: gate.status,
-      ...(gate.status === "ACTIVE" ? { activeAt: new Date() } : {}),
+      ...(gate.status === "ACTIVE" ? { activeAt: gateAt } : {}),
       ...(writeNote ? { adminNote: `${ACTIVATION_GATE_NOTE_PREFIX}${gate.reason}` } : {}),
     },
   });
+  // The first move to ACTIVE, kept once (step A; src/lib/firstDates.ts).
+  if (gate.status === "ACTIVE") {
+    await markFirstActive(args.siteId, gateAt);
+  }
 
   if (gate.status === "REVIEW") {
     console.warn(`[scrape] activation gate REVIEW for ${args.siteId} (${args.label}): ${gate.reason}`);
@@ -3604,12 +3616,12 @@ async function readPreviousLocations(siteId: string): Promise<Map<string, Previo
   try {
     const rows = await prisma.job.findMany({
       where: { siteId },
-      select: { externalJobId: true, detailUrl: true, location: true, locations: true },
+      select: { externalJobId: true, detailUrl: true, location: true, locations: true, firstSeenAt: true },
     });
     const out = new Map<string, PreviousLocation>();
     const ambiguous = new Set<string>();
     for (const r of rows) {
-      const value: PreviousLocation = { location: r.location ?? "", locations: r.locations };
+      const value: PreviousLocation = { location: r.location ?? "", locations: r.locations, firstSeenAt: r.firstSeenAt };
       for (const key of [r.externalJobId, r.detailUrl]) {
         if (!key) continue;
         if (out.has(key)) ambiguous.add(key);
@@ -4429,6 +4441,7 @@ async function executeScrape(
     previousLocations,
     siteId: site.id,
     scrapeRunId,
+    seenAt: new Date(),
   });
 
   let savedCount = 0;
@@ -4652,6 +4665,10 @@ async function executeScrape(
       );
     }
   }
+
+  // Both paths have written every row and closed the run COMPLETED: the site's
+  // first completed scrape, kept once (step A; src/lib/firstDates.ts).
+  await markFirstScraped(site.id, new Date());
 
   const gate = await applyActivationGate({
     siteId: site.id,

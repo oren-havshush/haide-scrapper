@@ -21,6 +21,8 @@ import { isCanonicalLocation, normalizeLocations } from "./locationNormalize";
 export type PreviousLocation = {
   location: string;
   locations: readonly string[];
+  /** The previous row's firstSeenAt, carried by buildJobRows (worker/lib/firstSeen.ts). */
+  firstSeenAt?: Date | null;
 };
 
 export type JobLocationInput = {
