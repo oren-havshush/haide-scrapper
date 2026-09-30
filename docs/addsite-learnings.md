@@ -4056,3 +4056,22 @@
   (LRN-APPLY-7). Record the field mapping and the client-only fields (consent checkbox) in `adminNote`.
 - **Generalizes to:** any form whose file input lacks a `name`, or whose submit button calls
   `preventDefault` — Shopify themes most often, since the native contact form cannot accept files.
+
+---
+
+## LRN-APPLY-12 — on a form-apply site, an `applicationInfo` mapping DISPLACES the captured form
+
+- **Date / site:** 2026-09-29 · pharma-job.co.il/jobs (`cmums2362000u01qu6hz4r8el`), staffing agency on
+  WP Job Openings (AWSM), captcha-free CV-upload form captured statically (`formSelector` matches nothing
+  on the listing, LRN-APPLY-7).
+- **Signal:** following *Job body rules* 6, a group posting's "בבקשה לציין בקורות החיים מקום מגורים ומספר
+  המשרה המבוקש" line was injected as `.__ai-apply` and mapped to `applicationInfo`. After the scrape, 20
+  jobs had the form JSON in `applicationInfo` and the 2 track jobs had only the sentence. `rawData._formData`
+  still held the form on all 22, so `addsite-qa` reported `formStatus: CAPTURED` and nothing flagged it.
+- **Why:** `normalizer.ts` builds `applicationInfo = explicitAppInfo || rawFields._formData` — an explicit
+  mapping wins outright, it is not merged with the form blob.
+- **Fix:** on a site whose apply path is a captured form, do not map `applicationInfo`; leave the employer's
+  apply instruction in `description`. Rule 6's move to `applicationInfo` is for EMAIL apply (Step 5a),
+  where that field IS the apply path. Verify after the scrape: every job's `applicationInfo` starts with `{`.
+- **Generalizes to:** every site with `formCapture` whose ads also carry an apply instruction.
+  **Home:** `addsite2.md` *Job body rules* 6.

@@ -494,6 +494,36 @@ text lands in; they never rewrite the employer's words (publish content as-is).
    instruction for that email goes to `applicationInfo` with the job's number (Step 5a). On a
    staffing-agency board, the agency's own name/office/recruiter lines go too — but only lines
    proven to be the agency's; a number that may be the hiring company's stays (`LRN-SETUP-17`).
+7. **The printed job number leaves the title and the description** (owner, 2026-09-30). The
+   number already ships as the id.
+   - **Title:** when the page prints the job's number in its title (`… – משרה 18556`,
+     `מספר משרה 2905: …`, `… מס משרה 18444`, `… ( משרה 18531)`, `… - (JB-1234)`, `4907 - …`),
+     store the title without that phrase. Read the number for the id from the RAW title first,
+     then strip. Strip only the number phrase; the rest of the title is the employer's words and
+     stays as it is. Existing sites that print the number in the title already strip it (heara,
+     ono, mei-avivim, g-stat, fritz, renuar; on 2026-09-30 no stored title on 13 number-keyed
+     sites carried its number), and pharma-job does now. The nightly card fingerprint
+     (`worker/lib/detailPlan.ts`) hashes the title the config extracts, not the page's, so
+     stripping never makes a job look changed night to night.
+   - **Description:** a line that is only the number (`מס' משרה-1118` on enviro-services,
+     `משרה מספר 40` under the body on yazamco) is dropped. A sentence that merely mentions the
+     number stays.
+   - **Exception — the ad asks applicants to quote the number AND the apply path cannot tell the
+     jobs apart** (several jobs share one form post id, or one email address with no per-job tag).
+     Then the number must stay visible:
+     - email apply: in `applicationInfo`, with the ad's instruction (rule 6; heara, jafora, tuboul);
+     - form apply: one line at the end of `description`, in the ad's own wording — pharma-job's
+       tracks 18531/18548 end with `משרה 18531`, from the ad's `( משרה 18531)`. Never in
+       `applicationInfo`, which holds the captured form (`LRN-APPLY-12`). Say why in `adminNote`.
+
+     If the form itself sends the number, nothing is added: unitask-inc's form has a
+     `dynamicname` field labelled "מספר משרה". An ad that does not ask for the number gets no
+     line, even on a form site.
+   - **Open follow-up, not an onboarding call:** the database has no job-number field the public
+     site could show; the number lives only inside `externalJobId`, and not at all on a hash-keyed
+     job. Whether the public site shows the id at all was not checked (its code is not in this
+     repo). A dedicated field would make this exception unnecessary; that decision belongs to
+     whoever owns the schema and the public site.
 
 Recipe for a page that prints every job as one block of prose: setupScript §13, `LRN-SETUP-16`.
 

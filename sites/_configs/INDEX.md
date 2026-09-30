@@ -48,6 +48,7 @@ several listing pages back into one and stops publishing the rest.
 | On Line | ACTIVE | 4 | 857 | 1 | `oneline--dqdxkb` |
 | One Technologies | ACTIVE | 4 | 2733 | 1 | `one1--m39rer` |
 | Personetics | ACTIVE | 5 | 1426 | 1 | `personetics--ovj4kr` |
+| Pharma Job | ACTIVE | 8 | 7523 | 1 | `pharma-job--z4r8el` |
 | RISCO Group | ACTIVE | 6 | — | 1 | `riscogroup--y39afy` |
 | Rad | ACTIVE | 5 | 878 | 1 | `rad--ncqy5u` |
 | Rapyd | ACTIVE | 9 | — | 1 | `rapyd--udr6ty` |
