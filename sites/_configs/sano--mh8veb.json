@@ -1,9 +1,9 @@
 {
-  "_exportedAt": "2026-09-30T13:51:54.657Z",
+  "_exportedAt": "2026-09-30T14:23:25.166Z",
   "_note": "Mirror of the live config. The DB is authoritative; the worker never reads this file. setupScript lives alongside in <slug>.setup.js.",
   "id": "cmuo5u4i5000601qbsxmh8veb",
   "siteUrl": "https://www.sano.co.il/company/%d7%93%d7%a8%d7%95%d7%a9%d7%99%d7%9d-2/",
-  "companyName": "סנו מפעלי ברונוס בע\"מ",
+  "companyName": "סנו",
   "status": "ACTIVE",
   "setupScriptFile": "sano--mh8veb.setup.js",
   "pageFlow": [],
