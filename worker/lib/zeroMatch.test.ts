@@ -14,9 +14,12 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import {
+  WRONG_SCOPE_WARNING,
   ZERO_MATCH_WARNING,
   newExtractGuard,
   onExplicitZeroMatch,
+  onLikelyWrongScope,
+  scopeSuspectWarnings,
   zeroMatchRefusal,
 } from "./zeroMatch";
 
@@ -135,6 +138,60 @@ check("scrape.ts wires it where it counts", () => {
 check("the report says what happened", () => {
   const report = readFileSync(join(__dirname, "sweepReport.ts"), "utf8");
   assert(report.includes("item selector matched nothing"), "Needs attention names it");
+});
+
+// ---------------------------------------------------------------------------
+// A selector that looks wrongly scoped: never substituted on a scheduled run
+// ---------------------------------------------------------------------------
+//
+// When the configured item selector matches one node, or yields fewer rows than
+// nodes, the extractor runs auto-detect and — if auto-detect has more rows —
+// publishes auto-detect's rows instead. That is a guess, and unattended a guess
+// is not published: a scheduled run keeps the configured selector's rows and
+// warns with both counts. The manual path, with an operator watching, still
+// substitutes.
+
+const SCOPE = { selector: "body .cvs_wrapper", matched: 1, explicit: 1, auto: 12 };
+
+check("wrongly scoped: the decision", () => {
+  const sched = newExtractGuard(true);
+  assert(onLikelyWrongScope(sched, SCOPE) === "keep", "a scheduled run keeps the configured selector's rows");
+  const w = scopeSuspectWarnings(sched);
+  assert(w.length === 1, `and records one warning (${w.length})`);
+  assert(
+    w[0] ===
+      `${WRONG_SCOPE_WARNING}: body .cvs_wrapper matched 1 node(s); kept 1 configured row(s), auto-detect found 12 — not substituted`,
+    `carrying both counts (${w[0]})`,
+  );
+  onLikelyWrongScope(sched, SCOPE);
+  onLikelyWrongScope(sched, { ...SCOPE, explicit: 3, auto: 9 });
+  assert(scopeSuspectWarnings(sched).length === 1, "one warning per selector, however many pages repeat it");
+
+  const manual = newExtractGuard(false);
+  assert(onLikelyWrongScope(manual, SCOPE) === "substitute", "a manual run still substitutes");
+  assert(scopeSuspectWarnings(manual).length === 0, "and warns nothing");
+  assert(onLikelyWrongScope(null, SCOPE) === "substitute", "no guard (other callers) substitutes, as before");
+  assert(scopeSuspectWarnings(null).length === 0, "and has no warnings to give");
+});
+
+check("wrongly scoped: scrape.ts asks before substituting, and persists the warning", () => {
+  const strip = (s: string) => s.replace(/\/\*[\s\S]*?\*\//g, "").replace(/\/\/.*$/gm, "");
+  const src = strip(readFileSync(join(__dirname, "..", "jobs", "scrape.ts"), "utf8"));
+  const lines = src.split("\n");
+  const start = lines.findIndex((l) => /^(async )?function extractRawFieldsFromListingPageOnce\(/.test(l));
+  const end = lines.findIndex((l, i) => i > start && l === "}");
+  const once = start < 0 || end < 0 ? "" : lines.slice(start, end + 1).join("\n");
+  const flat = once.replace(/\s+/g, " ");
+  assert(
+    /if \(onLikelyWrongScope\(guard, scope\) === "substitute"\) \{ console\.info\(.*?\); return autoDeduped; \}/.test(flat),
+    "auto-detect's rows are returned only when onLikelyWrongScope says substitute",
+  );
+  const returns = flat.split("return autoDeduped;").length - 1;
+  assert(returns === 1, `and there is no other way out with them (${returns})`);
+  assert(
+    /scrapeWarnings\.push\(\.\.\.scopeSuspectWarnings\(runMode\.extract\)\)/.test(src),
+    "the warning is written to the run's warnings, where the sweep reads it",
+  );
 });
 
 // The report behaviour itself, on the item a refusal leaves behind.

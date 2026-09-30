@@ -420,6 +420,27 @@ check("a refused fill drop has its own line", () => {
   );
 });
 
+check("a selector kept although it looked wrongly scoped is named", () => {
+  // Scheduled runs no longer substitute auto-detected rows (zeroMatch.ts
+  // onLikelyWrongScope). The run succeeds on the configured selector's rows,
+  // so the only place anyone learns auto-detect saw more is this line.
+  const kept = item({
+    siteId: "w",
+    siteUrl: "https://scope.test",
+    warnings: [
+      "item_scope_suspect: body .cvs_wrapper matched 1 node(s); kept 1 configured row(s), auto-detect found 12 — not substituted",
+    ],
+  });
+  const lines = needsAttention(sweep(), [kept]);
+  assert(lines.length === 1, `it needs attention (${lines.length})`);
+  assert(
+    lines[0]?.why ===
+      "item selector may be scoped wrong: body .cvs_wrapper matched 1 node(s); kept 1 configured row(s), auto-detect found 12 — not substituted",
+    `with both counts (got "${lines[0]?.why}")`,
+  );
+  assert(computeCounters(sweep(), [kept]).ok === 1, "and it is still an ok run — its rows were written");
+});
+
 check("a committed drop is named", () => {
   // What maccabi4u looked like before the guard: success, 433 -> 8.
   const committed = item({ siteId: "c", siteUrl: "https://committed.test", jobsBefore: 433, jobsAfter: 8 });

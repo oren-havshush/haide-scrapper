@@ -17,7 +17,16 @@
 // message and category, but its run closes FAILED so the operator sees it did
 // not work — and nothing is written or deleted either way.
 
+//
+// A selector that matched but looks wrongly scoped — one node, or fewer rows
+// than nodes — is the other way auto-detect's rows get published: the
+// extractor runs auto-detect and substitutes its rows when it has more. On a
+// scheduled run that guess is not published either (onLikelyWrongScope): the
+// configured selector's rows are kept and the run warns with both counts. The
+// manual path still substitutes.
+
 export const ZERO_MATCH_WARNING = "item_selector_zero_match";
+export const WRONG_SCOPE_WARNING = "item_scope_suspect";
 
 /** Per run. `zeroMatch` records the selector that matched nothing, when refused. */
 export type ExtractGuard = {
@@ -25,10 +34,37 @@ export type ExtractGuard = {
   /** A scheduled run closes a refusal COMPLETED; a manual one FAILED. */
   scheduled: boolean;
   zeroMatch: string | null;
+  /** One warning per selector a scheduled run declined to swap for auto-detect. */
+  scopeSuspects: Map<string, string>;
 };
 
 export function newExtractGuard(scheduled: boolean): ExtractGuard {
-  return { noAutoDetect: true, scheduled, zeroMatch: null };
+  return { noAutoDetect: true, scheduled, zeroMatch: null, scopeSuspects: new Map() };
+}
+
+/**
+ * The explicit selector looked wrongly scoped and auto-detect found more rows.
+ * "keep" (and remember both counts) on a scheduled run; "substitute" on a
+ * manual one, or for a caller with no guard — today's behaviour.
+ */
+export function onLikelyWrongScope(
+  guard: ExtractGuard | null,
+  s: { selector: string; matched: number; explicit: number; auto: number },
+): "keep" | "substitute" {
+  if (!guard || !guard.scheduled) return "substitute";
+  if (!guard.scopeSuspects.has(s.selector)) {
+    guard.scopeSuspects.set(
+      s.selector,
+      `${WRONG_SCOPE_WARNING}: ${s.selector} matched ${s.matched} node(s); ` +
+        `kept ${s.explicit} configured row(s), auto-detect found ${s.auto} — not substituted`,
+    );
+  }
+  return "keep";
+}
+
+/** The run's wrongly-scoped warnings, for ScrapeRun.warnings. */
+export function scopeSuspectWarnings(guard: ExtractGuard | null): string[] {
+  return guard ? [...guard.scopeSuspects.values()] : [];
 }
 
 /**

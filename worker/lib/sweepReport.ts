@@ -467,6 +467,13 @@ export function needsAttention(
     // fingerprint tonight, so nothing was carried. The run says so itself
     // (detailPlan.fingerprintChurnWarning); carrying nothing for any other
     // reason — the first night, a full night, an ineligible site — is by design.
+    // A scheduled run kept its configured item selector although auto-detect
+    // found more rows (zeroMatch.ts onLikelyWrongScope). The run succeeded, so
+    // this line is the only place the two counts are seen.
+    for (const w of (i.warnings ?? []).map(String).filter((x) => x.startsWith("item_scope_suspect:"))) {
+      add(i, `item selector may be scoped wrong: ${w.slice(w.indexOf(":") + 1).trim()}`);
+    }
+
     const churn = (i.warnings ?? []).map(String).find((w) => w.startsWith("detail_fingerprint_churn:"));
     if (churn) add(i, `carry-forward is off: ${churn.slice(churn.indexOf(":") + 1).trim()}`);
 

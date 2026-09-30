@@ -3,7 +3,14 @@ import type { WorkerJob, Site } from "../../src/generated/prisma/client";
 import { Prisma } from "../../src/generated/prisma/client";
 import { launchBrowser, createPage, closeBrowser, type BrowserOverrides } from "../lib/playwright";
 import { beforeClickLoad, createPacer, pacePage, readRequestDelayMs } from "../lib/requestDelay";
-import { newExtractGuard, onExplicitZeroMatch, zeroMatchRefusal, type ExtractGuard } from "../lib/zeroMatch";
+import {
+  newExtractGuard,
+  onExplicitZeroMatch,
+  onLikelyWrongScope,
+  scopeSuspectWarnings,
+  zeroMatchRefusal,
+  type ExtractGuard,
+} from "../lib/zeroMatch";
 import {
   normalizeJobRecord,
   resolveMetaMinPublishDate,
@@ -1395,10 +1402,24 @@ async function extractRawFieldsFromListingPageOnce(
         );
         const autoDeduped = dedupeAndCapRawFields(autoList);
         if (autoDeduped.length > explicitDeduped.length) {
-          console.info(
-            `[scrape] Preferring auto-detect (${autoDeduped.length} vs ${explicitDeduped.length} explicit rows); itemSelector matched ${matchedItemCount} DOM node(s)`,
+          // worker/lib/zeroMatch.ts: a scheduled run keeps the configured
+          // selector's rows and warns with both counts; a manual run substitutes.
+          const scope = {
+            selector: `${listingSelector ?? "body"} ${itemSelector}`,
+            matched: matchedItemCount,
+            explicit: explicitDeduped.length,
+            auto: autoDeduped.length,
+          };
+          if (onLikelyWrongScope(guard, scope) === "substitute") {
+            console.info(
+              `[scrape] Preferring auto-detect (${autoDeduped.length} vs ${explicitDeduped.length} explicit rows); itemSelector matched ${matchedItemCount} DOM node(s)`,
+            );
+            return autoDeduped;
+          }
+          console.warn(
+            `[scrape] itemSelector looks wrongly scoped (matched ${matchedItemCount} node(s)); ` +
+              `keeping ${explicitDeduped.length} configured row(s), auto-detect found ${autoDeduped.length} — not substituted on a scheduled run`,
           );
-          return autoDeduped;
         }
       }
       console.info(
@@ -4674,6 +4695,8 @@ async function executeScrape(
     scrapeWarnings.push(...listingWarnings);
     // Carry-forward silently off for this site tonight (worker/lib/detailPlan.ts).
     if (detailChurnWarning) scrapeWarnings.push(detailChurnWarning);
+    // A selector kept although auto-detect found more rows (worker/lib/zeroMatch.ts).
+    scrapeWarnings.push(...scopeSuspectWarnings(runMode.extract));
     // TIER 1 — cards shown on the listing vs rows actually written. The gap is
     // never an error on its own: true duplicate postings, dead detail pages
     // skipped by design, validator rejects, the maxJobs cap and cards with no
