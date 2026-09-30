@@ -20,16 +20,11 @@ import {
   estimateMinutes,
   fieldsForWrite,
   planAutoFix,
+  startOfLocalDay,
   type ConfigSnapshot,
 } from "./autoFix";
 
 let failures = 0;
-function assert(cond: boolean, msg: string) {
-  if (!cond) {
-    console.error("FAIL:", msg);
-    failures++;
-  }
-}
 const eq = (got: unknown, want: unknown, msg: string) => {
   const g = JSON.stringify(got);
   const w = JSON.stringify(want);
@@ -120,6 +115,7 @@ eq(fieldsForWrite({ kind: "jobs_delete" }), ["COVERAGE"], "a manual job delete f
 eq(fieldsForWrite({ kind: "status", to: "SKIPPED" }), ["OTHER"], "a status change away from ACTIVE files OTHER");
 eq(fieldsForWrite({ kind: "status", to: "REVIEW" }), ["OTHER"], "to REVIEW as well");
 eq(fieldsForWrite({ kind: "status", to: "ACTIVE" }), [], "a status write that stays ACTIVE is no change away from it");
+eq(fieldsForWrite({ kind: "other" }), [], "any other write (a note, a company name, a scrape) files nothing");
 
 // --- a write to a site that is not ACTIVE opens nothing -----------------------
 const NOW = new Date("2026-09-30T10:00:00Z");
@@ -167,6 +163,12 @@ const NOW = new Date("2026-09-30T10:00:00Z");
     "00:30 to 01:00 Jerusalem is one day even though UTC crosses midnight",
   );
   eq(estimateMinutes([at("2026-09-30T12:00:20Z")], now, TZ), 30, "rounded to whole minutes");
+  eq(startOfLocalDay(now, TZ).toISOString(), "2026-09-29T21:00:00.000Z", "the Jerusalem day starts at 21:00 UTC in summer time");
+  eq(
+    startOfLocalDay(at("2026-12-01T10:00:00Z"), TZ).toISOString(),
+    "2026-11-30T22:00:00.000Z",
+    "and at 22:00 UTC in winter",
+  );
 }
 
 if (failures > 0) {

@@ -147,6 +147,7 @@ model Site {
   onboardingSkill String?
 
   fixItems FixItem[]
+  apiCalls SiteApiCall[]
 }
 
 /// What a site needed fixing after it went ACTIVE (addsite2 phase two, step 1a).
@@ -187,10 +188,34 @@ model FixItem {
   /// when an operator resolved it. A MANUAL item is never closed by a check.
   resolvedBy FixSource?
   minutes    Int?
+  /// True when `minutes` is the step 1c estimate (first to last API call on
+  /// the site that day by the same token), not a number someone typed.
+  minutesEstimated Boolean  @default(false)
+  /// sha256 prefix of the bearer token whose write opened an auto item. Never
+  /// the token itself.
+  tokenHash  String?
+  /// The latest write that opened or extended an auto item; a write on the same
+  /// site and field within an hour of it extends the item (src/lib/autoFix.ts).
+  lastWriteAt DateTime?
   operator   String?
   note       String?
 
   @@index([siteId, resolvedAt])
+}
+
+/// One API call on a site (step 1c), kept to estimate a fix's minutes: the span
+/// from a token's first call on the site that day to its latest write. Pruned
+/// to seven days on every write.
+model SiteApiCall {
+  id        String   @id @default(cuid())
+  siteId    String
+  site      Site     @relation(fields: [siteId], references: [id], onDelete: Cascade)
+  tokenHash String
+  method    String
+  route     String
+  at        DateTime @default(now())
+
+  @@index([siteId, tokenHash, at])
 }
 
 model Job {

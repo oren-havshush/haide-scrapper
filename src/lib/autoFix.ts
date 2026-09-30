@@ -27,7 +27,9 @@ export type AutoFixWrite =
   | { kind: "config"; before: ConfigSnapshot; after: ConfigSnapshot }
   | { kind: "location_override" }
   | { kind: "jobs_delete" }
-  | { kind: "status"; to: string };
+  | { kind: "status"; to: string }
+  /** Any other write: files nothing, but still recomputes the day's minutes. */
+  | { kind: "other" };
 
 /** An open auto item on the site, for the one-hour extension. */
 export type OpenAutoItem = { id: string; field: string; lastWriteAt: Date };
@@ -114,6 +116,8 @@ export function fieldsForWrite(write: AutoFixWrite): FixFieldValue[] {
       return ["COVERAGE"];
     case "status":
       return write.to === "ACTIVE" ? [] : ["OTHER"];
+    case "other":
+      return [];
   }
 }
 
@@ -136,6 +140,17 @@ export function planAutoFix(a: {
     }
   }
   return plan;
+}
+
+/** Midnight of `now`'s calendar day in `timeZone`, as an instant. */
+export function startOfLocalDay(now: Date, timeZone: string): Date {
+  const p = Object.fromEntries(
+    new Intl.DateTimeFormat("en-GB", { timeZone, hourCycle: "h23", hour: "2-digit", minute: "2-digit", second: "2-digit" })
+      .formatToParts(now)
+      .map((x) => [x.type, x.value]),
+  );
+  const sinceMidnight = ((Number(p.hour) * 60 + Number(p.minute)) * 60 + Number(p.second)) * 1000 + now.getUTCMilliseconds();
+  return new Date(now.getTime() - sinceMidnight);
 }
 
 /** The calendar date of `d` in `timeZone`, as YYYY-MM-DD. */
