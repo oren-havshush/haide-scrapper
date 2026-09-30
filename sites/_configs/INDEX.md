@@ -154,6 +154,7 @@ several listing pages back into one and stops publishing the rest.
 | סיני סטור | ACTIVE | 3 | 1002 | 1 | `sinaistore--uxgr3o` |
 | סלקום | ACTIVE | 6 | 2255 | 1 | `cellcom--ugxfm3` |
 | סמלת | ACTIVE | 8 | — | 1 | `samelet--i6xe7r` |
+| סנו | ACTIVE | 6 | 5045 | 1 | `sano--mh8veb` |
 | עמותת איכות בשיקום | ACTIVE | 4 | 686 | 1 | `eychut--6336w9` |
 | ענבי ציון | ACTIVE | 4 | — | 1 | `anvei-zion--tkz1xm` |
 | פוליכד | ACTIVE | 3 | 315 | 1 | `polycad--is4jw2` |
