@@ -1,14 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getCorsHeaders, isExtensionOrigin } from "@/lib/cors";
-
-function constantTimeEqual(a: string, b: string): boolean {
-  if (a.length !== b.length) return false;
-  let result = 0;
-  for (let i = 0; i < a.length; i++) {
-    result |= a.charCodeAt(i) ^ b.charCodeAt(i);
-  }
-  return result === 0;
-}
+import { isAcceptedToken, parseApiTokens } from "@/lib/apiTokens";
 
 function addCorsHeaders(response: NextResponse, origin: string | null): NextResponse {
   const corsHeaders = getCorsHeaders(origin);
@@ -48,10 +40,10 @@ export function proxy(request: NextRequest) {
     return addCorsHeaders(response, origin);
   }
 
+  // API_TOKEN, or any secret listed in API_TOKENS (src/lib/apiTokens.ts).
   const token = authHeader.slice(7);
-  const apiToken = process.env.API_TOKEN;
 
-  if (!apiToken || !constantTimeEqual(token, apiToken)) {
+  if (!isAcceptedToken(token, parseApiTokens(process.env))) {
     const response = NextResponse.json(
       { error: { code: "UNAUTHORIZED", message: "Invalid API token" } },
       { status: 401 },

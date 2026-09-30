@@ -74,6 +74,9 @@ services:
     environment:
       DATABASE_URL: postgresql://postgres:${POSTGRES_PASSWORD}@db:5432/scrapnew
       API_TOKEN: ${API_TOKEN}
+      # Per-operator tokens, "label:secret,label:secret" (src/lib/apiTokens.ts).
+      # Accepted alongside API_TOKEN; unset accepts API_TOKEN alone.
+      API_TOKENS: ${API_TOKENS:-}
       NEXT_PUBLIC_API_TOKEN: ${NEXT_PUBLIC_API_TOKEN}
       COMPANY_LOGO_DIR: /data/logos
     expose:

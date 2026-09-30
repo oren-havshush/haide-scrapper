@@ -2,6 +2,7 @@ import { createHash } from "node:crypto";
 import { prisma } from "@/lib/prisma";
 import { sweepConfig } from "@/lib/config";
 import { estimateMinutes, fieldsForWrite, planAutoFix, startOfLocalDay, type AutoFixWrite } from "@/lib/autoFix";
+import { isDashboardToken } from "@/lib/apiTokens";
 
 /**
  * Fix items opened by the API writes themselves (addsite2 phase two, step 1c).
@@ -14,11 +15,24 @@ import { estimateMinutes, fieldsForWrite, planAutoFix, startOfLocalDay, type Aut
 
 const PRUNE_AFTER_MS = 7 * 24 * 60 * 60_000;
 
+function bearerOf(request: Request): string {
+  const auth = request.headers.get("authorization") ?? "";
+  return auth.startsWith("Bearer ") ? auth.slice(7) : "";
+}
+
 /** sha256 prefix of the bearer token. The token itself is never stored or logged. */
 export function tokenHashOf(request: Request): string {
-  const auth = request.headers.get("authorization") ?? "";
-  const token = auth.startsWith("Bearer ") ? auth.slice(7) : "";
+  const token = bearerOf(request);
   return token ? createHash("sha256").update(token).digest("hex").slice(0, 16) : "none";
+}
+
+/**
+ * The request carries the dashboard's own token (step B). Its calls are not
+ * recorded and it never moves the minutes estimate: the owner browsing a site
+ * is not an operator fixing it.
+ */
+function fromDashboard(request: Request): boolean {
+  return isDashboardToken(bearerOf(request), process.env.NEXT_PUBLIC_API_TOKEN);
 }
 
 /**
@@ -28,6 +42,7 @@ export function tokenHashOf(request: Request): string {
  */
 export async function recordSiteCall(request: Request, siteId: string, route: string): Promise<void> {
   try {
+    if (isDashboardToken(bearerOf(request), process.env.NEXT_PUBLIC_API_TOKEN)) return;
     const now = new Date();
     const tokenHash = tokenHashOf(request);
     const dayStart = startOfLocalDay(now, sweepConfig.timezone);
@@ -81,6 +96,9 @@ export async function applyAutoFix(a: {
     const timeZone = sweepConfig.timezone;
     const tokenHash = tokenHashOf(a.request);
     const code = `auto:${a.route}`;
+    // The dashboard's token opens and extends items like any other writer, but
+    // is never recorded and never estimated (step B).
+    const dashboard = fromDashboard(a.request);
 
     await recordSiteCall(a.request, a.siteId, a.route);
     await prisma.siteApiCall.deleteMany({
@@ -110,7 +128,7 @@ export async function applyAutoFix(a: {
           openedAt: now,
           lastWriteAt: now,
           tokenHash,
-          minutesEstimated: true,
+          minutesEstimated: !dashboard,
         },
       });
     }
@@ -119,24 +137,26 @@ export async function applyAutoFix(a: {
     }
 
     // Recomputed on every write, whatever the site's status: the fix goes on
-    // after the first save has demoted the site.
-    const dayStart = startOfLocalDay(now, timeZone);
-    const calls = await prisma.siteApiCall.findMany({
-      where: { siteId: a.siteId, tokenHash, at: { gte: dayStart } },
-      select: { at: true },
-    });
-    const minutes = estimateMinutes(calls.map((c) => c.at), now, timeZone);
-    await prisma.fixItem.updateMany({
-      where: {
-        siteId: a.siteId,
-        tokenHash,
-        source: "CHECK",
-        code: { startsWith: "auto:" },
-        resolvedAt: null,
-        openedAt: { gte: dayStart },
-      },
-      data: { minutes, minutesEstimated: true },
-    });
+    // after the first save has demoted the site. Not for the dashboard's token.
+    if (!dashboard) {
+      const dayStart = startOfLocalDay(now, timeZone);
+      const calls = await prisma.siteApiCall.findMany({
+        where: { siteId: a.siteId, tokenHash, at: { gte: dayStart } },
+        select: { at: true },
+      });
+      const minutes = estimateMinutes(calls.map((c) => c.at), now, timeZone);
+      await prisma.fixItem.updateMany({
+        where: {
+          siteId: a.siteId,
+          tokenHash,
+          source: "CHECK",
+          code: { startsWith: "auto:" },
+          resolvedAt: null,
+          openedAt: { gte: dayStart },
+        },
+        data: { minutes, minutesEstimated: true },
+      });
+    }
   } catch (err) {
     console.warn(`[auto-fix] could not record the fix for ${a.siteId}: ${(err as Error).message}`);
   }
