@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { isCanonicalLocation } from "./locations";
 
 /**
  * True when a string carries a C0 control character other than the three that
@@ -308,5 +309,20 @@ export const updateSiteConfigSchema = z.object({
   // staffing firm whose jobs print no location of their own). Stored under
   // fieldMappings._meta.locationFallback; worker reads it via
   // getLocationFallback() in scrape.ts.
-  locationFallback: z.string().max(150).optional(),
+  //
+  // Checked VERBATIM against "CSV files/city.csv": the value is stamped onto
+  // every job that states no place of its own, so a near-miss or an ordinary
+  // word would be published on each of them (clalitsmile's "רחב").
+  locationFallback: z
+    .string()
+    .max(150)
+    .superRefine((v, ctx) => {
+      if (!isCanonicalLocation(v)) {
+        ctx.addIssue({
+          code: "custom",
+          message: `locationFallback must be verbatim on CSV files/city.csv (got ${JSON.stringify(v)})`,
+        });
+      }
+    })
+    .optional(),
 });

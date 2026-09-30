@@ -238,6 +238,30 @@ console.log("# the gate still holds: nothing off-list leaves this function");
     const bad = out.locations.filter((v) => !isCanonicalLocation(v));
     eq(bad, [], `no off-list value in locations[] for ${JSON.stringify(patch)}`);
   }
+
+  // And the `location` COLUMN — the single value the public jobs site reads
+  // directly. It used to be `list[0] ?? extracted` and `list[0] ?? fallback`, so
+  // a string normalizeLocations rejected went into it verbatim: clalitsmile had
+  // 3 live jobs whose location was "רחב" (2026-09-30).
+  const columnInputs: Array<Partial<JobLocationInput>> = [
+    ...inputs,
+    { extracted: "רחב" },
+    { fallback: "רחב" },
+    { extracted: "רחב", fallback: "רחב" },
+  ];
+  for (const patch of columnInputs) {
+    const out = resolve(patch);
+    assert(
+      out.location === "Unknown" || isCanonicalLocation(out.location),
+      `the location column is city.csv or "Unknown" for ${JSON.stringify(patch)} (got ${JSON.stringify(out.location)})`,
+    );
+    assert(
+      out.location === "Unknown" ? out.locations.length === 0 : out.locations[0] === out.location,
+      `and agrees with locations[] for ${JSON.stringify(patch)}`,
+    );
+  }
+  eq(resolve({ extracted: "רחב" }).location, "Unknown", "an extracted value city.csv rejects stores Unknown, not itself");
+  eq(resolve({ fallback: "רחב" }).location, "Unknown", "so does a fallback city.csv rejects");
 }
 
 // ---------------------------------------------------------------------------

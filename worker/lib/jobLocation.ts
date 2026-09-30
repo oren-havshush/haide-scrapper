@@ -95,10 +95,14 @@ export function resolveJobLocation(input: JobLocationInput): JobLocationResult {
     return { location: list[0] ?? override, locations: list, source: "override" };
   }
 
+  // The location COLUMN is what the public jobs site reads, so it is city-gated
+  // like the list: when normalizeLocations rejects the string, the column is
+  // "Unknown", never the raw string. It used to be `list[0] ?? extracted`, and
+  // clalitsmile published "רחב" that way (2026-09-30).
   const extracted = input.extracted?.trim() || null;
   if (extracted) {
     const list = normalizeLocations(extracted);
-    return { location: list[0] ?? extracted, locations: list, source: "extracted" };
+    return { location: list[0] ?? "Unknown", locations: list, source: "extracted" };
   }
 
   // What this site published for this job yesterday, when it is still a value
@@ -113,7 +117,8 @@ export function resolveJobLocation(input: JobLocationInput): JobLocationResult {
   const fallback = input.fallback?.trim() || null;
   if (fallback) {
     const list = normalizeLocations(fallback);
-    return { location: list[0] ?? fallback, locations: list, source: "fallback" };
+    // Same gate as above; the fallback is also checked on save (validators.ts).
+    return { location: list[0] ?? "Unknown", locations: list, source: "fallback" };
   }
 
   return { location: "Unknown", locations: [], source: "unknown" };
