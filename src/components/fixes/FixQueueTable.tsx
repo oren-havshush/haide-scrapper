@@ -77,7 +77,9 @@ export function FixQueueTable({ items, scores, isLoading, onResolve, resolvingId
               <TableCell>{i.field}</TableCell>
               <TableCell title={i.code}>{i.source === "CHECK" ? `CHECK ${i.code}` : "MANUAL"}</TableCell>
               <TableCell>{fmtDate(i.openedAt)}</TableCell>
-              <TableCell>{i.minutes ?? "—"}</TableCell>
+              <TableCell title={i.minutesEstimated ? "estimated from the day's API calls" : undefined}>
+                {i.minutes == null ? "—" : i.minutesEstimated ? `~${i.minutes}` : i.minutes}
+              </TableCell>
               <TableCell className="max-w-xs truncate" title={i.note ?? ""}>
                 {i.note ?? i.detail ?? ""}
               </TableCell>

@@ -1,4 +1,9 @@
-// Log a post-ACTIVE fix to the fix queue (addsite2 phase two, step 1a).
+// Add an optional note to the fix queue (addsite2 phase two, step 1a).
+//
+// Since step 1c fix items open themselves from the API writes (config save,
+// status change, location override, job delete on an ACTIVE site), with
+// estimated minutes. This is for context a write cannot carry; nobody has to
+// run it.
 //
 //   npx tsx scripts/fix-log.ts --site <id> --field APPLY --minutes 12 [--note "..."]
 //     [--operator <name>] [--code <label>] [--detail "..."] [--resolved]

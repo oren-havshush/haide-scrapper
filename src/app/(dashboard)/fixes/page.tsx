@@ -10,6 +10,10 @@ import { useCreateFixItem, useFixQueue, useUpdateFixItem } from "@/hooks/useFixQ
  * The fix queue (addsite2 phase two, step 1a): every open post-ACTIVE fix, by
  * site then field, with each site's 14-day score. The nightly email shows the
  * ten sites with the most open items; this page shows them all.
+ *
+ * Since step 1c the items open themselves from the API writes (auto:<route>),
+ * with estimated minutes. "Add note" is optional, for context a write cannot
+ * carry.
  */
 export default function FixesPage() {
   const { data, isLoading } = useFixQueue({ open: true });
@@ -24,7 +28,7 @@ export default function FixesPage() {
         <h2 className="text-2xl font-semibold" style={{ color: "#fafafa" }}>
           Fix Queue {data ? `(${data.meta.total})` : ""}
         </h2>
-        <Button onClick={() => { create.reset(); setDialogOpen(true); }}>Log fix</Button>
+        <Button onClick={() => { create.reset(); setDialogOpen(true); }}>Add note</Button>
       </div>
       <FixQueueTable
         items={data?.data ?? []}

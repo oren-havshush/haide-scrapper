@@ -55,8 +55,10 @@ export function LogFixDialog({ open, onOpenChange, onSave, isSaving, error }: Lo
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent showCloseButton={false}>
         <DialogHeader>
-          <DialogTitle>Log fix</DialogTitle>
-          <DialogDescription>A fix a site needed after it went ACTIVE.</DialogDescription>
+          <DialogTitle>Add note</DialogTitle>
+          <DialogDescription>
+            Fixes are recorded automatically from the API writes. A note here is optional, for context a write cannot carry.
+          </DialogDescription>
         </DialogHeader>
         <div className="flex flex-col gap-3">
           <label className="flex flex-col gap-1 text-sm">
@@ -139,7 +141,7 @@ export function LogFixDialog({ open, onOpenChange, onSave, isSaving, error }: Lo
               })
             }
           >
-            {isSaving ? "Saving..." : "Log fix"}
+            {isSaving ? "Saving..." : "Add note"}
           </Button>
         </DialogFooter>
       </DialogContent>

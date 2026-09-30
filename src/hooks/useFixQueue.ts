@@ -17,6 +17,8 @@ export interface FixItemRow {
   resolvedAt: string | null;
   resolvedBy: "MANUAL" | "CHECK" | null;
   minutes: number | null;
+  /** Step 1c: minutes estimated from the day's API calls, not typed. */
+  minutesEstimated: boolean;
   operator: string | null;
   note: string | null;
 }

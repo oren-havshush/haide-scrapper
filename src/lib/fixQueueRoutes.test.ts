@@ -61,6 +61,16 @@ const siteSelect = dialog.slice(dialog.indexOf("value={siteId}"), dialog.indexOf
 assert(siteSelect.length > 0, "the dialog's site select was found");
 assert(/<option value="" disabled>/.test(siteSelect), "the site list starts with an empty, disabled option");
 
+// Step 1c: items open themselves from API writes; the page is for optional
+// notes, and an estimated minute count says so.
+const svcRaw = read("services/fixQueueService.ts");
+assert(/minutesEstimated: r\.minutesEstimated/.test(svcRaw), "the list returns whether minutes are estimated");
+const table = read("components/fixes/FixQueueTable.tsx");
+assert(/minutesEstimated \? `~\$\{i\.minutes\}`/.test(table), "the table marks estimated minutes with ~");
+const page = read("app/(dashboard)/fixes/page.tsx");
+assert(page.includes("Add note") && !page.includes(">Log fix<"), "the page's button offers a note, not a duty to log");
+assert(dialog.includes("optional"), "and the dialog says the note is optional");
+
 if (failures > 0) {
   console.error(`\n${failures} assertion(s) failed`);
   process.exit(1);

@@ -67,6 +67,7 @@ export async function listFixItems(opts: {
       resolvedAt: r.resolvedAt,
       resolvedBy: r.resolvedBy,
       minutes: r.minutes,
+      minutesEstimated: r.minutesEstimated,
       operator: r.operator,
       note: r.note,
       cohort: cohortOf(r.site, bounds),
