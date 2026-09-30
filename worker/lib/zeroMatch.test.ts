@@ -44,10 +44,13 @@ check("the decision", () => {
   assert(onExplicitZeroMatch(scheduled, SEL) === "refuse", "a zero match on a scheduled run refuses");
   assert(scheduled.zeroMatch === SEL, "and records which selector matched nothing");
 
+  // The manual path refuses too (2026-09-30, owner's decision): a configured
+  // selector that matches nothing means the page changed or emptied, and the
+  // fallback's cards are guesswork an operator would then publish.
   const manual = newExtractGuard(false);
-  assert(manual.noAutoDetect === false, "the manual path keeps its fallback");
-  assert(onExplicitZeroMatch(manual, SEL) === "auto-detect", "a manual zero match still auto-detects (unchanged)");
-  assert(manual.zeroMatch === null, "and records nothing");
+  assert(manual.noAutoDetect === true, "the manual path no longer falls back to auto-detect");
+  assert(onExplicitZeroMatch(manual, SEL) === "refuse", "a manual zero match refuses");
+  assert(manual.zeroMatch === SEL, "and records the selector");
   assert(onExplicitZeroMatch(null, SEL) === "auto-detect", "no guard (other callers) is today's behaviour");
 });
 
@@ -65,10 +68,14 @@ check("the refusal", () => {
 
   assert(zeroMatchRefusal(g, 5) === null, "rows from another page or listing URL: not this refusal's call");
   assert(zeroMatchRefusal(newExtractGuard(true), 0) === null, "no zero match recorded: the ordinary empty path");
+  assert(r?.runStatus === "COMPLETED", "a scheduled refusal closes the run COMPLETED, like every listing refusal");
   const m = newExtractGuard(false);
   onExplicitZeroMatch(m, SEL);
-  assert(zeroMatchRefusal(m, 0) === null, "never on the manual path");
-  assert(zeroMatchRefusal(null, 0) === null, "nor with no guard");
+  const mr = zeroMatchRefusal(m, 0);
+  assert(!!mr, "the manual path is refused too");
+  assert(mr?.runStatus === "FAILED", `and its run closes FAILED, so the operator sees it failed (${mr?.runStatus})`);
+  assert(mr?.error === r?.error && mr?.failureCategory === "structure_changed", "with the same message and category");
+  assert(zeroMatchRefusal(null, 0) === null, "no guard (the read-only rehearsal) is not judged here");
 });
 
 check("scrape.ts wires it where it counts", () => {
@@ -105,12 +112,19 @@ check("scrape.ts wires it where it counts", () => {
   const pending = exec.indexOf("const pendingSeeds =");
   assert(refusalAt > listing, "the refusal is decided after the listing outcome");
   assert(refusalAt > 0 && refusalAt < persist && refusalAt < pending, "and before any detail page or any row is built");
+  const flat = exec.replace(/\s+/g, " ");
   assert(
-    /const zeroMatch = zeroMatchRefusal\(runMode\.extract, rawFieldsList\.length\);\s*if \(zeroMatch\) \{?\s*return await refuseListingRun\(scrapeRunId, zeroMatch\);/.test(
-      exec.replace(/\s+/g, " "),
-    ),
-    "it returns through refuseListingRun",
+    /const zeroMatch = zeroMatchRefusal\(runMode\.extract, rawFieldsList\.length\); if \(zeroMatch\) \{ return scheduled \? await refuseListingRun\(scrapeRunId, zeroMatch\) : await failZeroMatchRun\(scrapeRunId, zeroMatch\); \}/.test(flat),
+    "a scheduled run returns through refuseListingRun, a manual one through failZeroMatchRun",
   );
+  // The manual close: FAILED, and not failScrapeRun — whose manual branch
+  // DELETES the site's listings (scheduledRun.planScrapeFailure).
+  const failZero = body("failZeroMatchRun");
+  assert(failZero.length > 150, `failZeroMatchRun extracted (${failZero.length})`);
+  assert(/status: "FAILED"/.test(failZero), "failZeroMatchRun closes the run FAILED");
+  for (const w of ["failScrapeRun(", "planScrapeFailure(", "job.delete", "job.deleteMany", "job.create", "job.update", "site.update", "$transaction"]) {
+    assert(!failZero.includes(w), `failZeroMatchRun neither deletes nor writes rows or the site (${w})`);
+  }
   const refuse = body("refuseListingRun");
   assert(refuse.length > 200, "refuseListingRun extracted");
   for (const w of ["job.create", "job.createMany", "job.delete", "job.deleteMany", "job.update", "$transaction"]) {

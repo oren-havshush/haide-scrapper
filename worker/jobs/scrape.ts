@@ -3652,6 +3652,44 @@ async function refuseListingRun(
   };
 }
 
+/**
+ * The manual close for a configured item selector that matched nothing
+ * (worker/lib/zeroMatch.ts): the run is FAILED, so the operator sees it did not
+ * work, and nothing else is touched — no job row written, none deleted, the site
+ * row left alone. Deliberately NOT failScrapeRun: on a manual run that deletes
+ * the site's listings (scheduledRun.planScrapeFailure), which is exactly the
+ * wrong answer to a page that merely stopped matching.
+ */
+async function failZeroMatchRun(
+  scrapeRunId: string,
+  refusal: { failureCategory: string; error: string; warnings: string[] },
+): Promise<ScrapeResult> {
+  console.warn(`[scrape] refusing — ${refusal.error}`);
+  await prisma.scrapeRun.update({
+    where: { id: scrapeRunId },
+    data: {
+      status: "FAILED",
+      jobCount: 0,
+      totalJobs: 0,
+      validJobs: 0,
+      invalidJobs: 0,
+      error: refusal.error.slice(0, 2000),
+      failureCategory: refusal.failureCategory,
+      ...(refusal.warnings.length > 0 ? { warnings: refusal.warnings } : {}),
+      completedAt: new Date(),
+    },
+  });
+  return {
+    success: false,
+    scrapeRunId,
+    jobCount: 0,
+    totalJobs: 0,
+    validJobs: 0,
+    invalidJobs: 0,
+    failureCategory: refusal.failureCategory,
+  };
+}
+
 // ---------------------------------------------------------------------------
 // Core scrape execution (runs within the timeout race)
 // ---------------------------------------------------------------------------
@@ -4063,7 +4101,7 @@ async function executeScrape(
   // previous listings kept, no auto-detect fallback (worker/lib/zeroMatch.ts).
   const zeroMatch = zeroMatchRefusal(runMode.extract, rawFieldsList.length);
   if (zeroMatch) {
-    return await refuseListingRun(scrapeRunId, zeroMatch);
+    return scheduled ? await refuseListingRun(scrapeRunId, zeroMatch) : await failZeroMatchRun(scrapeRunId, zeroMatch);
   }
   const listingWarnings = listingOutcome.warnings;
 

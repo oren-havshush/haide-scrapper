@@ -12,24 +12,28 @@
 // was published as a job.
 //
 // On a scheduled run that is now a listing refusal: category
-// structure_changed, nothing stored, the previous rows kept, no fallback. The
-// manual path keeps its behaviour until the owner decides.
+// structure_changed, nothing stored, the previous rows kept, no fallback.
+// Since 2026-09-30 the manual path refuses too (the owner's decision): the same
+// message and category, but its run closes FAILED so the operator sees it did
+// not work — and nothing is written or deleted either way.
 
 export const ZERO_MATCH_WARNING = "item_selector_zero_match";
 
 /** Per run. `zeroMatch` records the selector that matched nothing, when refused. */
 export type ExtractGuard = {
   noAutoDetect: boolean;
+  /** A scheduled run closes a refusal COMPLETED; a manual one FAILED. */
+  scheduled: boolean;
   zeroMatch: string | null;
 };
 
 export function newExtractGuard(scheduled: boolean): ExtractGuard {
-  return { noAutoDetect: scheduled, zeroMatch: null };
+  return { noAutoDetect: true, scheduled, zeroMatch: null };
 }
 
 /**
  * The explicit item selector matched zero elements. "refuse" (and remember the
- * selector) on a scheduled run; "auto-detect" — today's fallback — otherwise.
+ * selector) for any run with a guard; "auto-detect" only for a caller with none.
  */
 export function onExplicitZeroMatch(guard: ExtractGuard | null, selector: string): "refuse" | "auto-detect" {
   if (!guard || !guard.noAutoDetect) return "auto-detect";
@@ -45,11 +49,12 @@ export function onExplicitZeroMatch(guard: ExtractGuard | null, selector: string
 export function zeroMatchRefusal(
   guard: ExtractGuard | null,
   rowCount: number,
-): { failureCategory: "structure_changed"; error: string; warnings: string[] } | null {
+): { failureCategory: "structure_changed"; runStatus: "COMPLETED" | "FAILED"; error: string; warnings: string[] } | null {
   if (!guard || !guard.noAutoDetect || !guard.zeroMatch || rowCount > 0) return null;
   return {
     failureCategory: "structure_changed",
-    error: `item selector matched nothing: ${guard.zeroMatch} — scheduled run, no auto-detect fallback; previous listings kept`,
+    runStatus: guard.scheduled ? "COMPLETED" : "FAILED",
+    error: `item selector matched nothing: ${guard.zeroMatch} — no auto-detect fallback; previous listings kept`,
     warnings: [`${ZERO_MATCH_WARNING}: ${guard.zeroMatch}`],
   };
 }
