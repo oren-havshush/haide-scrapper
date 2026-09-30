@@ -2,6 +2,7 @@ import { NextRequest } from "next/server";
 import { successResponse } from "@/lib/api-utils";
 import { formatErrorResponse } from "@/lib/errors";
 import { listLocationOverrides } from "@/services/jobService";
+import { recordSiteCall } from "@/services/autoFixService";
 
 // A site's manual location overrides, each paired with the job it applies to.
 //
@@ -15,11 +16,12 @@ import { listLocationOverrides } from "@/services/jobService";
 // src/lib/locationOverrides.ts.
 
 export async function GET(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
     const { id } = await params;
+    await recordSiteCall(request, id, "GET /api/sites/[id]/location-overrides");
     return successResponse(await listLocationOverrides(id));
   } catch (error) {
     return formatErrorResponse(error);

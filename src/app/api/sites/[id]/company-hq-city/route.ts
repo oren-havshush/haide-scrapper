@@ -3,6 +3,7 @@ import { successResponse } from "@/lib/api-utils";
 import { formatErrorResponse, ValidationError } from "@/lib/errors";
 import { updateSiteCompanyHqCitySchema } from "@/lib/validators";
 import { saveCompanyHqCity } from "@/services/siteService";
+import { noteSiteWrite } from "@/services/autoFixService";
 
 // Operator-authored HQ city, for a company that publishes no address anywhere
 // the capture can read it. That is common and legitimate: clalitsmile lists
@@ -27,6 +28,7 @@ export async function PUT(
 ) {
   try {
     const { id } = await params;
+    await noteSiteWrite(request, id, "PUT /api/sites/[id]/company-hq-city");
     const body = await request.json();
 
     const parsed = updateSiteCompanyHqCitySchema.safeParse(body);

@@ -3,6 +3,7 @@ import { successResponse } from "@/lib/api-utils";
 import { formatErrorResponse, ValidationError } from "@/lib/errors";
 import { updateSiteCompanyProfileSchema } from "@/lib/validators";
 import { getCompanyProfile, saveCompanyProfile } from "@/services/siteService";
+import { noteSiteWrite, recordSiteCall } from "@/services/autoFixService";
 
 // Company profile — a dedicated sub-resource, deliberately NOT a fourth branch
 // of PATCH /api/sites/:id. That route honors exactly one of
@@ -16,11 +17,12 @@ import { getCompanyProfile, saveCompanyProfile } from "@/services/siteService";
 // only; there is deliberately no DELETE, PATCH, or POST.
 
 export async function GET(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
     const { id } = await params;
+    await recordSiteCall(request, id, "GET /api/sites/[id]/company-profile");
     return successResponse(await getCompanyProfile(id));
   } catch (error) {
     return formatErrorResponse(error);
@@ -33,6 +35,7 @@ export async function PUT(
 ) {
   try {
     const { id } = await params;
+    await noteSiteWrite(request, id, "PUT /api/sites/[id]/company-profile");
     const body = await request.json();
 
     const parsed = updateSiteCompanyProfileSchema.safeParse(body);
