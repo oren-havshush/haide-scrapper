@@ -1,0 +1,59 @@
+// Run: npx tsx src/lib/fixQueueRoutes.test.ts
+//
+// addsite2 phase two, step 1a: the fix-queue routes. Source-level, like
+// scrapeRequestBoundary.test.ts, because the handlers need a live database.
+//   - GET, POST and PATCH exist under /api/, so src/proxy.ts's token covers them;
+//   - each body or query goes through its strict schema before the service;
+//   - the API opens MANUAL items only: the service writes the source itself and
+//     never reads one from the request.
+
+import { existsSync, readFileSync } from "node:fs";
+import { join } from "node:path";
+
+let failures = 0;
+function assert(cond: boolean, msg: string) {
+  if (!cond) {
+    console.error("FAIL:", msg);
+    failures++;
+  }
+}
+
+const root = join(__dirname, "..");
+const read = (p: string) => (existsSync(join(root, p)) ? readFileSync(join(root, p), "utf8") : "");
+const strip = (s: string) => s.replace(/\/\*[\s\S]*?\*\//g, "").replace(/\/\/.*$/gm, "");
+
+const list = strip(read("app/api/dashboard/fix-queue/route.ts"));
+const one = strip(read("app/api/dashboard/fix-queue/[id]/route.ts"));
+const svc = strip(read("services/fixQueueService.ts"));
+const proxy = read("proxy.ts");
+
+assert(list.length > 0, "src/app/api/dashboard/fix-queue/route.ts exists");
+assert(one.length > 0, "src/app/api/dashboard/fix-queue/[id]/route.ts exists");
+assert(svc.length > 0, "src/services/fixQueueService.ts exists");
+assert(proxy.includes('matcher: "/api/:path*"'), "the proxy's token covers every /api/ route");
+
+assert(/export async function GET\(/.test(list), "the list route exports GET");
+assert(/export async function POST\(/.test(list), "and POST");
+assert(/export async function PATCH\(/.test(one), "the item route exports PATCH");
+
+assert(/fixQueueQuerySchema\.safeParse\(/.test(list), "GET parses its query with fixQueueQuerySchema");
+assert(/fixItemCreateSchema\.safeParse\(/.test(list), "POST parses its body with fixItemCreateSchema");
+assert(/fixItemPatchSchema\.safeParse\(/.test(one), "PATCH parses its body with fixItemPatchSchema");
+for (const [name, src] of [["list", list], ["item", one]] as const) {
+  assert(src.includes("formatErrorResponse("), `the ${name} route answers errors through formatErrorResponse`);
+  assert(!/\.\.\.body/.test(src), `the ${name} route never spreads the raw body`);
+}
+
+// The source is the service's to write, and only ever MANUAL through the API.
+const create = svc.slice(svc.indexOf("export async function createFixItem("));
+const createBody = create.slice(0, create.indexOf("\n}\n"));
+assert(createBody.length > 0, "createFixItem exists");
+assert(/source: "MANUAL"/.test(createBody), "createFixItem writes source MANUAL itself");
+assert(!/input\.source|body\.source|\.\.\.input/.test(createBody), "and never takes a source (or a spread) from its input");
+assert(/resolvedBy: "MANUAL"/.test(svc), "an operator's resolve is recorded as resolvedBy MANUAL");
+
+if (failures > 0) {
+  console.error(`\n${failures} assertion(s) failed`);
+  process.exit(1);
+}
+console.info("fixQueueRoutes: three routes behind the token, strict bodies, MANUAL items only");

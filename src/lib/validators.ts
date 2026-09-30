@@ -331,3 +331,65 @@ export const updateSiteConfigSchema = z.object({
     })
     .optional(),
 });
+
+// ---------------------------------------------------------------------------
+// Fix queue (addsite2 phase two, step 1a)
+// ---------------------------------------------------------------------------
+
+export const FIX_FIELDS = [
+  "JOB_ID",
+  "APPLY",
+  "TITLE",
+  "DESCRIPTION",
+  "DATE",
+  "LOCATION",
+  "COVERAGE",
+  "COMPANY",
+  "OTHER",
+] as const;
+
+/** Minutes on one fix: whole, and no more than a working day. */
+const fixMinutes = z.number().int().min(0).max(1440);
+
+/**
+ * POST /api/dashboard/fix-queue — an operator's item. Strict: the API opens
+ * MANUAL items only, so a `source` (or any other key) is refused, never read.
+ * `resolved: true` logs a fix that is already done.
+ */
+export const fixItemCreateSchema = z
+  .object({
+    siteId: z.string().min(1).max(64),
+    field: z.enum(FIX_FIELDS),
+    code: z.string().min(1).max(120).default("manual"),
+    detail: z.string().max(2000).optional(),
+    minutes: fixMinutes.optional(),
+    operator: z.string().min(1).max(80).optional(),
+    note: z.string().max(2000).optional(),
+    resolved: z.boolean().optional(),
+  })
+  .strict();
+
+/** PATCH /api/dashboard/fix-queue/[id] — minutes, resolve (or reopen), note. */
+export const fixItemPatchSchema = z
+  .object({
+    minutes: fixMinutes.nullable().optional(),
+    resolved: z.boolean().optional(),
+    note: z.string().max(2000).nullable().optional(),
+    operator: z.string().min(1).max(80).optional(),
+  })
+  .strict()
+  .refine((b) => Object.keys(b).length > 0, { message: "nothing to change" });
+
+/**
+ * GET /api/dashboard/fix-queue. `cohort` needs `freezeAt` (step 1b's ship time)
+ * and, once it exists, `switchAt`; without freezeAt there is no control cohort.
+ */
+export const fixQueueQuerySchema = z
+  .object({
+    siteId: z.string().min(1).max(64).optional(),
+    open: z.enum(["true", "false"]).transform((s) => s === "true").optional(),
+    cohort: z.enum(["control", "test", "addsite2_after_switch"]).optional(),
+    freezeAt: z.iso.datetime({ offset: true }).optional(),
+    switchAt: z.iso.datetime({ offset: true }).optional(),
+  })
+  .strict();

@@ -8,7 +8,7 @@
 
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { createSiteSchema } from "./validators";
+import { createSiteSchema, fixItemCreateSchema, fixItemPatchSchema, fixQueueQuerySchema } from "./validators";
 
 let failures = 0;
 function assert(cond: boolean, msg: string) {
@@ -57,6 +57,31 @@ const eq = (got: unknown, want: unknown, msg: string) => {
   const start = svc.indexOf("export async function createSite(");
   const body = start >= 0 ? svc.slice(start, svc.indexOf("\n}\n", start)) : "";
   assert(/onboardingSkill: opts\.onboardingSkill \?\? null/.test(body), "createSite stores it, NULL when absent");
+}
+
+// --- the fix-queue routes' bodies (step 1a) ---------------------------------
+{
+  const ok = fixItemCreateSchema.safeParse({ siteId: "s1", field: "APPLY", minutes: 12, note: "form moved" });
+  assert(ok.success, "a manual item with site, field, minutes and note parses");
+  eq(ok.success ? ok.data.code : null, "manual", "its code defaults to manual");
+  assert(!fixItemCreateSchema.safeParse({ siteId: "s1", field: "APPLY", source: "CHECK" }).success,
+    "the API opens MANUAL items only — a source key is refused, never trusted");
+  assert(!fixItemCreateSchema.safeParse({ siteId: "s1", field: "NOPE" }).success, "an unknown field is refused");
+  assert(!fixItemCreateSchema.safeParse({ siteId: "s1", field: "APPLY", minutes: -1 }).success, "negative minutes are refused");
+  assert(!fixItemCreateSchema.safeParse({ siteId: "s1", field: "APPLY", minutes: 1.5 }).success, "minutes are whole");
+  assert(!fixItemCreateSchema.safeParse({ field: "APPLY" }).success, "a site is required");
+
+  assert(fixItemPatchSchema.safeParse({ minutes: 20 }).success, "PATCH takes minutes");
+  assert(fixItemPatchSchema.safeParse({ resolved: true, note: "done" }).success, "resolve and note");
+  assert(fixItemPatchSchema.safeParse({ minutes: null }).success, "a null clears minutes");
+  assert(!fixItemPatchSchema.safeParse({}).success, "an empty PATCH is refused rather than silently doing nothing");
+  assert(!fixItemPatchSchema.safeParse({ resolvedBy: "CHECK" }).success, "and one naming a key it does not take");
+
+  const q = fixQueueQuerySchema.safeParse({ open: "true", cohort: "control", freezeAt: "2026-10-01T00:00:00Z" });
+  assert(q.success, "the list query parses");
+  eq(q.success ? q.data.open : null, true, "open=true is a boolean");
+  assert(!fixQueueQuerySchema.safeParse({ cohort: "everyone" }).success, "an unknown cohort is refused");
+  assert(!fixQueueQuerySchema.safeParse({ freezeAt: "yesterday" }).success, "a freezeAt that is not a date is refused");
 }
 
 if (failures > 0) {
