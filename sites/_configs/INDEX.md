@@ -132,6 +132,7 @@ several listing pages back into one and stops publishing the rest.
 | מגדל שוקי הון | ACTIVE | 4 | 3372 | 1 | `msh--fdohdt` |
 | מדנס סוכנות לביטוח | ACTIVE | 7 | 4379 | 1 | `madanes--1wzqn7` |
 | מוזיאון ישראל | ACTIVE | 6 | 3801 | 1 | `imj--442rnv` |
+| מחסני השוק | ACTIVE | 7 | 3928 | 1 | `m-shuk--8md4qa` |
 | מי אביבים | ACTIVE | 9 | 7970 | 1 | `mei-avivim--5afgkc` |
 | מי עדן | ACTIVE | 5 | 4162 | 1 | `campaigns-meyeden--6u5xb3` |
 | מי שבע | ACTIVE | 5 | 1645 | 1 | `mey7--scshwy` |
