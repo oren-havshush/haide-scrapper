@@ -1,5 +1,5 @@
 {
-  "_exportedAt": "2026-09-22T14:36:27.350Z",
+  "_exportedAt": "2026-09-30T09:00:21.573Z",
   "_note": "Mirror of the live config. The DB is authoritative; the worker never reads this file. setupScript lives alongside in <slug>.setup.js.",
   "id": "cmqydke4s001k01nzdz6r81oc",
   "siteUrl": "https://www.safari.co.il/Menu/item/2215",
@@ -9,9 +9,10 @@
   "pageFlow": [],
   "fieldMappings": {
     "_meta": {
-      "savedAt": "2026-06-28T22:47:29.246Z",
+      "savedAt": "2026-09-30T08:59:08.416Z",
       "pagination": null,
       "formCapture": null,
+      "listingUrls": null,
       "itemSelector": "section#section_optional_choice .col-6.mt-3",
       "minPublishDate": null,
       "minPublishDays": null,
