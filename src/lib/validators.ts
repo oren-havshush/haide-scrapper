@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { isCanonicalLocation } from "./locations";
+import { FIX_FIELDS } from "./fixFields";
 
 /**
  * True when a string carries a C0 control character other than the three that
@@ -336,17 +337,7 @@ export const updateSiteConfigSchema = z.object({
 // Fix queue (addsite2 phase two, step 1a)
 // ---------------------------------------------------------------------------
 
-export const FIX_FIELDS = [
-  "JOB_ID",
-  "APPLY",
-  "TITLE",
-  "DESCRIPTION",
-  "DATE",
-  "LOCATION",
-  "COVERAGE",
-  "COMPANY",
-  "OTHER",
-] as const;
+export { FIX_FIELDS };
 
 /** Minutes on one fix: whole, and no more than a working day. */
 const fixMinutes = z.number().int().min(0).max(1440);

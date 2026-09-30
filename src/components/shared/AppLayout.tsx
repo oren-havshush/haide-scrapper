@@ -9,6 +9,7 @@ import {
   ClipboardCheck,
   Briefcase,
   Activity,
+  Wrench,
 } from "lucide-react";
 import { StatusPill } from "@/components/shared/StatusPill";
 import { useSiteStatusCounts } from "@/hooks/useSites";
@@ -18,6 +19,7 @@ const navItems = [
   { href: "/", icon: Home, label: "Home" },
   { href: "/sites", icon: Globe, label: "Sites" },
   { href: "/review", icon: ClipboardCheck, label: "Review Queue" },
+  { href: "/fixes", icon: Wrench, label: "Fix Queue" },
   { href: "/jobs", icon: Briefcase, label: "Jobs" },
   { href: "/status", icon: Activity, label: "Status" },
 ];
