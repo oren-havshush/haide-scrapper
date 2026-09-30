@@ -44,6 +44,7 @@ several listing pages back into one and stops publishing the rest.
 | Mentee Robotics | ACTIVE | 8 | 7617 | 1 | `comeet--lfseiu` |
 | Mobileye | ACTIVE | 9 | 6318 | 1 | `mobileye--6xnl0n` |
 | Ness-Tech | ACTIVE | 12 | 2989 | 1 | `ness-tech--w43uor` |
+| Nextcom Group | ACTIVE | 8 | 4808 | 1 | `nextcomgroup--nvjcxb` |
 | Novilis Software Systems | ACTIVE | 4 | 905 | 1 | `novilis--1u1jp3` |
 | On Line | ACTIVE | 4 | 857 | 1 | `oneline--dqdxkb` |
 | One Technologies | ACTIVE | 4 | 2733 | 1 | `one1--m39rer` |
