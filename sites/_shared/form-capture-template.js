@@ -1,8 +1,18 @@
 ;(function () {
+  // Apply-form capture, pasted into a site's setupScript with __ITEMSEL__ set
+  // to its item selector. Same rules as the worker's live extractor
+  // (worker/lib/formFields.ts), checked on one page by worker/lib/formExtract.test.ts:
+  //   every hidden input kept with its value (the honeypot filter never drops a
+  //   hidden input); a radio group is ONE field with options; a file input keeps
+  //   accept and multiple; the form keeps its enctype; the blob is stamped with
+  //   capturedAt, captureSource "live" and extractorVersion 2.
+  var EXTRACTOR_VERSION = 2;
   function extractFormSchema(form) {
     var action = form.getAttribute('action') || '';
     var method = (form.getAttribute('method') || 'GET').toUpperCase();
+    var enctype = form.getAttribute('enctype');
     var fields = [];
+    var radios = {};
     var els = form.querySelectorAll('input, select, textarea');
     for (var i = 0; i < els.length; i++) {
       var el = els[i];
@@ -24,13 +34,30 @@
         var parentLabel = el.closest('label');
         if (parentLabel) label = (parentLabel.textContent || '').replace(/\s+/g, ' ').trim();
       }
-      if (!label) label = el.getAttribute('placeholder') || el.getAttribute('aria-label') || '';
       var required = el.hasAttribute('required') || el.getAttribute('aria-required') === 'true';
+      if (type === 'radio') {
+        var option = { value: el.value, label: label };
+        if (name && radios[name]) {
+          radios[name].options.push(option);
+          radios[name].required = radios[name].required || required;
+          continue;
+        }
+        var fs = el.closest('fieldset');
+        var legend = fs ? fs.querySelector('legend') : null;
+        var groupLabel = legend ? (legend.textContent || '').replace(/\s+/g, ' ').trim() : '';
+        var group = { name: name, fieldType: 'radio', label: groupLabel || name, required: required, tagName: tag, options: [option] };
+        if (name) radios[name] = group;
+        fields.push(group);
+        continue;
+      }
+      if (!label) label = el.getAttribute('placeholder') || el.getAttribute('aria-label') || '';
       var rec = { name: name, fieldType: type, label: label, required: required, tagName: tag };
-      if (type === 'hidden') rec.value = el.getAttribute('value') || '';
+      // The value as the page holds it now: a script may have set it.
+      if (type === 'hidden') rec.value = el.value || '';
       if (type === 'file') {
         var accept = el.getAttribute('accept');
         if (accept) rec.accept = accept;
+        if (el.multiple) rec.multiple = true;
       }
       if (tag === 'select') {
         var opts = el.querySelectorAll('option'); var options = [];
@@ -41,7 +68,13 @@
       }
       fields.push(rec);
     }
-    return { actionUrl: action, method: method, fields: fields };
+    var schema = { actionUrl: action, method: method };
+    if (enctype) schema.enctype = enctype;
+    schema.fields = fields;
+    schema.capturedAt = new Date().toISOString();
+    schema.captureSource = 'live';
+    schema.extractorVersion = EXTRACTOR_VERSION;
+    return schema;
   }
   function pickForm(scope) {
     var forms = scope.querySelectorAll('form');

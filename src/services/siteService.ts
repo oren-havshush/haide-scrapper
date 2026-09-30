@@ -382,7 +382,23 @@ export async function saveSiteConfig(
     revealSelector?: string;
     fieldMappings: Record<string, unknown>;
     pageFlow: Array<{ url: string; action: string; waitFor?: string }>;
-    formCapture: { formSelector: string; actionUrl: string; method: string; fields: Array<{ name: string; label: string; fieldType: string; required: boolean; tagName: string; options?: Array<{ value: string; label: string }> }> } | null;
+    formCapture: {
+      formSelector: string;
+      actionUrl: string;
+      method: string;
+      enctype?: string;
+      fields: Array<{
+        name: string;
+        label: string;
+        fieldType: string;
+        required: boolean;
+        tagName: string;
+        options?: Array<{ value: string; label: string }>;
+        value?: string;
+        accept?: string;
+        multiple?: boolean;
+      }>;
+    } | null;
     originalMappings?: Record<string, unknown>;
     pagination?:
       | { type: "click"; nextSelector: string; maxPages?: number; settleMs?: number }

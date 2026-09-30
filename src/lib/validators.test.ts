@@ -8,7 +8,13 @@
 
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { createSiteSchema, fixItemCreateSchema, fixItemPatchSchema, fixQueueQuerySchema } from "./validators";
+import {
+  createSiteSchema,
+  fixItemCreateSchema,
+  fixItemPatchSchema,
+  fixQueueQuerySchema,
+  updateSiteConfigSchema,
+} from "./validators";
 
 let failures = 0;
 function assert(cond: boolean, msg: string) {
@@ -82,6 +88,46 @@ const eq = (got: unknown, want: unknown, msg: string) => {
   eq(q.success ? q.data.open : null, true, "open=true is a boolean");
   assert(!fixQueueQuerySchema.safeParse({ cohort: "everyone" }).success, "an unknown cohort is refused");
   assert(!fixQueueQuerySchema.safeParse({ freezeAt: "yesterday" }).success, "a freezeAt that is not a date is refused");
+}
+
+// --- step 2a: the form-capture schema keeps what the capture now records -------
+{
+  const base = {
+    fieldMappings: {},
+    pageFlow: [{ url: "https://medulla.test/jobs", action: "navigate" }],
+  };
+  const formCapture = {
+    formSelector: "form.elementor-form",
+    actionUrl: "https://medulla.test/wp-admin/admin-ajax.php",
+    method: "POST",
+    enctype: "multipart/form-data",
+    fields: [
+      { name: "post_id", label: "", fieldType: "hidden", required: false, tagName: "input", value: "18642" },
+      { name: "_wpnonce", label: "", fieldType: "hidden", required: false, tagName: "input", value: "a1b2c3d4e5" },
+      { name: "form_fields[cv]", label: "CV", fieldType: "file", required: true, tagName: "input", accept: ".pdf,.docx", multiple: true },
+      {
+        name: "form_fields[shift]", label: "משמרת", fieldType: "radio", required: true, tagName: "input",
+        options: [{ value: "morning", label: "בוקר" }, { value: "evening", label: "ערב" }],
+      },
+    ],
+  };
+  const r = updateSiteConfigSchema.safeParse({ ...base, formCapture });
+  assert(r.success, "a formCapture with values, accept, multiple, radio options and enctype parses");
+  const fc = r.success ? r.data.formCapture : null;
+  eq(fc?.fields.map((x) => (x as { value?: string }).value ?? null), ["18642", "a1b2c3d4e5", null, null], "hidden values survive the save — zod stripped them before");
+  eq([(fc?.fields[2] as { accept?: string }).accept, (fc?.fields[2] as { multiple?: boolean }).multiple], [".pdf,.docx", true], "file accept and multiple survive");
+  eq(fc?.fields[3]?.options?.length, 2, "radio options survive, in the select shape");
+  eq((fc as { enctype?: string } | null)?.enctype, "multipart/form-data", "the form's enctype survives");
+
+  const old = updateSiteConfigSchema.safeParse({
+    ...base,
+    formCapture: { formSelector: "form", actionUrl: "a", method: "POST", fields: [{ name: "n", label: "N", fieldType: "text", required: false, tagName: "input" }] },
+  });
+  assert(old.success, "an existing config with none of them still parses");
+  assert(
+    !updateSiteConfigSchema.safeParse({ ...base, formCapture: { ...formCapture, fields: [{ ...formCapture.fields[0], value: "x".repeat(4001) }] } }).success,
+    "a value longer than 4000 characters is refused",
+  );
 }
 
 if (failures > 0) {

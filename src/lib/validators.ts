@@ -178,17 +178,27 @@ export const updateSiteConfigSchema = z.object({
     formSelector: z.string(),
     actionUrl: z.string(),
     method: z.string(),
+    // Step 2a (owner, 2026-10-01): the form's enctype, when it declares one.
+    enctype: z.string().max(100).optional(),
     fields: z.array(z.object({
       name: z.string(),
       label: z.string(),
       fieldType: z.string(),
       required: z.boolean(),
       tagName: z.string(),
-      // For <select> fields: the available options (value + visible label).
-      // Optional so non-select fields and older payloads remain valid.
+      // For <select> fields, and (step 2a) radio groups: the available options
+      // (value + visible label). Optional so other fields and older payloads
+      // remain valid.
       options: z
         .array(z.object({ value: z.string(), label: z.string() }))
         .optional(),
+      // Step 2a: a hidden input's value at capture time (a per-job id, a form
+      // id, a nonce). zod stripped it before; optional, so existing configs stay
+      // valid and gain values only when recaptured.
+      value: z.string().max(4000).optional(),
+      // Step 2a: a file input's accept list and whether it takes several files.
+      accept: z.string().max(500).optional(),
+      multiple: z.boolean().optional(),
       // Optional grouping label so a multi-method apply page (e.g. a CV-upload
       // form + a contact form) can render its fields under separate subheaders
       // on the dashboard. Worker passes it through verbatim in the static blob.

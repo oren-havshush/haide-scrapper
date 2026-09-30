@@ -1,6 +1,9 @@
 import { prisma } from "../../src/lib/prisma";
 import { markFirstActive, markFirstScraped } from "../../src/lib/firstDates";
 import { firstSeenFor } from "../lib/firstSeen";
+import { extractLiveFormData } from "../lib/formExtract";
+import { stampFormData, staticFormBlob } from "../lib/formFields";
+import { applyReplayTokenFinding, applyReplayTokenWarning } from "../lib/valueChecks";
 import type { WorkerJob, Site } from "../../src/generated/prisma/client";
 import { Prisma } from "../../src/generated/prisma/client";
 import { launchBrowser, createPage, closeBrowser, type BrowserOverrides } from "../lib/playwright";
@@ -2562,13 +2565,9 @@ function getFormCaptureConfig(
       : "";
   const actionUrl = (formCapture["actionUrl"] as string) || "";
   const method = (formCapture["method"] as string) || "GET";
-  const fields = Array.isArray(formCapture["fields"])
-    ? (formCapture["fields"] as unknown[])
-    : null;
-  const staticBlob =
-    fields && fields.length > 0
-      ? JSON.stringify({ actionUrl, method, fields })
-      : null;
+  // Step 2a: stamped static, with the config's savedAt as its capturedAt, and
+  // carrying the saved enctype when there is one (worker/lib/formFields.ts).
+  const staticBlob = staticFormBlob(formCapture, typeof meta["savedAt"] === "string" ? (meta["savedAt"] as string) : null);
 
   // Nothing usable in this saved formCapture entry — skip.
   if (!formSelector && !staticBlob) return null;
@@ -2730,89 +2729,11 @@ async function extractFormData(
   page: Page,
   formCaptureConfig: FormCaptureConfig | null,
 ): Promise<string | null> {
-  const result = await page.evaluate((cfg) => {
-    let form: HTMLFormElement | null = null;
-
-    if (cfg?.formSelector) {
-      // A specific form was captured at onboarding. If it isn't present in the
-      // live DOM right now (e.g. the apply form lives in an Elementor/modal
-      // popup that only mounts on click), DON'T grab a random page <form> —
-      // that's how the WordPress search box ("s"/חיפוש) leaked into _formData.
-      // Return null so extractFormDataOrFallback uses the saved static fields.
-      form = document.querySelector(cfg.formSelector) as HTMLFormElement | null;
-      if (!form) return null;
-    } else {
-      // No selector configured (auto-detect mode) — best-effort first form.
-      form = document.querySelector("form") as HTMLFormElement | null;
-    }
-    if (!form) return null;
-
-    const actionRaw = form.getAttribute("action") || "";
-    const actionUrl = actionRaw ? new URL(actionRaw, window.location.href).toString() : window.location.href;
-    const method = (form.getAttribute("method") || "GET").toUpperCase();
-
-    const fields: Array<{
-      name: string;
-      label: string;
-      fieldType: string;
-      required: boolean;
-      tagName: string;
-      options?: Array<{ value: string; label: string }>;
-    }> = [];
-
-    const elements = form.querySelectorAll("input, select, textarea");
-    for (const el of elements) {
-      const tag = el.tagName.toLowerCase();
-      const type = el.getAttribute("type") || (tag === "select" ? "select" : tag === "textarea" ? "textarea" : "text");
-
-      if (type === "submit" || type === "button" || type === "image" || type === "reset") continue;
-
-      const name = el.getAttribute("name") || "";
-
-      // Infer label
-      let label = "";
-      const htmlEl = el as HTMLElement;
-      if (htmlEl.id) {
-        const labelEl = document.querySelector(`label[for="${CSS.escape(htmlEl.id)}"]`);
-        if (labelEl?.textContent) label = labelEl.textContent.trim().slice(0, 100);
-      }
-      if (!label) {
-        const parentLabel = htmlEl.closest("label");
-        if (parentLabel) {
-          const clone = parentLabel.cloneNode(true) as HTMLElement;
-          clone.querySelectorAll("input, select, textarea, button").forEach((n) => n.remove());
-          label = clone.textContent?.trim()?.slice(0, 100) || "";
-        }
-      }
-      if (!label) label = el.getAttribute("placeholder")?.trim()?.slice(0, 100) || "";
-      if (!label) label = el.getAttribute("aria-label")?.trim()?.slice(0, 100) || "";
-      if (!label && name) label = name.replace(/([a-z])([A-Z])/g, "$1 $2").replace(/[_-]/g, " ").trim();
-      if (!label) label = `${type} ${tag}`;
-
-      // Capture <select> options so a future auto-apply layer can map a
-      // per-job value (e.g. a job title) to the right option to submit.
-      let options: Array<{ value: string; label: string }> | undefined;
-      if (tag === "select") {
-        options = Array.from((el as HTMLSelectElement).options).map((o) => ({
-          value: o.value,
-          label: (o.textContent || "").replace(/\s+/g, " ").trim(),
-        }));
-      }
-
-      fields.push({
-        name,
-        label,
-        fieldType: type,
-        required: el.hasAttribute("required"),
-        tagName: tag,
-        ...(options ? { options } : {}),
-      });
-    }
-
-    return JSON.stringify({ actionUrl, method, fields });
-  }, formCaptureConfig);
-
-  return result;
+  // Step 2a: the page code and its rules live in worker/lib/formExtract.ts and
+  // worker/lib/formFields.ts, where a real-browser test runs them. The blob
+  // carries every hidden input's value, radio groups, file accept/multiple,
+  // the form's enctype, and capturedAt / captureSource / extractorVersion.
+  return extractLiveFormData(page, formCaptureConfig, new Date());
 }
 
 // ---------------------------------------------------------------------------
@@ -3007,6 +2928,15 @@ function buildLocationWarnings(
  * rather than a hope: both paths build their rows here, so the values written
  * cannot drift apart, only the mechanism that writes them.
  */
+/** rawFields with its _formData stamped (worker/lib/formFields.ts stampFormData). */
+function stampRawFormData(rawFields: Record<string, string>, seenAt: Date): Record<string, string> {
+  const fd = rawFields["_formData"];
+  if (typeof fd !== "string" || !fd) return rawFields;
+  // A carried row's form was read when its detail page was last fetched.
+  const at = rawFields["_detailFetchedAt"] || seenAt.toISOString();
+  return { ...rawFields, _formData: stampFormData(fd, at) };
+}
+
 function buildJobRows(args: {
   records: ValidatedRecord[];
   /** Positional, from applyJobIdFallback — index i belongs to records[i]. */
@@ -3060,7 +2990,10 @@ function buildJobRows(args: {
       ageBucket: computeAgeBucket(normalized.publishDate),
       applicationInfo: normalized.applicationInfo || null,
       detailUrl: normalized.url || null,
-      rawData: normalized.rawFields as Prisma.InputJsonValue,
+      // Step 2a: every stored _formData carries capturedAt, captureSource and
+      // extractorVersion. One from an older setupScript's template, or carried
+      // from before this change, is stamped version 1 here.
+      rawData: stampRawFormData(normalized.rawFields, args.seenAt) as Prisma.InputJsonValue,
       validationStatus:
         validation.warnings.length > 0
           ? `${validation.status};warn:${validation.warnings.join(",")}`
@@ -4712,6 +4645,13 @@ async function executeScrape(
     scrapeWarnings.push(...listingWarnings);
     // Carry-forward silently off for this site tonight (worker/lib/detailPlan.ts).
     if (detailChurnWarning) scrapeWarnings.push(detailChurnWarning);
+    // Apply forms whose captured fields are per-session (a nonce, an
+    // anti-forgery token, a captcha): the operator is told they cannot be
+    // replayed server-side (worker/lib/valueChecks.ts).
+    const replay = applyReplayTokenFinding(
+      rows.map((r) => ((r.rawData ?? {}) as Record<string, unknown>)["_formData"] as string | undefined),
+    );
+    if (replay) scrapeWarnings.push(applyReplayTokenWarning(replay));
     // A selector kept although auto-detect found more rows (worker/lib/zeroMatch.ts).
     scrapeWarnings.push(...scopeSuspectWarnings(runMode.extract));
     // TIER 1 — cards shown on the listing vs rows actually written. The gap is
