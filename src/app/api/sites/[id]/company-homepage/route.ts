@@ -3,7 +3,7 @@ import { successResponse } from "@/lib/api-utils";
 import { formatErrorResponse, ValidationError } from "@/lib/errors";
 import { updateSiteCompanyHomepageSchema } from "@/lib/validators";
 import { saveCompanyHomepage } from "@/services/siteService";
-import { noteSiteWrite } from "@/services/autoFixService";
+import { applyAutoFix, siteStatusOf } from "@/services/autoFixService";
 
 // Operator-supplied company homepage, for a site whose jobs live on a
 // careers-board vendor. There the careers URL says nothing about the employer's
@@ -24,7 +24,7 @@ export async function PUT(
 ) {
   try {
     const { id } = await params;
-    await noteSiteWrite(request, id, "PUT /api/sites/[id]/company-homepage");
+    const statusBefore = await siteStatusOf(id);
     const body = await request.json();
 
     const parsed = updateSiteCompanyHomepageSchema.safeParse(body);
@@ -35,6 +35,13 @@ export async function PUT(
     }
 
     const site = await saveCompanyHomepage(id, parsed.data.companyHomepageUrl);
+    await applyAutoFix({
+      request,
+      siteId: id,
+      statusBefore,
+      route: "PUT /api/sites/[id]/company-homepage",
+      write: { kind: "company" },
+    });
     return successResponse(site);
   } catch (error) {
     return formatErrorResponse(error);

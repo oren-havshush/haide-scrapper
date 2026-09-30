@@ -115,7 +115,30 @@ eq(fieldsForWrite({ kind: "jobs_delete" }), ["COVERAGE"], "a manual job delete f
 eq(fieldsForWrite({ kind: "status", to: "SKIPPED" }), ["OTHER"], "a status change away from ACTIVE files OTHER");
 eq(fieldsForWrite({ kind: "status", to: "REVIEW" }), ["OTHER"], "to REVIEW as well");
 eq(fieldsForWrite({ kind: "status", to: "ACTIVE" }), [], "a status write that stays ACTIVE is no change away from it");
-eq(fieldsForWrite({ kind: "other" }), [], "any other write (a note, a company name, a scrape) files nothing");
+eq(fieldsForWrite({ kind: "other" }), [], "any other write (an admin note, a scrape, an analysis, a policy review) files nothing");
+
+// --- rule 7 (owner, 2026-09-30): a company-field write -> COMPANY --------------
+eq(fieldsForWrite({ kind: "company" }), ["COMPANY"], "a write to a company field files COMPANY");
+{
+  const code = "auto:PUT /api/sites/[id]/company-profile";
+  const at = new Date("2026-09-30T10:00:00Z");
+  eq(
+    planAutoFix({ statusBefore: "ACTIVE", fields: fieldsForWrite({ kind: "company" }), code, now: at, openAuto: [] }).open,
+    [{ field: "COMPANY", code }],
+    "on an ACTIVE site it opens a COMPANY item",
+  );
+  const recent = { id: "c1", field: "COMPANY", lastWriteAt: new Date(at.getTime() - 5 * 60_000) };
+  eq(
+    planAutoFix({ statusBefore: "ACTIVE", fields: ["COMPANY"], code: "auto:POST /api/sites/[id]/company-logo", now: at, openAuto: [recent] }).extend,
+    ["c1"],
+    "the logo five minutes after the profile extends the same COMPANY item",
+  );
+  eq(
+    planAutoFix({ statusBefore: "REVIEW", fields: ["COMPANY"], code, now: at, openAuto: [] }).open,
+    [],
+    "on a REVIEW site it opens nothing",
+  );
+}
 
 // --- a write to a site that is not ACTIVE opens nothing -----------------------
 const NOW = new Date("2026-09-30T10:00:00Z");

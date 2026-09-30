@@ -10,6 +10,8 @@
 //   location override                             -> LOCATION
 //   manual job delete                             -> COVERAGE
 //   status change away from ACTIVE                -> OTHER
+//   company name, profile, logo, HQ city, homepage -> COMPANY
+// Admin note, scrape, analyze and policy review file nothing.
 // A write to a site that is not ACTIVE opens nothing. The same site and field
 // written again within AUTO_FIX_EXTEND_MS extends the open item instead —
 // whatever the site's status by then, because the first config save itself
@@ -28,6 +30,8 @@ export type AutoFixWrite =
   | { kind: "location_override" }
   | { kind: "jobs_delete" }
   | { kind: "status"; to: string }
+  /** A company field: name, profile, logo, HQ city or homepage. */
+  | { kind: "company" }
   /** Any other write: files nothing, but still recomputes the day's minutes. */
   | { kind: "other" };
 
@@ -116,6 +120,8 @@ export function fieldsForWrite(write: AutoFixWrite): FixFieldValue[] {
       return ["COVERAGE"];
     case "status":
       return write.to === "ACTIVE" ? [] : ["OTHER"];
+    case "company":
+      return ["COMPANY"];
     case "other":
       return [];
   }

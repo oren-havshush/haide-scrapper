@@ -3,7 +3,7 @@ import { successResponse } from "@/lib/api-utils";
 import { formatErrorResponse, ValidationError } from "@/lib/errors";
 import { updateSiteCompanyProfileSchema } from "@/lib/validators";
 import { getCompanyProfile, saveCompanyProfile } from "@/services/siteService";
-import { noteSiteWrite, recordSiteCall } from "@/services/autoFixService";
+import { applyAutoFix, recordSiteCall, siteStatusOf } from "@/services/autoFixService";
 
 // Company profile — a dedicated sub-resource, deliberately NOT a fourth branch
 // of PATCH /api/sites/:id. That route honors exactly one of
@@ -35,7 +35,7 @@ export async function PUT(
 ) {
   try {
     const { id } = await params;
-    await noteSiteWrite(request, id, "PUT /api/sites/[id]/company-profile");
+    const statusBefore = await siteStatusOf(id);
     const body = await request.json();
 
     const parsed = updateSiteCompanyProfileSchema.safeParse(body);
@@ -49,6 +49,13 @@ export async function PUT(
     // leaves its column untouched while an explicit null clears it.
     const force = request.nextUrl.searchParams.get("force") === "1";
     const site = await saveCompanyProfile(id, parsed.data, { force });
+    await applyAutoFix({
+      request,
+      siteId: id,
+      statusBefore,
+      route: "PUT /api/sites/[id]/company-profile",
+      write: { kind: "company" },
+    });
 
     return successResponse(site);
   } catch (error) {

@@ -182,6 +182,41 @@ eq(FIX_WINDOW_DAYS, 14, "the window is fourteen days");
   eq([rep.control.sites, rep.test.sites], [1, 1], "one site per cohort");
 }
 
+// --- step 1c: auto items are the score; estimated minutes once per site-day ---
+// Items opened by API writes are CHECK items coded auto:<route>. They are the
+// measurement now, so they count in the primary score like MANUAL ones. Their
+// minutes are the day's estimate, carried by every item that day, so a day's
+// estimate counts once — the largest, if two differ — not once per item.
+{
+  const s = site();
+  const t = s.activeAt!.getTime(); // 2026-10-06 11:00 Jerusalem
+  const auto = (field: string, dayOffset: number, minutes: number, hour = 0): ScoreItem => ({
+    siteId: "s1",
+    field,
+    source: "CHECK",
+    code: "auto:PUT /api/sites/[id]/config",
+    openedAt: new Date(t + dayOffset * DAY + hour * 3_600_000),
+    minutes,
+    minutesEstimated: true,
+  });
+  const items: ScoreItem[] = [
+    auto("APPLY", 1, 40),
+    auto("COVERAGE", 1, 40, 2), // same day, same estimate
+    auto("LOCATION", 2, 25),
+    item({ openedAt: new Date(t + 3 * DAY), minutes: 10 }), // MANUAL, typed
+  ];
+  const r = scoreSite(s, items, { now: NOW, bounds });
+  eq(r.items, 4, "auto items count as items alongside MANUAL ones");
+  eq(r.fields, 3, "with their fields (APPLY, COVERAGE, LOCATION; the MANUAL item is APPLY too)");
+  eq(r.minutes, 75, "one day's estimate once (40), the next day's (25), plus typed minutes (10)");
+
+  const differ = scoreSite(s, [auto("APPLY", 1, 30), auto("COVERAGE", 1, 45, 1)], { now: NOW, bounds });
+  eq(differ.minutes, 45, "two estimates on one day: the larger, once");
+
+  const plainCheck = scoreSite(s, [{ ...auto("APPLY", 1, 30), code: "apply_replay_token", minutesEstimated: false }], { now: NOW, bounds });
+  eq([plainCheck.items, plainCheck.minutes], [0, 0], "a nightly check's item is still not in the primary score");
+}
+
 // --- cohort summaries: median minutes, mean items, over complete windows ------
 {
   const mk = (id: string, day: number) =>

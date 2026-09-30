@@ -38,7 +38,7 @@ export async function PATCH(
         );
       }
       const site = await updateSiteCompanyName(id, parsed.data.companyName);
-      await applyAutoFix({ request, siteId: id, statusBefore, route, write: { kind: "other" } });
+      await applyAutoFix({ request, siteId: id, statusBefore, route, write: { kind: "company" } });
       return successResponse(site);
     }
 

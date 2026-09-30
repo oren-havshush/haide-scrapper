@@ -73,6 +73,28 @@ write("app/api/sites/[id]/config/route.ts", "PUT", "saveSiteConfig(", "config");
 write("app/api/sites/[id]/route.ts", "PATCH", "updateSiteStatus(", "status");
 write("app/api/sites/[id]/jobs/route.ts", "DELETE", "clearSiteJobs(", "jobs_delete");
 write("app/api/jobs/[id]/route.ts", "PATCH", "updateJobLocation(", "location_override");
+// Company fields (owner, 2026-09-30): each files COMPANY after its write.
+write("app/api/sites/[id]/company-profile/route.ts", "PUT", "saveCompanyProfile(", "company");
+write("app/api/sites/[id]/company-logo/route.ts", "POST", "saveCompanyLogo(", "company");
+write("app/api/sites/[id]/company-hq-city/route.ts", "PUT", "saveCompanyHqCity(", "company");
+write("app/api/sites/[id]/company-homepage/route.ts", "PUT", "saveCompanyHomepage(", "company");
+{
+  const patch = handlers(read("app/api/sites/[id]/route.ts")).find((x) => x.method === "PATCH")?.body ?? "";
+  const name = patch.indexOf("updateSiteCompanyName(");
+  const note = patch.indexOf("updateSiteAdminNote(");
+  assert(name > 0 && patch.slice(name, note > name ? note : undefined).includes('kind: "company"'), "a company-name PATCH files COMPANY");
+  assert(note > 0 && patch.slice(note, patch.indexOf("updateSiteStatus(")).includes('kind: "other"'), "an admin-note PATCH stays excluded");
+}
+// Still excluded: scrape, analyze, policy review.
+for (const [file, method] of [
+  ["app/api/sites/[id]/scrape/route.ts", "POST"],
+  ["app/api/sites/[id]/analyze/route.ts", "POST"],
+  ["app/api/sites/[id]/policy-review/route.ts", "POST"],
+] as const) {
+  const body = handlers(read(file)).find((x) => x.method === method)?.body ?? "";
+  assert(body.includes("noteSiteWrite(") && !body.includes("applyAutoFix("), `${method} ${file} files nothing`);
+}
+
 {
   const put = handlers(read("app/api/sites/[id]/config/route.ts")).find((x) => x.method === "PUT")?.body ?? "";
   assert(/fieldMappings: true/.test(put) && /pageFlow: true/.test(put), "the config PUT reads the stored config before saving, for the diff");

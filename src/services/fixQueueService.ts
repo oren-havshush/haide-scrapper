@@ -44,7 +44,7 @@ export async function listFixItems(opts: {
   const all = siteIds.length
     ? await prisma.fixItem.findMany({
         where: { siteId: { in: siteIds } },
-        select: { siteId: true, field: true, source: true, code: true, openedAt: true, minutes: true },
+        select: { siteId: true, field: true, source: true, code: true, openedAt: true, minutes: true, minutesEstimated: true },
       })
     : [];
   const scoreItems: ScoreItem[] = all;

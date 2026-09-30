@@ -43,8 +43,17 @@ export async function recordSiteCall(request: Request, siteId: string, route: st
   }
 }
 
+/** The site's status now — read BEFORE a write, for applyAutoFix's statusBefore. */
+export async function siteStatusOf(siteId: string): Promise<string> {
+  try {
+    return (await prisma.site.findUnique({ where: { id: siteId }, select: { status: true } }))?.status ?? "";
+  } catch {
+    return "";
+  }
+}
+
 /**
- * A write the rules file nothing for (a company field, a scrape, an analysis,
+ * A write the rules file nothing for (an admin note, a scrape, an analysis,
  * a policy review): records the call and recomputes the day's minutes, and
  * never opens an item.
  */
