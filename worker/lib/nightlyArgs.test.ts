@@ -34,7 +34,15 @@ const same = (a: NightlyMode, b: NightlyMode) => JSON.stringify(a) === JSON.stri
 // --- the existing forms, unchanged -------------------------------------------
 assert(same(p("--dry-run"), { kind: "dry-run" }), "--dry-run");
 assert(same(p("--now"), { kind: "fleet", detailOverride: null }), "--now is the fleet");
-assert(same(p("--site abc --now"), { kind: "single", siteId: "abc", detailOverride: null }), "--site abc --now");
+assert(same(p("--site abc --now"), { kind: "single", siteId: "abc", detailOverride: null, email: false }), "--site abc --now");
+
+// Owner, 2026-10-01: a single-site run no longer emails unless asked.
+assert(
+  same(p("--site abc --now --email"), { kind: "single", siteId: "abc", detailOverride: null, email: true }),
+  "--email asks a single-site run to send its report",
+);
+assert(throws(() => p("--now --email")), "--email on the fleet is refused — the timer's runs always email");
+assert(throws(() => p("--site abc --dry-run-details --email")), "and on a rehearsal, which sends nothing");
 assert(throws(() => p("--site abc")), "--site without --now still refuses — it runs the scheduled path for real");
 assert(throws(() => p("")), "no arguments refuses");
 
@@ -44,7 +52,7 @@ assert(
   "--full-details forces a full fleet night",
 );
 assert(
-  same(p("--site abc --now --incremental-details"), { kind: "single", siteId: "abc", detailOverride: "incremental" }),
+  same(p("--site abc --now --incremental-details"), { kind: "single", siteId: "abc", detailOverride: "incremental", email: false }),
   "--incremental-details on one site",
 );
 assert(throws(() => p("--now --full-details --incremental-details")), "both flags at once is refused, not guessed");

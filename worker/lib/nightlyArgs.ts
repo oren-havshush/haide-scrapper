@@ -10,6 +10,9 @@
 //   --site <id> --dry-run-details  read-only rehearsal of one site's
 //                                fetch-or-carry split, in the night's own mode.
 //   --full-details / --incremental-details   override any of the above.
+//   --email                      a --site run sends its report by email; without
+//                                it, it does not (owner, 2026-10-01). The timer's
+//                                runs always send.
 //   --test-email                 one-off: email the latest stored report, then exit.
 
 import { detailModeFor, type DetailMode } from "./detailPlan";
@@ -18,7 +21,7 @@ export type NightlyMode =
   | { kind: "dry-run" }
   | { kind: "test-email" }
   | { kind: "dry-run-details"; siteId: string; detailOverride: DetailMode | null }
-  | { kind: "single"; siteId: string; detailOverride: DetailMode | null }
+  | { kind: "single"; siteId: string; detailOverride: DetailMode | null; email: boolean }
   | { kind: "fleet"; detailOverride: DetailMode | null };
 
 export function parseNightlyArgs(argv: string[]): NightlyMode {
@@ -30,6 +33,10 @@ export function parseNightlyArgs(argv: string[]): NightlyMode {
   const incremental = argv.includes("--incremental-details");
   const siteIdx = argv.indexOf("--site");
   const siteId = siteIdx >= 0 ? argv[siteIdx + 1] : undefined;
+  const email = argv.includes("--email");
+  if (email && !(siteId && now)) {
+    throw new Error("--email applies to --site <id> --now only; the timer's runs always send their report");
+  }
 
   if (full && incremental) throw new Error("--full-details and --incremental-details are exclusive");
   const detailOverride: DetailMode | null = full ? "full" : incremental ? "incremental" : null;
@@ -55,7 +62,7 @@ export function parseNightlyArgs(argv: string[]): NightlyMode {
   }
   if (siteId) {
     if (!now) throw new Error("--site requires --now (it runs the scheduled path for real)");
-    return { kind: "single", siteId, detailOverride };
+    return { kind: "single", siteId, detailOverride, email };
   }
   if (now) return { kind: "fleet", detailOverride };
   throw new Error("one of --dry-run, --now, --site <id> --now, or --site <id> --dry-run-details is required");

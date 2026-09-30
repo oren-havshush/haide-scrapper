@@ -10,6 +10,8 @@
 // writes and sends without a database. The module needs DATABASE_URL to load
 // (the prisma singleton); an unreachable one is set, and nothing may query it.
 
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import type { MailOutcome } from "./sweepMail";
 import type { ReportItem } from "./sweepReport";
 
@@ -59,6 +61,8 @@ const STARTED = new Date("2026-09-28T23:00:40Z"); // 02:00 IDT on the 29th
     opts: {
       failUpdateOf?: "emailStatus";
       loadFixQueue?: () => Promise<Array<{ siteUrl: string; field: string; code: string; openedAt: Date }>>;
+      trigger?: string;
+      email?: boolean;
     } = {},
   ) => {
     const updates: Update[] = [];
@@ -67,7 +71,8 @@ const STARTED = new Date("2026-09-28T23:00:40Z"); // 02:00 IDT on the 29th
       {
         kind,
         sweepId: "sw1",
-        trigger: "timer",
+        trigger: opts.trigger ?? "timer",
+        ...(opts.email !== undefined ? { email: opts.email } : {}),
         startedAt: STARTED,
         selectedCount: 1,
         status: "COMPLETED",
@@ -132,6 +137,26 @@ const STARTED = new Date("2026-09-28T23:00:40Z"); // 02:00 IDT on the 29th
     const r = await run("POLICY", sent, { failUpdateOf: "emailStatus" });
     assert(r.merged.status === "COMPLETED" && typeof r.logText === "string", "the close still returns with its report");
   });
+
+  // Owner, 2026-10-01: a single-site run emails only when asked (--email).
+  await check("a -single trigger without email never calls the sender", async () => {
+    const quiet = await run("SCRAPE", sent, { trigger: "manual-single" });
+    assert(quiet.sends.length === 0, `no send (${quiet.sends.length})`);
+    assert(quiet.merged.emailStatus === "skipped: single-site run", `emailStatus says why (${String(quiet.merged.emailStatus)})`);
+    assert(quiet.merged.status === "COMPLETED" && quiet.merged.logText === quiet.logText, "the report is still stored");
+    const asked = await run("SCRAPE", sent, { trigger: "manual-single", email: true });
+    assert(asked.sends.length === 1, "with email: true it sends");
+    const timer = await run("SCRAPE", sent, { trigger: "timer" });
+    assert(timer.sends.length === 1, "the timer's run is unchanged: it sends");
+    const policy = await run("POLICY", sent, { trigger: "timer" });
+    assert(policy.sends.length === 1, "and so does the policy sweep");
+  });
+  {
+    const src = readFileSync(join(__dirname, "..", "sweep", "nightly.ts"), "utf8");
+    const calls = src.split("await closeSweep({").slice(1).map((c) => c.slice(0, c.indexOf("});")));
+    assert(calls.length >= 4, `nightly.ts closes its sweep in several places (${calls.length})`);
+    assert(calls.every((c) => /email: emailReport/.test(c)), "every close passes the run's --email choice");
+  }
 
   // addsite2 phase two, step 1a: closeSweep loads the open fix items and the
   // scrape report carries them in its Fix queue block.

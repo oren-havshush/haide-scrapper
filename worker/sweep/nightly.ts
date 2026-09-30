@@ -627,6 +627,8 @@ async function realRun(mode: Mode, trigger: string): Promise<number> {
   }
 
   const single = mode.kind === "single" ? mode.siteId : null;
+  // A single-site run emails only with --email (closeSweep); the fleet always does.
+  const emailReport = mode.kind === "single" ? mode.email : true;
   const now = new Date();
   // Incremental on weekday nights, full on the Saturday run and on --site
   // (worker/lib/nightlyArgs.ts). Decided once, so every site tonight agrees.
@@ -666,6 +668,7 @@ async function realRun(mode: Mode, trigger: string): Promise<number> {
       await closeSweep({
         kind: "SCRAPE",
         detailMode,
+        email: emailReport,
         sweepId: sweep.id,
         trigger: sweep.trigger,
         startedAt: sweep.startedAt,
@@ -777,6 +780,7 @@ async function realRun(mode: Mode, trigger: string): Promise<number> {
       const failedText = await closeSweep({
         kind: "SCRAPE",
         detailMode,
+        email: emailReport,
         sweepId: sweep.id,
         trigger: sweep.trigger,
         startedAt: sweep.startedAt,
@@ -827,6 +831,7 @@ async function realRun(mode: Mode, trigger: string): Promise<number> {
       const haltedText = await closeSweep({
         kind: "SCRAPE",
         detailMode,
+        email: emailReport,
         sweepId: sweep.id,
         trigger: sweep.trigger,
         startedAt: sweep.startedAt,
@@ -850,6 +855,7 @@ async function realRun(mode: Mode, trigger: string): Promise<number> {
   const reportText = await closeSweep({
     kind: "SCRAPE",
     detailMode,
+    email: emailReport,
     sweepId: sweep.id,
     trigger: sweep.trigger,
     startedAt: sweep.startedAt,

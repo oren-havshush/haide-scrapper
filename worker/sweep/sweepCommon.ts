@@ -205,6 +205,11 @@ export async function closeSweep(args: {
   skipped?: SkippedSite[];
   /** The night's detail mode, for the report's Details section. Scrape sweep only. */
   detailMode?: "full" | "incremental";
+  /**
+   * A single-site run (trigger "<x>-single") sends its report only when this is
+   * true (nightly.ts --email). Every other sweep sends regardless.
+   */
+  email?: boolean;
 }, deps: CloseSweepDeps = {}): Promise<string> {
   const update = deps.update ?? ((a: SweepRowUpdate) => prisma.scrapeSweep.update(a));
   const send = deps.send ?? ((a: Parameters<typeof sendSweepMail>[0]) => sendSweepMail(a));
@@ -264,19 +269,28 @@ export async function closeSweep(args: {
   // sender never throws by contract; the try is for the contract being broken,
   // and the emailStatus write has its own, because a mail must never cost the
   // night its closed sweep.
+  //
+  // A single-site run (a guarded run after a config change) sends only when
+  // asked with --email (owner, 2026-10-01): the stored report is the record,
+  // and the inbox is for the nights.
   let emailStatus: string;
-  try {
-    const mail = await send({
-      kind: args.kind,
-      date: sweepDate(args.startedAt, sweepConfig.timezone),
-      logText,
-      items: args.items,
-    });
-    emailStatus = mail.emailStatus;
-  } catch (err) {
-    const msg = err instanceof Error ? err.message : String(err);
-    console.error(`[mail] !! report NOT emailed — the sender threw: ${msg}`);
-    emailStatus = `failed: sender threw — ${msg}`.slice(0, 500);
+  if (args.trigger.endsWith("-single") && args.email !== true) {
+    emailStatus = "skipped: single-site run";
+    console.info("[mail] single-site run: report stored, not emailed (pass --email to send it)");
+  } else {
+    try {
+      const mail = await send({
+        kind: args.kind,
+        date: sweepDate(args.startedAt, sweepConfig.timezone),
+        logText,
+        items: args.items,
+      });
+      emailStatus = mail.emailStatus;
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      console.error(`[mail] !! report NOT emailed — the sender threw: ${msg}`);
+      emailStatus = `failed: sender threw — ${msg}`.slice(0, 500);
+    }
   }
   try {
     await update({ where: { id: args.sweepId }, data: { emailStatus } });
