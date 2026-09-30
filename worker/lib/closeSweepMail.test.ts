@@ -56,7 +56,10 @@ const STARTED = new Date("2026-09-28T23:00:40Z"); // 02:00 IDT on the 29th
   const run = async (
     kind: "SCRAPE" | "POLICY",
     send: (a: SendArgs) => Promise<MailOutcome>,
-    opts: { failUpdateOf?: "emailStatus" } = {},
+    opts: {
+      failUpdateOf?: "emailStatus";
+      loadFixQueue?: () => Promise<Array<{ siteUrl: string; field: string; code: string; openedAt: Date }>>;
+    } = {},
   ) => {
     const updates: Update[] = [];
     const sends: SendArgs[] = [];
@@ -81,6 +84,7 @@ const STARTED = new Date("2026-09-28T23:00:40Z"); // 02:00 IDT on the 29th
           sends.push(a);
           return send(a);
         },
+        loadFixQueue: opts.loadFixQueue ?? (async () => []),
       } as never,
     );
     const merged = Object.assign({}, ...updates.map((u) => u.data)) as Record<string, unknown>;
@@ -127,6 +131,29 @@ const STARTED = new Date("2026-09-28T23:00:40Z"); // 02:00 IDT on the 29th
   await check("a failed emailStatus write does not fail the close", async () => {
     const r = await run("POLICY", sent, { failUpdateOf: "emailStatus" });
     assert(r.merged.status === "COMPLETED" && typeof r.logText === "string", "the close still returns with its report");
+  });
+
+  // addsite2 phase two, step 1a: closeSweep loads the open fix items and the
+  // scrape report carries them in its Fix queue block.
+  await check("the scrape report carries the open fix items", async () => {
+    const open = async () => [
+      { siteUrl: "https://etgarim.test", field: "APPLY", code: "manual", openedAt: new Date("2026-09-20T10:00:00Z") },
+    ];
+    const r = await run("SCRAPE", sent, { loadFixQueue: open });
+    assert(r.logText.includes("Fix queue") && r.logText.includes("https://etgarim.test"), "the block is in the stored report");
+    assert(r.sends[0]?.logText.includes("Fix queue") === true, "and in the mail");
+    const p = await run("POLICY", sent, { loadFixQueue: open });
+    assert(!p.logText.includes("Fix queue"), "the policy report does not carry it");
+  });
+
+  await check("a fix queue that cannot be read never fails the close", async () => {
+    const r = await run("SCRAPE", sent, {
+      loadFixQueue: async () => {
+        throw new Error("db read failed");
+      },
+    });
+    assert(r.merged.status === "COMPLETED" && r.sends.length === 1, "the sweep still closes and mails");
+    assert(!r.logText.includes("Fix queue"), "without the block");
   });
 
   if (failures > 0) {

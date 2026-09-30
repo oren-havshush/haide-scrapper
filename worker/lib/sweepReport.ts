@@ -125,7 +125,50 @@ export type ReportOptions = {
    * before incremental fetching, which print no Details section.
    */
   detailMode?: "full" | "incremental";
+  /**
+   * Every open FixItem (addsite2 phase two, step 1a), loaded by closeSweep.
+   * Absent or empty prints no Fix queue block.
+   */
+  fixQueue?: readonly FixQueueEntry[];
 };
+
+/** One open fix item, as the report needs it. */
+export type FixQueueEntry = { siteUrl: string; field: string; code: string; openedAt: Date };
+
+/** The email lists at most this many sites; the dashboard shows them all. */
+export const FIX_QUEUE_EMAIL_SITES = 10;
+
+/**
+ * The Fix queue block: open items by site, most items first, then oldest.
+ * At most FIX_QUEUE_EMAIL_SITES sites; the rest are counted on one line.
+ */
+export function renderFixQueue(entries: readonly FixQueueEntry[], timeZone: string): string[] {
+  if (entries.length === 0) return [];
+  const bySite = new Map<string, { fields: Set<string>; count: number; oldest: Date }>();
+  for (const e of entries) {
+    const s = bySite.get(e.siteUrl) ?? { fields: new Set<string>(), count: 0, oldest: e.openedAt };
+    s.fields.add(e.field);
+    s.count++;
+    if (e.openedAt.getTime() < s.oldest.getTime()) s.oldest = e.openedAt;
+    bySite.set(e.siteUrl, s);
+  }
+  const ordered = [...bySite.entries()].sort(
+    (a, b) => b[1].count - a[1].count || a[1].oldest.getTime() - b[1].oldest.getTime() || a[0].localeCompare(b[0]),
+  );
+  const lines = [`Fix queue (${entries.length} open item(s) on ${bySite.size} site(s))`];
+  for (const [siteUrl, s] of ordered.slice(0, FIX_QUEUE_EMAIL_SITES)) {
+    lines.push(
+      `  ${siteUrl} — ${[...s.fields].sort().join(", ")} (${s.count} item${s.count === 1 ? "" : "s"}, ` +
+        `oldest ${sweepDate(s.oldest, timeZone)})`,
+    );
+  }
+  const rest = ordered.slice(FIX_QUEUE_EMAIL_SITES);
+  if (rest.length > 0) {
+    const n = rest.reduce((sum, [, s]) => sum + s.count, 0);
+    lines.push(`  … and ${rest.length} more site${rest.length === 1 ? "" : "s"} (${n} item${n === 1 ? "" : "s"})`);
+  }
+  return lines;
+}
 
 /**
  * Policy outcomes that ESTABLISHED a status tonight — the only ones "checked"
@@ -618,6 +661,15 @@ export function renderSweepReport(
         lines.push(`    ${pair.padStart(9)}  ${i.siteUrl}`);
       }
     }
+  }
+
+  // --- Fix queue -----------------------------------------------------------
+  // Open fix items across the fleet (addsite2 phase two, step 1a), not just
+  // tonight's sites. After the attention queue, before Warnings.
+  const fixLines = renderFixQueue(opts.fixQueue ?? [], opts.timeZone);
+  if (fixLines.length > 0) {
+    lines.push("");
+    lines.push(...fixLines);
   }
 
   // --- Warnings ----------------------------------------------------------

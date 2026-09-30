@@ -18,6 +18,14 @@ function assert(cond: boolean, msg: string) {
     failures++;
   }
 }
+const eq = (got: unknown, want: unknown, msg: string) => {
+  const g = JSON.stringify(got);
+  const w = JSON.stringify(want);
+  if (g !== w) {
+    console.error(`FAIL: ${msg}\n  got=${g}\n  want=${w}`);
+    failures++;
+  }
+};
 
 const TZ = "Asia/Jerusalem";
 const STARTED = new Date("2026-09-10T00:05:00Z"); // 03:05 in Jerusalem
@@ -439,6 +447,64 @@ check("a selector kept although it looked wrongly scoped is named", () => {
     `with both counts (got "${lines[0]?.why}")`,
   );
   assert(computeCounters(sweep(), [kept]).ok === 1, "and it is still an ok run — its rows were written");
+});
+
+// ---------------------------------------------------------------------------
+// Fix queue (addsite2 phase two, step 1a)
+// ---------------------------------------------------------------------------
+// The open FixItem rows, by site, after the attention queue and before
+// Warnings (which stay last). At most ten sites in the email; the rest counted.
+
+check("the Fix queue block names the site and the field, before Warnings", () => {
+  const warned = item({ siteId: "w", siteUrl: "https://warned.test", warnings: ["near_timeout: 58 min"] });
+  const text = renderSweepReport(sweep(), [warned], {
+    timeZone: TZ,
+    fixQueue: [
+      { siteUrl: "https://etgarim.test", field: "APPLY", code: "manual", openedAt: new Date("2026-09-08T10:00:00Z") },
+      { siteUrl: "https://etgarim.test", field: "LOCATION", code: "manual", openedAt: new Date("2026-09-09T10:00:00Z") },
+    ],
+  });
+  const at = text.indexOf("Fix queue");
+  assert(at >= 0, "a report built with open items has a Fix queue block");
+  const block = at >= 0 ? text.slice(at, text.indexOf("\n\n", at) === -1 ? undefined : text.indexOf("\n\n", at)) : "";
+  assert(block.includes("https://etgarim.test"), `it names the site (${block})`);
+  assert(block.includes("APPLY") && block.includes("LOCATION"), "and each open field");
+  assert(block.includes("2 item"), "with the site's open-item count");
+  const warnAt = text.indexOf("Warnings (");
+  assert(warnAt > at && at > 0, "and it precedes Warnings, which stay last");
+  assert(!renderSweepReport(sweep(), [warned], { timeZone: TZ }).includes("Fix queue"), "no open items passed: no block");
+});
+
+check("the Fix queue block lists ten sites and counts the rest", () => {
+  // 13 sites: site k has k+1 open items, so the order is by count, highest first.
+  const fq = Array.from({ length: 13 }, (_, k) =>
+    Array.from({ length: k + 1 }, (_, n) => ({
+      siteUrl: `https://f${String(k).padStart(2, "0")}.test`,
+      field: "APPLY",
+      code: "manual",
+      openedAt: new Date(Date.UTC(2026, 8, 1 + n)),
+    })),
+  ).flat();
+  const text = renderSweepReport(sweep(), ok(1), { timeZone: TZ, fixQueue: fq });
+  const at = text.indexOf("Fix queue");
+  const lines = text.slice(at).split("\n");
+  const siteLines = lines.filter((l) => /^ {2}https:\/\/f\d\d\.test/.test(l));
+  eq(siteLines.length, 10, "ten sites are listed");
+  assert((siteLines[0] ?? "").startsWith("  https://f12.test"), `the site with the most open items first (${siteLines[0]})`);
+  // The three left out are f00..f02, with 1 + 2 + 3 items.
+  const tail = lines.find((l) => l.includes("more sites"));
+  eq(tail?.trim(), "… and 3 more sites (6 items)", "and the block ends with the remainder counted");
+  assert(lines.indexOf(tail ?? "") > lines.indexOf(siteLines[9] ?? ""), "after the tenth site");
+
+  // Equal counts: the older open item first.
+  const tie = renderSweepReport(sweep(), ok(1), {
+    timeZone: TZ,
+    fixQueue: [
+      { siteUrl: "https://new.test", field: "DATE", code: "manual", openedAt: new Date("2026-09-09T00:00:00Z") },
+      { siteUrl: "https://old.test", field: "DATE", code: "manual", openedAt: new Date("2026-09-01T00:00:00Z") },
+    ],
+  });
+  assert(tie.indexOf("https://old.test") < tie.indexOf("https://new.test"), "on equal counts the older site comes first");
 });
 
 check("a committed drop is named", () => {

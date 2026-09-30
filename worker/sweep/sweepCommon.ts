@@ -12,6 +12,7 @@ import {
   computeCounters,
   renderSweepReport,
   sweepDate,
+  type FixQueueEntry,
   type ReportItem,
   type ReportSweep,
   type SkippedSite,
@@ -178,7 +179,18 @@ export type SweepRowUpdate = { where: { id: string }; data: Record<string, unkno
 export type CloseSweepDeps = {
   update?: (a: SweepRowUpdate) => Promise<unknown>;
   send?: (a: { kind: SweepKind; date: string; logText: string; items: ReportItem[] }) => Promise<MailOutcome>;
+  /** Every open FixItem, for the scrape report's Fix queue block. */
+  loadFixQueue?: () => Promise<FixQueueEntry[]>;
 };
+
+/** Open fix items across the fleet, with the site's URL (addsite2 phase two, 1a). */
+async function loadOpenFixItems(): Promise<FixQueueEntry[]> {
+  const rows = await prisma.fixItem.findMany({
+    where: { resolvedAt: null },
+    select: { field: true, code: true, openedAt: true, site: { select: { siteUrl: true } } },
+  });
+  return rows.map((r) => ({ siteUrl: r.site.siteUrl, field: r.field, code: r.code, openedAt: r.openedAt }));
+}
 
 export async function closeSweep(args: {
   kind: SweepKind;
@@ -209,11 +221,23 @@ export async function closeSweep(args: {
     haltReason: args.haltReason,
   };
 
+  // The scrape report's Fix queue block. A read that fails prints no block and
+  // never fails the close: the report is the sweep's record, the queue is extra.
+  let fixQueue: FixQueueEntry[] = [];
+  if (args.kind === "SCRAPE") {
+    try {
+      fixQueue = await (deps.loadFixQueue ?? loadOpenFixItems)();
+    } catch (err) {
+      console.warn(`[sweep] could not read the fix queue: ${(err as Error).message}`);
+    }
+  }
+
   const counters = computeCounters(sweepRow, args.items);
   const logText = renderSweepReport(sweepRow, args.items, {
     timeZone: sweepConfig.timezone,
     skipped: args.skipped,
     detailMode: args.detailMode,
+    fixQueue,
     // The thresholds the worker's undersize guard read, so the report's drop
     // rule is the same rule.
     dropThresholds: {
