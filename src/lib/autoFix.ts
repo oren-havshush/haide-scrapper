@@ -66,13 +66,17 @@ const MAPPED_FIELD: Readonly<Record<string, FixFieldValue>> = {
 /** _meta keys that carry no behaviour: a change in them alone is no change. */
 const INERT_META = new Set(["savedAt", "originalMappings"]);
 
-/** JSON with object keys sorted, so jsonb's key reordering is not a change. */
+/**
+ * JSON with object keys sorted, so jsonb's key reordering is not a change, and
+ * with null-valued keys dropped at every depth: saveSiteConfig writes explicit
+ * nulls where an older config simply lacks the key, and the two mean the same.
+ */
 function canonical(v: unknown): string {
   if (Array.isArray(v)) return `[${v.map(canonical).join(",")}]`;
   if (v && typeof v === "object") {
     const o = v as Record<string, unknown>;
     return `{${Object.keys(o)
-      .filter((k) => o[k] !== undefined)
+      .filter((k) => o[k] !== undefined && o[k] !== null)
       .sort()
       .map((k) => `${JSON.stringify(k)}:${canonical(o[k])}`)
       .join(",")}}`;

@@ -96,6 +96,38 @@ eq(config(withField("department", { selector: ".dept" })), ["OTHER"], "a field w
   };
   eq(config(reordered), [], "the same config with its keys reordered is no change");
   eq(config(withMeta({ savedAt: "2026-09-30T12:00:00.000Z" })), [], "a new savedAt alone is no change");
+
+  // Absent and null are the same value, at any depth. kahane's smoke save
+  // (2026-09-30) showed an older config missing keys that saveSiteConfig now
+  // writes as explicit nulls; top-level _meta keys already compared equal,
+  // nested ones did not.
+  const older = base();
+  const meta = (older.fieldMappings as Record<string, unknown>)._meta as Record<string, unknown>;
+  delete meta.pagination;
+  eq(
+    fieldsForWrite({ kind: "config", before: older, after: withMeta({ listingUrls: null }) }),
+    [],
+    "top-level _meta keys going from absent to null are no change",
+  );
+  eq(
+    fieldsForWrite({
+      kind: "config",
+      before: withMeta({ browserOverrides: { requestDelayMs: 3000 } }),
+      after: withMeta({ browserOverrides: { requestDelayMs: 3000, userAgent: null } }),
+    }),
+    [],
+    "a nested key going from absent to null is no change",
+  );
+  eq(
+    config(withField("title", { selector: "h2.job-title", confidence: 0.9, attribute: null })),
+    [],
+    "nor inside a mapped field",
+  );
+  eq(
+    config(withField("title", { selector: "h2.job-title", confidence: 0.9, attribute: "href" })),
+    ["TITLE"],
+    "while a nested key gaining a value is still a change",
+  );
 }
 
 // --- rule 3: formCapture -> APPLY ---------------------------------------------
