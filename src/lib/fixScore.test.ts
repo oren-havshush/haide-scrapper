@@ -1,0 +1,206 @@
+// Run: npx tsx src/lib/fixScore.test.ts
+//
+// addsite2 phase two, step 1a: the cohort score. Per site, the fix items opened
+// in the 14 days after it went ACTIVE — items, distinct fields, minutes — and
+// its final status. The primary score counts operator-logged (MANUAL) items
+// only. CHECK items are reported apart, and only for check codes that were live
+// across every scored window, so a check shipping mid-control cannot tilt the
+// comparison. Cohorts: control = untagged and created in [freezeAt, switchAt);
+// test = tagged addsite3; untagged after the switch is listed, never scored.
+
+import {
+  FIX_WINDOW_DAYS,
+  cohortOf,
+  scoreCohorts,
+  scoreSite,
+  type CohortBounds,
+  type ScoreItem,
+  type ScoreSite,
+} from "./fixScore";
+
+let failures = 0;
+function assert(cond: boolean, msg: string) {
+  if (!cond) {
+    console.error("FAIL:", msg);
+    failures++;
+  }
+}
+const eq = (got: unknown, want: unknown, msg: string) => {
+  const g = JSON.stringify(got);
+  const w = JSON.stringify(want);
+  if (g !== w) {
+    console.error(`FAIL: ${msg}\n  got=${g}\n  want=${w}`);
+    failures++;
+  }
+};
+
+const D = (s: string) => new Date(s);
+const DAY = 86_400_000;
+const FREEZE = D("2026-10-01T00:00:00Z");
+const SWITCH = D("2026-11-01T00:00:00Z");
+const bounds: CohortBounds = { freezeAt: FREEZE, switchAt: SWITCH };
+const NOW = D("2026-12-15T00:00:00Z");
+
+const site = (over: Partial<ScoreSite> = {}): ScoreSite => ({
+  id: "s1",
+  siteUrl: "https://s1.test",
+  status: "ACTIVE",
+  createdAt: D("2026-10-05T08:00:00Z"),
+  activeAt: D("2026-10-06T08:00:00Z"),
+  onboardingSkill: null,
+  ...over,
+});
+const item = (over: Partial<ScoreItem> = {}): ScoreItem => ({
+  siteId: "s1",
+  field: "APPLY",
+  source: "MANUAL",
+  code: "manual",
+  openedAt: D("2026-10-07T08:00:00Z"),
+  minutes: 10,
+  ...over,
+});
+
+eq(FIX_WINDOW_DAYS, 14, "the window is fourteen days");
+
+// --- the cohort rule --------------------------------------------------------
+{
+  eq(cohortOf(site(), bounds), "control", "untagged, created after the freeze and before the switch: control");
+  eq(cohortOf(site({ createdAt: FREEZE }), bounds), "control", "created exactly at the freeze: control (closed start)");
+  eq(
+    cohortOf(site({ createdAt: D("2026-09-20T00:00:00Z") }), bounds),
+    "none",
+    "created before the freeze: in no cohort — an old site, not a control",
+  );
+  eq(
+    cohortOf(site({ createdAt: SWITCH }), bounds),
+    "addsite2_after_switch",
+    "untagged and created at the switch: listed apart (open end)",
+  );
+  eq(
+    cohortOf(site({ createdAt: D("2026-11-20T00:00:00Z") }), bounds),
+    "addsite2_after_switch",
+    "untagged after the switch: addsite2 after switch",
+  );
+  eq(cohortOf(site({ onboardingSkill: "addsite3" }), bounds), "test", "tagged addsite3: test");
+  eq(
+    cohortOf(site({ onboardingSkill: "addsite3", createdAt: D("2026-11-20T00:00:00Z") }), bounds),
+    "test",
+    "tagged addsite3 after the switch: still test",
+  );
+  eq(cohortOf(site({ onboardingSkill: "other" }), bounds), "none", "another tag is no cohort");
+  eq(
+    cohortOf(site(), { freezeAt: null, switchAt: null }),
+    "none",
+    "before the freeze exists there is no control cohort",
+  );
+  eq(
+    cohortOf(site({ createdAt: D("2027-01-01T00:00:00Z") }), { freezeAt: FREEZE, switchAt: null }),
+    "control",
+    "with no switch yet, every untagged site after the freeze is control",
+  );
+}
+
+// --- the window -------------------------------------------------------------
+{
+  const s = site();
+  const start = s.activeAt!.getTime();
+  const items = [
+    item({ openedAt: new Date(start - 60_000), minutes: 100 }), // before ACTIVE
+    item({ openedAt: new Date(start), minutes: 1, field: "APPLY" }), // at ACTIVE: in
+    item({ openedAt: new Date(start + 3 * DAY), minutes: 2, field: "LOCATION" }),
+    item({ openedAt: new Date(start + FIX_WINDOW_DAYS * DAY - 1), minutes: 4, field: "APPLY" }), // last ms: in
+    item({ openedAt: new Date(start + FIX_WINDOW_DAYS * DAY), minutes: 1000 }), // the bound itself: out
+    item({ siteId: "other", openedAt: new Date(start + DAY), minutes: 5000 }), // another site
+  ];
+  const r = scoreSite(s, items, { now: NOW, bounds });
+  eq(r.cohort, "control", "the score carries the cohort");
+  eq(r.items, 3, "three items fall in [activeAt, activeAt + 14d)");
+  eq(r.minutes, 7, "their minutes add up; before, at the bound and other sites' do not");
+  eq(r.fields, 2, "distinct fields: APPLY and LOCATION");
+  eq(r.windowStart?.toISOString(), s.activeAt!.toISOString(), "the window starts at activeAt");
+  eq(r.windowEnd?.toISOString(), new Date(start + FIX_WINDOW_DAYS * DAY).toISOString(), "and ends 14 days later");
+  assert(r.complete, "a window that ended before now is complete");
+  assert(
+    !scoreSite(s, items, { now: new Date(start + DAY), bounds }).complete,
+    "one still open is not complete",
+  );
+
+  const never = scoreSite(site({ activeAt: null, status: "SKIPPED" }), items, { now: NOW, bounds });
+  eq([never.items, never.minutes, never.windowStart], [0, 0, null], "a site never ACTIVE has no window and no items");
+  assert(never.rank3, "and SKIPPED counts toward rank 3");
+  assert(scoreSite(site({ status: "REVIEW" }), [], { now: NOW, bounds }).rank3, "so does REVIEW");
+  assert(!scoreSite(site(), [], { now: NOW, bounds }).rank3, "ACTIVE does not");
+  eq(scoreSite(site({ status: "REVIEW" }), [], { now: NOW, bounds }).finalStatus, "REVIEW", "the final status is reported");
+
+  const noMinutes = scoreSite(s, [item({ minutes: null })], { now: NOW, bounds });
+  eq([noMinutes.items, noMinutes.minutes], [1, 0], "an item with no minutes logged still counts as an item");
+}
+
+// --- MANUAL is the score; CHECK only for codes live across every window ------
+{
+  const s = site();
+  const t = s.activeAt!.getTime();
+  const items = [
+    item({ openedAt: new Date(t + DAY), minutes: 5 }),
+    item({ source: "CHECK", code: "apply_replay_token", field: "APPLY", openedAt: new Date(t + DAY), minutes: 30 }),
+    item({ source: "CHECK", code: "undated_rate", field: "DATE", openedAt: new Date(t + 2 * DAY), minutes: null }),
+  ];
+  const all = scoreSite(s, items, { now: NOW, bounds, comparableCheckCodes: new Set(["apply_replay_token"]) });
+  eq([all.items, all.minutes], [1, 5], "the primary score counts MANUAL items and minutes only");
+  eq(all.checkItems, 1, "CHECK items are counted apart, for comparable codes only");
+  eq(all.checkCodes, ["apply_replay_token"], "and named");
+  eq(scoreSite(s, items, { now: NOW, bounds }).checkItems, 0, "with no comparable codes, no CHECK item counts");
+
+  // Two cohorts. undated_rate went live after the control's first window
+  // opened, so comparing it would count it for test and not for control.
+  const ctl = site({ id: "c", siteUrl: "https://c.test" });
+  const tst = site({
+    id: "t",
+    siteUrl: "https://t.test",
+    onboardingSkill: "addsite3",
+    createdAt: D("2026-11-10T00:00:00Z"),
+    activeAt: D("2026-11-11T00:00:00Z"),
+  });
+  const late = site({
+    id: "late",
+    siteUrl: "https://late.test",
+    createdAt: D("2026-11-12T00:00:00Z"),
+    activeAt: D("2026-11-13T00:00:00Z"),
+  });
+  const rep = scoreCohorts([ctl, tst, late], [], {
+    now: NOW,
+    bounds,
+    checkCodeLiveFrom: {
+      apply_replay_token: D("2026-09-01T00:00:00Z"),
+      undated_rate: D("2026-10-20T00:00:00Z"),
+    },
+  });
+  eq(rep.comparableCheckCodes, ["apply_replay_token"], "only a code live before the earliest scored window compares");
+  eq(rep.sites.map((x) => x.siteId).sort(), ["c", "t"], "control and test are scored");
+  eq(rep.excluded.map((x) => x.siteId), ["late"], "the untagged after-switch site is listed and excluded");
+  eq(rep.excluded[0]?.cohort, "addsite2_after_switch", "under its own name");
+  eq([rep.control.sites, rep.test.sites], [1, 1], "one site per cohort");
+}
+
+// --- cohort summaries: median minutes, mean items, over complete windows ------
+{
+  const mk = (id: string, day: number) =>
+    site({ id, siteUrl: `https://${id}.test`, createdAt: D(`2026-10-${String(day).padStart(2, "0")}T00:00:00Z`), activeAt: D(`2026-10-${String(day).padStart(2, "0")}T01:00:00Z`) });
+  const a = mk("a", 2);
+  const b = mk("b", 3);
+  const c = mk("c", 4);
+  const open = site({ id: "o", siteUrl: "https://o.test", createdAt: D("2026-10-30T00:00:00Z"), activeAt: D("2026-12-10T00:00:00Z") });
+  const at = (s: ScoreSite, minutes: number) => item({ siteId: s.id, openedAt: new Date(s.activeAt!.getTime() + DAY), minutes });
+  const rep = scoreCohorts([a, b, c, open], [at(a, 10), at(a, 20), at(b, 5), at(open, 999)], { now: NOW, bounds });
+  eq(rep.control.sites, 4, "four control sites");
+  eq(rep.control.complete, 3, "three with complete windows");
+  eq(rep.control.medianMinutes, 5, "median minutes over complete windows: 30, 5, 0 -> 5");
+  eq(rep.control.meanItems, 1, "mean items over complete windows: (2 + 1 + 0) / 3");
+  eq(rep.test, { sites: 0, complete: 0, medianMinutes: 0, meanItems: 0 }, "an empty cohort summarises to zeros");
+}
+
+if (failures > 0) {
+  console.error(`\n${failures} assertion(s) failed`);
+  process.exit(1);
+}
+console.info("fixScore: fourteen-day windows, MANUAL items scored, cohorts by tag and creation time");
