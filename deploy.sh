@@ -16,6 +16,11 @@ fi
 REMOTE_DIR="/opt/haide-scrapper"
 GIT_SHA=$(git rev-parse --short HEAD 2>/dev/null || echo "unknown")
 DEPLOY_TAG="deploy-$(date +%Y%m%d-%H%M%S)-${GIT_SHA}"
+# For the deploy record at the end of this script: the full commit,
+# and the working tree's modified paths NOW, before the sync ships the tree —
+# a dirty deploy is tagged "<tag>-dirty" with these paths in the tag message.
+GIT_SHA_FULL=$(git rev-parse HEAD 2>/dev/null || echo "")
+DIRTY_PATHS=$(git status --porcelain 2>/dev/null || true)
 
 echo "==> Deploying $DEPLOY_TAG to $HOST ..."
 
@@ -287,3 +292,13 @@ if ! grep -q "REMOTE_BLOCK_COMPLETE:$DEPLOY_TAG" "$REMOTE_LOG"; then
 fi
 
 echo "==> Deployment complete: $DEPLOY_TAG"
+
+# Only now, with the sentinel seen: an annotated git tag named DEPLOY_TAG
+# (suffixed -dirty for a dirty tree) pushed alone to origin, and a GitHub
+# deployment record with a success status. A failed deploy has exited above and
+# records neither; a failure to record never fails this deploy. No gh or not
+# logged in: one warning, no deployment record.
+DIRTY_FILE=$(mktemp)
+printf '%s\n' "$DIRTY_PATHS" > "$DIRTY_FILE"
+npx tsx scripts/deploy-record.ts --tag "$DEPLOY_TAG" --sha "$GIT_SHA_FULL" --last-line "==> Deployment complete: $DEPLOY_TAG" --dirty-file "$DIRTY_FILE" || echo "    (could not record the deploy as a tag / GitHub deployment; the deploy itself succeeded)"
+rm -f "$DIRTY_FILE"
