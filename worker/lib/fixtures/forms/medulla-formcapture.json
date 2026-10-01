@@ -1,0 +1,103 @@
+{
+  "fields": [
+    {
+      "name": "post_id",
+      "group": "הגשת מועמדות למשרה",
+      "label": "",
+      "tagName": "INPUT",
+      "required": false,
+      "fieldType": "hidden"
+    },
+    {
+      "name": "form_id",
+      "group": "הגשת מועמדות למשרה",
+      "label": "",
+      "tagName": "INPUT",
+      "required": false,
+      "fieldType": "hidden"
+    },
+    {
+      "name": "referer_title",
+      "group": "הגשת מועמדות למשרה",
+      "label": "",
+      "tagName": "INPUT",
+      "required": false,
+      "fieldType": "hidden"
+    },
+    {
+      "name": "queried_id",
+      "group": "הגשת מועמדות למשרה",
+      "label": "",
+      "tagName": "INPUT",
+      "required": false,
+      "fieldType": "hidden"
+    },
+    {
+      "name": "form_fields[name]",
+      "group": "הגשת מועמדות למשרה",
+      "label": "שם מלא",
+      "tagName": "INPUT",
+      "required": false,
+      "fieldType": "text"
+    },
+    {
+      "name": "form_fields[email]",
+      "group": "הגשת מועמדות למשרה",
+      "label": "אימייל",
+      "tagName": "INPUT",
+      "required": true,
+      "fieldType": "email"
+    },
+    {
+      "name": "form_fields[field_1]",
+      "group": "הגשת מועמדות למשרה",
+      "label": "טלפון",
+      "tagName": "INPUT",
+      "required": true,
+      "fieldType": "tel"
+    },
+    {
+      "name": "form_fields[field_2]",
+      "group": "הגשת מועמדות למשרה",
+      "label": "תפקיד אחרון",
+      "tagName": "INPUT",
+      "required": true,
+      "fieldType": "text"
+    },
+    {
+      "name": "form_fields[field_3]",
+      "group": "הגשת מועמדות למשרה",
+      "label": "צירוף קובץ קו\"ח",
+      "tagName": "INPUT",
+      "required": true,
+      "fieldType": "file"
+    },
+    {
+      "name": "form_fields[field_acd8315]",
+      "group": "הגשת מועמדות למשרה",
+      "label": "אני מאשר.ת לחברת מדולה ליצור עימי קשר לגבי משרות נוספות שרלוונטיות לניסיון שלי",
+      "tagName": "INPUT",
+      "required": true,
+      "fieldType": "checkbox"
+    },
+    {
+      "name": "form_fields[job_owner]",
+      "group": "הגשת מועמדות למשרה",
+      "label": "",
+      "tagName": "INPUT",
+      "required": false,
+      "fieldType": "hidden"
+    },
+    {
+      "name": "form_fields[Job]",
+      "group": "הגשת מועמדות למשרה",
+      "label": "Job",
+      "tagName": "INPUT",
+      "required": false,
+      "fieldType": "hidden"
+    }
+  ],
+  "method": "POST",
+  "actionUrl": "https://medulla.co.il/wp-admin/admin-ajax.php",
+  "formSelector": "form#cv_connected"
+}

@@ -11,10 +11,18 @@
 // keepNames would inject __name calls the page cannot run), and scrape.ts
 // uses the extractor, the static stamp and the replay check.
 
+// Second half (owner, 2026-10-01): actionAttribute, pageUrl, submitMechanism
+// and shapeHash on every blob — checked here on real fleet markup (kahane's
+// Elementor form, anvei-zion's Contact Form 7, rad's Gravity Forms, each served
+// at the URL it was read from) — and the template's blob stamped "script",
+// with the same shapeHash the live extractor gives the same form.
+
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { chromium } from "playwright";
+import { chromium, type Page } from "playwright";
 import { extractLiveFormData } from "./formExtract";
+import { FORM_EXTRACTOR_VERSION } from "./formFields";
+import { stampScriptFormBlob } from "./formShape";
 
 let failures = 0;
 function assert(cond: boolean, msg: string) {
@@ -58,6 +66,12 @@ const FIXTURE = `<!doctype html><html lang="he"><body>
 
 type Blob = {
   actionUrl: string;
+  actionAttribute?: string;
+  pageUrl?: string;
+  submitMechanism?: string;
+  submitEndpoint?: string;
+  submitAction?: string;
+  shapeHash?: string;
   method: string;
   enctype?: string;
   fields: Array<{ name: string; fieldType: string; value?: string; accept?: string; multiple?: boolean; options?: Array<{ value: string; label: string }> }>;
@@ -66,7 +80,7 @@ type Blob = {
   extractorVersion: number;
 };
 
-function checkBlob(b: Blob | null, who: string) {
+function checkBlob(b: Blob | null, who: string, source: string) {
   assert(!!b, `${who}: returned a form`);
   if (!b) return;
   const by = new Map(b.fields.map((f) => [f.name, f]));
@@ -85,8 +99,23 @@ function checkBlob(b: Blob | null, who: string) {
   eq(b.enctype, "multipart/form-data", `${who}: the form's enctype`);
   eq(b.method, "POST", `${who}: the method`);
   assert(/\/wp-admin\/admin-ajax\.php$/.test(b.actionUrl), `${who}: the action (${b.actionUrl})`);
-  eq([b.captureSource, b.extractorVersion], ["live", 2], `${who}: stamped live, version 2`);
+  eq([b.captureSource, b.extractorVersion], [source, FORM_EXTRACTOR_VERSION], `${who}: stamped ${source}, version ${FORM_EXTRACTOR_VERSION}`);
   assert(!Number.isNaN(Date.parse(b.capturedAt)), `${who}: with an ISO capturedAt (${b.capturedAt})`);
+  eq(b.actionAttribute, "https://medulla.test/wp-admin/admin-ajax.php", `${who}: actionAttribute, resolved absolute`);
+  eq(b.pageUrl, "https://medulla.test/jobs/lab-technician/", `${who}: pageUrl, the page it was read from`);
+}
+
+/** A real form, served alone at the URL it was read from (its fixture's first line). */
+async function serveFixture(page: Page, file: string): Promise<string> {
+  const src = readFileSync(join(__dirname, "fixtures", "forms", file), "utf8");
+  const url = /^<!-- (\S+) -->/.exec(src)?.[1] ?? "";
+  const origin = new URL(url).origin;
+  await page.unroute("**/*");
+  await page.route(`${origin}/**`, (r) =>
+    r.fulfill({ status: 200, contentType: "text/html; charset=utf-8", body: `<!doctype html><html><body>${src}</body></html>` }),
+  );
+  await page.goto(url);
+  return url;
 }
 
 (async () => {
@@ -100,15 +129,60 @@ function checkBlob(b: Blob | null, who: string) {
 
     // --- the worker's live extractor ----------------------------------------------
     const live = await extractLiveFormData(page, { formSelector: "form.elementor-form" }, new Date("2026-10-01T09:30:00Z"));
-    checkBlob(live ? (JSON.parse(live) as Blob) : null, "live extractor");
-    eq(live ? JSON.parse(live).capturedAt : null, "2026-10-01T09:30:00.000Z", "live extractor: capturedAt is the scrape's time");
+    const liveBlob = live ? (JSON.parse(live) as Blob) : null;
+    checkBlob(liveBlob, "live extractor", "live");
+    eq(liveBlob?.capturedAt ?? null, "2026-10-01T09:30:00.000Z", "live extractor: capturedAt is the scrape's time");
+    eq(
+      [liveBlob?.submitMechanism, liveBlob?.submitEndpoint, liveBlob?.submitAction],
+      ["ajax", "https://medulla.test/wp-admin/admin-ajax.php", "elementor_pro_forms_send_form"],
+      "live extractor: an Elementor form is ajax to admin-ajax.php",
+    );
+    assert(/^[0-9a-f]{40}$/.test(liveBlob?.shapeHash ?? ""), "live extractor: a sha1 shapeHash");
     eq(await extractLiveFormData(page, { formSelector: "form#missing" }, new Date()), null, "a configured form that is not on the page: null, so the static blob is used");
 
     // --- the shared capture template ------------------------------------------------
     const template = readFileSync(join(__dirname, "..", "..", "sites", "_shared", "form-capture-template.js"), "utf8").split("__ITEMSEL__").join(".job");
     await page.evaluate(template);
     const span = await page.evaluate(() => document.querySelector("[data-extracted-form]")?.textContent ?? null);
-    checkBlob(span ? (JSON.parse(span) as Blob) : null, "capture template");
+    checkBlob(span ? (JSON.parse(span) as Blob) : null, "capture template", "script");
+    // The template's blob reaches the row as an explicit applicationInfo, which the
+    // normalizer stamps; the same form must then hash the same as the live read.
+    const scripted = span ? (JSON.parse(stampScriptFormBlob(span, { pageUrl: "https://medulla.test/elsewhere/", at: new Date() })) as Blob) : null;
+    eq(scripted?.pageUrl, "https://medulla.test/jobs/lab-technician/", "capture template: the stamp keeps the template's own pageUrl");
+    eq(scripted?.submitMechanism, "ajax", "capture template: stamped ajax (Elementor's hidden fields)");
+    eq(scripted?.shapeHash, liveBlob?.shapeHash, "capture template and live extractor: the same shapeHash for the same form");
+
+    // --- real fleet markup, one per mechanism rule --------------------------------------
+    const kahaneUrl = await serveFixture(page, "kahane-elementor.html");
+    const kahane = JSON.parse((await extractLiveFormData(page, { formSelector: "form.elementor-form" }, new Date())) ?? "null") as Blob | null;
+    eq(kahane?.actionAttribute, "", "kahane: the form has no action attribute, so actionAttribute is empty");
+    eq(kahane?.actionUrl, kahaneUrl, "kahane: actionUrl keeps today's meaning (the page)");
+    eq(kahane?.pageUrl, kahaneUrl, "kahane: pageUrl");
+    eq(
+      [kahane?.submitMechanism, kahane?.submitEndpoint, kahane?.submitAction],
+      ["ajax", "https://www.kahane.co.il/wp-admin/admin-ajax.php", "elementor_pro_forms_send_form"],
+      "kahane (Elementor Pro): ajax to admin-ajax.php, action elementor_pro_forms_send_form",
+    );
+
+    const anveiUrl = await serveFixture(page, "anvei-zion-cf7.html");
+    const anvei = JSON.parse((await extractLiveFormData(page, { formSelector: "form.wpcf7-form" }, new Date())) ?? "null") as Blob | null;
+    eq(anvei?.actionAttribute, `${anveiUrl}#wpcf7-f10-o1`, "anvei-zion: actionAttribute is the form's own action, resolved");
+    eq(
+      [anvei?.submitMechanism, anvei?.submitEndpoint, anvei?.submitAction],
+      ["ajax", "https://www.anvei-zion.com/wp-json/contact-form-7/v1/contact-forms/10/feedback", undefined],
+      "anvei-zion (Contact Form 7): ajax to its feedback endpoint, form 10",
+    );
+    eq(anvei?.enctype, "multipart/form-data", "anvei-zion: enctype");
+
+    const radUrl = await serveFixture(page, "rad-gravity.html");
+    const rad = JSON.parse((await extractLiveFormData(page, { formSelector: "#gform_7" }, new Date())) ?? "null") as Blob | null;
+    eq(rad?.actionAttribute, `${radUrl}#gf_7`, "rad: actionAttribute");
+    eq(
+      [rad?.submitMechanism, rad?.submitEndpoint],
+      ["native_form", undefined],
+      "rad (Gravity Forms, iframe submission): a real form post to its action",
+    );
+    eq(rad?.pageUrl, radUrl, "rad: pageUrl");
   } finally {
     await browser.close();
   }
@@ -124,6 +198,9 @@ function checkBlob(b: Blob | null, who: string) {
   assert(/staticFormBlob\(formCapture, /.test(scrape), "the static blob is built stamped");
   assert(/_formData: stamp|stampFormData\(/.test(scrape), "buildJobRows stamps any _formData that came unstamped");
   assert(/applyReplayTokenFinding\(/.test(scrape), "the replay check runs over the run's forms");
+  assert(/completeFormBlob\(cfg\.staticBlob, \{ pageUrl: page\.url\(\), actionAttribute: "" \}\)/.test(scrape), "a static blob gains pageUrl, an empty actionAttribute, mechanism and hash where it is attached");
+  assert(/normalizeJobRecord\(rawFields, \{ at: /.test(scrape), "the normalizer gets the scrape's time for the script stamp");
+  assert(/formClass/.test(evaluated) && /getAttribute\("action"\)/.test(evaluated), "the page code reports the form's class and raw action attribute");
 
   if (failures > 0) {
     console.error(`\n${failures} assertion(s) failed`);

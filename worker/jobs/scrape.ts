@@ -3,6 +3,7 @@ import { markFirstActive, markFirstScraped } from "../../src/lib/firstDates";
 import { firstSeenFor } from "../lib/firstSeen";
 import { extractLiveFormData } from "../lib/formExtract";
 import { stampFormData, staticFormBlob } from "../lib/formFields";
+import { completeFormBlob } from "../lib/formShape";
 import { applyReplayTokenFinding, applyReplayTokenWarning } from "../lib/valueChecks";
 import type { WorkerJob, Site } from "../../src/generated/prisma/client";
 import { Prisma } from "../../src/generated/prisma/client";
@@ -2709,8 +2710,13 @@ async function extractFormDataOrFallback(
   // static blob (LRN-APPLY-7). In that case prefer the verified static blob,
   // but only when it actually carries a real form (>=2 fields); otherwise fall
   // through to the normal live-first behavior.
+  // The saved form gains pageUrl (the page it is attached from), its mechanism
+  // and shapeHash. Its actionAttribute is not known — the recorder stores the
+  // page URL when a form has no action — so it is empty, never a guess
+  // (worker/lib/formShape.ts).
+  const staticBlob = () => (cfg.staticBlob ? completeFormBlob(cfg.staticBlob, { pageUrl: page.url(), actionAttribute: "" }) : null);
   if (preferStatic && staticBlobFieldCount(cfg) >= 2) {
-    return cfg.staticBlob;
+    return staticBlob();
   }
   try {
     const live = await extractFormData(page, cfg);
@@ -2718,7 +2724,7 @@ async function extractFormDataOrFallback(
   } catch {
     // fall through to static
   }
-  return cfg.staticBlob;
+  return staticBlob();
 }
 
 // ---------------------------------------------------------------------------
@@ -4212,9 +4218,11 @@ async function executeScrape(
     return result;
   }
 
-  // Normalize and validate each record using dedicated modules
+  // Normalize and validate each record using dedicated modules. The time is the
+  // capturedAt of a setup script's form blob that does not carry its own.
+  const normalizedAt = new Date();
   const validatedRecords: ValidatedRecord[] = rawFieldsList.map((rawFields) => {
-    const normalized = normalizeJobRecord(rawFields);
+    const normalized = normalizeJobRecord(rawFields, { at: normalizedAt });
     const validation = validateJobRecord(normalized);
     return { normalized, validation };
   });

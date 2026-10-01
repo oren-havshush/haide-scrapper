@@ -11,7 +11,16 @@
 import type { Page } from "playwright";
 import { liveFormBlob, normalizeFormFields, type RawFieldDescriptor } from "./formFields";
 
-type PageForm = { actionUrl: string; method: string; enctype: string | null; descriptors: RawFieldDescriptor[] };
+type PageForm = {
+  actionUrl: string;
+  /** The action attribute resolved absolute; "" when the form has none. */
+  actionAttribute: string;
+  pageUrl: string;
+  formClass: string;
+  method: string;
+  enctype: string | null;
+  descriptors: RawFieldDescriptor[];
+};
 
 /**
  * The apply form on the current page, as a stamped _formData blob; null when
@@ -34,13 +43,18 @@ export async function extractLiveFormData(
     }
     if (!form) return null;
 
-    const actionRaw = form.getAttribute("action") || "";
-    let actionUrl = actionRaw || window.location.href;
+    const pageUrl = window.location.href;
+    const actionRaw = (form.getAttribute("action") || "").trim();
+    // actionUrl keeps today's meaning (the page when there is no action);
+    // actionAttribute never substitutes the page: "" when the form has none.
+    let actionAttribute = actionRaw;
     try {
-      actionUrl = actionRaw ? new URL(actionRaw, window.location.href).toString() : window.location.href;
+      if (actionRaw) actionAttribute = new URL(actionRaw, pageUrl).toString();
     } catch {
       // A base the browser cannot resolve against: keep the attribute as written.
     }
+    const actionUrl = actionAttribute || pageUrl;
+    const formClass = form.getAttribute("class") || "";
     const method = (form.getAttribute("method") || "GET").toUpperCase();
     const enctype = form.getAttribute("enctype");
 
@@ -117,7 +131,7 @@ export async function extractLiveFormData(
         groupLabel,
       });
     }
-    return { actionUrl, method, enctype, descriptors };
+    return { actionUrl, actionAttribute, pageUrl, formClass, method, enctype, descriptors };
   }, cfg);
 
   if (!found) return null;

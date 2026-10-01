@@ -12,8 +12,14 @@
 //   - the form keeps its enctype when it has one;
 //   - every blob carries capturedAt, captureSource and extractorVersion.
 
-/** 2 = this shape. 1 = the shape before it (no values, no stamps). */
-export const FORM_EXTRACTOR_VERSION = 2;
+import { completeFormBlob } from "./formShape";
+
+/**
+ * 3 = this shape, with actionAttribute, pageUrl, submitMechanism and shapeHash
+ * (worker/lib/formShape.ts). 2 = step 2a without them. 1 = the shape before
+ * step 2a (no values, no stamps).
+ */
+export const FORM_EXTRACTOR_VERSION = 3;
 
 /** The honeypot name rule, identical to the capture template's. */
 export const HONEYPOT_NAME = /\b(hp[_-]|honeypot|maspik|nickname)/i;
@@ -94,13 +100,23 @@ export function normalizeFormFields(descriptors: RawFieldDescriptor[]): FormFiel
   return out;
 }
 
-/** A form captured live, stamped now. */
+/**
+ * A form captured live, stamped now, and completed with its actionAttribute
+ * (already resolved; "" when the form has none), pageUrl, mechanism and hash.
+ */
 export function liveFormBlob(
-  form: { actionUrl: string; method: string; enctype?: string | null },
+  form: {
+    actionUrl: string;
+    method: string;
+    enctype?: string | null;
+    actionAttribute?: string;
+    pageUrl?: string;
+    formClass?: string;
+  },
   fields: FormField[],
   now: Date,
 ): string {
-  return JSON.stringify({
+  const blob = JSON.stringify({
     actionUrl: form.actionUrl,
     method: form.method,
     ...(form.enctype ? { enctype: form.enctype } : {}),
@@ -108,6 +124,11 @@ export function liveFormBlob(
     capturedAt: now.toISOString(),
     captureSource: "live",
     extractorVersion: FORM_EXTRACTOR_VERSION,
+  });
+  return completeFormBlob(blob, {
+    pageUrl: form.pageUrl ?? "",
+    actionAttribute: form.actionAttribute ?? "",
+    formClass: form.formClass,
   });
 }
 

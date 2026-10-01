@@ -4,10 +4,17 @@
   // (worker/lib/formFields.ts), checked on one page by worker/lib/formExtract.test.ts:
   //   every hidden input kept with its value (the honeypot filter never drops a
   //   hidden input); a radio group is ONE field with options; a file input keeps
-  //   accept and multiple; the form keeps its enctype; the blob is stamped with
-  //   capturedAt, captureSource "live" and extractorVersion 2.
-  var EXTRACTOR_VERSION = 2;
+  //   accept and multiple; the form keeps its enctype; the blob carries
+  //   actionAttribute (resolved absolute, '' when the form has none) and pageUrl,
+  //   and is stamped with capturedAt, captureSource "script" (a setup script
+  //   injected it) and extractorVersion 3. The worker adds submitMechanism and
+  //   shapeHash when it takes the blob (worker/lib/formShape.ts).
+  var EXTRACTOR_VERSION = 3;
   function extractFormSchema(form) {
+    var pageUrl = window.location.href;
+    var actionRaw = (form.getAttribute('action') || '').trim();
+    var actionAttribute = actionRaw;
+    try { if (actionRaw) actionAttribute = new URL(actionRaw, pageUrl).toString(); } catch (e) {}
     var action = form.getAttribute('action') || '';
     var method = (form.getAttribute('method') || 'GET').toUpperCase();
     var enctype = form.getAttribute('enctype');
@@ -68,11 +75,11 @@
       }
       fields.push(rec);
     }
-    var schema = { actionUrl: action, method: method };
+    var schema = { actionUrl: action, actionAttribute: actionAttribute, pageUrl: pageUrl, method: method };
     if (enctype) schema.enctype = enctype;
     schema.fields = fields;
     schema.capturedAt = new Date().toISOString();
-    schema.captureSource = 'live';
+    schema.captureSource = 'script';
     schema.extractorVersion = EXTRACTOR_VERSION;
     return schema;
   }

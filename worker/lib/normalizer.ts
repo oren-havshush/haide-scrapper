@@ -14,6 +14,7 @@ import {
   NATIONWIDE_LOCATION,
 } from "./locationNormalize";
 import { structureDescription } from "./descriptionStructure";
+import { stampScriptFormBlob } from "./formShape";
 
 /** Standard job schema fields that map directly to Job model columns */
 const STANDARD_FIELDS = new Set([
@@ -851,6 +852,7 @@ export function extractFieldsFromText(text: string): ExtractedFromText {
  */
 export function normalizeJobRecord(
   rawFields: Record<string, string>,
+  opts: { at?: Date } = {},
 ): NormalizedJobRecord {
   const rawOut: Record<string, string> = { ...rawFields };
 
@@ -883,9 +885,18 @@ export function normalizeJobRecord(
   //     rawFields._formData (one of formSelector/method/actionUrl/fields).
   // Prefer the explicit mapping; fall back to the form-capture blob, which
   // is already JSON and shouldn't be re-normalized to plain text.
+  //
+  // A form blob in the explicit field was injected by the site's setup script:
+  // it is stamped captureSource "script" and completed with pageUrl (its own,
+  // else the page the worker read the job from), mechanism and shapeHash
+  // (worker/lib/formShape.ts). Text in the field is untouched.
   const explicitAppInfo = normalizeField(rawFields["applicationInfo"]);
-  let applicationInfo =
-    explicitAppInfo || (rawFields["_formData"] ?? "");
+  let applicationInfo = explicitAppInfo
+    ? stampScriptFormBlob(explicitAppInfo, {
+        pageUrl: rawFields["_detailUrl"] || rawFields["_listingUrl"] || "",
+        at: opts.at ?? new Date(),
+      })
+    : (rawFields["_formData"] ?? "");
 
   // Extract URL for the job's detail page. Prefer an explicit detailUrl field
   // mapping (value or its _href), then the title link, then the multi-page
