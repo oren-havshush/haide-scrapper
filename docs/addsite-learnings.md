@@ -4075,3 +4075,27 @@
   where that field IS the apply path. Verify after the scrape: every job's `applicationInfo` starts with `{`.
 - **Generalizes to:** every site with `formCapture` whose ads also carry an apply instruction.
   **Home:** `addsite2.md` *Job body rules* 6.
+
+---
+
+## LRN-SPA-17 — ASSA ABLOY OneCMS (AEM): the job body is base64 JSON on the web component, and the logo is too
+
+- **Date / site:** 2026-10-01 · mul-t-lock.co.il (`cmupd4wt5000s01qyymmjq2wv`), 4 jobs.
+- **Signal:** `curl` of a detail page has no job text at all; the rendered page does. Every content
+  block is a custom element (`gw-group-text-and-media-two-column-text`, `gw-group-nav-header`, …)
+  whose `content` attribute is base64 of UTF-8 JSON — the body is `{title, text}` with `text` as
+  HTML. The listing cards are hydrated the same way, so `li[data-testid="card-default"]` is **0 at
+  setupScript entry** (LRN-SETUP-13).
+- **Fix:** listing-scope setupScript polls for a stable card count, then `fetch`es each detail page
+  and decodes the attribute (`atob` → `Uint8Array` → `TextDecoder('utf-8')` → `JSON.parse`) instead
+  of rendering it. Parse `text` into a detached `div` and move nodes into the
+  description/requirements buckets, as in recipe §11.
+- **Logo trap:** `company-profile --dry-run` reported `COMPLETE`, logo from "inline `<svg>`,
+  rasterised" — it was a dropdown chevron (cf. `LRN-LOGO-4`). The real logo exists only inside
+  `gw-group-nav-header`'s base64 JSON (`logo.default.image.url`, a Scene7 URL on
+  `gw-assets.assaabloy.com`; add `?fmt=png-alpha`). The capture cannot skip the logo and the logo
+  endpoint overwrites, so the real run was NOT made: the logo was uploaded by hand and the dry run's
+  verified fields written with `PUT /company-profile` (status `COMPLETE`).
+- **Also:** QA's `NEEDS_MANUAL` here is OneTrust's `#filter-apply-handler` (`LRN-FORM-9`).
+- **Generalizes to:** every ASSA ABLOY brand site on OneCMS (`/etc.clientlibs/assa-abloy-onecms/`).
+  **Home:** `addsite2-recipes/setupscript-patterns.md` §11; `company-profile.md` §4.5.

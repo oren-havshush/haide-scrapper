@@ -72,6 +72,7 @@ several listing pages back into one and stops publishing the rest.
 | אדוויס | ACTIVE | 6 | 2334 | 1 | `advice--eq0sxw` |
 | אופרייט | ACTIVE | 6 | 7093 | 1 | `opl--u03od8` |
 | איי פורס בע"מ | ACTIVE | 9 | 7966 | 1 | `iforc--jtz6km` |
+| אינטרטול מכונות לעיבוד שבבי בע"מ | ACTIVE | 5 | 3234 | 1 | `intertool--77txdy` |
 | אלביט מערכות | ACTIVE | 9 | 7741 | 1 | `elbitsystemscareer--kjk1e7` |
 | אלו"ט | ACTIVE | 7 | 7994 | 1 | `app-civi--rl8rui` |
 | אלובין תעשייות אלומיניום בע״מ | ACTIVE | 6 | 2373 | 1 | `alubin--r73xau` |
@@ -96,6 +97,8 @@ several listing pages back into one and stops publishing the rest.
 | האקדמית רמת גן | ACTIVE | 5 | 1124 | 1 | `landing-iac--3cdlhs` |
 | הארה תוכניות העשרה בע"מ | ACTIVE | 6 | 6423 | 1 | `heara--xhar00` |
 | הבנק הבינלאומי | ACTIVE | 6 | 4541 | 1 | `fibi--4j7v1x` |
+| הד סינמה | ACTIVE | 6 | 3769 | 1 | `hedcinema--zq1d0i` |
+| הוגן, גינזבורג, יודלביץ' ושות' | ACTIVE | 6 | 4677 | 1 | `hgj--p5fawk` |
 | החברה לאמנות ותרבות | ACTIVE | 5 | 1559 | 1 | `tarbut-herzliya--zvh6d2` |
 | החברה לשירותי איכות הסביבה | ACTIVE | 8 | 6846 | 1 | `enviro-services--4z2yxo` |
 | החברה לתרבות ופנאי נס ציונה | ACTIVE | 8 | 6119 | 1 | `tarbut-nz--0dv9x3` |
@@ -132,6 +135,7 @@ several listing pages back into one and stops publishing the rest.
 | מגדל שוקי הון | ACTIVE | 4 | 3372 | 1 | `msh--fdohdt` |
 | מדנס סוכנות לביטוח | ACTIVE | 7 | 4379 | 1 | `madanes--1wzqn7` |
 | מוזיאון ישראל | ACTIVE | 6 | 3801 | 1 | `imj--442rnv` |
+| מולטילוק | ACTIVE | 7 | 5510 | 1 | `mul-t-lock--mjq2wv` |
 | מחסני השוק | ACTIVE | 7 | 3928 | 1 | `m-shuk--8md4qa` |
 | מי אביבים | ACTIVE | 9 | 7970 | 1 | `mei-avivim--5afgkc` |
 | מי עדן | ACTIVE | 5 | 4162 | 1 | `campaigns-meyeden--6u5xb3` |
@@ -151,6 +155,7 @@ several listing pages back into one and stops publishing the rest.
 | נטפים | ACTIVE | 8 | 6573 | 1 | `comeet--4q2aga` |
 | נירלט | ACTIVE | 7 | 6577 | 1 | `nirlat--xluh8r` |
 | נעמת | ACTIVE | 6 | 6028 | 1 | `naamat--3s0g1d` |
+| סופרגז POWER | ACTIVE | 6 | 3196 | 1 | `supergas-power--qfnmmb` |
 | סיני סטור | ACTIVE | 3 | 1002 | 1 | `sinaistore--uxgr3o` |
 | סלקום | ACTIVE | 6 | 2255 | 1 | `cellcom--ugxfm3` |
 | סמלת | ACTIVE | 8 | — | 1 | `samelet--i6xe7r` |
@@ -163,6 +168,7 @@ several listing pages back into one and stops publishing the rest.
 | פתרונות עדיפים-ביטוח | ACTIVE | 6 | 4489 | 1 | `adifim--26vavw` |
 | צ'יטה שליחויות | ACTIVE | 4 | 332 | 1 | `chitadelivery--xpwqf1` |
 | קבוצת אמנת- Sysnet | ACTIVE | 3 | — | 1 | `amanet--ihg3a3` |
+| קבוצת ברן | ACTIVE | 8 | 7783 | 1 | `barangroup--36lhv6` |
 | קבוצת ויזל - פוקס | ACTIVE | 4 | 2133 | 1 | `dreamjobs--43loqz` |
 | קבוצת ח.י | ACTIVE | 4 | — | 1 | `hye--9i2hm3` |
 | קבוצת טובול | ACTIVE | 6 | 1231 | 1 | `tuboul--hvbine` |
