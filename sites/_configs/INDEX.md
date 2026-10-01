@@ -98,6 +98,7 @@ several listing pages back into one and stops publishing the rest.
 | הארה תוכניות העשרה בע"מ | ACTIVE | 6 | 6423 | 1 | `heara--xhar00` |
 | הבנק הבינלאומי | ACTIVE | 6 | 4541 | 1 | `fibi--4j7v1x` |
 | הד סינמה | ACTIVE | 6 | 3769 | 1 | `hedcinema--zq1d0i` |
+| הוגן, גינזבורג, יודלביץ' ושות' | ACTIVE | 6 | 4677 | 1 | `hgj--p5fawk` |
 | החברה לאמנות ותרבות | ACTIVE | 5 | 1559 | 1 | `tarbut-herzliya--zvh6d2` |
 | החברה לשירותי איכות הסביבה | ACTIVE | 8 | 6846 | 1 | `enviro-services--4z2yxo` |
 | החברה לתרבות ופנאי נס ציונה | ACTIVE | 8 | 6119 | 1 | `tarbut-nz--0dv9x3` |
