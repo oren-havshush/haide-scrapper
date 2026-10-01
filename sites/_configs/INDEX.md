@@ -153,6 +153,7 @@ several listing pages back into one and stops publishing the rest.
 | נטפים | ACTIVE | 8 | 6573 | 1 | `comeet--4q2aga` |
 | נירלט | ACTIVE | 7 | 6577 | 1 | `nirlat--xluh8r` |
 | נעמת | ACTIVE | 6 | 6028 | 1 | `naamat--3s0g1d` |
+| סופרגז POWER | ACTIVE | 6 | 3196 | 1 | `supergas-power--qfnmmb` |
 | סיני סטור | ACTIVE | 3 | 1002 | 1 | `sinaistore--uxgr3o` |
 | סלקום | ACTIVE | 6 | 2255 | 1 | `cellcom--ugxfm3` |
 | סמלת | ACTIVE | 8 | — | 1 | `samelet--i6xe7r` |
