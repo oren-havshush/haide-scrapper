@@ -166,6 +166,7 @@ several listing pages back into one and stops publishing the rest.
 | פתרונות עדיפים-ביטוח | ACTIVE | 6 | 4489 | 1 | `adifim--26vavw` |
 | צ'יטה שליחויות | ACTIVE | 4 | 332 | 1 | `chitadelivery--xpwqf1` |
 | קבוצת אמנת- Sysnet | ACTIVE | 3 | — | 1 | `amanet--ihg3a3` |
+| קבוצת ברן | ACTIVE | 8 | 7783 | 1 | `barangroup--36lhv6` |
 | קבוצת ויזל - פוקס | ACTIVE | 4 | 2133 | 1 | `dreamjobs--43loqz` |
 | קבוצת ח.י | ACTIVE | 4 | — | 1 | `hye--9i2hm3` |
 | קבוצת טובול | ACTIVE | 6 | 1231 | 1 | `tuboul--hvbine` |

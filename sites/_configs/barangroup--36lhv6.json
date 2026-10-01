@@ -1,0 +1,148 @@
+{
+  "_exportedAt": "2026-10-01T09:40:34.582Z",
+  "_note": "Mirror of the live config. The DB is authoritative; the worker never reads this file. setupScript lives alongside in <slug>.setup.js.",
+  "id": "cmupbiyj1000i01qyoo36lhv6",
+  "siteUrl": "https://www.barangroup.com/%d7%a7%d7%a8%d7%99%d7%99%d7%a8%d7%94/",
+  "companyName": "קבוצת ברן",
+  "status": "ACTIVE",
+  "setupScriptFile": "barangroup--36lhv6.setup.js",
+  "pageFlow": [],
+  "fieldMappings": {
+    "_meta": {
+      "savedAt": "2026-10-01T09:20:39.449Z",
+      "pagination": null,
+      "formCapture": {
+        "fields": [
+          {
+            "name": "post_id",
+            "group": "הגשת מועמדות למשרה",
+            "label": "",
+            "tagName": "input",
+            "required": false,
+            "fieldType": "hidden"
+          },
+          {
+            "name": "form_id",
+            "group": "הגשת מועמדות למשרה",
+            "label": "",
+            "tagName": "input",
+            "required": false,
+            "fieldType": "hidden"
+          },
+          {
+            "name": "referer_title",
+            "group": "הגשת מועמדות למשרה",
+            "label": "",
+            "tagName": "input",
+            "required": false,
+            "fieldType": "hidden"
+          },
+          {
+            "name": "queried_id",
+            "group": "הגשת מועמדות למשרה",
+            "label": "",
+            "tagName": "input",
+            "required": false,
+            "fieldType": "hidden"
+          },
+          {
+            "name": "form_fields[name]",
+            "group": "הגשת מועמדות למשרה",
+            "label": "שם מלא",
+            "tagName": "input",
+            "required": false,
+            "fieldType": "text"
+          },
+          {
+            "name": "form_fields[phone]",
+            "group": "הגשת מועמדות למשרה",
+            "label": "מספר טלפון",
+            "tagName": "input",
+            "required": true,
+            "fieldType": "tel"
+          },
+          {
+            "name": "form_fields[email]",
+            "group": "הגשת מועמדות למשרה",
+            "label": "אימייל",
+            "tagName": "input",
+            "required": true,
+            "fieldType": "email"
+          },
+          {
+            "name": "form_fields[file][]",
+            "group": "הגשת מועמדות למשרה",
+            "label": "הוספת קובץ",
+            "tagName": "input",
+            "required": true,
+            "fieldType": "file"
+          },
+          {
+            "name": "form_fields[order_id]",
+            "group": "הגשת מועמדות למשרה",
+            "label": "",
+            "tagName": "input",
+            "required": false,
+            "fieldType": "hidden"
+          }
+        ],
+        "method": "POST",
+        "actionUrl": "https://www.barangroup.com/wp-admin/admin-ajax.php",
+        "formSelector": ".irm-careers-custom-form form.elementor-form"
+      },
+      "listingUrls": null,
+      "itemSelector": "li.loop-career",
+      "minPublishDate": null,
+      "minPublishDays": null,
+      "revealSelector": null,
+      "listingSelector": null,
+      "applyLoginReason": null,
+      "browserOverrides": null,
+      "loadMoreSelector": null,
+      "locationFallback": null,
+      "originalMappings": null,
+      "applyRequiresLogin": false
+    },
+    "title": {
+      "source": "auto",
+      "selector": ".loop-career-title h3",
+      "confidence": 0.95
+    },
+    "location": {
+      "source": "auto",
+      "selector": ".__ai-location",
+      "confidence": 0.9
+    },
+    "detailUrl": {
+      "source": "auto",
+      "selector": "a.__ai-detailUrl",
+      "confidence": 0.9,
+      "extractAttr": "href"
+    },
+    "department": {
+      "source": "auto",
+      "selector": ".__ai-department",
+      "confidence": 0.8
+    },
+    "description": {
+      "source": "auto",
+      "selector": ".__ai-description",
+      "confidence": 0.9
+    },
+    "publishDate": {
+      "source": "auto",
+      "selector": ".__ai-publishDate",
+      "confidence": 0.9
+    },
+    "requirements": {
+      "source": "auto",
+      "selector": ".__ai-requirements",
+      "confidence": 0.9
+    },
+    "externalJobId": {
+      "source": "auto",
+      "selector": ".__ai-externalJobId",
+      "confidence": 0.95
+    }
+  }
+}
