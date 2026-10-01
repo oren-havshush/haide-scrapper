@@ -280,8 +280,9 @@ docker compose --profile backup run --rm -T db-backup || echo "WARNING: Backup f
 # Keeps the three most recent deploy tags per image. Only tags starting
 # "deploy-" are ever listed, so the two tags a rollback reads are never named
 # here; removing a deploy tag that shares its image with one of them only
-# removes the tag. The build cache is pruned down to 8 GB (an age rule kept
-# a busy day's cache: 24 GB on 2026-10-01). Nothing in this
+# removes the tag. The build cache is capped at 8 GB with --max-used-space
+# (--keep-storage is the old name of --reserved-space, a floor, not a cap; an
+# age rule kept a busy day's cache: 24 GB on 2026-10-01). Nothing in this
 # block can fail the deploy: every step reports and carries on.
 echo "==> Pruning old deploy images (keeping the three most recent per image)..."
 for svc in web worker; do
@@ -291,7 +292,7 @@ for svc in web worker; do
     docker rmi "$IMAGE:$tag" >/dev/null || echo "WARNING: could not remove $IMAGE:$tag (non-fatal)"
   done
 done
-docker builder prune -f --keep-storage=8GB >/dev/null || echo "WARNING: build-cache prune failed (non-fatal)"
+docker builder prune -f --max-used-space=8GB >/dev/null || echo "WARNING: build-cache prune failed (non-fatal)"
 # --- end prune
 
 echo "==> Deploy $DEPLOY_TAG complete! Services running:"

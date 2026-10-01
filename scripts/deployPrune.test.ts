@@ -52,7 +52,7 @@ const block = start >= 0 && end > start ? sh.slice(start, end) : "";
   const code = block.split("\n").filter((l) => !l.trim().startsWith("#")).join("\n");
   assert(!/latest|previous/.test(code), "the code never names latest or previous");
   assert(/tail -n \+4/.test(code), "it keeps three deploy tags per image");
-  assert(/docker builder prune -f --keep-storage=8GB/.test(code), "and prunes the build cache down to 8 GB");
+  assert(code.includes(`docker builder prune -f --max-used-space=8GB >/dev/null || echo "WARNING: build-cache prune failed (non-fatal)"`),"and caps the build cache at 8 GB (--max-used-space; --keep-storage is the old --reserved-space, a floor)");
   assert(!/until=/.test(code), "with no age rule (owner, 2026-10-01: a day of deploys outgrew it)");
 }
 
@@ -111,7 +111,7 @@ const d = (s: string) => `deploy-${s}`;
     "only the deploy tags older than the three newest are removed, per image",
   );
   assert(!removed.some((t) => /latest|previous/.test(t)), "latest and previous are never removed");
-  assert(r.calls.includes("builder prune -f --keep-storage=8GB"), "the build cache is pruned to 8 GB");
+  assert(r.calls.includes("builder prune -f --max-used-space=8GB"), "the build cache is capped at 8 GB");
   assert(r.status === 0 && r.stdout.includes("AFTER_PRUNE"), "and the deploy carries on");
 }
 {
