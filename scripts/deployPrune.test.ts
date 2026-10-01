@@ -52,11 +52,12 @@ const block = start >= 0 && end > start ? sh.slice(start, end) : "";
   const code = block.split("\n").filter((l) => !l.trim().startsWith("#")).join("\n");
   assert(!/latest|previous/.test(code), "the code never names latest or previous");
   assert(/tail -n \+4/.test(code), "it keeps three deploy tags per image");
-  assert(/docker builder prune -f --filter until=72h/.test(code), "and prunes build cache older than 72 hours");
+  assert(/docker builder prune -f --keep-storage=8GB/.test(code), "and prunes the build cache down to 8 GB");
+  assert(!/until=/.test(code), "with no age rule (owner, 2026-10-01: a day of deploys outgrew it)");
 }
 
 // --- what it does, against a stub docker ------------------------------------------------
-function runBlock(tags: Record<string, string[]>, opts: { failImages?: boolean; failRmi?: boolean } = {}) {
+function runBlock(tags: Record<string, string[]>, opts: { failImages?: boolean; failRmi?: boolean; failBuilder?: boolean } = {}) {
   const dir = mkdtempSync(join(tmpdir(), "prune-"));
   const log = join(dir, "calls.log").split("\\").join("/");
   const listing = Object.entries(tags)
@@ -74,6 +75,8 @@ function runBlock(tags: Record<string, string[]>, opts: { failImages?: boolean; 
     "    esac",
     '  elif [ "$1" = "rmi" ]; then',
     opts.failRmi ? "    return 1" : "    :",
+    '  elif [ "$1" = "builder" ]; then',
+    opts.failBuilder ? "    return 1" : "    :",
     "  fi",
     "}",
     block,
@@ -108,7 +111,7 @@ const d = (s: string) => `deploy-${s}`;
     "only the deploy tags older than the three newest are removed, per image",
   );
   assert(!removed.some((t) => /latest|previous/.test(t)), "latest and previous are never removed");
-  assert(r.calls.some((c) => c.startsWith("builder prune -f --filter until=72h")), "the build cache is pruned");
+  assert(r.calls.includes("builder prune -f --keep-storage=8GB"), "the build cache is pruned to 8 GB");
   assert(r.status === 0 && r.stdout.includes("AFTER_PRUNE"), "and the deploy carries on");
 }
 {
@@ -122,6 +125,9 @@ const d = (s: string) => `deploy-${s}`;
   const many = Array.from({ length: 6 }, (_, i) => d(`2026093${i}-000000-aaaaaa${i}`));
   const rmiFails = runBlock({ "haide-scrapper-web": many, "haide-scrapper-worker": many }, { failRmi: true });
   assert(rmiFails.status === 0 && rmiFails.stdout.includes("AFTER_PRUNE"), "nor does an rmi that fails");
+  const builderFails = runBlock({ "haide-scrapper-web": [] }, { failBuilder: true });
+  assert(builderFails.status === 0 && builderFails.stdout.includes("AFTER_PRUNE"), "nor does a build-cache prune that fails");
+  assert(builderFails.stdout.includes("WARNING: build-cache prune failed (non-fatal)"), "which is reported");
 }
 
 if (failures > 0) {
