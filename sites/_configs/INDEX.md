@@ -74,6 +74,7 @@ several listing pages back into one and stops publishing the rest.
 | איי פורס בע"מ | ACTIVE | 9 | 7966 | 1 | `iforc--jtz6km` |
 | אינטרטול מכונות לעיבוד שבבי בע"מ | ACTIVE | 5 | 3234 | 1 | `intertool--77txdy` |
 | אלביט מערכות | ACTIVE | 9 | 7741 | 1 | `elbitsystemscareer--kjk1e7` |
+| אלגרונט | ACTIVE | 5 | 3883 | 1 | `allegronet--lv0a9y` |
 | אלו"ט | ACTIVE | 7 | 7994 | 1 | `app-civi--rl8rui` |
 | אלובין תעשייות אלומיניום בע״מ | ACTIVE | 6 | 2373 | 1 | `alubin--r73xau` |
 | אליקטרוניקס בע''מ | ACTIVE | 4 | 722 | 1 | `eliktronics--erhzvq` |
