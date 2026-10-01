@@ -72,6 +72,7 @@ several listing pages back into one and stops publishing the rest.
 | אדוויס | ACTIVE | 6 | 2334 | 1 | `advice--eq0sxw` |
 | אופרייט | ACTIVE | 6 | 7093 | 1 | `opl--u03od8` |
 | איי פורס בע"מ | ACTIVE | 9 | 7966 | 1 | `iforc--jtz6km` |
+| אינטרטול מכונות לעיבוד שבבי בע"מ | ACTIVE | 5 | 3234 | 1 | `intertool--77txdy` |
 | אלביט מערכות | ACTIVE | 9 | 7741 | 1 | `elbitsystemscareer--kjk1e7` |
 | אלו"ט | ACTIVE | 7 | 7994 | 1 | `app-civi--rl8rui` |
 | אלובין תעשייות אלומיניום בע״מ | ACTIVE | 6 | 2373 | 1 | `alubin--r73xau` |
