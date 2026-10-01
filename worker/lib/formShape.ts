@@ -42,7 +42,10 @@ export function resolveActionAttribute(raw: string | null | undefined, pageUrl: 
   }
 }
 
-/** pageUrl's origin + path, or null when pageUrl is not an absolute URL. */
+/**
+ * pageUrl's origin + path, or null when pageUrl is not an absolute URL.
+ * Assumes WordPress sits at the root of the domain (a site under /blog/ would get a wrong endpoint).
+ */
 function onOrigin(pageUrl: string, path: string): string | null {
   try {
     return new URL(path, new URL(pageUrl).origin).toString();
