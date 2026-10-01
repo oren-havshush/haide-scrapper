@@ -1,0 +1,72 @@
+{
+  "_exportedAt": "2026-10-01T10:48:09.080Z",
+  "_note": "Mirror of the live config. The DB is authoritative; the worker never reads this file. setupScript lives alongside in <slug>.setup.js.",
+  "id": "cmupd4wt5000s01qyymmjq2wv",
+  "siteUrl": "https://www.mul-t-lock.co.il/il/he/about-mul-t-lock/career",
+  "companyName": "מולטילוק",
+  "status": "ACTIVE",
+  "setupScriptFile": "mul-t-lock--mjq2wv.setup.js",
+  "pageFlow": [],
+  "fieldMappings": {
+    "_meta": {
+      "savedAt": "2026-10-01T10:47:01.558Z",
+      "pagination": null,
+      "formCapture": null,
+      "listingUrls": null,
+      "itemSelector": "li[data-testid=\"card-default\"]",
+      "minPublishDate": null,
+      "minPublishDays": null,
+      "revealSelector": null,
+      "listingSelector": null,
+      "applyLoginReason": null,
+      "browserOverrides": null,
+      "loadMoreSelector": null,
+      "locationFallback": null,
+      "originalMappings": null,
+      "applyRequiresLogin": false
+    },
+    "title": {
+      "source": "MANUAL",
+      "selector": "h3[data-testid=\"card-title\"]",
+      "confidence": 1,
+      "capturedOnUrl": "https://www.mul-t-lock.co.il/il/he/about-mul-t-lock/career"
+    },
+    "location": {
+      "source": "MANUAL",
+      "selector": ".__ai-location",
+      "confidence": 1,
+      "capturedOnUrl": "https://www.mul-t-lock.co.il/il/he/about-mul-t-lock/career"
+    },
+    "detailUrl": {
+      "source": "MANUAL",
+      "selector": "a[href*=\"/about-mul-t-lock/career/\"]",
+      "confidence": 1,
+      "extractAttr": "href",
+      "capturedOnUrl": "https://www.mul-t-lock.co.il/il/he/about-mul-t-lock/career"
+    },
+    "description": {
+      "source": "MANUAL",
+      "selector": ".__ai-description",
+      "confidence": 1,
+      "capturedOnUrl": "https://www.mul-t-lock.co.il/il/he/about-mul-t-lock/career"
+    },
+    "requirements": {
+      "source": "MANUAL",
+      "selector": ".__ai-requirements",
+      "confidence": 1,
+      "capturedOnUrl": "https://www.mul-t-lock.co.il/il/he/about-mul-t-lock/career"
+    },
+    "externalJobId": {
+      "source": "MANUAL",
+      "selector": ".__ai-jobid",
+      "confidence": 1,
+      "capturedOnUrl": "https://www.mul-t-lock.co.il/il/he/about-mul-t-lock/career"
+    },
+    "applicationInfo": {
+      "source": "MANUAL",
+      "selector": ".__ai-apply",
+      "confidence": 1,
+      "capturedOnUrl": "https://www.mul-t-lock.co.il/il/he/about-mul-t-lock/career"
+    }
+  }
+}
