@@ -1,5 +1,7 @@
 // Run: npx tsx worker/lib/synthesize-job-id.test.ts
 
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import {
   haideHash,
   synthesizeExternalJobId,
@@ -98,6 +100,54 @@ assert(
 {
   const id = synthesizeExternalJobId({ url: "https://x.example/job/42" });
   assert(id === null, "url without a title is too weak to key on");
+}
+
+// ---------------------------------------------------------------------------
+// The recipe's hash IS the worker's (addsite2 phase two, step 4)
+// ---------------------------------------------------------------------------
+// addsite3-recipes/setupscript-patterns.md §3 carries the one snippet a script
+// may use when it truly must hash. It was a backward copy (it walked the string
+// from the end, and multiplied without masking), so "abc" hashed to 375kp1 in a
+// script and 375fut in the worker. The snippet is extracted from the recipe,
+// evaluated, and compared with the worker on ASCII, Hebrew and empty inputs.
+{
+  const recipe = readFileSync(join(__dirname, "..", "..", "addsite3-recipes", "setupscript-patterns.md"), "utf8");
+  const section3 = recipe.slice(recipe.indexOf("## 3."), recipe.indexOf("## 4."));
+  const blocks = [...section3.matchAll(/```js\n([\s\S]*?)```/g)].map((m) => m[1]!);
+  const block = blocks.find((b) => /function haideHash\s*\(/.test(b)) ?? "";
+  // The function alone, by brace matching: the block around it may touch the DOM.
+  let snippet = "";
+  const start = block.search(/function haideHash\s*\(/);
+  if (start >= 0) {
+    let depth = 0;
+    for (let i = block.indexOf("{", start); i < block.length; i++) {
+      if (block[i] === "{") depth++;
+      else if (block[i] === "}" && --depth === 0) {
+        snippet = block.slice(start, i + 1);
+        break;
+      }
+    }
+  }
+  assert(snippet.length > 0, "recipe §3 has a haideHash snippet");
+  let recipeHash: ((s: string) => string) | null = null;
+  try {
+    recipeHash = new Function(`${snippet}\nreturn haideHash;`)() as (s: string) => string;
+  } catch (e) {
+    assert(false, `the recipe snippet evaluates (${(e as Error).message})`);
+  }
+  // Pinned, so flipping BOTH loops still fails: the worker walks forward.
+  assert(haideHash("abc") === "375fut", `the worker hashes "abc" forward to 375fut (got ${haideHash("abc")})`);
+  const fixtures = [
+    "abc",
+    "Senior Driver|Logistics|https://jobs.example.co.il/careers/driver-17",
+    "רכז/ת לקליניקה הפסיכולוגית",
+    "מכונאי/ת|אחזקה|https://www.kahane.co.il/jobs/%d7%9e%d7%9b%d7%95%d7%a0%d7%90%d7%99/",
+    "",
+  ];
+  for (const s of fixtures) {
+    const got = recipeHash ? recipeHash(s) : "(no snippet)";
+    assert(got === haideHash(s), `recipe and worker agree on ${JSON.stringify(s.slice(0, 30))}: ${got} vs ${haideHash(s)}`);
+  }
 }
 
 if (failures > 0) {

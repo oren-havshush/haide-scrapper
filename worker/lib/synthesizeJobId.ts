@@ -32,10 +32,16 @@
  */
 
 /**
- * djb2, xor variant — the same small pure hash the setupScript recipe uses
- * (`addsite2-recipes/setupscript-patterns.md` §3, `haideHash`). Kept identical
- * so an id synthesised here matches one a site-level script would produce for
- * the same input. Returns lowercase base-36: short, ASCII, filename-safe.
+ * djb2, xor variant, walking the string forward. Returns lowercase base-36:
+ * short, ASCII, filename-safe.
+ *
+ * The addsite2 recipe's copy (`addsite2-recipes/setupscript-patterns.md` §3,
+ * frozen) walks the string BACKWARD, so it was never identical: "abc" is 375fut
+ * here and 375kp1 there, and the 34 setupScripts that hash in the page (2026-10-02)
+ * keep their own ids. The addsite3 recipe (`addsite3-recipes/setupscript-patterns.md`
+ * §3) carries this exact function, and worker/lib/synthesize-job-id.test.ts
+ * checks the two agree. addsite3 scripts do not hash at all: with no native id
+ * they emit nothing and this module synthesises the id.
  */
 export function haideHash(input: string): string {
   let h = 5381;

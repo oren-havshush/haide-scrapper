@@ -80,66 +80,61 @@ for (const item of document.querySelectorAll('.job-item')) {
 
 ---
 
-## 3. externalJobId — hash-based synthesis
+## 3. externalJobId — native id first, else no id (the worker hashes)
 
-**Use case:** no native job ID attribute; no stable URL slug; need a stable dedup key.
+**One rule** (addsite3 §6.2, §17.4): a **native id** when the site has one; with none,
+the setupScript **emits no `externalJobId` at all** and the worker synthesises
+`h-<haideHash(title|department|url)>` (`worker/lib/synthesizeJobId.ts`). The id then
+equals the worker's by construction, and a collision is counted (the run warns
+`synthesised_external_job_id`), never silently skipped. **No in-page `haideHash`, no
+`seen[…]` skip** — `verify-jobids` exits 2 on either for an addsite3 site.
 
-**Priority order (always try in this order):**
-1. **Native id** — `data-job-id` / `data-id` attr, or a printed "מס' משרה" / req number.
-   - **Req number printed inside the TITLE** (very common on Hebrew sites:
-     `"משרה 231: רפרנט..."`, `"דרוש/ה מנהל/ת — 4471"`). Regex it out and prefix so
-     it can't collide with a hashed id:
-     ```js
-     const title = item.querySelector('.__title-sel')?.textContent ?? '';
-     const m = title.match(/משרה\s*(\d+)/) || title.match(/\b(\d{3,})\b/);
-     span.textContent = m ? 'req-' + m[1] : 'h-' + haideHash(title);  // fall back to hash
-     ```
-2. **detailUrl slug** — `detailUrl.split('/').filter(Boolean).pop()` (readable + stable)
-   **— but ONLY when the slug is Latin/ASCII.** A **Hebrew (or other non-Latin) slug**
-   is percent-encoded in `href`, so the raw segment becomes a 200-char
-   `%d7%a0%d7%a6...` blob, and `decodeURIComponent()` on it yields raw Hebrew (fails the
-   ASCII gate). In **both** cases the id is unusable. For a non-Latin slug, keep the slug
-   only as the **hash input** and emit `'<prefix>-' + haideHash(slug)` (clean short ASCII,
-   still per-URL-unique). This is what qasisrael.co.il / madanes.com do. (`LRN-ID-6`.)
-3. **Hash synthesis** — last resort, below.
+**What counts as a native id:**
+1. **An attribute** — `data-job-id` / `data-id` on the card.
+2. **A printed req number** — "מס' משרה" on the card, or **inside the TITLE** (very
+   common on Hebrew sites: `"משרה 231: רפרנט..."`, `"דרוש/ה מנהל/ת — 4471"`). Regex it
+   out and namespace it (`<site>-231`, `LRN-ID-11`). **No match → emit nothing** for
+   that job; the worker fills it:
+   ```js
+   const title = item.querySelector('.__title-sel')?.textContent ?? '';
+   const m = title.match(/משרה\s*(\d+)/) || title.match(/\b(\d{3,})\b/);
+   if (m) span.textContent = 'mysite-' + m[1];   // no match: no span, the worker hashes
+   ```
+3. **A CMS record id** — `_id`, a DB row id in the detail URL or an API payload.
+4. **A Latin/ASCII slug** — `detailUrl.split('/').filter(Boolean).pop()`, readable and
+   stable. **A Hebrew (or other non-Latin) slug is not a native id**: percent-encoded it
+   is a 200-char `%d7%a0…` blob, decoded it is raw Hebrew. Emit nothing; the worker
+   hashes the job through its url (`LRN-ID-6`).
 
-> **The worker now backstops this.** Since 2026-08-16 a job that reaches the save path
-> with no `externalJobId` gets `h-<hash(title|department|detailUrl)>` synthesised
-> centrally (`worker/lib/synthesizeJobId.ts`), so forgetting the hash here no longer
-> means 0% fill and a demoted site. Writing it per-site is still worth doing when the
-> page exposes something better than a title hash — a printed requisition number, a CMS
-> record id — but it is now an optimisation rather than a requirement. Cite:
-> `LRN-WRK-17`.
+**Hybrid** — when only *some* cards carry a native id, emit it where present and nothing
+elsewhere. The worker's `h-` prefix keeps the two shapes from colliding.
 
-Use the synchronous `haideHash` (djb2) — **not** `crypto.subtle.digest`, which is
-async and adds an `await` round-trip inside the injected script. Always prefix
-the synthesized id with **`h-`** so it can never collide with a native numeric id
-in a hybrid site, and so the `verify-jobids` gate can recognise it.
+> **Why no in-page hash.** Scripts used to hash in the page, each with its own seed
+> (`title`, `title|loc|dept`, a slug) and a copy of the hash that walked the string
+> backwards, so a script's id never matched the worker's for the same job; some also
+> skipped a repeated title with `seen[…]`, silently dropping a real second posting.
+> Location is never part of the seed: it is canonicalised on every run and re-keyed
+> ids when it changed (`LRN-ID-7`).
 
+**Where a script truly must hash** (rare — a card with no title and no url the worker
+can see): use exactly the worker's function over exactly the worker's seed, so the id
+is the one the worker would have made. `worker/lib/synthesize-job-id.test.ts` evaluates
+this snippet and compares it with the worker:
 ```js
-// setupScript — h-<hash> of stable content (title + disambiguator)
-function haideHash(s){var h=5381,i=s.length;while(i){h=(h*33)^s.charCodeAt(--i);}return (h>>>0).toString(36);}
-for (const item of document.querySelectorAll('.job-item')) {
-  if (item.querySelector('.__ai-eid')) continue;
-  const title = item.querySelector('.job-title')?.innerText?.trim() ?? '';
-  const loc   = item.querySelector('.job-location')?.innerText?.trim() ?? '';
-  const dept  = item.querySelector('.job-dept')?.innerText?.trim() ?? '';
-  // disambiguator (loc/dept/branch) only needed when titles can repeat;
-  // if titles are globally unique, hash the title alone.
-  const key   = `${title}|${loc}|${dept}`.toLowerCase().replace(/\s+/g, ' ').trim();
-  const span  = document.createElement('span');
-  span.className = '__ai-eid';
-  span.style.display = 'none';
-  span.textContent = 'h-' + haideHash(key);   // ASCII-safe, compact, reorder-proof
-  item.appendChild(span);                      // append to item root, NOT the title el
+// The worker's haideHash (worker/lib/synthesizeJobId.ts), character-equivalent.
+function haideHash(input) {
+  var h = 5381;
+  for (var i = 0; i < input.length; i++) {
+    h = ((h << 5) + h) ^ input.charCodeAt(i);
+    h = h >>> 0;
+  }
+  return h.toString(36);
 }
-```
-
-**Hybrid (native-id-first, hash fallback):** when only *some* items carry a native
-id, keep the real ones and only hash the rest. The `h-` prefix guarantees the two
-shapes never collide:
-```js
-span.textContent = nativeId ? nativeId : ('h-' + haideHash(key));
+// The worker's seed: title, department, detail url — trimmed, empties dropped, joined by '|'.
+function haideJobId(title, department, url) {
+  var parts = [title, department, url].map(function (p) { return (p || '').trim(); }).filter(Boolean);
+  return parts.length ? 'h-' + haideHash(parts.join('|')) : '';
+}
 ```
 
 **Why these rules (enforced by `verify-jobids`, exit 2):**
@@ -148,11 +143,11 @@ span.textContent = nativeId ? nativeId : ('h-' + haideHash(key));
   `LRN-ID-4`.)
 - **Never index-based** (`item-0`, `0`, `1`) — re-keys on every reorder.
 - **Never all-identical / empty** — collapses every row into one deduped job.
-- Trade-off: the hash still changes if the site *edits the title text* — unavoidable
-  with no native id, but strictly better than index/title.
+- Trade-off: a synthesised id still changes if the site *edits the title text* —
+  unavoidable with no native id, but strictly better than index/title.
 
-> Cite: `LRN-ID-1`, `LRN-ID-2`, `LRN-ID-4` in `docs/addsite-learnings.md`.
-> Verified hash recipe: halilit.com, hamat-group.co.il (addsite), alubin.com (addsite2).
+> Cite: `LRN-ID-1`, `LRN-ID-2`, `LRN-ID-4`, `LRN-ID-6`, `LRN-ID-7`, `LRN-WRK-17` in
+> `docs/addsite-learnings.md`.
 
 ---
 
