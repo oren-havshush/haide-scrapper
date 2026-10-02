@@ -3,6 +3,7 @@ import { successResponse } from "@/lib/api-utils";
 import { formatErrorResponse, NotFoundError, ValidationError } from "@/lib/errors";
 import { prisma } from "@/lib/prisma";
 import { updateSiteConfigSchema } from "@/lib/validators";
+import { mergeConfigPatch } from "@/lib/configPatch";
 import { saveSiteConfig } from "@/services/siteService";
 import { applyAutoFix, recordSiteCall } from "@/services/autoFixService";
 
@@ -64,6 +65,53 @@ export async function PUT(
       write: {
         kind: "config",
         before: { fieldMappings: stored?.fieldMappings ?? null, pageFlow: stored?.pageFlow ?? null },
+        after: { fieldMappings: updatedSite.fieldMappings, pageFlow: updatedSite.pageFlow },
+      },
+    });
+
+    return successResponse({
+      status: updatedSite.status,
+    });
+  } catch (error) {
+    return formatErrorResponse(error);
+  }
+}
+
+/**
+ * PATCH merges (addsite2 phase two, step 3): keys present are applied, a
+ * present null clears one, fieldMappings merge per field, and the merged result
+ * is validated with the full schema (src/lib/configPatch.ts). It saves through
+ * the same saveSiteConfig as PUT, so the ACTIVE -> REVIEW demotion and
+ * configLocked are inherited unchanged. PUT stays replace.
+ */
+export async function PATCH(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const { id } = await params;
+    const body = await request.json();
+
+    const stored = await prisma.site.findUnique({
+      where: { id },
+      select: { status: true, fieldMappings: true, pageFlow: true },
+    });
+    if (!stored) {
+      throw new NotFoundError("Site", id);
+    }
+    const statusBefore = stored.status;
+
+    const merged = mergeConfigPatch(stored, body);
+    const updatedSite = await saveSiteConfig(id, merged);
+
+    await applyAutoFix({
+      request,
+      siteId: id,
+      statusBefore,
+      route: "PATCH /api/sites/[id]/config",
+      write: {
+        kind: "config",
+        before: { fieldMappings: stored.fieldMappings ?? null, pageFlow: stored.pageFlow ?? null },
         after: { fieldMappings: updatedSite.fieldMappings, pageFlow: updatedSite.pageFlow },
       },
     });
