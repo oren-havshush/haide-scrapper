@@ -36,6 +36,9 @@ function sandbox(): string {
   mkdirSync(join(dir, "scripts"));
   mkdirSync(join(dir, ".claude", "commands"), { recursive: true });
   cpSync(join(ROOT, "scripts", "sync-addsite2.mjs"), join(dir, "scripts", "sync-addsite2.mjs"));
+  // The script imports the addsite3 lint (step 4).
+  mkdirSync(join(dir, "scripts", "lib"));
+  cpSync(join(ROOT, "scripts", "lib", "skillLint.mjs"), join(dir, "scripts", "lib", "skillLint.mjs"));
   for (const f of SKILL_FILES) {
     if (!existsSync(join(ROOT, f))) continue;
     cpSync(join(ROOT, f), join(dir, f));

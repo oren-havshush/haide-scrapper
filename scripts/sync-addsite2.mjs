@@ -24,6 +24,7 @@ import { link } from 'node:fs/promises';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { homedir } from 'node:os';
+import { lintAddsite3 } from './lib/skillLint.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT = resolve(__dirname, '..');
@@ -147,6 +148,15 @@ if (CHECK_MODE) {
     if (frozenOk) {
       console.log(`OK: ${skill.name} is frozen as of ${skill.frozen.freezeAt}; ${Object.keys(recorded).length} file(s) match their sha256`);
     }
+  }
+
+  // ---- The addsite3 lint: removed rules stay removed (scripts/lib/skillLint.mjs) --
+  const addsite3 = join(ROOT, 'addsite3.md');
+  if (existsSync(addsite3)) {
+    const hits = lintAddsite3(readFileSync(addsite3, 'utf8'));
+    for (const h of hits) console.error(`LINT: addsite3.md:${h.line} ${h.rule}`);
+    if (hits.length > 0) drift = true;
+    else console.log('OK: addsite3.md passes the skill lint');
   }
   process.exit(drift ? 1 : 0);
 }
