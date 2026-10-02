@@ -654,6 +654,20 @@ check("skipped sites and warnings are listed", () => {
   );
 }
 
+// --- override_off_list is named per site in Warnings (owner, 2026-10-02) ----------
+check("an off-list stored override is listed under Warnings with its site, job key and value", () => {
+  const w = item({
+    siteId: "s",
+    siteUrl: "https://shagrir.test",
+    warnings: [`override_off_list: site cmqjkta3n000r01p6p7i3nkhe job sj-30 — "מגוון אזורים" is not on city.csv; the override was skipped`],
+  });
+  const text = renderSweepReport(sweep(), [w], { timeZone: TZ });
+  const at = text.indexOf("Warnings (");
+  const block = at >= 0 ? text.slice(at) : "";
+  assert(block.includes("override_off_list (1)"), `the type is counted (${block})`);
+  assert(block.includes("https://shagrir.test") && block.includes("sj-30") && block.includes("מגוון אזורים"), "and the site line carries the job key and the raw value");
+});
+
 if (failures > 0) {
   console.error(`\n${failures} assertion(s) failed`);
   process.exit(1);

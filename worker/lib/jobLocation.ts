@@ -52,6 +52,8 @@ export type JobLocationResult = {
   locations: string[];
   /** Which rule produced it. Reported, never stored. */
   source: JobLocationSource;
+  /** Stored override values that are not on city.csv and were skipped. */
+  offListOverride?: string[];
 };
 
 /**
@@ -89,13 +91,31 @@ export function canCarryForward(previous: PreviousLocation | null): boolean {
  * about the site, not about this job.
  */
 export function resolveJobLocation(input: JobLocationInput): JobLocationResult {
+  // The override is gated like everything else (owner, 2026-10-02): overrides
+  // saved before the write-side check (2026-06) held values city.csv never
+  // contained and were replayed verbatim every night. Each stored member goes
+  // through normalizeLocations — the canonicaliser the write path
+  // (resolveLocationInput) applies to each comma part — and only what lands
+  // on city.csv is kept. When nothing survives, the job falls through to the
+  // steps below and the dropped values are reported (override_off_list).
   const override = input.overrideLocation?.trim() || null;
+  let offListOverride: string[] | undefined;
   if (override) {
-    const list = input.overrideLocations?.length
-      ? [...input.overrideLocations]
-      : normalizeLocations(override);
-    return { location: list[0] ?? override, locations: list, source: "override" };
+    if (override === "Unknown") return { location: "Unknown", locations: [], source: "override" };
+    const members = input.overrideLocations?.length ? [...input.overrideLocations] : [override];
+    const list: string[] = [];
+    const dropped: string[] = [];
+    for (const m of members) {
+      const resolved = normalizeLocations(m);
+      if (resolved.length === 0) dropped.push(m);
+      for (const v of resolved) if (!list.includes(v)) list.push(v);
+    }
+    if (list.length > 0) {
+      return { location: list[0]!, locations: list, source: "override", ...(dropped.length > 0 ? { offListOverride: dropped } : {}) };
+    }
+    offListOverride = dropped;
   }
+  const withDropped = (r: JobLocationResult): JobLocationResult => (offListOverride ? { ...r, offListOverride } : r);
 
   // The location COLUMN is what the public jobs site reads, so it is city-gated
   // like the list: when normalizeLocations rejects the string, the column is
@@ -104,7 +124,7 @@ export function resolveJobLocation(input: JobLocationInput): JobLocationResult {
   const extracted = input.extracted?.trim() || null;
   if (extracted) {
     const list = normalizeLocations(extracted);
-    return { location: list[0] ?? "Unknown", locations: list, source: "extracted" };
+    return withDropped({ location: list[0] ?? "Unknown", locations: list, source: "extracted" });
   }
 
   // What this site published for this job yesterday, when it is still a value
@@ -113,15 +133,21 @@ export function resolveJobLocation(input: JobLocationInput): JobLocationResult {
   if (canCarryForward(input.previous)) {
     const prev = input.previous!;
     const list = prev.locations.length > 0 ? [...prev.locations] : [prev.location];
-    return { location: list[0]!, locations: list, source: "previous" };
+    return withDropped({ location: list[0]!, locations: list, source: "previous" });
   }
 
   const fallback = input.fallback?.trim() || null;
   if (fallback) {
     const list = normalizeLocations(fallback);
     // Same gate as above; the fallback is also checked on save (validators.ts).
-    return { location: list[0] ?? "Unknown", locations: list, source: "fallback" };
+    return withDropped({ location: list[0] ?? "Unknown", locations: list, source: "fallback" });
   }
 
-  return { location: "Unknown", locations: [], source: "unknown" };
+  return withDropped({ location: "Unknown", locations: [], source: "unknown" });
+}
+
+/** The run warning for a stored override the gate skipped, named per site in the night report. */
+export function overrideOffListWarning(siteId: string, jobKey: string, raw: readonly string[]): string {
+  const values = raw.map((v) => JSON.stringify(v)).join(", ");
+  return `override_off_list: site ${siteId} job ${jobKey} — ${values} not on city.csv; the override value was skipped`;
 }

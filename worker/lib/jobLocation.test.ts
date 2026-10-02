@@ -17,7 +17,7 @@
 
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { canCarryForward, resolveJobLocation, type JobLocationInput } from "./jobLocation";
+import { canCarryForward, overrideOffListWarning, resolveJobLocation, type JobLocationInput } from "./jobLocation";
 import { isCanonicalLocation } from "./locationNormalize";
 
 let failures = 0;
@@ -300,6 +300,47 @@ console.log("# the wiring — scrape.ts must actually ask this module");
   // The whole point of the module: exactly one place decides this.
   const calls = src.split("resolveJobLocation(").length - 1;
   assert(calls === 1, `resolveJobLocation has exactly one call site in scrape.ts (found ${calls})`);
+}
+
+// ---------------------------------------------------------------------------
+console.log("# the override gate (owner, 2026-10-02)");
+// ---------------------------------------------------------------------------
+// Overrides saved before the write-side check (2026-06, chitadelivery and
+// shagrir) were replayed verbatim every night. The stored override now goes
+// through the same canonicaliser the write path uses, member by member.
+{
+  const offList = resolve({ overrideLocation: "מגוון אזורים", overrideLocations: ["מגוון אזורים"], extracted: "חולון" });
+  eq([offList.location, offList.locations, offList.source], ["חולון", ["חולון"], "extracted"], "an off-list override falls through to the extracted value");
+  eq(offList.offListOverride, ["מגוון אזורים"], "and names the raw value it dropped");
+  eq(
+    resolve({ overrideLocation: "מגוון אזורים", overrideLocations: ["מגוון אזורים"], previous: { location: "חיפה", locations: ["חיפה"] } }).source,
+    "previous",
+    "with nothing extracted it falls through to yesterday's clean value",
+  );
+  const onList = resolve({ overrideLocation: "חיפה", overrideLocations: ["חיפה"], extracted: "חולון" });
+  eq([onList.location, onList.source, onList.offListOverride], ["חיפה", "override", undefined], "an on-list override still wins, with nothing dropped");
+  const mixed = resolve({ overrideLocation: "חיפה", overrideLocations: ["חיפה", "מגוון אזורים", "ירושלים"], extracted: "חולון" });
+  eq([mixed.locations, mixed.source, mixed.offListOverride], [["חיפה", "ירושלים"], "override", ["מגוון אזורים"]], "a list keeps its on-list members and names the one it dropped");
+  eq(
+    resolve({ overrideLocation: "חולון/ חיפה/ ירושלים", overrideLocations: ["חולון/ חיפה/ ירושלים"] }).locations,
+    ["חולון", "חיפה", "ירושלים"],
+    "a stored slash list is split and canonicalised, as the write path would",
+  );
+  eq(resolve({ overrideLocation: "פתח תיקוה", overrideLocations: ["פתח תיקוה"] }).locations, ["פתח תקווה"], "a legacy spelling lands on the list's spelling");
+  eq(resolve({ overrideLocation: "לוד", overrideLocations: ["לוד"] }).locations, ["רמלה לוד"], "including the לוד alias");
+  eq(
+    resolve({ overrideLocation: "Unknown", overrideLocations: [], extracted: "חולון" }),
+    { location: "Unknown", locations: [], source: "override" },
+    "an operator's explicit Unknown is still an override",
+  );
+  const w = overrideOffListWarning("cmqjkta3n000r01p6p7i3nkhe", "sj-30", ["מגוון אזורים"]);
+  assert(w.startsWith("override_off_list:"), `the warning has its type (${w})`);
+  assert(w.includes("cmqjkta3n000r01p6p7i3nkhe") && w.includes("sj-30") && w.includes(`"מגוון אזורים"`), "and carries the site, the job key and the raw value");
+
+  // Wiring: the run collects one per job and adds them to its warnings.
+  const src = readFileSync(join(__dirname, "..", "jobs", "scrape.ts"), "utf8");
+  assert(/overrideOffListWarning\(args\.siteId, jobKey, resolved\.offListOverride\)/.test(src), "buildJobRows builds the warning from the resolver's dropped values");
+  assert(/scrapeWarnings\.push\(\.\.\.overrideWarnings\)/.test(src), "and the run adds them to its warnings");
 }
 
 if (failures > 0) {

@@ -24,7 +24,7 @@ import {
   extractLocationFromGazetteer,
 } from "../lib/normalizer";
 import type { NormalizedJobRecord } from "../lib/normalizer";
-import { resolveJobLocation, type PreviousLocation } from "../lib/jobLocation";
+import { overrideOffListWarning, resolveJobLocation, type PreviousLocation } from "../lib/jobLocation";
 import { runSetupScript } from "../lib/setupScriptRun";
 import { validateJobRecord } from "../lib/validator";
 import type { ValidationResult } from "../lib/validator";
@@ -2956,6 +2956,8 @@ function buildJobRows(args: {
   scrapeRunId: string;
   /** This run's time: firstSeenAt for a job never seen before. */
   seenAt: Date;
+  /** Collects one override_off_list warning per job whose stored override was skipped. */
+  overrideWarnings: string[];
 }): Prisma.JobCreateManyInput[] {
   return args.records.map(({ normalized, validation }, idx) => {
     // Deliberately the EXTRACTED id, not the synthesised one, so a manual
@@ -2982,6 +2984,9 @@ function buildJobRows(args: {
       previous,
       fallback: args.locationFallback,
     });
+    if (resolved.offListOverride && jobKey) {
+      args.overrideWarnings.push(overrideOffListWarning(args.siteId, jobKey, resolved.offListOverride));
+    }
 
     return {
       title: normalized.title || "Untitled",
@@ -4373,6 +4378,8 @@ async function executeScrape(
 
   // Every row value is pure computation, so both paths precompute them here and
   // neither holds a lock while doing CPU work.
+  // Stored overrides the location gate skipped, added to the run's warnings below.
+  const overrideWarnings: string[] = [];
   const rows = buildJobRows({
     records: recordsToPersist,
     synthesizedIds: idFallback.ids,
@@ -4383,6 +4390,7 @@ async function executeScrape(
     siteId: site.id,
     scrapeRunId,
     seenAt: new Date(),
+    overrideWarnings,
   });
 
   let savedCount = 0;
@@ -4647,6 +4655,8 @@ async function executeScrape(
       },
     });
     scrapeWarnings.push(...buildLocationWarnings(savedJobs));
+    // Stored location overrides not on city.csv, skipped by the gate (worker/lib/jobLocation.ts).
+    scrapeWarnings.push(...overrideWarnings);
     // What each listing page contributed, saved/seen. Only present on a site
     // that has more than one, and the only place a cross-page dedup collapse
     // is attributable to the page it happened on.

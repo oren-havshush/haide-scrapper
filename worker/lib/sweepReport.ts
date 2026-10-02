@@ -112,6 +112,9 @@ const WARNINGS_THAT_NAME_SITES: ReadonlySet<string> = new Set([
   "job_count_drop",
   "near_timeout",
   "detail_fingerprint_churn",
+  // A stored location override not on city.csv (owner, 2026-10-02): one line
+  // per job, so the operator can correct or delete that override.
+  "override_off_list",
 ]);
 
 export type ReportOptions = {
