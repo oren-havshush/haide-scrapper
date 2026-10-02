@@ -1,7 +1,15 @@
 import { createHash } from "node:crypto";
 import { prisma } from "@/lib/prisma";
 import { sweepConfig } from "@/lib/config";
-import { estimateMinutes, fieldsForWrite, planAutoFix, startOfLocalDay, type AutoFixWrite } from "@/lib/autoFix";
+import {
+  COMPANY_COLUMNS,
+  estimateMinutes,
+  fieldsForWrite,
+  planAutoFix,
+  startOfLocalDay,
+  type AutoFixWrite,
+  type CompanySnapshot,
+} from "@/lib/autoFix";
 import { isDashboardToken } from "@/lib/apiTokens";
 
 /**
@@ -59,6 +67,20 @@ export async function recordSiteCall(request: Request, siteId: string, route: st
 }
 
 /** The site's status now — read BEFORE a write, for applyAutoFix's statusBefore. */
+/**
+ * The site's company fields (COMPANY_COLUMNS), read before and after a company
+ * write so the rule can tell a change from onboarding. Never throws: an empty
+ * snapshot opens nothing.
+ */
+export async function companySnapshotOf(siteId: string): Promise<CompanySnapshot> {
+  try {
+    const select = Object.fromEntries(COMPANY_COLUMNS.map((c) => [c, true])) as Record<(typeof COMPANY_COLUMNS)[number], true>;
+    return ((await prisma.site.findUnique({ where: { id: siteId }, select })) ?? {}) as CompanySnapshot;
+  } catch {
+    return {};
+  }
+}
+
 export async function siteStatusOf(siteId: string): Promise<string> {
   try {
     return (await prisma.site.findUnique({ where: { id: siteId }, select: { status: true } }))?.status ?? "";

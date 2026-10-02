@@ -13,7 +13,7 @@ import {
   deleteSite,
 } from "@/services/siteService";
 import { prisma } from "@/lib/prisma";
-import { applyAutoFix } from "@/services/autoFixService";
+import { applyAutoFix, companySnapshotOf } from "@/services/autoFixService";
 
 export async function PATCH(
   request: NextRequest,
@@ -37,8 +37,15 @@ export async function PATCH(
           parsed.error.issues.map((i: { message: string }) => i.message).join(", ")
         );
       }
+      const companyBefore = await companySnapshotOf(id);
       const site = await updateSiteCompanyName(id, parsed.data.companyName);
-      await applyAutoFix({ request, siteId: id, statusBefore, route, write: { kind: "company" } });
+      await applyAutoFix({
+        request,
+        siteId: id,
+        statusBefore,
+        route,
+        write: { kind: "company", before: companyBefore, after: await companySnapshotOf(id) },
+      });
       return successResponse(site);
     }
 

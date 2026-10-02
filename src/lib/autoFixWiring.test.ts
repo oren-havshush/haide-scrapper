@@ -78,6 +78,22 @@ write("app/api/sites/[id]/company-profile/route.ts", "PUT", "saveCompanyProfile(
 write("app/api/sites/[id]/company-logo/route.ts", "POST", "saveCompanyLogo(", "company");
 write("app/api/sites/[id]/company-hq-city/route.ts", "PUT", "saveCompanyHqCity(", "company");
 write("app/api/sites/[id]/company-homepage/route.ts", "PUT", "saveCompanyHomepage(", "company");
+// Refined (owner, 2026-10-02): each company write passes the company fields as
+// they were before the write and as they are after it.
+function companySnapshots(file: string, method: string, action: string) {
+  const body = handlers(read(file)).find((x) => x.method === method)?.body ?? "";
+  const snapBefore = body.indexOf("companySnapshotOf(");
+  const act = body.indexOf(action);
+  const apply = body.indexOf("applyAutoFix(", act);
+  assert(snapBefore > 0 && snapBefore < act, `${method} ${file}: the company fields are read before the write`);
+  const call = body.slice(apply, body.indexOf("});", apply));
+  assert(/kind: "company", before: companyBefore, after: await companySnapshotOf\(id\)/.test(call), `${method} ${file}: and passed before and after to applyAutoFix`);
+}
+companySnapshots("app/api/sites/[id]/company-profile/route.ts", "PUT", "saveCompanyProfile(");
+companySnapshots("app/api/sites/[id]/company-logo/route.ts", "POST", "saveCompanyLogo(");
+companySnapshots("app/api/sites/[id]/company-hq-city/route.ts", "PUT", "saveCompanyHqCity(");
+companySnapshots("app/api/sites/[id]/company-homepage/route.ts", "PUT", "saveCompanyHomepage(");
+companySnapshots("app/api/sites/[id]/route.ts", "PATCH", "updateSiteCompanyName(");
 {
   const patch = handlers(read("app/api/sites/[id]/route.ts")).find((x) => x.method === "PATCH")?.body ?? "";
   const name = patch.indexOf("updateSiteCompanyName(");

@@ -4,7 +4,7 @@ import { formatErrorResponse, ValidationError } from "@/lib/errors";
 import { MAX_LOGO_BYTES } from "@/lib/image-validate";
 import { storeLogo } from "@/lib/logo-store";
 import { saveCompanyLogo } from "@/services/siteService";
-import { applyAutoFix, siteStatusOf } from "@/services/autoFixService";
+import { applyAutoFix, companySnapshotOf, siteStatusOf } from "@/services/autoFixService";
 
 // Accepts raw image bytes with a Content-Type header and writes them to the
 // logo volume. There is deliberately NO url parameter and no outbound HTTP
@@ -21,6 +21,7 @@ export async function POST(
   try {
     const { id } = await params;
     const statusBefore = await siteStatusOf(id);
+    const companyBefore = await companySnapshotOf(id);
 
     const contentType = request.headers.get("content-type");
     const sourceUrl = request.headers.get("x-logo-source-url");
@@ -49,7 +50,7 @@ export async function POST(
       siteId: id,
       statusBefore,
       route: "POST /api/sites/[id]/company-logo",
-      write: { kind: "company" },
+      write: { kind: "company", before: companyBefore, after: await companySnapshotOf(id) },
     });
 
     return successResponse({

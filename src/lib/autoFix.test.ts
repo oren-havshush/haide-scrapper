@@ -150,12 +150,41 @@ eq(fieldsForWrite({ kind: "status", to: "ACTIVE" }), [], "a status write that st
 eq(fieldsForWrite({ kind: "other" }), [], "any other write (an admin note, a scrape, an analysis, a policy review) files nothing");
 
 // --- rule 7 (owner, 2026-09-30): a company-field write -> COMPANY --------------
-eq(fieldsForWrite({ kind: "company" }), ["COMPANY"], "a write to a company field files COMPANY");
+// Refined (owner, 2026-10-02): only a write that CHANGES a field that already
+// held a non-empty value files COMPANY. Filling empty fields is onboarding.
+const EMPTY_CO = { companyName: null, companyHomepageUrl: null, companyAbout: null, companyLogoPath: null, companyHqCity: null };
+const FILLED_CO = {
+  companyName: "קבוצת כהנא",
+  companyHomepageUrl: "https://www.kahane.co.il/",
+  companyAbout: "Energy group.",
+  companyLogoPath: "logos/k1.png",
+  companyHqCity: "חיפה",
+};
+const co = (before: Record<string, unknown>, after: Record<string, unknown>) => fieldsForWrite({ kind: "company", before, after });
+eq(co(EMPTY_CO, FILLED_CO), [], "a write that only fills empty company fields is onboarding: nothing");
+eq(co({ ...EMPTY_CO, companyAbout: "  " }, { ...EMPTY_CO, companyAbout: "Energy group." }), [], "a whitespace-only value counts as empty");
+eq(co({ ...EMPTY_CO, companyName: "" }, { ...EMPTY_CO, companyName: "x" }), [], "an empty string counts as empty");
+eq(co(FILLED_CO, { ...FILLED_CO, companyHqCity: "תל אביב - יפו" }), ["COMPANY"], "changing a field that held a value files COMPANY");
+eq(co(FILLED_CO, { ...FILLED_CO, companyLogoPath: null }), ["COMPANY"], "clearing a field that held a value files COMPANY");
+eq(co({ ...EMPTY_CO, companyName: "קבוצת כהנא" }, { ...FILLED_CO }), [], "keeping the one held value while filling the rest: nothing");
+eq(co({ ...EMPTY_CO, companyName: "כהנא" }, { ...FILLED_CO }), ["COMPANY"], "filling the rest while changing the held name: COMPANY");
+eq(co(FILLED_CO, { ...FILLED_CO }), [], "re-sending the same values: nothing");
+eq(
+  co({ ...FILLED_CO, companyProfileAt: "2026-09-01T00:00:00Z", companyProfileStatus: "partial" }, { ...FILLED_CO, companyProfileAt: "2026-10-02T00:00:00Z", companyProfileStatus: "complete" }),
+  [],
+  "the capture's own bookkeeping (companyProfileAt, companyProfileStatus) is not a company field",
+);
+eq(co({}, {}), [], "no snapshot (the read failed): nothing");
+eq(
+  planAutoFix({ statusBefore: "ACTIVE", fields: co(EMPTY_CO, FILLED_CO), code: "auto:PUT /api/sites/[id]/company-profile", now: new Date("2026-10-02T10:00:00Z"), openAuto: [] }),
+  { open: [], extend: [] },
+  "an onboarding write to an ACTIVE site opens and extends nothing",
+);
 {
   const code = "auto:PUT /api/sites/[id]/company-profile";
   const at = new Date("2026-09-30T10:00:00Z");
   eq(
-    planAutoFix({ statusBefore: "ACTIVE", fields: fieldsForWrite({ kind: "company" }), code, now: at, openAuto: [] }).open,
+    planAutoFix({ statusBefore: "ACTIVE", fields: co(FILLED_CO, { ...FILLED_CO, companyName: "כהנא" }), code, now: at, openAuto: [] }).open,
     [{ field: "COMPANY", code }],
     "on an ACTIVE site it opens a COMPANY item",
   );

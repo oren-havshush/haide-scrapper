@@ -3,7 +3,7 @@ import { successResponse } from "@/lib/api-utils";
 import { formatErrorResponse, ValidationError } from "@/lib/errors";
 import { updateSiteCompanyHqCitySchema } from "@/lib/validators";
 import { saveCompanyHqCity } from "@/services/siteService";
-import { applyAutoFix, siteStatusOf } from "@/services/autoFixService";
+import { applyAutoFix, companySnapshotOf, siteStatusOf } from "@/services/autoFixService";
 
 // Operator-authored HQ city, for a company that publishes no address anywhere
 // the capture can read it. That is common and legitimate: clalitsmile lists
@@ -29,6 +29,7 @@ export async function PUT(
   try {
     const { id } = await params;
     const statusBefore = await siteStatusOf(id);
+    const companyBefore = await companySnapshotOf(id);
     const body = await request.json();
 
     const parsed = updateSiteCompanyHqCitySchema.safeParse(body);
@@ -48,7 +49,7 @@ export async function PUT(
       siteId: id,
       statusBefore,
       route: "PUT /api/sites/[id]/company-hq-city",
-      write: { kind: "company" },
+      write: { kind: "company", before: companyBefore, after: await companySnapshotOf(id) },
     });
     return successResponse(site);
   } catch (error) {

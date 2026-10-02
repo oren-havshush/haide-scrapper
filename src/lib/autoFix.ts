@@ -10,7 +10,9 @@
 //   location override                             -> LOCATION
 //   manual job delete                             -> COVERAGE
 //   status change away from ACTIVE                -> OTHER
-//   company name, profile, logo, HQ city, homepage -> COMPANY
+//   company name, profile, logo, HQ city, homepage -> COMPANY, only when the
+//     write changes a field that already held a non-empty value (owner,
+//     2026-10-02); a write that only fills empty fields is onboarding
 // Admin note, scrape, analyze and policy review file nothing.
 // A write to a site that is not ACTIVE opens nothing. The same site and field
 // written again within AUTO_FIX_EXTEND_MS extends the open item instead —
@@ -30,10 +32,26 @@ export type AutoFixWrite =
   | { kind: "location_override" }
   | { kind: "jobs_delete" }
   | { kind: "status"; to: string }
-  /** A company field: name, profile, logo, HQ city or homepage. */
-  | { kind: "company" }
+  /** A company field: name, profile, logo, HQ city or homepage, with the
+   *  site's company fields read just before and just after the write. */
+  | { kind: "company"; before: CompanySnapshot; after: CompanySnapshot }
   /** Any other write: files nothing, but still recomputes the day's minutes. */
   | { kind: "other" };
+
+/** The Site columns a company write can change (not the capture's bookkeeping,
+ *  companyProfileAt and companyProfileStatus, which every capture restamps). */
+export const COMPANY_COLUMNS = [
+  "companyName",
+  "companyHomepageUrl",
+  "companyAbout",
+  "companyLogoPath",
+  "companyLogoSourceUrl",
+  "companyHqAddress",
+  "companyHqCity",
+  "companyHqCitySource",
+] as const;
+
+export type CompanySnapshot = Partial<Record<string, unknown>>;
 
 /** An open auto item on the site, for the one-hour extension. */
 export type OpenAutoItem = { id: string; field: string; lastWriteAt: Date };
@@ -114,6 +132,13 @@ function configFields(before: ConfigSnapshot, after: ConfigSnapshot): FixFieldVa
   return out;
 }
 
+const isEmptyValue = (v: unknown) => v === null || v === undefined || (typeof v === "string" && v.trim() === "");
+
+/** True when the write changed a company field that already held a value. */
+function changedHeldCompanyField(before: CompanySnapshot, after: CompanySnapshot): boolean {
+  return COMPANY_COLUMNS.some((k) => !isEmptyValue(before[k]) && canonical(before[k]) !== canonical(after[k]));
+}
+
 export function fieldsForWrite(write: AutoFixWrite): FixFieldValue[] {
   switch (write.kind) {
     case "config":
@@ -125,7 +150,7 @@ export function fieldsForWrite(write: AutoFixWrite): FixFieldValue[] {
     case "status":
       return write.to === "ACTIVE" ? [] : ["OTHER"];
     case "company":
-      return ["COMPANY"];
+      return changedHeldCompanyField(write.before, write.after) ? ["COMPANY"] : [];
     case "other":
       return [];
   }
