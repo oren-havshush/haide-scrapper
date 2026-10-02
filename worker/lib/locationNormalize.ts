@@ -75,6 +75,9 @@ export const LOCATION_ALIAS: Readonly<Record<string, string>> = {
   // standing overrides — city.csv has no standalone לוד/רמלה, and חצור is
   // ambiguous there; pinned by product decision (2026-08-03).
   לוד: "רמלה לוד", רמלה: "רמלה לוד", חצור: "חצור הגלילית",
+  // With a leading ב ("in"): too short for the one-letter typo tail, so each
+  // is named (owner, 2026-10-02).
+  בלוד: "רמלה לוד", ברמלה: "רמלה לוד",
 };
 
 /** Latin-script city names used by English-language boards. */

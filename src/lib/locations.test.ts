@@ -117,6 +117,27 @@ console.log("\n# whitespace and sloppy separators");
   eq(resolveLocationInput("חיפה,").list, ["חיפה"], "tolerates a trailing comma");
 }
 
+console.log("\n# לוד and רמלה alone resolve to the list's combined entry (owner, 2026-10-02)");
+{
+  // city.csv has no standalone לוד or רמלה; the one entry is "רמלה לוד". The
+  // write path (resolveLocationInput) and the scrape path (normalizeLocations)
+  // must agree, and a leading ב ("in") must not lose the city.
+  const writeList = (v: string) => {
+    try {
+      return resolveLocationInput(v).list;
+    } catch (e) {
+      return `rejected: ${(e as Error).message.slice(0, 40)}`;
+    }
+  };
+  for (const v of ["לוד", "רמלה", "בלוד", "ברמלה"]) {
+    eq(writeList(v), ["רמלה לוד"], `write path: ${v} -> רמלה לוד`);
+    eq(normalizeLocations(v), ["רמלה לוד"], `scrape path: ${v} -> רמלה לוד`);
+  }
+  eq(resolveLocationInput("רמלה לוד").list, ["רמלה לוד"], "the combined entry is unchanged (write path)");
+  eq(normalizeLocations("רמלה לוד"), ["רמלה לוד"], "the combined entry is unchanged (scrape path)");
+  eq(normalizeLocations("רמלה/לוד/מודיעין"), ["רמלה לוד", "מודיעין"], "a slash list with both words collapses to one entry");
+}
+
 console.log("\n# values outside the vocabulary are rejected");
 {
   // הגליל is in neither list, so it now normalises to nothing at all — the
