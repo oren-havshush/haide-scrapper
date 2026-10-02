@@ -382,8 +382,9 @@ export const fixItemPatchSchema = z
   .refine((b) => Object.keys(b).length > 0, { message: "nothing to change" });
 
 /**
- * GET /api/dashboard/fix-queue. `cohort` needs `freezeAt` (step 1b's ship time)
- * and, once it exists, `switchAt`; without freezeAt there is no control cohort.
+ * GET /api/dashboard/fix-queue. `freezeAt` defaults to the addsite2 freeze
+ * (src/lib/fixScore.ts ADDSITE2_FREEZE_AT, step 1b); `switchAt` is given once it
+ * exists (step 7).
  */
 export const fixQueueQuerySchema = z
   .object({

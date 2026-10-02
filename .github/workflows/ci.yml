@@ -24,8 +24,8 @@ jobs:
 
       - run: pnpm install --frozen-lockfile
 
-      - name: Check /addsite2 docs are in sync
-        run: pnpm check:addsite2
+      - name: Check the skills are in sync and addsite2 is frozen
+        run: pnpm check:skills
 
       # Asserts the bundled IL_CANONICAL still equals "CSV files/city.csv".
       # Production validates city writes against the bundled list because the

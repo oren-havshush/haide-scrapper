@@ -8,8 +8,12 @@
 // comparison. Cohorts: control = untagged and created in [freezeAt, switchAt);
 // test = tagged addsite3; untagged after the switch is listed, never scored.
 
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import {
+  ADDSITE2_FREEZE_AT,
   FIX_WINDOW_DAYS,
+  cohortBoundsFrom,
   cohortOf,
   scoreCohorts,
   scoreSite,
@@ -256,6 +260,22 @@ eq(FIX_WINDOW_DAYS, 14, "the window is fourteen days");
   eq(rep.control.medianMinutes, 5, "median minutes over complete windows: 30, 5, 0 -> 5");
   eq(rep.control.meanItems, 1, "mean items over complete windows: (2 + 1 + 0) / 3");
   eq(rep.test, { sites: 0, complete: 0, medianMinutes: 0, meanItems: 0 }, "an empty cohort summarises to zeros");
+}
+
+// --- step 1b: the freeze time is the control window's default -------------------------
+// freezeAt = the later of 2026-10-01 00:00 Asia/Jerusalem and the last commit that
+// touched addsite2 (a1c5672, 2026-09-30 10:05 +03:00). The fix-queue GET no longer
+// needs it as a query parameter.
+{
+  eq(ADDSITE2_FREEZE_AT, "2026-09-30T21:00:00.000Z", "freezeAt is 2026-10-01 00:00 Asia/Jerusalem");
+  const def = cohortBoundsFrom({});
+  eq([def.freezeAt?.toISOString() ?? null, def.switchAt], [ADDSITE2_FREEZE_AT, null], "no query: freezeAt defaults to the freeze, no switch yet");
+  eq(cohortBoundsFrom({ freezeAt: "2026-10-05T00:00:00Z" }).freezeAt?.toISOString(), "2026-10-05T00:00:00.000Z", "a freezeAt in the query still overrides");
+  eq(cohortBoundsFrom({ switchAt: "2026-11-01T00:00:00Z" }).switchAt?.toISOString(), "2026-11-01T00:00:00.000Z", "and switchAt is read when given");
+  eq(cohortOf(site({ createdAt: D("2026-10-01T06:00:00Z") }), def), "control", "a site onboarded with addsite2 on 2026-10-01 is control by default");
+  eq(cohortOf(site({ createdAt: D("2026-09-30T20:59:59Z") }), def), "none", "one onboarded just before the freeze is not");
+  const route = readFileSync(join(__dirname, "..", "app", "api", "dashboard", "fix-queue", "route.ts"), "utf8");
+  assert(/bounds: cohortBoundsFrom\(/.test(route), "the fix-queue GET takes its bounds from cohortBoundsFrom");
 }
 
 if (failures > 0) {

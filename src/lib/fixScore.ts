@@ -83,6 +83,14 @@ function scoreMinutes(items: ScoreItem[], timeZone: string): number {
 }
 
 export type CohortBounds = { freezeAt: Date | null; switchAt: Date | null };
+/**
+ * When addsite2 was frozen (step 1b): the later of 2026-10-01 00:00
+ * Asia/Jerusalem and the last commit that touched addsite2.md or
+ * addsite2-recipes/ (a1c5672, 2026-09-30 10:05 +03:00). Sites onboarded from
+ * here with the unchanged skill are the control cohort. The SKILLS freeze note in
+ * scripts/sync-addsite2.mjs records the same value (scripts/sync-skills-freeze.test.ts).
+ */
+export const ADDSITE2_FREEZE_AT = "2026-09-30T21:00:00.000Z";
 
 export type Cohort = "control" | "test" | "addsite2_after_switch" | "none";
 
@@ -230,5 +238,13 @@ export function scoreCohorts(
     control: summarise(scores.filter((s) => s.cohort === "control")),
     test: summarise(scores.filter((s) => s.cohort === "test")),
     comparableCheckCodes,
+  };
+}
+
+/** The cohort window for a query: freezeAt defaults to ADDSITE2_FREEZE_AT; switchAt stays unset until step 7. */
+export function cohortBoundsFrom(q: { freezeAt?: string; switchAt?: string }): CohortBounds {
+  return {
+    freezeAt: new Date(q.freezeAt ?? ADDSITE2_FREEZE_AT),
+    switchAt: q.switchAt ? new Date(q.switchAt) : null,
   };
 }
