@@ -20,8 +20,26 @@ function scriptSummary(v: unknown): string {
   return `${v.length} chars sha256 ${createHash("sha256").update(v).digest("hex").slice(0, 12)}`;
 }
 
+/**
+ * JSON with object keys sorted at every depth. Postgres jsonb stores keys in
+ * its own order and the schema parse returns them in schema order, so key
+ * order is never a change.
+ */
+function canonical(v: unknown): string {
+  if (Array.isArray(v)) return `[${v.map(canonical).join(",")}]`;
+  if (isRecord(v)) {
+    return `{${Object.keys(v)
+      .filter((k) => v[k] !== undefined)
+      .sort()
+      .map((k) => `${JSON.stringify(k)}:${canonical(v[k])}`)
+      .join(",")}}`;
+  }
+  return JSON.stringify(v ?? null);
+}
+
 function walk(path: string, a: unknown, b: unknown, out: string[], summarise?: (v: unknown) => string): void {
-  if (JSON.stringify(a) === JSON.stringify(b)) return;
+  if (a === undefined && b === undefined) return;
+  if (canonical(a) === canonical(b) && (a === undefined) === (b === undefined)) return;
   if (isRecord(a) && isRecord(b)) {
     for (const k of [...new Set([...Object.keys(a), ...Object.keys(b)])]) walk(`${path}.${k}`, a[k], b[k], out);
     return;

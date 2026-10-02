@@ -64,6 +64,17 @@ const eq = (got: unknown, want: unknown, msg: string) => {
   eq(lines.length, 1, "a setupScript change is one line");
   assert(/^\$\.fieldMappings\._meta\.setupScript: 15 chars sha256 [0-9a-f]{12} -> 500 chars sha256 [0-9a-f]{12}$/.test(lines[0] ?? ""), `and summarised by length and hash, not printed (${lines[0]})`);
   eq(renderConfigDiff(before, { ...before, formCapture: { formSelector: "form", actionUrl: "", method: "POST", fields: [] } }).length > 0, true, "formCapture from null to a form is a change");
+
+  // Key order is not a change. Postgres jsonb stores object keys in its own
+  // order and the schema parse returns them in schema order, so the same form
+  // field reads back as {name, label, tagName, ...} on one side and
+  // {name, label, fieldType, ...} on the other (kahane smoke, 2026-10-02).
+  const field = { name: "form_fields[fname]", label: "שם פרטי", tagName: "input", required: false, fieldType: "text" };
+  const reordered = { name: "form_fields[fname]", label: "שם פרטי", fieldType: "text", required: false, tagName: "input" };
+  const withForm = { ...before, formCapture: { formSelector: "form", actionUrl: "", method: "POST", fields: [field] } };
+  const withFormReordered = { ...before, formCapture: { method: "POST", formSelector: "form", actionUrl: "", fields: [reordered] } };
+  eq(renderConfigDiff(withForm, withFormReordered), [], "the same form with its keys in another order: no change");
+  eq(renderConfigDiff(withForm, { ...withFormReordered, formCapture: { ...withFormReordered.formCapture, fields: [{ ...reordered, required: true }] } }).length, 1, "while a real change inside the array is still one line");
 }
 
 // --- the acceptance parser ---------------------------------------------------------------
