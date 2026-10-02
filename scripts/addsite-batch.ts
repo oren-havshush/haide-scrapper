@@ -61,6 +61,9 @@
 import * as fs from "fs";
 import * as path from "path";
 import { classifyResponse } from "./lib/challenge-detect";
+import { parseAcceptance, renderConfigDiff, type AcceptanceInput } from "./lib/fixPlan";
+import { flattenStoredConfig, mergeConfigPatch, type StoredConfig } from "../src/lib/configPatch";
+import { FIX_FIELDS } from "../src/lib/fixFields";
 
 // Ensure Playwright resolves its browsers from the project-local node_modules
 // installation (PLAYWRIGHT_BROWSERS_PATH=0), matching how the worker runs.
@@ -1883,6 +1886,149 @@ async function cmdTriage(argv: string[]): Promise<void> {
 }
 
 // ---------------------------------------------------------------------------
+// fix — one site's config fix, end to end (addsite2 phase two, step 3)
+// ---------------------------------------------------------------------------
+//
+//   fix --site <id> --patch <file> --field <FIELD> [--apply] [--operator <name>] [--minutes N]
+//
+// 1. Plan: GET the stored config, apply the patch locally (src/lib/configPatch.ts)
+//    and print the path-level diff. Without --apply it stops here.
+// 2. Write: PATCH the config (the site demotes to REVIEW), then read it back and
+//    require every merged key, setupScript byte for byte (exit 2 if not).
+// 3. Guarded run: POST /api/sites/<id>/guarded-run and wait for the claim timer
+//    to run it (src/services/guardedRunService.ts). API only, no ssh.
+// 4. Accept: proceed only on wouldPromoteTo ACTIVE with no CHECK item for the
+//    field recurring on this run (scripts/lib/fixPlan.ts).
+// 5. Promote: only on the operator's yes; PATCH status ACTIVE and read it back.
+// 6. Record: resolve the site's open fix items for the field, with the minutes.
+
+const GUARDED_RUN_POLL_MS = 20_000;
+const GUARDED_RUN_WAIT_MS = 45 * 60_000;
+
+async function ask(question: string): Promise<string> {
+  const readline = await import("node:readline/promises");
+  const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
+  try {
+    return (await rl.question(question)).trim();
+  } finally {
+    rl.close();
+  }
+}
+
+async function apiPatchJson(endpoint: string, body: unknown, headers: Record<string, string>): Promise<unknown> {
+  const r = await fetch(`${BASE_URL}${endpoint}`, { method: "PATCH", headers, body: JSON.stringify(body) });
+  if (!r.ok) throw new Error(`PATCH ${endpoint} → ${r.status}: ${await r.text().catch(() => "")}`);
+  return r.json();
+}
+
+async function cmdFix(argv: string[]): Promise<void> {
+  const { flags } = parseArgs(argv);
+  const siteId = flagStr(flags, "site");
+  const patchFile = flagStr(flags, "patch");
+  const field = (flagStr(flags, "field") ?? "").toUpperCase();
+  const operator = flagStr(flags, "operator") ?? null;
+  if (!siteId || !patchFile) throw new Error("fix needs --site <id> and --patch <file>");
+  if (!(FIX_FIELDS as readonly string[]).includes(field)) {
+    throw new Error(`fix needs --field, one of ${FIX_FIELDS.join(", ")}`);
+  }
+  const headers = authHeaders(readToken());
+  const patch = JSON.parse(fs.readFileSync(patchFile, "utf8")) as Record<string, unknown>;
+
+  // 1. Plan.
+  const stored = ((await apiGet(`/api/sites/${siteId}/config`, headers)) as { data: StoredConfig }).data;
+  const before = flattenStoredConfig(stored);
+  const merged = mergeConfigPatch(stored, patch) as unknown as Record<string, unknown>;
+  const diff = renderConfigDiff(before, merged);
+  console.log(`[fix] ${siteId}: ${diff.length} change(s)`);
+  for (const line of diff) console.log(`  ${line}`);
+  if (diff.length === 0) {
+    console.log("[fix] the patch changes nothing; stopping.");
+    return;
+  }
+  if (!flagBool(flags, "apply")) {
+    console.log("[fix] plan only. Re-run with --apply to write, run and promote.");
+    return;
+  }
+
+  // 2. Write, then read back.
+  await apiPatch(`/api/sites/${siteId}/config`, patch, headers);
+  const after = flattenStoredConfig(((await apiGet(`/api/sites/${siteId}/config`, headers)) as { data: StoredConfig }).data);
+  const drift = renderConfigDiff(merged, after);
+  if (drift.length > 0) {
+    console.error("[fix] the stored config is not what was written:");
+    for (const line of drift) console.error(`  ${line}`);
+    process.exit(2);
+  }
+  console.log("[fix] written and read back; the site is now REVIEW.");
+
+  // 3. Guarded run, through the API request.
+  const requested = ((await apiPost(`/api/sites/${siteId}/guarded-run`, { operator }, headers)) as { data: { id: string } }).data;
+  console.log(`[fix] guarded run requested (${requested.id}); waiting for the claim timer...`);
+  type RunEntry = AcceptanceInput["request"];
+  let run: RunEntry | undefined;
+  const deadline = Date.now() + GUARDED_RUN_WAIT_MS;
+  while (Date.now() < deadline) {
+    await new Promise((r) => setTimeout(r, GUARDED_RUN_POLL_MS));
+    const runs = ((await apiGet(`/api/sites/${siteId}/guarded-run`, headers)) as { data: RunEntry[] }).data;
+    run = runs.find((r) => r.id === requested.id);
+    if (run && (run.status === "DONE" || run.status === "FAILED")) break;
+  }
+  if (!run || (run.status !== "DONE" && run.status !== "FAILED")) {
+    console.error(`[fix] the guarded run did not finish within ${GUARDED_RUN_WAIT_MS / 60_000} minutes (${run?.status ?? "not found"}); the site stays REVIEW.`);
+    process.exit(1);
+  }
+  const item = run.sweep?.item;
+  console.log(
+    `[fix] run ${run.status}: sweep ${run.sweep?.id ?? "none"}, outcome ${item?.outcome ?? "-"}, wouldPromoteTo ${item?.wouldPromoteTo ?? "-"}`,
+  );
+
+  // 4. Accept.
+  const items = ((await apiGet(`/api/dashboard/fix-queue?siteId=${encodeURIComponent(siteId)}`, headers)) as { data: AcceptanceInput["items"] }).data;
+  const verdict = parseAcceptance({ request: run, items, field });
+  if (!verdict.accept) {
+    console.log("[fix] not accepted; the site stays REVIEW:");
+    for (const r of verdict.reasons) console.log(`  - ${r}`);
+    process.exit(1);
+  }
+
+  // 5. Promote, only on the operator's yes.
+  const yes = (await ask(`[fix] promote ${siteId} to ACTIVE? [y/N] `)).toLowerCase();
+  if (yes !== "y" && yes !== "yes") {
+    console.log("[fix] not promoted; the site stays REVIEW.");
+    return;
+  }
+  const site = ((await apiPatchJson(`/api/sites/${siteId}`, { status: "ACTIVE" }, headers)) as { data: { status: string } }).data;
+  if (site.status !== "ACTIVE") {
+    console.error(`[fix] the promotion did not stick (status ${site.status}).`);
+    process.exit(2);
+  }
+  console.log("[fix] promoted to ACTIVE.");
+
+  // 6. Record: resolve the open items for the field, minutes on the first.
+  const open = items.filter((i) => i.field === field && !i.resolvedAt);
+  if (open.length === 0) {
+    console.log(`[fix] no open ${field} item to resolve.`);
+    return;
+  }
+  const minutesFlag = flagStr(flags, "minutes");
+  const minutesText = minutesFlag ?? (await ask(`[fix] minutes spent on this fix (blank to skip)? `));
+  const minutes = /^\d+$/.test(minutesText) ? Number(minutesText) : undefined;
+  for (const [n, i] of open.entries()) {
+    await apiPatch(
+      `/api/dashboard/fix-queue/${i.id}`,
+      {
+        resolved: true,
+        note: `fixed by addsite-batch fix (guarded run ${requested.id})`,
+        ...(operator ? { operator } : {}),
+        ...(n === 0 && minutes !== undefined ? { minutes } : {}),
+      },
+      headers,
+    );
+    console.log(`[fix] resolved ${i.field} ${i.code} (${i.id})`);
+  }
+}
+
+// ---------------------------------------------------------------------------
 // Entry point
 // ---------------------------------------------------------------------------
 
@@ -1900,6 +2046,7 @@ const commands: Record<string, (argv: string[]) => Promise<void>> = {
   fingerprint: cmdFingerprint,
   triage: cmdTriage,
   "patterns-update": cmdPatternsUpdate,
+  fix: cmdFix,
 };
 
 const cmd = commands[subcommand];
@@ -1930,7 +2077,11 @@ if (!cmd) {
     `  fingerprint   --url <URL>   (detect ATS/SPA/WP framework → lane + recipe + skeleton)\n` +
     `  triage        --url <URL>   (Pass A classifier → lane GREEN/YELLOW/GRAY/RED + skeleton)\n` +
     `  patterns-update --vendor <name> --skeleton-file <config.json> [--notes "<text>"]\n` +
-    `                (save a confirmed working config to scripts/site-patterns.json)\n`,
+    `                (save a confirmed working config to scripts/site-patterns.json)\n` +
+    `\n` +
+    `  fix           --site <id> --patch <file> --field <FIELD> [--apply]\n` +
+    `                [--operator <name>] [--minutes N]\n` +
+    `                (plan; with --apply: PATCH, guarded run via the API, promote on yes)\n`,
   );
   process.exit(1);
 }
