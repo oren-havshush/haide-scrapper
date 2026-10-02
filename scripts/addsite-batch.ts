@@ -62,6 +62,7 @@ import * as fs from "fs";
 import * as path from "path";
 import { classifyResponse } from "./lib/challenge-detect";
 import { parseAcceptance, renderConfigDiff, type AcceptanceInput } from "./lib/fixPlan";
+import { scriptIdRules } from "./lib/verifyJobIds";
 import { flattenStoredConfig, mergeConfigPatch, type StoredConfig } from "../src/lib/configPatch";
 import { FIX_FIELDS } from "../src/lib/fixFields";
 
@@ -1065,6 +1066,23 @@ interface ApiJob {
   externalJobId?: string;
 }
 
+/**
+ * A site's onboardingSkill tag. There is no GET /api/sites/:id yet (step 5), so
+ * the list is paged until the id is found; null when it is untagged or absent.
+ */
+async function siteOnboardingSkill(siteId: string, headers: Record<string, string>): Promise<string | null> {
+  for (let page = 1; page <= 20; page++) {
+    const r = (await apiGet(`/api/sites?page=${page}&pageSize=100`, headers)) as {
+      data?: Array<{ id: string; onboardingSkill?: string | null }>;
+    };
+    const rows = Array.isArray(r?.data) ? r.data : [];
+    const found = rows.find((x) => x.id === siteId);
+    if (found) return found.onboardingSkill ?? null;
+    if (rows.length < 100) break;
+  }
+  return null;
+}
+
 async function cmdVerifyJobIds(argv: string[]): Promise<void> {
   const { flags } = parseArgs(argv);
   const siteId = flagStr(flags, "site-id");
@@ -1081,6 +1099,15 @@ async function cmdVerifyJobIds(argv: string[]): Promise<void> {
   )) as { data?: ApiJob[] };
   const jobs = Array.isArray(r?.data) ? r.data : [];
   const total = jobs.length;
+
+  // The stored setupScript and the cohort tag (step 4): on an addsite3 site a
+  // script that hashes in the page or skips with seen[...] fails; on an
+  // untagged (addsite2) site it is only a warning (scripts/lib/verifyJobIds.ts).
+  const cfg = ((await apiGet(`/api/sites/${encodeURIComponent(siteId)}/config`, headers)) as {
+    data?: { fieldMappings?: { _meta?: { setupScript?: string | null } } };
+  }).data;
+  const onboardingSkill = await siteOnboardingSkill(siteId, headers);
+  const scriptRules = scriptIdRules(cfg?.fieldMappings?._meta?.setupScript ?? null, onboardingSkill === "addsite3");
 
   const ids = jobs.map((j) => (j.externalJobId ?? "").trim());
   const titles = jobs.map((j) => (j.title ?? "").trim());
@@ -1114,16 +1141,19 @@ async function cmdVerifyJobIds(argv: string[]): Promise<void> {
     hardFails.push(`${idEqualsTitle} id(s) equal the raw title (not stable)`);
   if (indexLike) hardFails.push("index-based ids (re-key on reorder)");
   if (!prefixOk) hardFails.push(`ids missing required prefix "${requirePrefix}"`);
+  hardFails.push(...scriptRules.fail);
 
   const warnings: string[] = [];
   if (nonAscii > 0)
     warnings.push(`${nonAscii} id(s) contain non-ASCII bytes (prefer hash)`);
   if (!collapsed && distinctRate < 1)
     warnings.push(`distinctRate ${distinctRate.toFixed(2)} (<1 → some dup ids)`);
+  warnings.push(...scriptRules.warn);
 
   const ok = hardFails.length === 0;
   const verdict = {
     siteId,
+    onboardingSkill,
     ok,
     total,
     fillRate: Number(fillRate.toFixed(3)),
