@@ -14,7 +14,8 @@ import {
   NATIONWIDE_LOCATION,
 } from "./locationNormalize";
 import { structureDescription } from "./descriptionStructure";
-import { stampScriptFormBlob } from "./formShape";
+import { FORM_EXTRACTOR_VERSION } from "./formFields";
+import { stampScriptFormBlob, stampScriptFormData } from "./formShape";
 
 /** Standard job schema fields that map directly to Job model columns */
 const STANDARD_FIELDS = new Set([
@@ -890,13 +891,26 @@ export function normalizeJobRecord(
   // it is stamped captureSource "script" and completed with pageUrl (its own,
   // else the page the worker read the job from), mechanism and shapeHash
   // (worker/lib/formShape.ts). Text in the field is untouched.
+  //
+  // An unstamped form blob in _formData on a freshly read row was written by
+  // the setup script too (the worker's own arrive stamped): it is completed
+  // the same way, in rawFields as well, so the column and rawData agree. A
+  // carried row keeps its stored _formData.
+  const jobPageUrl = rawFields["_detailUrl"] || rawFields["_listingUrl"] || "";
+  if (rawFields["_formData"] && rawFields["_detailCarried"] !== "1") {
+    rawOut["_formData"] = stampScriptFormData(rawFields["_formData"], {
+      pageUrl: jobPageUrl,
+      at: opts.at ?? new Date(),
+      extractorVersion: FORM_EXTRACTOR_VERSION,
+    });
+  }
   const explicitAppInfo = normalizeField(rawFields["applicationInfo"]);
   let applicationInfo = explicitAppInfo
     ? stampScriptFormBlob(explicitAppInfo, {
-        pageUrl: rawFields["_detailUrl"] || rawFields["_listingUrl"] || "",
+        pageUrl: jobPageUrl,
         at: opts.at ?? new Date(),
       })
-    : (rawFields["_formData"] ?? "");
+    : (rawOut["_formData"] ?? "");
 
   // Extract URL for the job's detail page. Prefer an explicit detailUrl field
   // mapping (value or its _href), then the title link, then the multi-page

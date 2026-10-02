@@ -211,3 +211,36 @@ export function stampScriptFormBlob(raw: string, ctx: { pageUrl: string; at: Dat
   return JSON.stringify(completeParsed(stamped, { pageUrl: ctx.pageUrl }));
 }
 
+
+/**
+ * A _formData a site's setup script wrote (a fieldMappings entry for _formData
+ * reading an element the script injected; advice.co.il today). The worker's own
+ * blobs always arrive stamped, so an unstamped form blob on a freshly read row
+ * is the script's (owner, 2026-10-02). Stamped script, at the scrape's time and
+ * the current version, and completed like every other blob. actionAttribute is
+ * the blob's own when it has one, else its actionUrl resolved — unless that is
+ * the page itself, which is a substitute, not an action. A blob already
+ * carrying an extractorVersion, and anything that is not a form blob, is
+ * returned as it came.
+ */
+export function stampScriptFormData(raw: string, ctx: { pageUrl: string; at: Date; extractorVersion: number }): string {
+  const o = parseFormBlob(raw);
+  if (!o || o.extractorVersion !== undefined) return raw;
+  const pageUrl = typeof o.pageUrl === "string" && o.pageUrl ? o.pageUrl : ctx.pageUrl;
+  let actionAttribute = "";
+  if (typeof o.actionAttribute === "string") {
+    actionAttribute = o.actionAttribute;
+  } else if (typeof o.actionUrl === "string" && o.actionUrl.trim()) {
+    const resolved = resolveActionAttribute(o.actionUrl, pageUrl);
+    actionAttribute = resolved === pageUrl ? "" : resolved;
+  }
+  const stamped = {
+    ...o,
+    actionAttribute,
+    pageUrl,
+    capturedAt: ctx.at.toISOString(),
+    captureSource: "script",
+    extractorVersion: ctx.extractorVersion,
+  };
+  return JSON.stringify(completeParsed(stamped, { pageUrl }));
+}

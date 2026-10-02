@@ -18,6 +18,7 @@ import {
   formShapeHash,
   resolveActionAttribute,
   stampScriptFormBlob,
+  stampScriptFormData,
   type ShapeField,
 } from "./formShape";
 import { FORM_EXTRACTOR_VERSION } from "./formFields";
@@ -206,6 +207,43 @@ const liveBlob = completeFormBlob(
 );
 const n3 = normalizeJobRecord({ title: "Driver", _formData: liveBlob }, { at: AT });
 eq(n3.applicationInfo, liveBlob, "with no explicit field, applicationInfo is the worker's _formData exactly");
+
+// --- a _formData a setup script wrote (owner, 2026-10-02) -------------------------------
+// advice.co.il maps _formData to an element its setup script injects; the blob
+// below is its real shape (action = the CV uploader the script points at).
+{
+  const ADVICE_PAGE = "https://advice.co.il/blogs/careers";
+  const UPLOADER = "https://cv.magicnet.co.il/cvuploader.aspx?sub=x";
+  const advice = JSON.stringify({
+    actionUrl: UPLOADER,
+    method: "POST",
+    enctype: "multipart/form-data",
+    fields: [
+      { name: "FileUpload1", label: "קורות חיים", tagName: "INPUT", required: true, fieldType: "file" },
+      { name: "__VIEWSTATE", label: "", tagName: "INPUT", required: false, fieldType: "hidden" },
+    ],
+  });
+  const s = JSON.parse(stampScriptFormData(advice, { pageUrl: ADVICE_PAGE, at: AT, extractorVersion: FORM_EXTRACTOR_VERSION }));
+  eq([s.captureSource, s.extractorVersion, s.capturedAt], ["script", FORM_EXTRACTOR_VERSION, "2026-10-01T23:10:00.000Z"], "a setup script's _formData: script, the current version, the scrape's time");
+  eq([s.actionAttribute, s.pageUrl, s.actionUrl], [UPLOADER, ADVICE_PAGE, UPLOADER], "its own action becomes actionAttribute; pageUrl is the job's page; actionUrl unchanged");
+  eq(s.submitMechanism, "native_form", "a plain form with an action: native_form");
+  eq(s.shapeHash, formShapeHash(s.fields, UPLOADER, "native_form"), "with its shapeHash");
+  const noAction = JSON.parse(stampScriptFormData(JSON.stringify({ method: "POST", fields: [f("name")] }), { pageUrl: ADVICE_PAGE, at: AT, extractorVersion: FORM_EXTRACTOR_VERSION }));
+  eq([noAction.actionAttribute, noAction.submitMechanism], ["", "unknown"], "no action in the blob: actionAttribute empty, unknown");
+  const pageAsAction = JSON.parse(stampScriptFormData(JSON.stringify({ actionUrl: ADVICE_PAGE, method: "POST", fields: [f("name")] }), { pageUrl: ADVICE_PAGE, at: AT, extractorVersion: FORM_EXTRACTOR_VERSION }));
+  eq(pageAsAction.actionAttribute, "", "an actionUrl that is the page itself is a substitute, not an action: empty");
+  const stamped = completeFormBlob(JSON.stringify({ actionUrl: PAGE, method: "POST", fields: base, capturedAt: "x", captureSource: "live", extractorVersion: 1 }), { pageUrl: PAGE });
+  eq(stampScriptFormData(stamped, { pageUrl: PAGE, at: AT, extractorVersion: FORM_EXTRACTOR_VERSION }), stamped, "a blob that already carries an extractorVersion is left as it is");
+
+  // Through the normalizer: a fresh row's unstamped _formData is the script's;
+  // a carried row's is left for the carry to keep.
+  const n = normalizeJobRecord({ title: "Sales", _formData: advice, _listingUrl: ADVICE_PAGE }, { at: AT });
+  const nf = JSON.parse(n.rawFields._formData);
+  eq([nf.captureSource, nf.extractorVersion, nf.pageUrl], ["script", FORM_EXTRACTOR_VERSION, ADVICE_PAGE], "normalizeJobRecord completes a fresh row's script _formData");
+  eq(n.applicationInfo, n.rawFields._formData, "and applicationInfo is that same completed blob");
+  const c = normalizeJobRecord({ title: "Sales", _formData: advice, _detailCarried: "1" }, { at: AT });
+  eq(c.rawFields._formData, advice, "a carried row's _formData is untouched");
+}
 
 if (failures > 0) {
   console.error(`\n${failures} assertion(s) failed`);
