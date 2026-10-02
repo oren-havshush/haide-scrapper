@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { ZodError } from "zod";
 import type { ApiErrorResponse } from "./types";
 
 export class AppError extends Error {
@@ -86,6 +87,25 @@ export function formatErrorResponse(error: unknown): NextResponse<ApiErrorRespon
       },
       { status: 409 },
     );
+  }
+
+  // A body that is not JSON (request.json() throws SyntaxError). It was a 500,
+  // which reads as a server fault (addsite2 phase two, step 5, landmine j).
+  if (error instanceof SyntaxError) {
+    return NextResponse.json(
+      { error: { code: "BAD_JSON", message: `The request body is not valid JSON: ${error.message}` } },
+      { status: 400 },
+    );
+  }
+
+  // A schema a route parsed with .parse() rather than .safeParse(): pageSize
+  // above 100 was a 500 that callers read as an empty list (landmines d, h, i).
+  // Each issue names its path.
+  if (error instanceof ZodError) {
+    const message = error.issues
+      .map((i) => `${i.path.length ? i.path.join(".") : "(body)"}: ${i.message}`)
+      .join("; ");
+    return NextResponse.json({ error: { code: "VALIDATION_ERROR", message } }, { status: 400 });
   }
 
   console.error("Unexpected error:", error);

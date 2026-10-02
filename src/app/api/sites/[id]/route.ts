@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { successResponse } from "@/lib/api-utils";
-import { formatErrorResponse, ValidationError } from "@/lib/errors";
+import { formatErrorResponse, NotFoundError, ValidationError } from "@/lib/errors";
+import { pickSitePatchAction } from "@/lib/sitePatch";
 import {
   updateSiteStatusSchema,
   updateSiteAdminNoteSchema,
@@ -13,7 +14,27 @@ import {
   deleteSite,
 } from "@/services/siteService";
 import { prisma } from "@/lib/prisma";
-import { applyAutoFix, companySnapshotOf } from "@/services/autoFixService";
+import { applyAutoFix, companySnapshotOf, recordSiteCall } from "@/services/autoFixService";
+
+/**
+ * GET /api/sites/[id] (step 5, landmine c): one site by id. Before this a
+ * caller had to page the list, or pass ?id= — which the list ignored, so
+ * skipSite could act on the wrong site.
+ */
+export async function GET(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const { id } = await params;
+    await recordSiteCall(request, id, "GET /api/sites/[id]");
+    const site = await prisma.site.findUnique({ where: { id } });
+    if (!site) throw new NotFoundError("Site", id);
+    return successResponse(site);
+  } catch (error) {
+    return formatErrorResponse(error);
+  }
+}
 
 export async function PATCH(
   request: NextRequest,
@@ -28,9 +49,10 @@ export async function PATCH(
     const statusBefore =
       (await prisma.site.findUnique({ where: { id }, select: { status: true } }))?.status ?? "";
 
-    // Accept { status }, { adminNote }, or { companyName }. Inferred from which
-    // key is present so existing PATCH callers don't need to change.
-    if (Object.prototype.hasOwnProperty.call(body, "companyName")) {
+    // Accept { status }, { adminNote }, or { companyName }: exactly one per call.
+    // A body naming more than one is a 400 naming them (step 5, landmine a).
+    const action = pickSitePatchAction(body);
+    if (action === "companyName") {
       const parsed = updateSiteCompanyNameSchema.safeParse(body);
       if (!parsed.success) {
         throw new ValidationError(
@@ -49,7 +71,7 @@ export async function PATCH(
       return successResponse(site);
     }
 
-    if (Object.prototype.hasOwnProperty.call(body, "adminNote")) {
+    if (action === "adminNote") {
       const parsed = updateSiteAdminNoteSchema.safeParse(body);
       if (!parsed.success) {
         throw new ValidationError(

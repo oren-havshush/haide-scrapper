@@ -35,6 +35,11 @@ export const createSiteSchema = z.object({
    * addsite3 only; absent means addsite2 or older, stored as NULL.
    */
   onboardingSkill: z.string().min(1).max(64).optional(),
+  /**
+   * Stored at creation (step 5, landmine b): POST used to drop it silently, so a
+   * whole batch was created nameless. Same rule as PATCH { companyName }.
+   */
+  companyName: z.string().max(120).optional(),
 });
 
 export const updateSiteSchema = z.object({
@@ -72,6 +77,25 @@ export const sortSchema = z.object({
   sortBy: z.enum(["createdAt", "confidenceScore", "reviewAt"]).default("createdAt"),
   sortOrder: z.enum(["asc", "desc"]).default("desc"),
 });
+
+/**
+ * GET /api/sites, the whole query (addsite2 phase two, step 5, landmine e).
+ * Strict: an unknown parameter is a 400 rather than silently ignored — `?id=`
+ * and `?search=` returned the whole list, and `?id=` picked the wrong site in
+ * skipSite. Exactly the parameters the dashboard and the scripts use
+ * (src/lib/apiLandmines.test.ts checks every caller). status and policyStatus
+ * stay plain strings, as before.
+ */
+export const siteListQuerySchema = z
+  .object({
+    ...paginationSchema.shape,
+    ...sortSchema.shape,
+    status: z.string().optional(),
+    policyStatus: z.string().optional(),
+    ...siteUrlFilterSchema.shape,
+    ...siteSearchFilterSchema.shape,
+  })
+  .strict();
 
 export const updateSiteStatusSchema = z.object({
   status: z.enum(["ANALYZING", "REVIEW", "ACTIVE", "FAILED", "SKIPPED"]),
@@ -395,3 +419,4 @@ export const fixQueueQuerySchema = z
     switchAt: z.iso.datetime({ offset: true }).optional(),
   })
   .strict();
+

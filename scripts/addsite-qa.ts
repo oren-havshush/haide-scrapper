@@ -451,7 +451,8 @@ export async function runQa(siteId: string, opts: RunQaOptions): Promise<QaRecor
   const notes: string[] = [];
 
   // --- site config (formCapture + browserOverrides) ---
-  const sr = await fetch(`${BASE}/api/sites?id=${encodeURIComponent(siteId)}`, { headers: HEADERS });
+  // GET /api/sites/:id (step 5); the list ignored ?id= and returned its first page.
+  const sr = await fetch(`${BASE}/api/sites/${encodeURIComponent(siteId)}`, { headers: HEADERS });
   const sj: any = await sr.json();
   const siteArr = Array.isArray(sj.data) ? sj.data : [sj.data];
   const site = siteArr.find((s: any) => s?.id === siteId) || siteArr[0] || null;

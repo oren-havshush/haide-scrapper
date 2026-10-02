@@ -1,49 +1,32 @@
 import { NextRequest } from "next/server";
 import { successResponse, listResponse } from "@/lib/api-utils";
 import { formatErrorResponse, ValidationError } from "@/lib/errors";
-import {
-  createSiteSchema,
-  paginationSchema,
-  sortSchema,
-  siteUrlFilterSchema,
-  siteSearchFilterSchema,
-} from "@/lib/validators";
+import { createSiteSchema, siteListQuerySchema } from "@/lib/validators";
 import { createSite, listSites } from "@/services/siteService";
 
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = request.nextUrl;
-    const params = paginationSchema.parse({
-      page: searchParams.get("page") ?? undefined,
-      pageSize: searchParams.get("pageSize") ?? undefined,
-    });
-    const sortParams = sortSchema.parse({
-      sortBy: searchParams.get("sortBy") ?? undefined,
-      sortOrder: searchParams.get("sortOrder") ?? undefined,
-    });
-    const status = searchParams.get("status") ?? undefined;
-    const policyStatus = searchParams.get("policyStatus") ?? undefined;
-    const { siteUrl } = siteUrlFilterSchema.parse({
-      siteUrl: searchParams.get("siteUrl") ?? undefined,
-    });
-    const { companyNameSearch, urlSearch } = siteSearchFilterSchema.parse({
-      companyNameSearch: searchParams.get("companyNameSearch") ?? undefined,
-      urlSearch: searchParams.get("urlSearch") ?? undefined,
-    });
+    // The whole query, strictly (step 5, landmine e): an unknown parameter such
+    // as ?id= or ?search= is a 400, and pageSize above 100 is a 400 naming it
+    // (formatErrorResponse maps the ZodError), not a 500 read as an empty list.
+    const q = siteListQuerySchema.parse(Object.fromEntries(searchParams));
 
     const { sites, total } = await listSites({
-      ...params,
-      ...sortParams,
-      status,
-      policyStatus,
-      siteUrl,
-      companyNameSearch: companyNameSearch || undefined,
-      urlSearch: urlSearch || undefined,
+      page: q.page,
+      pageSize: q.pageSize,
+      sortBy: q.sortBy,
+      sortOrder: q.sortOrder,
+      status: q.status,
+      policyStatus: q.policyStatus,
+      siteUrl: q.siteUrl,
+      companyNameSearch: q.companyNameSearch || undefined,
+      urlSearch: q.urlSearch || undefined,
     });
     return listResponse(sites, {
       total,
-      page: params.page,
-      pageSize: params.pageSize,
+      page: q.page,
+      pageSize: q.pageSize,
     });
   } catch (error) {
     return formatErrorResponse(error);
@@ -61,7 +44,10 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const site = await createSite(parsed.data.siteUrl, { onboardingSkill: parsed.data.onboardingSkill });
+    const site = await createSite(parsed.data.siteUrl, {
+      onboardingSkill: parsed.data.onboardingSkill,
+      companyName: parsed.data.companyName,
+    });
     return successResponse(site, 201);
   } catch (error) {
     return formatErrorResponse(error);

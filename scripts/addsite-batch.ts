@@ -26,6 +26,7 @@
  *                        [--expect-fields a,b,c] [--expect-form-fields N]
  *                        [--expect-listing-urls <url,url>]
  *                        [--expect-file <config.json>]
+ *                        [--expect-setup-script <file>]  (byte compare, step 5)
  *
  *   reach     Step 3 worker-parity reachability gate (bare vs real-UA nav).
  *             Exit 3 = unreachable. Usage: reach --url <URL>
@@ -63,6 +64,7 @@ import * as path from "path";
 import { classifyResponse } from "./lib/challenge-detect";
 import { parseAcceptance, renderConfigDiff, type AcceptanceInput } from "./lib/fixPlan";
 import { scriptIdRules } from "./lib/verifyJobIds";
+import { compareSetupScript } from "./lib/verifyConfig";
 import { flattenStoredConfig, mergeConfigPatch, type StoredConfig } from "../src/lib/configPatch";
 import { FIX_FIELDS } from "../src/lib/fixFields";
 
@@ -394,12 +396,13 @@ async function skipSite(opts: {
     // siteId was supplied but we don't know its status — look it up so the
     // status transition below picks the right path (a site mid-onboarding may
     // already be REVIEW/ACTIVE, where blindly PATCHing REVIEW is rejected).
+    // GET /api/sites/:id (step 5). The list's ?id= was ignored and returned the
+    // first page, so `data[0]` could be another site's status.
     const byId = (await apiGet(
-      `/api/sites?id=${encodeURIComponent(siteId)}`,
+      `/api/sites/${encodeURIComponent(siteId)}`,
       headers,
-    )) as { data?: Array<{ id: string; status: string }> };
-    const match = byId?.data?.find((s) => s.id === siteId) ?? byId?.data?.[0];
-    if (match?.status) currentStatus = match.status;
+    )) as { data?: { id: string; status: string } };
+    if (byId?.data?.id === siteId && byId.data.status) currentStatus = byId.data.status;
   }
   if (!siteId) throw new Error(`Could not obtain siteId for ${opts.url}`);
 
@@ -935,9 +938,9 @@ async function getStoredFieldMappings(
   siteId: string,
   headers: Record<string, string>,
 ): Promise<StoredFieldMappings | undefined> {
-  // Use the per-site config endpoint, NOT `/api/sites?id=<id>`: the list route has
-  // no `id` filter, so that param is silently ignored and page 1 (50 of N sites)
-  // comes back instead. The old code then fell back to `data[0]` when the target
+  // Use the per-site config endpoint, NOT the list filtered by id: the list route
+  // had no `id` filter, so that param was silently ignored and page 1 (50 of N
+  // sites) came back instead (since step 5 it is a 400). The old code then fell back to `data[0]` when the target
   // wasn't on page 1 — silently verifying a DIFFERENT site's config and reporting
   // a bogus CLOBBERED/OK verdict. Caught on elbitsystemscareer.com (2026-08-03),
   // which validated against minrav.co.il's config.
@@ -997,6 +1000,15 @@ async function cmdVerifyConfig(argv: string[]): Promise<void> {
     ? (meta.listingUrls as unknown[]).filter((u): u is string => typeof u === "string")
     : [];
 
+  // --expect-setup-script <file> (step 5, landmine g): the stored setupScript,
+  // byte for byte against the file that was PUT. Without it an over-cap or
+  // truncated script looked saved.
+  const expectScriptFile = flagStr(flags, "expect-setup-script");
+  const scriptCheck = expectScriptFile
+    ? compareSetupScript(fs.readFileSync(expectScriptFile, "utf8"), typeof meta.setupScript === "string" ? meta.setupScript : null)
+    : null;
+  const setupScriptOk = scriptCheck ? scriptCheck.ok : true;
+
   const itemOk = !expectItem || storedItem === expectItem;
   const missingFields = expectFields.filter((k) => {
     const f = fm[k] as StoredFieldMapping | undefined;
@@ -1012,7 +1024,7 @@ async function cmdVerifyConfig(argv: string[]): Promise<void> {
     (storedListingUrls.length === expectListingUrls.length &&
       expectListingUrls.every((u) => storedListingUrls.includes(u)));
 
-  const ok = itemOk && fieldsOk && formOk && listingUrlsOk;
+  const ok = itemOk && fieldsOk && formOk && listingUrlsOk && setupScriptOk;
   const verdict = {
     siteId,
     ok,
@@ -1020,6 +1032,8 @@ async function cmdVerifyConfig(argv: string[]): Promise<void> {
     fieldsOk,
     formOk,
     listingUrlsOk,
+    setupScriptOk,
+    ...(scriptCheck ? { setupScript: scriptCheck.detail } : {}),
     expectedItem: expectItem ?? null,
     storedItem: storedItem ?? null,
     missingFields,
@@ -1034,6 +1048,7 @@ async function cmdVerifyConfig(argv: string[]): Promise<void> {
     console.error(
       `[verify-config] CLOBBERED: itemOk=${itemOk} fieldsOk=${fieldsOk} formOk=${formOk}` +
         ` listingUrlsOk=${listingUrlsOk}` +
+        (scriptCheck && !scriptCheck.ok ? ` setupScript: ${scriptCheck.detail}` : "") +
         (missingFields.length ? ` missing=[${missingFields.join(",")}]` : "") +
         ` (stored itemSelector="${storedItem ?? ""}")`,
     );
@@ -1066,21 +1081,12 @@ interface ApiJob {
   externalJobId?: string;
 }
 
-/**
- * A site's onboardingSkill tag. There is no GET /api/sites/:id yet (step 5), so
- * the list is paged until the id is found; null when it is untagged or absent.
- */
+/** A site's onboardingSkill tag, from GET /api/sites/:id (step 5); null when untagged. */
 async function siteOnboardingSkill(siteId: string, headers: Record<string, string>): Promise<string | null> {
-  for (let page = 1; page <= 20; page++) {
-    const r = (await apiGet(`/api/sites?page=${page}&pageSize=100`, headers)) as {
-      data?: Array<{ id: string; onboardingSkill?: string | null }>;
-    };
-    const rows = Array.isArray(r?.data) ? r.data : [];
-    const found = rows.find((x) => x.id === siteId);
-    if (found) return found.onboardingSkill ?? null;
-    if (rows.length < 100) break;
-  }
-  return null;
+  const r = (await apiGet(`/api/sites/${encodeURIComponent(siteId)}`, headers)) as {
+    data?: { id: string; onboardingSkill?: string | null };
+  };
+  return r?.data?.onboardingSkill ?? null;
 }
 
 async function cmdVerifyJobIds(argv: string[]): Promise<void> {
@@ -2096,8 +2102,8 @@ if (!cmd) {
     `\n` +
     `  verify-config --site-id <id> [--expect-item <sel>] [--expect-fields a,b,c]\n` +
     `                [--expect-form-fields N] [--expect-listing-urls <url,url>]\n` +
-    `                [--expect-file <config.json>]\n` +
-    `                (exit 2 = analyzer clobbered the config)\n` +
+    `                [--expect-file <config.json>] [--expect-setup-script <file>]\n` +
+    `                (exit 2 = analyzer clobbered the config, or the stored setupScript differs)\n` +
     `\n` +
     `  verify-jobids --site-id <id> [--min-fill 0.9] [--require-prefix h-]\n` +
     `                (exit 2 = bad externalJobId: raw-title/index/identical/low-fill)\n` +
