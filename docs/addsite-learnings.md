@@ -1304,11 +1304,14 @@
 
 ## I. Dedup & API quirks
 
-### LRN-API-1 — `/api/sites?pageSize>100` silently returns `[]`
+### LRN-API-1 — `/api/sites?pageSize>100` was a 500 that callers read as `[]`
 - **Date / site:** tafkid-plus.co.il (was ACTIVE the whole time; a `pageSize=500` sweep returned `[]`)
-- **Signal:** the list endpoint does not clamp/error past its ~100 cap — `pageSize=500`
-  / `?page=2` comes back with empty `data`. "Fetch all + substring-match" reports
-  every onboarded site as new once the catalog grows past one page.
+- **Signal:** past the 100 cap the list endpoint answered **HTTP 500** (an uncaught
+  zod error), not an empty list. Callers that read `data` without checking the status
+  saw `[]`, so "fetch all + substring-match" reported every onboarded site as new once
+  the catalog grew past one page. *(Corrected 2026-10-02: this entry used to say the
+  endpoint "silently returns `[]`"; the empty list was the callers' reading of a 500.
+  Since step 5 of addsite2 phase two it is a 400 `VALIDATION_ERROR` naming `pageSize`.)*
 - **Fix:** dedupe with the **exact `?siteUrl=` query** trying obvious variants
   (trailing slash, http/https, www/bare). If enumerating, page with `pageSize<=100`
   and walk `meta.total`; treat unexpectedly empty `data` as a cap failure to retry

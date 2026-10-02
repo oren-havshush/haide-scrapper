@@ -33,13 +33,11 @@ AUTH="Authorization: Bearer $TOKEN"
 > On Windows use PowerShell: `$TOKEN = Get-Content .claude\scrap-token -Raw | ForEach-Object { $_.Trim() }`
 
 ### 0.2 What you MUST NOT do
-- Never use `pageSize > 100` in any `/api/sites` call — values >100 silently return `[]`. **LANDMINE.**
 - Never commit an ACTIVE site with only title+location (no description, no apply path).
 - Never use index-based `externalJobId` (`item-0`, `item-1`). Dedup will collapse on re-scrape.
 - Never skip the `verify-config` gate after a PUT — the analyzer overwrites configs.
 - Never run parallel prod scrapes — the worker is single-threaded FIFO; parallel scrapes queue, not parallelise.
 - Never send an `adminNote` longer than **2,000 characters** — the PATCH returns a bare `400` and the note is not updated. Check the length first and re-read after; rewrite a long note compactly rather than truncating it (`LRN-API-9`).
-- Never `PATCH /api/sites/:id` with more than one of `status` / `adminNote` / `companyName` in the same body. The route honors **exactly one**, in priority `companyName` → `adminNote` → `status`; the rest are **silently ignored**. To set a status *and* a note, send **two separate PATCH calls**. **LANDMINE** (caused the one1 duplicate that stayed ACTIVE).
 
 ### 0.3 Inputs
 ```
@@ -140,8 +138,8 @@ If any fails → SKIP with the specific missing field as reason.
 > Caught 10 bad values on flying-cargo (`צריפין`) that all four other gates passed
 > (`LRN-WP-3`). `Unknown` is an accepted value; multi-location jobs are fine provided
 > **every** element of `locations[]` is an exact entry.
-> **Caveat:** the script reads only the first page (`pageSize=100`, and >100 silently
-> returns `[]` — `LRN-API-1`), so on a 100+ job site it validates a sample, not the set.
+> **Caveat:** the script reads only the first page (`pageSize=100`, the cap —
+> `LRN-API-1`), so on a 100+ job site it validates a sample, not the set.
 
 ### B2.6 QA gate
 ```
@@ -157,17 +155,6 @@ npx tsx scripts/addsite-qa.ts --site-id <id> [--detail-url <url>] \
 npx tsx scripts/addsite-batch.ts summary --batch-dir $BATCH_DIR
 ```
 Writes `summary.md` in the batch dir. Print the table to the user.
-
-**B3.1 companyName sweep — MANDATORY before declaring the batch done.**
-`POST /api/sites` silently drops `companyName` (§4 landmine, `LRN-WRK-7`), so a whole
-batch can ship nameless even when the work-list had a company column. Before finishing,
-GET every site (by URL) and confirm `companyName` is non-null for every row that had a
-company; PATCH + re-verify any that are null:
-```bash
-# for each site that had a company in the work-list:
-GOT=$(curl -s "$BASE/api/sites?siteUrl=$(jq -rn --arg u "$URL" '$u|@uri')" -H "$AUTH" | jq -r '.data[0].companyName // .data.companyName')
-[ "$GOT" = "$COMPANY" ] || { curl -s -X PATCH "$BASE/api/sites/$ID" -H "$AUTH" -H 'Content-Type: application/json' -d "{\"companyName\":\"$COMPANY\"}" >/dev/null; }
-```
 
 ### B4 Cost visibility
 After each site: note browser sessions opened + scrapes triggered. After batch: report totals.
@@ -331,10 +318,8 @@ match on `siteUrl`) and, when the company is known, `companyNameSearch`:
 ```bash
 curl -s "$BASE/api/sites?urlSearch=<registrable-domain>&pageSize=10" -H "$AUTH" | jq '.data[]? | {id, siteUrl, status}'
 ```
-**LANDMINE:** `?search=` is not a parameter — it is silently ignored and returns every
-site, which looks like a result. A host hit is not automatically a duplicate (one host
-can serve several employers; a company can run two boards) — look before creating.
-Cite: `LRN-API-8`.
+A host hit is not automatically a duplicate (one host can serve several employers; a
+company can run two boards) — look before creating. Cite: `LRN-API-8`.
 
 | Result | Action |
 |---|---|
@@ -348,33 +333,18 @@ Cite: `LRN-API-8`.
 > becoming a second company. Always compare the returned row's own `siteUrl` with the URL
 > you queried. Cite: `LRN-CO-2`.
 
-**LANDMINE:** `pageSize > 100` silently returns `[]`. Never use >100 for dedup. Use `pageSize=10` with an exact-match filter.
-
 ---
 
 ## 4. Step 2 — Create site + wait for analyzer
 
-**`companyName` MUST be set with a standalone PATCH after create — NOT in the create body.**
-**LANDMINE:** `POST /api/sites` **silently drops `companyName`** when it is sent in the
-create payload (especially alongside `status`) — the site comes back `companyName: null`.
-This nulled the 5.csv batch **and** the 6.csv batch (all 10 sites). Putting the field in
-the POST body is **not** sufficient — you must PATCH it separately and **verify it stuck**.
+**Send `companyName` in the create body** when the work-list carries one; `POST /api/sites`
+stores it.
 
 ```bash
-# 1) Create (companyName here is unreliable — do NOT depend on it persisting)
 SITE=$(curl -s -X POST "$BASE/api/sites" \
   -H "$AUTH" -H "Content-Type: application/json" \
-  -d "{\"siteUrl\":\"$URL\",\"status\":\"ACTIVE\"}")
+  -d "$(jq -n --arg u "$URL" --arg c "$COMPANY" '{siteUrl:$u, onboardingSkill:"addsite3"} + (if $c == "" then {} else {companyName:$c} end)')")
 SITE_ID=$(echo $SITE | jq -r '.data.id')
-
-# 2) MANDATORY when the work-list carries a company: standalone single-field PATCH (§0.2)
-if [ -n "$COMPANY" ]; then
-  curl -s -X PATCH "$BASE/api/sites/$SITE_ID" -H "$AUTH" -H "Content-Type: application/json" \
-    -d "{\"companyName\":\"$COMPANY\"}" >/dev/null
-  # 3) VERIFY it stuck — GET by URL (the /:id GET can return empty for fresh sites)
-  GOT=$(curl -s "$BASE/api/sites?siteUrl=$(jq -rn --arg u "$URL" '$u|@uri')" -H "$AUTH" | jq -r '.data[0].companyName // .data.companyName')
-  [ "$GOT" = "$COMPANY" ] || echo "WARN: companyName not set for $SITE_ID (got '$GOT')"
-fi
 ```
 
 > **Where the name comes from when the work-list has none:** the company's own spelling —
@@ -383,21 +353,14 @@ fi
 > jobs site shows this string as-is (`LRN-LOGO-2`).
 >
 > Keep the JSON UTF-8 / BOM-free (§15); Hebrew company names pass through verbatim.
-> The `addsite-batch.ts` create path already does this PATCH-after-create — **if you
-> create sites with a custom/hand-rolled script, you MUST replicate the PATCH + verify**,
-> or the dashboard ships nameless. Cite: `LRN-WRK-7`.
 
 **Immediately wait for ANALYZING to leave** — the server auto-enqueues an ANALYSIS job that will **overwrite your config** if you PUT before it finishes.
 
-**LANDMINE — there is no `GET /api/sites/:id`.** That route exports **PATCH and DELETE
-only**, so a GET returns **405 with an empty body** and `.data.status` is `undefined` on
-every tick — the loop below runs its full 24 iterations and observes nothing, whatever the
-site is doing. Poll the **list route with an exact-URL filter** instead. Cite: `LRN-API-6`.
+Poll the site by id:
 
 ```bash
 for i in $(seq 1 24); do   # max 2 min
-  STATUS=$(curl -s "$BASE/api/sites?siteUrl=$(jq -rn --arg u "$URL" '$u|@uri')&pageSize=10" \
-    -H "$AUTH" | jq -r '.data[0].status')
+  STATUS=$(curl -s "$BASE/api/sites/$SITE_ID" -H "$AUTH" | jq -r '.data.status')
   echo "[$i] status=$STATUS"
   [ "$STATUS" != "ANALYZING" ] && break
   sleep 5
@@ -800,16 +763,9 @@ full field table in `form-capture.md` §9.
 }
 ```
 
-**LANDMINE — `pageFlow` and `formCapture` are REQUIRED, and omitting them 400s opaquely.**
-`updateSiteConfigSchema` (`src/lib/validators.ts`) types `pageFlow` as an array and
-`formCapture` as an object-or-`null`; neither is `.optional()`. A payload without them
-returns `VALIDATION_ERROR: Invalid input: expected array, received undefined, Invalid
-input: expected object, received undefined` — which **names neither key**, so the obvious
-next move is to start guessing at `fieldMappings`. The double-PUT (§9.2) means you see it
-twice, 8 s apart, and `verify-config` then fails because no config was ever written, which
-reads like the analyzer race (`LRN-RACE-2`) it is not. Minimum for a listing-only site:
-`"pageFlow": []` and `"formCapture": null` (`null` is also the correct value for an
-email-apply site, §12 Step 5a). Cite: `LRN-API-6`.
+`pageFlow` and `formCapture` are required in a PUT (a missing one is a 400 naming it).
+Minimum for a listing-only site: `"pageFlow": []` and `"formCapture": null` (`null` is
+also the correct value for an email-apply site, §12 Step 5a). Cite: `LRN-API-6`.
 
 **LANDMINE — a PUT REPLACES the config; every optional key you leave out is CLEARED.**
 `saveSiteConfig()` rebuilds `fieldMappings._meta` from the payload alone, so `formCapture`,
@@ -831,15 +787,11 @@ fields vanish silently: extraction still succeeds, the DOM-sourced fields still 
 > Chrome extension's Save rebuilds `_meta` from seven keys and drops the rest, so it
 > clears `listingUrls` too (as it already clears `pagination` and `setupScript`).
 
-**LANDMINE — `setupScript` is capped at 8,000 characters, and `verify-config` cannot see a
-rejected script.** A longer script makes the PUT return `VALIDATION_ERROR: Too big: expected
-string to have <=8000 characters` and writes **nothing** — the previous config stays live.
-`verify-config` then still exits 0, because it checks `itemSelector`, field names and form
-fields, never the script; a scrape triggered next runs the **old** script and passes every gate.
-After every PUT, read `fieldMappings._meta.setupScript` back from the list route and compare it
-byte-for-byte with what you sent; stop if it differs. To get under the cap, cut comments and
-duplicated helpers, and prove the shorter script yields identical jobs in the dry-run before
-re-PUTting. Cite: `LRN-API-7`.
+`setupScript` is capped at 8,000 characters; a longer one makes the PUT a 400 that writes
+nothing. Pass `--expect-setup-script <file>` to `verify-config` after every PUT (§9.1): it
+compares the stored script with your file byte for byte and exits 2 if they differ. To get
+under the cap, cut comments and duplicated helpers, and prove the shorter script yields
+identical jobs in the dry-run before re-PUTting. Cite: `LRN-API-7`.
 
 **LANDMINE — honored vs ignored fields:**
 The worker honors **only**: `selector`, `extractAttr`, `confidence`, `source`, `capturedOnUrl`.
@@ -867,11 +819,13 @@ npx tsx scripts/addsite-batch.ts verify-config \
   --site-id $SITE_ID \
   --expect-item "$ITEM_SEL" \
   --expect-fields "title,description,location,externalJobId,detailUrl" \
-  [--expect-form-fields N] [--expect-listing-urls "<url>,<url>"]
-# Exit 2 = config was clobbered → re-PUT and verify again (max 2 retries, then REVIEW)
+  [--expect-form-fields N] [--expect-listing-urls "<url>,<url>"] \
+  [--expect-setup-script <setup.js>]
+# Exit 2 = config was clobbered, or the stored setupScript differs from the file
+#          → re-PUT and verify again (max 2 retries, then REVIEW)
 ```
 **LANDMINE:** never mark ACTIVE without passing `verify-config`. Exit 2 means the analyzer race won and your config is gone. Cite: `LRN-RACE-2`.
-**Exit 0 does not prove a `setupScript` was saved** — compare the stored script too (§9.1, `LRN-API-7`).
+**A site with a `setupScript`: always pass `--expect-setup-script`** — without it, exit 0 does not prove the script was saved (`LRN-API-7`).
 **On a multi-page site (§2.3), always pass `--expect-listing-urls`** — it is an EXACT set
 match, so a page missing from the stored config exits 2 instead of quietly becoming a
 department that no longer publishes.
@@ -933,7 +887,7 @@ REASON=$(echo $QA_JSON | jq -r '.verdictReason')
 | Exit / Verdict | Action |
 |---|---|
 | 0 / ACTIVE | Run the **externalJobId gate** (below). If it passes → `PATCH /api/sites/$SITE_ID {"status":"ACTIVE"}`. Log outcome. Done. |
-| 2 / SKIP | **Two separate PATCH calls** (never combined — see §0.2 landmine): `PATCH {"adminNote":"$REASON"}` then `PATCH {"status":"SKIPPED"}`. Log. Done. |
+| 2 / SKIP | **Two separate PATCH calls** (one action per PATCH; a body naming two is a 400): `PATCH {"adminNote":"$REASON"}` then `PATCH {"status":"SKIPPED"}`. Log. Done. |
 | 3 / REVIEW | **First check the REVIEW reason — it may be remediable, not terminal** (see below). If genuinely uncertain → **Two separate PATCH calls**: `PATCH {"adminNote":"$REASON"}` then `PATCH {"status":"REVIEW"}`. Log. Done. |
 | 4 / REQUEUE | Append URL to end of work-list with `attempt+1`. If `attempt ≥ 2` → escalate to REVIEW. |
 | 1 / ERROR | Check error; if transient retry once; else REVIEW. |
