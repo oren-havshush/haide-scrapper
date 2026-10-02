@@ -24,7 +24,7 @@ import {
   extractLocationFromGazetteer,
 } from "../lib/normalizer";
 import type { NormalizedJobRecord } from "../lib/normalizer";
-import { overrideOffListWarning, resolveJobLocation, type PreviousLocation } from "../lib/jobLocation";
+import { overrideKeys, overrideOffListWarning, resolveJobLocation, type PreviousLocation } from "../lib/jobLocation";
 import { runSetupScript } from "../lib/setupScriptRun";
 import { validateJobRecord } from "../lib/validator";
 import type { ValidationResult } from "../lib/validator";
@@ -2960,18 +2960,21 @@ function buildJobRows(args: {
   overrideWarnings: string[];
 }): Prisma.JobCreateManyInput[] {
   return args.records.map(({ normalized, validation }, idx) => {
-    // Deliberately the EXTRACTED id, not the synthesised one, so a manual
-    // location override keyed before this fallback existed still matches.
-    const jobKey = normalized.externalJobId || normalized.url || null;
     const persistedExternalJobId =
       args.synthesizedIds[idx] ?? normalized.externalJobId ?? null;
+    // Every identity the job could have been stored and overridden under, in
+    // order: the extracted id (an override keyed before the id fallback
+    // existed), the persisted id (what the dashboard writes an override under:
+    // jobService.ts keys it on the stored externalJobId, an h- hash where the
+    // site has no native id), then the URL (worker/lib/jobLocation.ts).
+    const keys = overrideKeys(normalized.externalJobId, persistedExternalJobId, normalized.url);
+    const jobKey = keys.find((k) => args.locationOverrides.has(k)) ?? keys[0] ?? null;
     const overriddenLocation = (jobKey && args.locationOverrides.get(jobKey)) || null;
     const overrideList = jobKey ? args.locationOverrideLists.get(jobKey) : undefined;
     // The row this job had before the delete/re-create. Tried under each of the
     // identities it could have been stored with — see readPreviousLocations.
     const previous =
-      [jobKey, persistedExternalJobId, normalized.url]
-        .filter((k): k is string => !!k)
+      keys
         .map((k) => args.previousLocations.get(k))
         .find((v) => v !== undefined) ?? null;
     // The whole precedence lives in worker/lib/jobLocation.ts, where it can be

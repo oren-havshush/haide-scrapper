@@ -151,3 +151,19 @@ export function overrideOffListWarning(siteId: string, jobKey: string, raw: read
   const values = raw.map((v) => JSON.stringify(v)).join(", ");
   return `override_off_list: site ${siteId} job ${jobKey} — ${values} not on city.csv; the override value was skipped`;
 }
+
+/**
+ * The keys a job's location override may be stored under, in the order they
+ * are tried (addsite2 phase two, step 3): the extracted id, the persisted id
+ * (the dashboard keys an override on the stored externalJobId — an h- hash on a
+ * site without a native id), then the URL. Empty and repeated keys dropped.
+ */
+export function overrideKeys(
+  extractedId: string | null | undefined,
+  persistedId: string | null | undefined,
+  url: string | null | undefined,
+): string[] {
+  const out: string[] = [];
+  for (const k of [extractedId, persistedId, url]) if (k && !out.includes(k)) out.push(k);
+  return out;
+}

@@ -62,7 +62,12 @@ export function matchOverrides(
   overrides: readonly OverrideRow[],
   jobs: readonly MatchableJob[],
 ): ResolvedOverride[] {
-  // Index by both identities, exactly as buildJobRows matches them. A key two
+  // Index by both stored identities: the persisted externalJobId (the key the
+  // dashboard writes an override under, an h- hash where the site has no
+  // native id) and the detailUrl. buildJobRows tries the extracted id, then the
+  // persisted id, then the URL (worker/lib/jobLocation.ts overrideKeys); a
+  // stored row no longer carries the extracted id, so this matcher can only see
+  // the last two — which is every key the dashboard itself writes. A key two
   // jobs claim is recorded as ambiguous rather than resolved: picking one would
   // attach a human's assertion to a job they may not have meant, and an
   // override outranks everything, so the wrong guess is published.

@@ -17,7 +17,7 @@
 
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { canCarryForward, overrideOffListWarning, resolveJobLocation, type JobLocationInput } from "./jobLocation";
+import { canCarryForward, overrideKeys, overrideOffListWarning, resolveJobLocation, type JobLocationInput } from "./jobLocation";
 import { isCanonicalLocation } from "./locationNormalize";
 
 let failures = 0;
@@ -341,6 +341,31 @@ console.log("# the override gate (owner, 2026-10-02)");
   const src = readFileSync(join(__dirname, "..", "jobs", "scrape.ts"), "utf8");
   assert(/overrideOffListWarning\(args\.siteId, jobKey, resolved\.offListOverride\)/.test(src), "buildJobRows builds the warning from the resolver's dropped values");
   assert(/scrapeWarnings\.push\(\.\.\.overrideWarnings\)/.test(src), "and the run adds them to its warnings");
+}
+
+// ---------------------------------------------------------------------------
+console.log("# the override key (addsite2 phase two, step 3)");
+// ---------------------------------------------------------------------------
+// The dashboard writes an override under the job's STORED id
+// (src/services/jobService.ts: externalJobId ?? detailUrl), which on a site
+// without a native id is the synthesised h-… hash. buildJobRows looked it up
+// under the extracted id or the URL only, so an h- override never applied.
+// Now it tries each identity in order: extracted id, persisted id, URL.
+{
+  eq(overrideKeys("JB-802", "JB-802", "https://x.test/jobs/802"), ["JB-802", "https://x.test/jobs/802"], "a native id: extracted (= persisted), then the URL");
+  eq(overrideKeys(null, "h-abc123", "https://x.test/jobs/802"), ["h-abc123", "https://x.test/jobs/802"], "no extracted id: the persisted h- id, then the URL");
+  eq(overrideKeys("", "h-abc123", ""), ["h-abc123"], "empty identities are skipped");
+  eq(overrideKeys("ext-1", "h-abc123", "https://x.test/a"), ["ext-1", "h-abc123", "https://x.test/a"], "all three, in that order");
+  eq(overrideKeys(null, null, null), [], "no identity at all: no key");
+
+  // A stored h-abc override with a URL present now matches.
+  const overrides = new Map([["h-abc123", "חיפה"]]);
+  const keys = overrideKeys(null, "h-abc123", "https://x.test/jobs/802");
+  eq(keys.find((k) => overrides.has(k)), "h-abc123", "the stored h- override is found");
+
+  const src = readFileSync(join(__dirname, "..", "jobs", "scrape.ts"), "utf8");
+  assert(/overrideKeys\(normalized\.externalJobId, persistedExternalJobId, normalized\.url\)/.test(src), "buildJobRows builds its keys with overrideKeys(");
+  assert(!/const jobKey = normalized\.externalJobId \|\| normalized\.url \|\| null;/.test(src), "the old extracted-or-URL key is gone");
 }
 
 if (failures > 0) {
