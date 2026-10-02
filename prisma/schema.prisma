@@ -155,6 +155,7 @@ model Site {
 
   fixItems FixItem[]
   apiCalls SiteApiCall[]
+  guardedRunRequests GuardedRunRequest[]
 }
 
 /// What a site needed fixing after it went ACTIVE (addsite2 phase two, step 1a).
@@ -512,4 +513,31 @@ model ScrapingPolicyReview {
 
   @@index([siteId])
   @@index([status])
+}
+
+/// A guarded single-site run asked for through the API (addsite2 phase two,
+/// step 3, option B): POST /api/sites/[id]/guarded-run writes the row, and the
+/// claim timer on the box (deploy/systemd/haide-sweep-claim.*) runs it with
+/// worker/sweep/nightly.ts --claim-request — the existing single-site driver,
+/// email off, never the worker's FIFO scrape. src/lib/guardedRun.ts gates both.
+model GuardedRunRequest {
+  id          String    @id @default(cuid())
+  siteId      String
+  site        Site      @relation(fields: [siteId], references: [id], onDelete: Cascade)
+  requestedAt DateTime  @default(now())
+  /// Who asked, as the caller gave it (like FixItem.operator); null when not given.
+  operator    String?
+  /// sha256 prefix of the bearer token (src/services/autoFixService.ts tokenHashOf).
+  tokenHash   String?
+  /// PENDING, then RUNNING once claimed, then DONE or FAILED.
+  status      String    @default("PENDING")
+  claimedAt   DateTime?
+  finishedAt  DateTime?
+  /// The ScrapeSweep the claim ran; its item carries wouldPromoteTo.
+  sweepId     String?
+  /// The driver's exit code and, on failure, why.
+  result      Json?
+
+  @@index([status, requestedAt])
+  @@index([siteId])
 }

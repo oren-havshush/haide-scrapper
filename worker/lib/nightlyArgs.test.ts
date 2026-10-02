@@ -107,6 +107,21 @@ assert(mode("--site abc --now --incremental-details", WED) === "incremental", "a
 assert(mode("--site abc --dry-run-details", WED) === "incremental", "the rehearsal shows the night's own mode by default");
 assert(mode("--site abc --dry-run-details", SAT) === "full", "which on a Saturday is full");
 
+// --- --claim-request (step 3, option B): the claim timer's mode ------------------------
+{
+  let parsed: unknown = null;
+  try {
+    parsed = p("--claim-request");
+  } catch {
+    parsed = null;
+  }
+  assert(JSON.stringify(parsed) === JSON.stringify({ kind: "claim-request" }), `--claim-request alone parses (${JSON.stringify(parsed)})`);
+  assert(throws(() => p("--claim-request --now")), "it is not combined with --now: the request names the site");
+  assert(throws(() => p("--claim-request --site abc --now")), "nor with --site");
+  assert(throws(() => p("--claim-request --email")), "nor with --email: a requested run never emails");
+  assert(throws(() => p("--claim-request --full-details")), "nor with a detail override: a single-site run is always full");
+}
+
 if (failures > 0) {
   console.error(`\n${failures} assertion(s) failed`);
   process.exit(1);

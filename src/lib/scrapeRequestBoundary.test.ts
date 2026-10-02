@@ -139,6 +139,43 @@ assert(
   assert(readDetailMode(saturday.payload) === "full", "and reads as full");
 }
 
+// --- the guarded-run request route (step 3, option B) ------------------------------
+//
+// It asks for a guarded run; the sweep container's own driver runs it. It must
+// not become a second way to queue a scrape, and must not forward a scheduled
+// flag: it never builds a SCRAPE WorkerJob, never calls createScrapeRun, never
+// spreads the body, and reads only `operator` off it, by name.
+{
+  const guardedPath = join(ROOT, "src", "app", "api", "sites", "[id]", "guarded-run", "route.ts");
+  let guarded = "";
+  try {
+    guarded = strip(readFileSync(guardedPath, "utf8"));
+  } catch {
+    guarded = "";
+  }
+  assert(guarded.length > 0, "the guarded-run route exists");
+  assert(/requestGuardedRun\(/.test(guarded), "it writes through requestGuardedRun");
+  assert(!/scheduled/.test(guarded), "it does not mention `scheduled` at all");
+  assert(!/buildScrapeJobRow\(/.test(guarded) && !/createScrapeRun\(/.test(guarded), "it never builds or queues a SCRAPE job");
+  assert(!/workerJob/i.test(guarded), "and never touches the WorkerJob table");
+  assert(!/\.\.\.\s*body/.test(guarded), "it never spreads the request body");
+  assert(/body\?\.operator/.test(guarded), "and reads operator off the body by name");
+  let guardedService = "";
+  try {
+    guardedService = strip(readFileSync(join(ROOT, "src", "services", "guardedRunService.ts"), "utf8"));
+  } catch {
+    guardedService = "";
+  }
+  assert(guardedService.length > 0, "its service exists");
+  assert(/planGuardedRunRequest\(/.test(guardedService), "which is gated by planGuardedRunRequest before it writes");
+  assert(
+    !/scheduled/.test(guardedService) && !/buildScrapeJobRow\(|createScrapeRun\(/.test(guardedService) && !/workerJob/i.test(guardedService),
+    "and the service writes only GuardedRunRequest rows: no SCRAPE job, no scheduled flag",
+  );
+  // The scrape route is unchanged by all this: still exactly the checks above.
+  assert(!/guarded/i.test(route), "the scrape route knows nothing of guarded runs");
+}
+
 if (failures > 0) {
   console.error(`\n${failures} assertion(s) failed`);
   process.exit(1);

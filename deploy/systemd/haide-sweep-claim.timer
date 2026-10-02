@@ -1,0 +1,18 @@
+# Every two minutes: claim an API-requested guarded run, if one is pending.
+#
+# The host clock is fine here (no hour to align with); the quiet window
+# 01:30-07:05 Asia/Jerusalem is enforced in code, by the route and again by the
+# claim (src/lib/guardedRun.ts), not by this schedule.
+
+[Unit]
+Description=haide guarded-run claim (every two minutes)
+
+[Timer]
+OnCalendar=*:0/2
+
+# A missed tick is not caught up on boot: the next tick, two minutes later,
+# claims the same pending row.
+Persistent=false
+
+[Install]
+WantedBy=timers.target

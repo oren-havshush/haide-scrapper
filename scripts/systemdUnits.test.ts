@@ -44,7 +44,8 @@ function value(unit: string, key: string): string | null {
 }
 
 const files = readdirSync(UNIT_DIR);
-assert(files.length === 4, `four unit files (got ${files.length}: ${files.join(", ")})`);
+// Six since step 3 (option B): the guarded-run claim timer and its service.
+assert(files.length === 6, `six unit files (got ${files.length}: ${files.join(", ")})`);
 
 const scrapeSvc = read("haide-sweep-scrape.service");
 const scrapeTimer = read("haide-sweep-scrape.timer");
@@ -273,6 +274,65 @@ console.log("# deploy.sh installs them and never enables them");
   assert(
     /command -v systemctl/.test(deploy),
     "and skips the whole block where there is no systemctl, rather than failing the deploy",
+  );
+}
+
+// ---------------------------------------------------------------------------
+console.log("# the guarded-run claim timer (step 3, option B)");
+// ---------------------------------------------------------------------------
+// Every two minutes, claim one pending GuardedRunRequest and run the existing
+// single-site driver. An idle tick must cost no container: the unit's script
+// asks the database for a pending row first, and starts the sweep container
+// only when one exists (review build note, 2026-09-30).
+{
+  let claimSvc = "";
+  let claimTimer = "";
+  let script = "";
+  try {
+    claimSvc = read("haide-sweep-claim.service");
+    claimTimer = read("haide-sweep-claim.timer");
+    script = readFileSync(join(ROOT, "deploy", "claim-guarded-run.sh"), "utf8");
+  } catch {
+    // red until the files exist
+  }
+  assert(claimSvc.length > 0 && claimTimer.length > 0, "the claim service and timer exist");
+  assert(value(claimTimer, "OnCalendar") === "*:0/2", `the timer fires every two minutes (${value(claimTimer, "OnCalendar")})`);
+  assert(value(claimTimer, "Persistent") === "false", "and does not catch up on boot");
+  assert(value(claimSvc, "Type") === "oneshot", "the service is a oneshot");
+  assert(value(claimSvc, "WorkingDirectory") === "@REMOTE_DIR@", "with a templated WorkingDirectory");
+  assert(
+    (value(claimSvc, "ExecStart") ?? "").includes("@REMOTE_DIR@/deploy/claim-guarded-run.sh"),
+    "it runs deploy/claim-guarded-run.sh",
+  );
+  const timeout = /^(\d+)min$/.exec(value(claimSvc, "TimeoutStartSec") ?? "")?.[1];
+  assert(Number(timeout) >= 25 && Number(timeout) <= 60, `TimeoutStartSec covers one site's 18-minute budget (${timeout}min)`);
+  const post = value(claimSvc, "ExecStopPost") ?? "";
+  assert(post.startsWith("-") && post.includes("docker rm -f haide-sweep-claim"), "ExecStopPost removes the claim container");
+
+  // The script, comments stripped: the pending check comes before any container.
+  const code = script
+    .split("\n")
+    .filter((l) => !/^\s*#/.test(l))
+    .join("\n");
+  const pendingCheck = code.indexOf(`status = 'PENDING'`);
+  const busyCheck = code.indexOf("docker ps -q -f name=haide-sweep-");
+  const run = code.indexOf("docker compose run");
+  assert(pendingCheck > 0, "the script counts PENDING GuardedRunRequest rows");
+  assert(busyCheck > 0, "and checks for a running haide-sweep- container");
+  assert(run > 0, "and only then runs the sweep container");
+  assert(pendingCheck < run && busyCheck < run, "both checks come before any docker compose run");
+  assert(/exit 0/.test(code.slice(0, run)), "and an idle tick exits 0 before reaching it");
+  const runLine = code.slice(run).split("\n")[0] ?? "";
+  for (const part of ["--name haide-sweep-claim", "-T", "sweep", "worker/sweep/nightly.ts", "--claim-request"]) {
+    assert(runLine.includes(part), `the run line has ${part}`);
+  }
+  assert(!runLine.includes("--rm"), "no --rm: ExecStopPost owns the cleanup");
+  assert(!runLine.includes("--now") && !runLine.includes("--site"), "it claims; it does not start a fleet or a named site itself");
+
+  const deploy = readFileSync(join(ROOT, "deploy.sh"), "utf8");
+  assert(
+    /for t in haide-sweep-scrape\.timer haide-sweep-policy\.timer haide-sweep-claim\.timer; do/.test(deploy),
+    "deploy.sh prints the claim timer's is-enabled line with the other two",
   );
 }
 

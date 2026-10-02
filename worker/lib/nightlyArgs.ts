@@ -22,7 +22,9 @@ export type NightlyMode =
   | { kind: "test-email" }
   | { kind: "dry-run-details"; siteId: string; detailOverride: DetailMode | null }
   | { kind: "single"; siteId: string; detailOverride: DetailMode | null; email: boolean }
-  | { kind: "fleet"; detailOverride: DetailMode | null };
+  | { kind: "fleet"; detailOverride: DetailMode | null }
+  /** Claim one pending GuardedRunRequest and run it single-site, email off (step 3, option B). */
+  | { kind: "claim-request" };
 
 export function parseNightlyArgs(argv: string[]): NightlyMode {
   const dryRun = argv.includes("--dry-run");
@@ -34,6 +36,7 @@ export function parseNightlyArgs(argv: string[]): NightlyMode {
   const siteIdx = argv.indexOf("--site");
   const siteId = siteIdx >= 0 ? argv[siteIdx + 1] : undefined;
   const email = argv.includes("--email");
+  const claimRequest = argv.includes("--claim-request");
   if (email && !(siteId && now)) {
     throw new Error("--email applies to --site <id> --now only; the timer's runs always send their report");
   }
@@ -45,6 +48,13 @@ export function parseNightlyArgs(argv: string[]): NightlyMode {
     throw new Error("--site needs a site id");
   }
 
+  if (claimRequest) {
+    // The request names the site; a requested run never emails and is always full.
+    if (dryRun || testEmail || dryRunDetails || now || siteIdx >= 0 || email || detailOverride) {
+      throw new Error("--claim-request stands alone (with --trigger): the request row names the site");
+    }
+    return { kind: "claim-request" };
+  }
   if (testEmail) {
     if (dryRun || dryRunDetails || now || siteIdx >= 0 || detailOverride) {
       throw new Error("--test-email stands alone: it sends the latest stored report and exits");
@@ -71,6 +81,8 @@ export function parseNightlyArgs(argv: string[]): NightlyMode {
 /** The detail mode an invocation runs in. `startedAt` decides the fleet's default. */
 export function resolveDetailMode(mode: NightlyMode, startedAt: Date): DetailMode {
   if (mode.kind === "dry-run" || mode.kind === "test-email") return detailModeFor(startedAt);
+  // A requested guarded run is a single-site run: always full.
+  if (mode.kind === "claim-request") return "full";
   if (mode.detailOverride) return mode.detailOverride;
   if (mode.kind === "single") return "full";
   return detailModeFor(startedAt);

@@ -1,0 +1,36 @@
+# Claim one API-requested guarded run (addsite2 phase two, step 3, option B).
+#
+# Installed by deploy.sh, NEVER enabled by it — like the two sweeps. An
+# operator without ssh asks for a guarded single-site run with
+# POST /api/sites/[id]/guarded-run; this unit, every two minutes, runs
+# deploy/claim-guarded-run.sh, which asks the database for a pending request
+# FIRST and starts the sweep container only when there is one. An idle tick
+# costs a psql query, not a browser container.
+
+[Unit]
+Description=haide guarded-run claim (API-requested single-site runs)
+Documentation=file://@REMOTE_DIR@/docs/addsite-learnings.md
+Wants=docker.service
+After=docker.service network-online.target
+
+[Service]
+Type=oneshot
+WorkingDirectory=@REMOTE_DIR@
+
+# One site: its 18-minute budget, the drain probe and the report, with slack.
+TimeoutStartSec=30min
+
+# The script ends in `exec docker compose run --name haide-sweep-claim ...`, so
+# deploy.sh's haide-sweep- guard sees a claimed run like any other sweep.
+ExecStart=/bin/sh @REMOTE_DIR@/deploy/claim-guarded-run.sh
+
+# As for the sweeps: remove the container on success, failure or timeout, so a
+# killed claim does not hold the name and block every later tick.
+ExecStopPost=-/bin/sh -c 'docker rm -f haide-sweep-claim >/dev/null 2>&1 || true'
+
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=haide-sweep-claim
+
+[Install]
+WantedBy=multi-user.target

@@ -260,7 +260,7 @@ if [ -d deploy/systemd ] && command -v systemctl >/dev/null 2>&1; then
   # status rather than reacting to it — a disabled timer is the expected answer
   # here, not an error. `|| true` is required: under `set -e` an assignment from
   # a failing command substitution exits the script.
-  for t in haide-sweep-scrape.timer haide-sweep-policy.timer; do
+  for t in haide-sweep-scrape.timer haide-sweep-policy.timer haide-sweep-claim.timer; do
     state=$(systemctl is-enabled "$t" 2>/dev/null | head -1 || true)
     echo "    $t: ${state:-not installed}"
   done

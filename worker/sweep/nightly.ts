@@ -4,6 +4,8 @@
 //   npx tsx worker/sweep/nightly.ts --dry-run          read-only; prints and exits
 //   npx tsx worker/sweep/nightly.ts --site <id> --now   one site, then stop
 //   npx tsx worker/sweep/nightly.ts --now               the whole fleet
+//   npx tsx worker/sweep/nightly.ts --claim-request     one API-requested guarded run
+//                                                       (the claim timer; email off)
 //
 // RESIDENT, not fire-and-forget. It enqueues ONE site, waits for that site's
 // ScrapeRun to reach a terminal state, records the result, and moves on. Only
@@ -25,6 +27,7 @@ import "dotenv/config";
 import { prisma } from "../../src/lib/prisma";
 import { sweepConfig } from "../../src/lib/config";
 import { ConflictError } from "../../src/lib/errors";
+import { planGuardedRunClaim } from "../../src/lib/guardedRun";
 import { createScrapeRun } from "../../src/services/siteService";
 import {
   SWEEP_REAP_OPTIONS,
@@ -70,7 +73,7 @@ import {
 // Parsed in worker/lib/nightlyArgs.ts, where it can be tested: its defaults
 // are the detail-fetch policy (incremental on weekday nights, full on the
 // Saturday run and on --site).
-type Mode = Exclude<NightlyMode, { kind: "dry-run" } | { kind: "dry-run-details" }>;
+type Mode = Exclude<NightlyMode, { kind: "dry-run" } | { kind: "dry-run-details" } | { kind: "claim-request" }>;
 
 const log = (line: string) => console.info(line);
 
@@ -620,7 +623,7 @@ async function dryRun(): Promise<number> {
 // Real runs
 // ---------------------------------------------------------------------------
 
-async function realRun(mode: Mode, trigger: string): Promise<number> {
+async function realRun(mode: Mode, trigger: string, hooks: { onSweep?: (sweepId: string) => void } = {}): Promise<number> {
   if (!sweepConfig.enabled) {
     log("[sweep] SWEEP_ENABLED=false — refusing to run.");
     return 0;
@@ -656,6 +659,7 @@ async function realRun(mode: Mode, trigger: string): Promise<number> {
     },
   });
   log(`[sweep] sweep row ${sweep.id}`);
+  hooks.onSweep?.(sweep.id);
 
   // --- what to run -----------------------------------------------------
   let queue: SelectableSite[];
@@ -999,6 +1003,63 @@ async function testEmail(): Promise<number> {
   return outcome.emailStatus.startsWith("sent") ? 0 : 1;
 }
 
+// ---------------------------------------------------------------------------
+// --claim-request (addsite2 phase two, step 3, option B)
+// ---------------------------------------------------------------------------
+
+/**
+ * Claim the oldest PENDING GuardedRunRequest and run it with the existing
+ * single-site driver, email off — exactly `--site <id> --now`, started by the
+ * claim timer (deploy/systemd/haide-sweep-claim.*) instead of a shell. The
+ * claim re-checks what can change while a request waits (src/lib/guardedRun.ts);
+ * a refused claim leaves the row PENDING for a later tick. The UPDATE whose
+ * WHERE still reads PENDING is the lock: two ticks cannot claim one row.
+ */
+async function claimRequest(trigger: string): Promise<number> {
+  const activeSweep = (await prisma.scrapeSweep.count({ where: { status: "RUNNING" } })) > 0;
+  const gate = planGuardedRunClaim(activeSweep, new Date());
+  if (!gate.ok) {
+    log(`[claim] not now: ${gate.reason}`);
+    return 0;
+  }
+  const claimed = await prisma.$queryRaw<Array<{ id: string; siteId: string }>>`
+    UPDATE "GuardedRunRequest" SET "status" = 'RUNNING', "claimedAt" = now()
+    WHERE "id" = (
+      SELECT "id" FROM "GuardedRunRequest" WHERE "status" = 'PENDING'
+      ORDER BY "requestedAt" LIMIT 1 FOR UPDATE SKIP LOCKED
+    ) AND "status" = 'PENDING'
+    RETURNING "id", "siteId"`;
+  const req = claimed[0];
+  if (!req) {
+    log("[claim] nothing pending");
+    return 0;
+  }
+  log(`[claim] request ${req.id} for site ${req.siteId}`);
+  let sweepId: string | null = null;
+  let code = 1;
+  let error: string | null = null;
+  try {
+    code = await realRun({ kind: "single", siteId: req.siteId, detailOverride: null, email: false }, trigger, {
+      onSweep: (id) => {
+        sweepId = id;
+      },
+    });
+  } catch (e) {
+    error = (e as Error).message;
+  }
+  await prisma.guardedRunRequest.update({
+    where: { id: req.id },
+    data: {
+      status: code === 0 && !error ? "DONE" : "FAILED",
+      finishedAt: new Date(),
+      sweepId,
+      result: { exitCode: code, ...(error ? { error } : {}) },
+    },
+  });
+  log(`[claim] request ${req.id}: ${code === 0 && !error ? "DONE" : "FAILED"} (sweep ${sweepId ?? "none"})`);
+  return error ? 1 : code;
+}
+
 async function main() {
   const parsed = parseNightlyArgs(process.argv.slice(2));
   const code =
@@ -1008,7 +1069,9 @@ async function main() {
         ? await testEmail()
         : parsed.kind === "dry-run-details"
           ? await dryRunDetails(parsed.siteId, resolveDetailMode(parsed, new Date()))
-          : await realRun(parsed, parseTriggerLabel(process.argv.slice(2)));
+          : parsed.kind === "claim-request"
+            ? await claimRequest(parseTriggerLabel(process.argv.slice(2)))
+            : await realRun(parsed, parseTriggerLabel(process.argv.slice(2)));
   await prisma.$disconnect();
   process.exit(code);
 }
