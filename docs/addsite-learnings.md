@@ -2068,6 +2068,29 @@
   stored `siteUrl`, or a `topCluster` that no longer matches the stored `itemSelector`, is
   the tell. **Home:** §2 triage / `recipes/spa-frameworks.md#civi`.
 
+### LRN-SPA-13 — Hunter "careersite" Next.js board: JSON API, default-filtered tab, per-job form variants
+- **Date / site:** 2026-10-04 · pwc-careersite.hunterhrms.com (`cmutms886005801rryuzpei34`), 51 jobs
+- **Signal:** a `*.hunterhrms.com` board that is NOT the BDO template (`.job-card`, LRN-SPA-7's
+  Nuxt minisite neither). Next.js static export; cards are MUI divs with no `href`; jobs come
+  from `POST niloo-server.herokuapp.com/actions-<tenant>` (`{"cmd":"get-jobs"}`,
+  `{"cmd":"get-job","data":{"jid":N}}`, `get-categories`), body fields HTML-**escaped** HTML.
+  The page **opens filtered** to one category tab (9 of 51); "כל התחומים" in the same sidebar
+  shows all of them, lazy on scroll. Apply = captcha-free inline form on `/job?jid=N`, and the
+  bundle picks a longer variant per job (`categoryId === 43` → 16 fields).
+- **Fix:** listing setupScript builds hidden `.__ai-job` cards from `get-jobs` plus an
+  `a.__ai-link` to `/job?jid=N`; a 2-step `pageFlow` sends the worker to every detail page,
+  where the same script injects description/requirements from `get-job` and waits for the
+  form. `formSelector: form:has(input[name="employeeFullname"])` then captures each job's own
+  variant live (42×7, 9×16). Block-text: also break BEFORE a block whose previous sibling is
+  text/inline (`דרישות<div>`, `<b>דרישות</b><div>` glued otherwise). Coverage counted against
+  the unfiltered tab: a default filter is not the listing, and the all-fields option is a
+  visible control.
+- **Company profile trap:** the board links `www.pwc.com/il/he`; capture from there climbs to
+  global `pwc.com` — about from `/gx/en/about.html`, logo = a marketing photo. Global-network
+  domains need a hand check before supplying a homepage.
+- **Generalizes to:** other `*-careersite.hunterhrms.com` tenants (swap `actions-<tenant>`).
+  **Home:** `recipes/spa-frameworks.md#niloos`.
+
 ---
 
 ### LRN-LOC-8 — Mining cities from ad prose: ban the `ה` prefix, and emit `Unknown` explicitly
