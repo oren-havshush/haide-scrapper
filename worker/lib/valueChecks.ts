@@ -120,6 +120,7 @@ export const VALUE_CHECK_QUEUE_CODES: ReadonlySet<string> = new Set([
   "apply_honeypot_field",
   "external_job_id_churn",
   "synthesised_id_collision",
+  "synthesised_external_job_id",
   "undated_rate",
   "location_homograph",
   "unknown_location_rate",
@@ -318,31 +319,50 @@ export function synthesisedIdCollision(seeds: IdSeed[]): CheckResult | null {
   return { warning, finding: finding("synthesised_id_collision", "JOB_ID", warning.slice(warning.indexOf(":") + 2), collisions, [...colliding]) };
 }
 
-/** Kept as a warning only: full synthesis is the legitimate no-native-id case (step 4). */
-export function synthesisedExternalJobIdWarning(seeds: IdSeed[]): string | null {
-  const synthesized = seeds.filter((s) => !trimmed(s.extracted) && !!s.id).length;
-  if (synthesized === 0) return null;
-  return (
-    `synthesised_external_job_id: ${synthesized}/${seeds.length} job(s) ` +
-    "had no externalJobId and were keyed on a content hash — prefer a native id"
-  );
+/**
+ * Jobs keyed on a content hash. Full synthesis is the legitimate no-native-id
+ * case (step 4) and stays a warning; PARTIAL synthesis — some jobs native, some
+ * hashed on one site — means a native mapping missed jobs (weizmann 2/55,
+ * safari 1/9) and opens a JOB_ID item naming the hashed ones (owner, 2026-10-04).
+ */
+export function synthesisedExternalJobId(seeds: IdSeed[]): CheckResult | null {
+  const hashed = seeds.filter((s) => !trimmed(s.extracted) && !!s.id);
+  if (hashed.length === 0) return null;
+  const warning =
+    `synthesised_external_job_id: ${hashed.length}/${seeds.length} job(s) ` +
+    "had no externalJobId and were keyed on a content hash — prefer a native id";
+  const native = seeds.some((s) => !!trimmed(s.extracted));
+  if (!native) return { warning };
+  const detail = `${hashed.length}/${seeds.length} job(s) hashed while the rest carry a native id — the id mapping misses some jobs`;
+  return { warning, finding: finding("synthesised_external_job_id", "JOB_ID", detail, hashed.length, hashed.map((s) => s.id!)) };
 }
 
 // ---------------------------------------------------------------------------
 // DATE, DESCRIPTION
 // ---------------------------------------------------------------------------
 
-/** More than 40% of the saved jobs have no age bucket; missing and unparseable dates told apart. */
+/**
+ * Jobs with no age bucket, missing and unparseable dates told apart. The line
+ * is written when more than 40% are undated or any date failed to parse; a
+ * DATE item opens only for unparseable dates (owner, 2026-10-04) — most boards
+ * publish no date at all (147 of 179 sites), and a missing date is nothing an
+ * operator can fix, while a date that did not parse is a mapping or parser defect.
+ */
 export function undatedRate(saved: SavedJobForChecks[]): CheckResult | null {
   if (saved.length === 0) return null;
   const undated = saved.filter((j) => !j.ageBucket);
-  if (undated.length / saved.length <= UNDATED_WARN_RATIO) return null;
-  const unparseable = undated.filter((j) => trimmed(j.publishDate)).length;
-  const missing = undated.length - unparseable;
+  const unparseable = undated.filter((j) => trimmed(j.publishDate));
+  if (undated.length / saved.length <= UNDATED_WARN_RATIO && unparseable.length === 0) return null;
+  const missing = undated.length - unparseable.length;
   const detail =
     `${undated.length}/${saved.length} job(s) have no usable date (${pct(undated.length, saved.length)}%) — ` +
-    `${missing} missing, ${unparseable} unparseable`;
-  return { warning: `undated_rate: ${detail}`, finding: finding("undated_rate", "DATE", detail, undated.length, undated.map(jobKeyOf)) };
+    `${missing} missing, ${unparseable.length} unparseable`;
+  return {
+    warning: `undated_rate: ${detail}`,
+    ...(unparseable.length > 0
+      ? { finding: finding("undated_rate", "DATE", detail, unparseable.length, unparseable.map(jobKeyOf)) }
+      : {}),
+  };
 }
 
 /** Fewer than 60% of the saved jobs have a description (the activation gate's threshold). */
@@ -456,6 +476,7 @@ export function runValueChecks(input: ValueCheckInput): { warnings: string[]; fi
     externalJobIdChurn(input.saved, input.previous),
     listingVsSavedGap(input.listingItemsSeen, input.savedCount),
     synthesisedIdCollision(input.idSeeds),
+    synthesisedExternalJobId(input.idSeeds),
   ];
   const warnings: string[] = [];
   const findings: ValueCheckFinding[] = [];
@@ -464,11 +485,9 @@ export function runValueChecks(input: ValueCheckInput): { warnings: string[]; fi
     warnings.push(r.warning);
     if (r.finding) findings.push(r.finding);
   }
-  // Warnings only, no queue item (owner, 2026-10-03: not in the queued list).
+  // A warning only, no queue item (owner, 2026-10-04).
   const replay = applyReplayTokenFinding(input.formBlobs.map((b) => b.formData));
   if (replay) warnings.push(applyReplayTokenWarning(replay));
-  const synth = synthesisedExternalJobIdWarning(input.idSeeds);
-  if (synth) warnings.push(synth);
   return { warnings, findings };
 }
 

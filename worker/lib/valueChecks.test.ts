@@ -303,7 +303,7 @@ console.log("# synthesised_id_collision — two jobs hashed alike become a queue
   eq(codes(runValueChecks({ ...base, idSeeds: [{ extracted: null, id: "h-1" }, { extracted: null, id: "h-2" }] })), [], "full synthesis opens no item");
 }
 
-console.log("# undated_rate — 3 of 4 undated, missing told from unparseable");
+console.log("# undated_rate — a DATE item only for unparseable dates; the missing share is a warning (owner, 2026-10-04)");
 {
   const saved = [
     job({ externalJobId: "1", publishDate: null, ageBucket: null }),
@@ -313,19 +313,55 @@ console.log("# undated_rate — 3 of 4 undated, missing told from unparseable");
   ];
   const r = runValueChecks({ ...base, saved });
   const f = r.findings.find((x) => x.code === "undated_rate");
-  eq(f?.field, "DATE", "a DATE item");
-  eq(f?.jobIds, ["1", "2", "3"], "naming the undated jobs");
-  eq(f?.detail, "3/4 job(s) have no usable date (75%) — 2 missing, 1 unparseable", "missing and unparseable apart");
+  eq(f?.field, "DATE", "an unparseable date opens a DATE item");
+  eq(f?.jobIds, ["3"], "naming only the unparseable job — a missing date is nothing to fix");
+  eq(f?.count, 1, "counting it");
   eq(
-    codes(runValueChecks({ ...base, saved: [saved[0]!, saved[3]!, job({ externalJobId: "5" }), job({ externalJobId: "6" }), job({ externalJobId: "7" })] })),
-    [],
-    "1 of 5 (20%) is under 40%",
+    r.warnings.includes("undated_rate: 3/4 job(s) have no usable date (75%) — 2 missing, 1 unparseable"),
+    true,
+    "the warning keeps the whole share, missing and unparseable apart",
   );
-  eq(
-    codes(runValueChecks({ ...base, saved: [saved[0]!, saved[1]!, job({ externalJobId: "5" }), job({ externalJobId: "6" }), job({ externalJobId: "7" })] })),
-    [],
-    "2 of 5 (exactly 40%) is not over it",
-  );
+
+  // A board that publishes no dates at all (147 of 179 sites on 2026-10-04).
+  const none = runValueChecks({ ...base, saved: [saved[0]!, saved[1]!, job({ externalJobId: "8", publishDate: null, ageBucket: null })] });
+  eq(codes(none), [], "all missing: no item");
+  eq(none.warnings.some((w) => w.startsWith("undated_rate: 3/3 job(s) have no usable date (100%) — 3 missing, 0 unparseable")), true, "but the warning line stays");
+
+  // One bad date on a site that otherwise dates everything: a parser defect.
+  const one = runValueChecks({ ...base, saved: [saved[2]!, saved[3]!, job({ externalJobId: "5" }), job({ externalJobId: "6" }), job({ externalJobId: "7" })] });
+  eq(codes(one), ["undated_rate"], "1 unparseable of 5 (20%) still opens the item");
+  eq(one.warnings.some((w) => w.startsWith("undated_rate: 1/5 job(s) have no usable date (20%) — 0 missing, 1 unparseable")), true, "with its line");
+
+  const quiet = runValueChecks({ ...base, saved: [saved[0]!, saved[1]!, job({ externalJobId: "5" }), job({ externalJobId: "6" }), job({ externalJobId: "7" })] });
+  eq(codes(quiet), [], "2 missing of 5 (exactly 40%): no item");
+  eq(quiet.warnings.some((w) => w.startsWith("undated_rate")), false, "and no line");
+}
+
+console.log("# synthesised_external_job_id — partial synthesis is a JOB_ID item; all-hashed is not (owner, 2026-10-04)");
+{
+  // weizmann 2/55: a native mapping that missed two jobs.
+  const seeds = [
+    ...Array.from({ length: 53 }, (_, i) => ({ extracted: `${7000 + i}`, id: `${7000 + i}` })),
+    { extracted: null, id: "h-w1" },
+    { extracted: "", id: "h-w2" },
+  ];
+  const r = runValueChecks({ ...base, idSeeds: seeds });
+  const f = r.findings.find((x) => x.code === "synthesised_external_job_id");
+  eq(f?.field, "JOB_ID", "weizmann 2/55 opens a JOB_ID item");
+  eq(f?.jobIds, ["h-w1", "h-w2"], "naming the hashed jobs");
+  eq(r.warnings.some((w) => w.startsWith("synthesised_external_job_id: 2/55 job(s)")), true, "the warning text is unchanged");
+  // safari 1/9
+  const safari = runValueChecks({
+    ...base,
+    idSeeds: [...Array.from({ length: 8 }, (_, i) => ({ extracted: `s${i}`, id: `s${i}` })), { extracted: null, id: "h-s" }],
+  });
+  eq(codes(safari), ["synthesised_external_job_id"], "safari 1/9 opens one");
+  // sinaistore 4/4: no native id at all, the legitimate case.
+  const all = runValueChecks({ ...base, idSeeds: Array.from({ length: 4 }, (_, i) => ({ extracted: null, id: `h-${i}` })) });
+  eq(codes(all), [], "all hashed (sinaistore 4/4): nothing opens");
+  eq(all.warnings.some((w) => w.startsWith("synthesised_external_job_id: 4/4")), true, "the warning still says so");
+  eq(codes(runValueChecks({ ...base, idSeeds: [{ extracted: "1", id: "1" }] })), [], "all native: nothing");
+  eq(VALUE_CHECK_QUEUE_CODES.has("apply_replay_token"), false, "apply_replay_token stays a warning only");
 }
 
 console.log("# location_homograph — the list moved, and the check names jobs");
