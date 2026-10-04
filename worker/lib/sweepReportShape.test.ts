@@ -232,53 +232,22 @@ console.log("# 3 — empty_results on a site that had nothing is 'no jobs'");
 // ---------------------------------------------------------------------------
 console.log("# 4 — fresh-window skips are one line");
 // ---------------------------------------------------------------------------
-{
-  const skipped = [
-    ...Array.from({ length: 138 }, (_, i) => ({
-      siteUrl: `https://f${i}.test`,
-      reason: "succeeded 3h ago, inside the 20h window",
-      kind: "fresh" as const,
-    })),
-    { siteUrl: "https://broken.test", reason: "no usable fieldMappings (would fail immediately)" },
-    { siteUrl: "https://login.test", reason: "applyRequiresLogin — nothing can be applied to" },
-  ];
-  const text = render([item()], { skipped });
-
-  assert(text.includes("skipped   140 at selection"), `the total is unchanged\n${text}`);
-  assert(
-    /138 too recent to scrape \(inside the fresh window\)/.test(text),
-    `the fresh-window skips collapse to one line\n${text}`,
-  );
-  assert(
-    text.includes("https://broken.test — no usable fieldMappings"),
-    "a skip someone has to fix is still named",
-  );
-  assert(text.includes("https://login.test — applyRequiresLogin"), "and so is the other kind");
-  assert(!text.includes("https://f0.test"), "no fresh-window site is named");
-  assert(
-    (text.match(/https:\/\/f\d+\.test/g) ?? []).length === 0,
-    "not one of the 138",
-  );
-
-  // With no fresh skips at all the line does not appear.
-  const plain = render([item()], {
-    skipped: [{ siteUrl: "https://broken.test", reason: "no usable fieldMappings" }],
-  });
-  assert(!/too recent to scrape/.test(plain), "and the line is absent when nothing was fresh-skipped");
-}
-
-// ---------------------------------------------------------------------------
-console.log("# 5 — the step 2b checks that are queue items name their site (owner, 2026-10-03)");
+console.log("# 5 — the step 2b queue items stay a count in the email (owner, 2026-10-04)");
 // ---------------------------------------------------------------------------
 {
+  // unknown_location_rate, region_over_city and listing_vs_saved_gap are fix-
+  // queue items: the queue names the site and the dashboard has the full list.
+  // The email's Warnings section keeps them as counts.
   const text = render([
     item({ siteId: "r", siteUrl: "https://region.test", warnings: ["region_over_city: 1 job(s) stored a region while the ad names a city (e.g. השפלה -> גבעת שמואל)"] }),
     item({ siteId: "g", siteUrl: "https://gap.test", warnings: ["listing_vs_saved_gap: 8 card(s) on the listing but 7 job(s) saved (1 unaccounted)"] }),
     item({ siteId: "u", siteUrl: "https://unknown.test", warnings: ["unknown_location_rate: 3/5 job(s) have no location (60%)"] }),
   ]);
-  assert(/region_over_city \(1\)\n\s+https:\/\/region\.test — 1 job\(s\)/.test(text), `region_over_city names its site\n${text}`);
-  assert(/listing_vs_saved_gap \(1\)\n\s+https:\/\/gap\.test — 8 card\(s\)/.test(text), "listing_vs_saved_gap names its site");
-  assert(/unknown_location_rate \(1\)\n\s+https:\/\/unknown\.test — 3\/5/.test(text), "unknown_location_rate names its site");
+  const warnSection = text.slice(text.indexOf("Warnings ("));
+  assert(/region_over_city \(1\)/.test(warnSection) && /listing_vs_saved_gap \(1\)/.test(warnSection) && /unknown_location_rate \(1\)/.test(warnSection), `each is counted\n${text}`);
+  assert(!warnSection.includes("https://region.test"), "region_over_city names no site");
+  assert(!warnSection.includes("https://gap.test"), "listing_vs_saved_gap names no site");
+  assert(!warnSection.includes("https://unknown.test"), "unknown_location_rate names no site");
 }
 
 if (failures > 0) {
