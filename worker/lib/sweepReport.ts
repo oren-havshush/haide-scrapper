@@ -21,6 +21,11 @@ import { FIELD_FILL_DROP } from "./sweepSelection";
  * nothing, this is the worker declining to shrink what it publishes — and the
  * run already named the pages, so the queue quotes them instead of guessing.
  */
+/** A Cloudflare challenge instead of the listing (worker/lib/zeroMatch.ts): not drift. */
+function isBlocked(i: { outcome: string; failureCategory: string | null }): boolean {
+  return i.outcome === "soft_failure" && i.failureCategory === "blocked";
+}
+
 function isListingRefusal(category: string | null): boolean {
   return category != null && (LISTING_SOFT_CATEGORIES as readonly string[]).includes(category);
 }
@@ -278,7 +283,7 @@ export function computeCounters(sweep: ReportSweep, items: ReportItem[]): SweepC
     selectedCount: sweep.selectedCount,
     ok: items.filter((i) => i.outcome === "success").length,
     failed: items.filter((i) => i.outcome === "hard_failure").length,
-    silentDrift: soft.filter((i) => !isListingRefusal(i.failureCategory) && !isNoJobs(i)).length,
+    silentDrift: soft.filter((i) => !isListingRefusal(i.failureCategory) && !isNoJobs(i) && !isBlocked(i)).length,
     listingRefusals: soft.filter((i) => isListingRefusal(i.failureCategory)).length,
     noJobs: soft.filter(isNoJobs).length,
     skippedConflict: items.filter((i) => i.outcome === "skipped_conflict").length,
@@ -434,7 +439,16 @@ export function needsAttention(
     // A configured item selector that matched nothing (worker/lib/zeroMatch.ts):
     // refused, rows kept, and named as what it is rather than as generic drift.
     const zeroMatch = (i.warnings ?? []).map(String).find((w) => w.startsWith("item_selector_zero_match:"));
-    if (i.outcome === "soft_failure" && zeroMatch) {
+    if (i.outcome === "soft_failure" && i.failureCategory === "blocked") {
+      // The page was Cloudflare's challenge, not the listing: not a site change.
+      const seen = (i.warnings ?? []).map(String).find((w) => w.startsWith("blocked_challenge:"));
+      const title = seen ? seen.slice(seen.indexOf(":") + 1).trim() : "Just a moment...";
+      add(
+        i,
+        `blocked: the listing was a Cloudflare challenge ("${title}"), not the site — ` +
+          `nothing written, ${i.jobsAfter} listing(s) kept; nothing tried to pass it`,
+      );
+    } else if (i.outcome === "soft_failure" && zeroMatch) {
       const sel = zeroMatch.slice(zeroMatch.indexOf(":") + 1).trim();
       add(i, `item selector matched nothing (${sel}) — nothing written, ${i.jobsAfter} listing(s) kept, no auto-detect`);
     } else if (i.outcome === "soft_failure" && isListingRefusal(i.failureCategory)) {
@@ -630,6 +644,11 @@ export function renderSweepReport(
   }
   if (counters.noJobs > 0) {
     lines.push(`  ${String(counters.noJobs).padStart(4)}  returned no jobs and had none`);
+  }
+  // Counted from the items, not a SweepCounters key (no column for it).
+  const blockedCount = items.filter(isBlocked).length;
+  if (blockedCount > 0) {
+    lines.push(`  ${String(blockedCount).padStart(4)}  blocked (Cloudflare challenge)`);
   }
   lines.push("");
 

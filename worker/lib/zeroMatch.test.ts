@@ -14,8 +14,11 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import {
+  BLOCKED,
+  BLOCKED_WARNING,
   WRONG_SCOPE_WARNING,
   ZERO_MATCH_WARNING,
+  isChallengeTitle,
   newExtractGuard,
   onExplicitZeroMatch,
   onLikelyWrongScope,
@@ -215,6 +218,47 @@ void (async () => {
     process.exitCode = 1;
   }
 })();
+
+// The blocked label (owner, 2026-10-04). fritz, 2026-10-02: `body .job_row`
+// matched nothing because the page was Cloudflare's challenge ("Just a
+// moment..."), not the listing; the next night it scraped 9 jobs. That is not
+// a site change, so it is not structure_changed. Nothing tries to pass the
+// challenge: the title is read, that is all.
+check("a Cloudflare challenge page is blocked, not structure_changed", () => {
+  assert(isChallengeTitle("Just a moment..."), "Cloudflare's title is a challenge");
+  assert(isChallengeTitle("  just a moment"), "whatever the case and spacing");
+  assert(!isChallengeTitle("משרות פתוחות - www.fritz.co.il"), "the listing's own title is not");
+  assert(!isChallengeTitle(""), "no title is not");
+  assert(!isChallengeTitle(null), "an unread title is not");
+
+  const g = newExtractGuard(true);
+  onExplicitZeroMatch(g, SEL, "Just a moment...");
+  const r = zeroMatchRefusal(g, 0);
+  assert(r?.failureCategory === BLOCKED && BLOCKED === "blocked", `category blocked (${r?.failureCategory})`);
+  assert(r?.runStatus === "COMPLETED", "a scheduled run closes COMPLETED, rows kept as before");
+  assert(!!r && r.error.includes("Cloudflare challenge") && r.error.includes("previous listings kept"), `the error says what it was (${r?.error})`);
+  assert(
+    !!r && r.warnings.includes(`${ZERO_MATCH_WARNING}: ${SEL}`) && r.warnings.includes(`${BLOCKED_WARNING}: Just a moment...`),
+    `the warnings name the selector and the title (${JSON.stringify(r?.warnings)})`,
+  );
+
+  const plain = newExtractGuard(true);
+  onExplicitZeroMatch(plain, SEL, "משרות פתוחות - www.fritz.co.il");
+  assert(zeroMatchRefusal(plain, 0)?.failureCategory === "structure_changed", "a real page that lost its cards is still structure_changed");
+
+  // The first zero match's title is the one kept, like its selector.
+  const first = newExtractGuard(true);
+  onExplicitZeroMatch(first, SEL, "Listing");
+  onExplicitZeroMatch(first, "body .other", "Just a moment...");
+  assert(zeroMatchRefusal(first, 0)?.failureCategory === "structure_changed", "the first zero match decides");
+
+  const src = readFileSync(join(__dirname, "../jobs/scrape.ts"), "utf8");
+  assert(
+    /const zeroMatchTitle = await pageTitle\(page\);\s*if \(onExplicitZeroMatch\(guard, `\$\{listingSelector \?\? "body"\} \$\{itemSelector\}`, zeroMatchTitle\)/.test(src),
+    "scrape.ts passes the page's title at the zero match",
+  );
+  assert(!/challenge.*(click|solve|bypass)/i.test(src.slice(src.indexOf("async function pageTitle"), src.indexOf("async function pageTitle") + 600)), "and only reads it");
+});
 
 if (failures > 0) {
   console.error(`\n${failures} assertion(s) failed`);

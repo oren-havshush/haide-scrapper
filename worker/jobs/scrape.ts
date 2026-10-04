@@ -1024,6 +1024,18 @@ async function logSelectorDiagnostics(
   }
 }
 
+/**
+ * The page's title, for the blocked label (worker/lib/zeroMatch.ts). Read
+ * only: a Cloudflare challenge is recognised by it and never interacted with.
+ */
+async function pageTitle(page: Page): Promise<string | null> {
+  try {
+    return await page.title();
+  } catch {
+    return null;
+  }
+}
+
 async function extractWithExplicitItemSelector(
   page: Page,
   fieldMappings: Record<string, FieldMappingEntry>,
@@ -1444,7 +1456,8 @@ async function extractRawFieldsFromListingPageOnce(
       // that matches nothing is refused, never auto-detected (biopharmax's
       // "EN" job, night one). The manual path falls through, as before.
       console.warn(`[scrape] item selector matched nothing: ${listingSelector ?? "body"} ${itemSelector}`);
-      if (onExplicitZeroMatch(guard, `${listingSelector ?? "body"} ${itemSelector}`) === "refuse") return [];
+      const zeroMatchTitle = await pageTitle(page);
+      if (onExplicitZeroMatch(guard, `${listingSelector ?? "body"} ${itemSelector}`, zeroMatchTitle) === "refuse") return [];
     }
     console.warn("[scrape] Explicit itemSelector matched 0 items, falling through to auto-detect");
   }

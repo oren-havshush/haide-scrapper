@@ -10,6 +10,7 @@ import {
   type ReportItem,
   type ReportSweep,
 } from "./sweepReport";
+import { classifyOutcome } from "./sweepSelection";
 
 let failures = 0;
 function assert(cond: boolean, msg: string) {
@@ -370,6 +371,31 @@ check("silent drift is named", () => {
     computeCounters(sweep(), [drifted]).silentDrift === 1,
     "and the silentDrift counter is unchanged",
   );
+});
+
+check("a Cloudflare challenge is blocked, with its own line, and is not silent drift (owner, 2026-10-04)", () => {
+  // fritz, 2026-10-02.
+  const blocked = item({
+    siteId: "fz",
+    siteUrl: "https://fritz.test",
+    outcome: "soft_failure",
+    failureCategory: "blocked",
+    jobsBefore: 9,
+    jobsAfter: 9,
+    warnings: ["item_selector_zero_match: body .job_row", "blocked_challenge: Just a moment..."],
+  });
+  const lines = needsAttention(sweep(), [blocked, ...ok(2)]);
+  assert(lines.length === 1, `blocked needs attention (got ${lines.length})`);
+  assert(
+    lines[0]?.why ===
+      "blocked: the listing was a Cloudflare challenge (\"Just a moment...\"), not the site — nothing written, 9 listing(s) kept; nothing tried to pass it",
+    `its own wording (got "${lines[0]?.why}")`,
+  );
+  const c = computeCounters(sweep(), [blocked, ...ok(2)]);
+  assert(c.silentDrift === 0, `not silent drift (got ${c.silentDrift})`);
+  const text = renderSweepReport(sweep({ selectedCount: 3 }), [blocked, ...ok(2)], { timeZone: TZ });
+  assert(/\n\s+1 {2}blocked \(Cloudflare challenge\)/.test(text), `the Outcomes block counts it\n${text}`);
+  assert(classifyOutcome({ status: "COMPLETED", failureCategory: "blocked" }) === "soft_failure", "a blocked run is a soft failure, like a refusal");
 });
 
 check("a refused drop is named with both counts", () => {

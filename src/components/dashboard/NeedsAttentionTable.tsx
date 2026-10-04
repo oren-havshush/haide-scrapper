@@ -26,6 +26,9 @@ const FAILURE_LABELS: Record<string, string> = {
   listing_url_failed: "Listing Page Failed",
   listing_url_empty: "Listing Page Empty",
   listing_urls_removed: "Listing Pages Removed",
+  // A Cloudflare challenge was shown instead of the listing; rows kept. Not a
+  // site change, so a later retry is the action (worker/lib/zeroMatch.ts).
+  blocked: "Blocked (Cloudflare challenge)",
 };
 
 function getFailureLabel(category: string | null): string {

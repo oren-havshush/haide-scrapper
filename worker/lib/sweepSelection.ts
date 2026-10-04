@@ -75,6 +75,8 @@ export function classifyOutcome(run: {
   if (
     run.failureCategory === "empty_results" ||
     run.failureCategory === "structure_changed" ||
+    // A Cloudflare challenge instead of the listing (worker/lib/zeroMatch.ts).
+    run.failureCategory === "blocked" ||
     (run.failureCategory != null &&
       (LISTING_SOFT_CATEGORIES as readonly string[]).includes(run.failureCategory))
   ) {

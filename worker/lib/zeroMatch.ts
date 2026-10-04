@@ -28,18 +28,33 @@
 export const ZERO_MATCH_WARNING = "item_selector_zero_match";
 export const WRONG_SCOPE_WARNING = "item_scope_suspect";
 
+// The blocked label (owner, 2026-10-04). A zero match on a page whose title is
+// Cloudflare's challenge ("Just a moment...") is not a site change: the browser
+// was shown the challenge instead of the listing (fritz, 2026-10-02, back to 9
+// jobs the next night). Same refusal — nothing written, rows kept — under its
+// own category. The title is only read; nothing tries to pass the challenge.
+export const BLOCKED = "blocked";
+export const BLOCKED_WARNING = "blocked_challenge";
+
+/** Cloudflare's interstitial title. */
+export function isChallengeTitle(title: string | null | undefined): boolean {
+  return typeof title === "string" && /^\s*just a moment/i.test(title);
+}
+
 /** Per run. `zeroMatch` records the selector that matched nothing, when refused. */
 export type ExtractGuard = {
   noAutoDetect: boolean;
   /** A scheduled run closes a refusal COMPLETED; a manual one FAILED. */
   scheduled: boolean;
   zeroMatch: string | null;
+  /** The page title at that zero match, when it could be read. */
+  zeroMatchTitle: string | null;
   /** One warning per selector a scheduled run declined to swap for auto-detect. */
   scopeSuspects: Map<string, string>;
 };
 
 export function newExtractGuard(scheduled: boolean): ExtractGuard {
-  return { noAutoDetect: true, scheduled, zeroMatch: null, scopeSuspects: new Map() };
+  return { noAutoDetect: true, scheduled, zeroMatch: null, zeroMatchTitle: null, scopeSuspects: new Map() };
 }
 
 /**
@@ -71,9 +86,16 @@ export function scopeSuspectWarnings(guard: ExtractGuard | null): string[] {
  * The explicit item selector matched zero elements. "refuse" (and remember the
  * selector) for any run with a guard; "auto-detect" only for a caller with none.
  */
-export function onExplicitZeroMatch(guard: ExtractGuard | null, selector: string): "refuse" | "auto-detect" {
+export function onExplicitZeroMatch(
+  guard: ExtractGuard | null,
+  selector: string,
+  pageTitle: string | null = null,
+): "refuse" | "auto-detect" {
   if (!guard || !guard.noAutoDetect) return "auto-detect";
-  guard.zeroMatch = guard.zeroMatch ?? selector;
+  if (guard.zeroMatch === null) {
+    guard.zeroMatch = selector;
+    guard.zeroMatchTitle = pageTitle;
+  }
   return "refuse";
 }
 
@@ -85,8 +107,19 @@ export function onExplicitZeroMatch(guard: ExtractGuard | null, selector: string
 export function zeroMatchRefusal(
   guard: ExtractGuard | null,
   rowCount: number,
-): { failureCategory: "structure_changed"; runStatus: "COMPLETED" | "FAILED"; error: string; warnings: string[] } | null {
+): { failureCategory: "structure_changed" | "blocked"; runStatus: "COMPLETED" | "FAILED"; error: string; warnings: string[] } | null {
   if (!guard || !guard.noAutoDetect || !guard.zeroMatch || rowCount > 0) return null;
+  if (isChallengeTitle(guard.zeroMatchTitle)) {
+    const title = guard.zeroMatchTitle!.trim();
+    return {
+      failureCategory: BLOCKED,
+      runStatus: guard.scheduled ? "COMPLETED" : "FAILED",
+      error:
+        `item selector matched nothing: ${guard.zeroMatch} — the page was a Cloudflare challenge ("${title}"), ` +
+        "not the listing; previous listings kept",
+      warnings: [`${ZERO_MATCH_WARNING}: ${guard.zeroMatch}`, `${BLOCKED_WARNING}: ${title}`],
+    };
+  }
   return {
     failureCategory: "structure_changed",
     runStatus: guard.scheduled ? "COMPLETED" : "FAILED",
