@@ -3,6 +3,7 @@
 // guarded run. scripts/lib/fixPlan.test.ts covers both.
 
 import { createHash } from "node:crypto";
+import { VALUE_CHECK_QUEUE_CODES } from "../../worker/lib/valueChecks";
 
 /** Top-level body keys that are not stored under fieldMappings._meta. */
 const NOT_META = new Set(["fieldMappings", "pageFlow"]);
@@ -89,8 +90,9 @@ export type AcceptanceInput = {
 /**
  * Proceed to the promotion question only when the guarded run finished, its
  * sweep item says wouldPromoteTo ACTIVE, and no CHECK item for the fixed field
- * was opened during the run (a value check that fired again). The item being
- * fixed was opened before the run; an auto: item is the fix's own write.
+ * recurred: none was opened during the run, and no value-check item
+ * (worker/lib/valueChecks.ts) is still open after it. An auto: item is the
+ * fix's own write; any other item opened before the run does not block.
  */
 export function parseAcceptance(a: AcceptanceInput): { accept: boolean; reasons: string[] } {
   const reasons: string[] = [];
@@ -110,6 +112,11 @@ export function parseAcceptance(a: AcceptanceInput): { accept: boolean; reasons:
       if (i.field !== a.field || i.source !== "CHECK" || i.resolvedAt) continue;
       if (i.code.startsWith("auto:")) continue;
       if (Date.parse(i.openedAt) >= started) reasons.push(`CHECK ${i.code} on ${i.field} recurred on this run (item ${i.id})`);
+      // A value check that fires again keeps its old item (planFixItems never
+      // opens a second), and the run closes it when it stops firing. Still open
+      // once the run is done means it fired on this run (owner, 2026-10-04).
+      else if (VALUE_CHECK_QUEUE_CODES.has(i.code))
+        reasons.push(`CHECK ${i.code} on ${i.field} is still open after the guarded run: its check fired again (item ${i.id})`);
     }
   }
   return { accept: reasons.length === 0, reasons };

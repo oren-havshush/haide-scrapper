@@ -110,6 +110,35 @@ const field = "LOCATION";
   eq(parseAcceptance({ request: done(goodItem), items: [manual], field }).accept, true, "a MANUAL item does not block");
   const resolved = { ...recurring, resolvedAt: "2026-10-02T10:05:00.000Z" };
   eq(parseAcceptance({ request: done(goodItem), items: [resolved], field }).accept, true, "a resolved item does not block");
+
+  // Step 2b (owner, 2026-10-04): a value check that fires again keeps its old
+  // item open (planFixItems never reopens), so "opened during the run" cannot
+  // see it. A value-check item on the fixed field still unresolved once the
+  // guarded run is done means its check fired on that run: recurred.
+  const homograph = { id: "f3", field, source: "CHECK", code: "location_homograph", openedAt: "2026-10-01T23:00:00.000Z", resolvedAt: null };
+  const still = parseAcceptance({ request: done(goodItem), items: [homograph], field });
+  eq(still.accept, false, "a value-check item on the fixed field, opened before the run and still open after it: refuse");
+  assert(still.reasons.some((x) => x.includes("location_homograph") && x.includes("still open")), `and say so (${still.reasons.join("; ")})`);
+  eq(
+    parseAcceptance({ request: done(goodItem), items: [{ ...homograph, resolvedAt: "2026-10-02T10:05:00.000Z" }], field }).accept,
+    true,
+    "the run closed it: accept",
+  );
+  eq(
+    parseAcceptance({ request: done(goodItem), items: [{ ...homograph, field: "APPLY", code: "apply_honeypot_field" }], field }).accept,
+    true,
+    "a value-check item on another field does not block",
+  );
+  eq(
+    parseAcceptance({ request: done(goodItem), items: [{ ...homograph, source: "MANUAL" }], field }).accept,
+    true,
+    "an operator's MANUAL item never blocks, whatever its code",
+  );
+  eq(
+    parseAcceptance({ request: done(goodItem), items: [{ ...homograph, openedAt: "2026-10-02T10:03:00.000Z" }], field }).reasons.length,
+    1,
+    "an item opened during the run is named once, not twice",
+  );
 }
 
 if (failures > 0) {
