@@ -1,0 +1,138 @@
+{
+  "_exportedAt": "2026-10-04T06:55:24.161Z",
+  "_note": "Mirror of the live config. The DB is authoritative; the worker never reads this file. setupScript lives alongside in <slug>.setup.js.",
+  "id": "cmupmhjsy005201pdai27xg35",
+  "siteUrl": "https://simplyclub.co.il/%d7%9e%d7%a9%d7%a8%d7%95%d7%aa",
+  "companyName": "סימפלי קלאב בע\"מ",
+  "status": "ACTIVE",
+  "setupScriptFile": "simplyclub--27xg35.setup.js",
+  "pageFlow": [],
+  "fieldMappings": {
+    "_meta": {
+      "savedAt": "2026-10-01T14:23:44.892Z",
+      "pagination": null,
+      "formCapture": {
+        "fields": [
+          {
+            "name": "awsm_applicant_name",
+            "label": "שם מלא",
+            "tagName": "INPUT",
+            "required": true,
+            "fieldType": "text"
+          },
+          {
+            "name": "awsm_applicant_email",
+            "label": "אימייל",
+            "tagName": "INPUT",
+            "required": true,
+            "fieldType": "email"
+          },
+          {
+            "name": "awsm_applicant_phone",
+            "label": "טלפון / נייד",
+            "tagName": "INPUT",
+            "required": true,
+            "fieldType": "tel"
+          },
+          {
+            "name": "awsm_applicant_letter",
+            "label": "הערות",
+            "tagName": "TEXTAREA",
+            "required": true,
+            "fieldType": "textarea"
+          },
+          {
+            "name": "awsm_file",
+            "label": "העלאת קורות חיים",
+            "tagName": "INPUT",
+            "required": true,
+            "fieldType": "file"
+          },
+          {
+            "name": "awsm_job_id",
+            "label": "",
+            "tagName": "INPUT",
+            "required": false,
+            "fieldType": "hidden"
+          },
+          {
+            "name": "action",
+            "label": "",
+            "tagName": "INPUT",
+            "required": false,
+            "fieldType": "hidden"
+          },
+          {
+            "name": "awsm_nonce",
+            "label": "",
+            "tagName": "INPUT",
+            "required": false,
+            "fieldType": "hidden"
+          },
+          {
+            "name": "_wp_http_referer",
+            "label": "",
+            "tagName": "INPUT",
+            "required": false,
+            "fieldType": "hidden"
+          }
+        ],
+        "method": "POST",
+        "actionUrl": "https://simplyclub.co.il/wp-admin/admin-ajax.php",
+        "formSelector": "form#awsm-application-form"
+      },
+      "listingUrls": null,
+      "itemSelector": ".awsm-job-listing-item",
+      "minPublishDate": null,
+      "minPublishDays": null,
+      "revealSelector": null,
+      "listingSelector": null,
+      "applyLoginReason": null,
+      "browserOverrides": null,
+      "loadMoreSelector": null,
+      "locationFallback": null,
+      "originalMappings": null,
+      "applyRequiresLogin": false
+    },
+    "title": {
+      "source": "manual",
+      "selector": ".__ai-title",
+      "confidence": 0.95
+    },
+    "location": {
+      "source": "manual",
+      "selector": ".__ai-location",
+      "confidence": 0.95
+    },
+    "detailUrl": {
+      "source": "manual",
+      "selector": ".__ai-url",
+      "confidence": 0.95
+    },
+    "department": {
+      "source": "manual",
+      "selector": ".__ai-dept",
+      "confidence": 0.9
+    },
+    "description": {
+      "source": "manual",
+      "selector": ".__ai-description",
+      "confidence": 0.9
+    },
+    "publishDate": {
+      "source": "manual",
+      "selector": ".__ai-date",
+      "confidence": 0.9
+    },
+    "requirements": {
+      "source": "manual",
+      "selector": ".__ai-requirements",
+      "confidence": 0.85
+    },
+    "externalJobId": {
+      "source": "manual",
+      "selector": ".__ai-eid",
+      "confidence": 0.95
+    }
+  }
+}
