@@ -198,12 +198,13 @@ assert(text.includes("\nWarnings ("), "the report has a Warnings section");
     `the Warnings header counts every site whose run warned (${withWarnings})`,
   );
 
-  // Every warning is COUNTED under its type; only the two that are about a
-  // particular site name one. This fixture is the argument: 61 of these 140
-  // sites warned, and naming all of them produced a section longer than the
-  // rest of the report, almost entirely location-quality lines that are fixed
-  // by changing a rule once — not by visiting 61 sites.
-  const NAMED = new Set(["job_count_drop", "near_timeout"]);
+  // Every warning is COUNTED under its type; the types that are about a
+  // particular site name one. On this night 61 of 140 sites warned. Until step
+  // 2b only job_count_drop and near_timeout were named (8 lines). Since step 2b
+  // (owner, 2026-10-03) unknown_location_rate, region_over_city and
+  // listing_vs_saved_gap are fix-queue items and name their site too: on this
+  // night that is 58 lines.
+  const NAMED = new Set(["job_count_drop", "near_timeout", "unknown_location_rate", "region_over_city", "listing_vs_saved_gap"]);
   const section = text.slice(text.indexOf("\nWarnings ("));
   const seenTypes = new Set<string>();
   for (const i of items) {
@@ -224,19 +225,14 @@ assert(text.includes("\nWarnings ("), "the report has a Warnings section");
   assert(seenTypes.has("job_count_drop"), "including the one that names sites");
 
   // The size of the thing, in the real numbers. That night: 61 sites warned,
-  // 70 warnings across 6 types. 8 of them were job_count_drop and none was
-  // near_timeout, so the section carries 8 site lines instead of 70 — and the
-  // 41 location-quality warnings that dominate it are a count, which is what
-  // an operator can act on anyway.
+  // 70 warnings across 6 types: 8 job_count_drop, 22 unknown_location_rate,
+  // 19 region_over_city and 10 listing_vs_saved_gap are named (58 lines); the
+  // other 12 are a count.
   const namedLines = (section.match(/\n {4}https:\/\//g) ?? []).length;
   const totalWarnings = items.reduce((n, i) => n + (i.warnings ?? []).length, 0);
   assert(withWarnings === 61, `61 sites warned (got ${withWarnings})`);
   assert(totalWarnings === 70, `70 warnings in total (got ${totalWarnings})`);
-  assert(namedLines === 8, `and the section names 8 of them (got ${namedLines})`);
-  assert(
-    namedLines < totalWarnings / 5,
-    "a small fraction of the warnings, which is the whole point of the change",
-  );
+  assert(namedLines === 58, `and the section names 58 of them (got ${namedLines})`);
 }
 
 if (failures > 0) {

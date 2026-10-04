@@ -115,6 +115,10 @@ const WARNINGS_THAT_NAME_SITES: ReadonlySet<string> = new Set([
   // A stored location override not on city.csv (owner, 2026-10-02): one line
   // per job, so the operator can correct or delete that override.
   "override_off_list",
+  // Step 2b (owner, 2026-10-03): fix-queue items, each about one site.
+  "unknown_location_rate",
+  "region_over_city",
+  "listing_vs_saved_gap",
 ]);
 
 export type ReportOptions = {

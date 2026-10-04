@@ -4,7 +4,14 @@ import { firstSeenFor } from "../lib/firstSeen";
 import { extractLiveFormData } from "../lib/formExtract";
 import { stampFormData, staticFormBlob } from "../lib/formFields";
 import { completeFormBlob } from "../lib/formShape";
-import { applyReplayTokenFinding, applyReplayTokenWarning } from "../lib/valueChecks";
+import {
+  jobKeyOf,
+  planValueCheckItems,
+  runValueChecks,
+  VALUE_CHECK_QUEUE_CODES,
+  type PreviousIdentity,
+  type ValueCheckFinding,
+} from "../lib/valueChecks";
 import type { WorkerJob, Site } from "../../src/generated/prisma/client";
 import { Prisma } from "../../src/generated/prisma/client";
 import { launchBrowser, createPage, closeBrowser, type BrowserOverrides } from "../lib/playwright";
@@ -21,7 +28,6 @@ import {
   normalizeJobRecord,
   resolveMetaMinPublishDate,
   computeAgeBucket,
-  extractLocationFromGazetteer,
 } from "../lib/normalizer";
 import type { NormalizedJobRecord } from "../lib/normalizer";
 import { overrideKeys, overrideOffListWarning, resolveJobLocation, type PreviousLocation } from "../lib/jobLocation";
@@ -2800,125 +2806,6 @@ function buildScrapeWarnings(args: {
   return warnings;
 }
 
-/** Warn when this share of a site's jobs end up with no usable location. */
-const UNKNOWN_LOCATION_WARN_RATIO = 0.4;
-
-/**
- * Values that are never a workplace. Each of these is a bug we have actually
- * shipped: gazetteer false positives where a common Hebrew word doubles as a
- * place name ("באזור" = in the area of, "במשמרות" = in shifts, "משרה מלאה" =
- * full-time), and unfilled <select> placeholders scraped verbatim.
- */
-const NON_PLACE_LOCATIONS = new Set([
-  "אזור",
-  "משמרות",
-  "מלאה",
-  "מצליח",
-  "בחר",
-  "בחר אזור",
-  "בחר עיר",
-  "בחר תחום",
-]);
-
-/**
- * Coarse values that are legitimate on their own — plenty of boards only
- * publish a region — but wrong when the ad names an actual city. Used only for
- * the region-over-city check below, never flagged by themselves.
- */
-const COARSE_LOCATIONS = new Set([
-  "צפון",
-  "דרום",
-  "מרכז",
-  "מזרח",
-  "מערב",
-  "הצפון",
-  "הדרום",
-  "המרכז",
-  "אזור צפון",
-  "אזור דרום",
-  "אזור מרכז",
-  "השרון",
-  "השפלה",
-]);
-
-/**
- * Location-quality warnings for a finished scrape (non-blocking, like the rest).
- *
- * This is the enforcement half of the location work: measurement already
- * existed, but nothing surfaced a regression, so every bad value so far was
- * found by a human reading rows. Three signals, each one an actual past defect:
- *
- *  - unknown_location_rate — the site stopped yielding locations at all
- *  - non_place_location    — a value that cannot be a workplace
- *  - region_over_city      — we stored a coarse region while the ad names a
- *                            city (tigbur job 232880: stored אזור צפון, the ad
- *                            said "בצפון ת\"א")
- *
- * Deliberately NOT flagged: a coarse region on its own. Many boards publish
- * nothing finer, and warning on those would bury the real signals in noise.
- */
-function buildLocationWarnings(
-  jobs: {
-    location: string | null;
-    title: string | null;
-    description: string | null;
-    requirements: string | null;
-  }[],
-): string[] {
-  if (jobs.length === 0) return [];
-  const warnings: string[] = [];
-
-  const unknown = jobs.filter(
-    (j) => !j.location || j.location.trim() === "" || j.location === "Unknown",
-  ).length;
-  if (unknown / jobs.length > UNKNOWN_LOCATION_WARN_RATIO) {
-    warnings.push(
-      `unknown_location_rate: ${unknown}/${jobs.length} job(s) have no location ` +
-        `(${Math.round((unknown / jobs.length) * 100)}%)`,
-    );
-  }
-
-  const nonPlace = new Map<string, number>();
-  let regionOverCity = 0;
-  let regionOverCityExample = "";
-  for (const j of jobs) {
-    const loc = (j.location ?? "").trim();
-    if (!loc) continue;
-    if (NON_PLACE_LOCATIONS.has(loc)) {
-      nonPlace.set(loc, (nonPlace.get(loc) ?? 0) + 1);
-      continue;
-    }
-    if (COARSE_LOCATIONS.has(loc)) {
-      const text = [j.title, j.description, j.requirements]
-        .filter(Boolean)
-        .join("\n");
-      // The first place the ad names at one of its own anchors, if any.
-      const city = (text ? extractLocationFromGazetteer(text) : [])[0] ?? null;
-      if (city && city !== loc && !COARSE_LOCATIONS.has(city)) {
-        regionOverCity++;
-        if (!regionOverCityExample) regionOverCityExample = `${loc} -> ${city}`;
-      }
-    }
-  }
-
-  if (nonPlace.size > 0) {
-    const detail = [...nonPlace.entries()]
-      .sort((a, b) => b[1] - a[1])
-      .map(([v, n]) => `"${v}"×${n}`)
-      .join(", ");
-    warnings.push(`non_place_location: ${detail} — not a workplace`);
-  }
-
-  if (regionOverCity > 0) {
-    warnings.push(
-      `region_over_city: ${regionOverCity} job(s) stored a region while the ad ` +
-        `names a city (e.g. ${regionOverCityExample})`,
-    );
-  }
-
-  return warnings;
-}
-
 // ---------------------------------------------------------------------------
 // Main: handleScrapeJob
 // ---------------------------------------------------------------------------
@@ -3559,12 +3446,33 @@ function getConfigSavedAt(fieldMappingsRaw: unknown): string | null {
   return typeof savedAt === "string" && savedAt.length > 0 ? savedAt : null;
 }
 
-async function readPreviousLocations(siteId: string): Promise<Map<string, PreviousLocation>> {
+/**
+ * The site's rows as published before this run's delete: each job's location
+ * by key, and — for the external_job_id_churn check (worker/lib/valueChecks.ts)
+ * — every row's identity. One read serves both.
+ */
+async function readPreviousLocations(
+  siteId: string,
+): Promise<{ locations: Map<string, PreviousLocation>; identities: PreviousIdentity[] }> {
   try {
     const rows = await prisma.job.findMany({
       where: { siteId },
-      select: { externalJobId: true, detailUrl: true, location: true, locations: true, firstSeenAt: true },
+      select: {
+        externalJobId: true,
+        detailUrl: true,
+        location: true,
+        locations: true,
+        firstSeenAt: true,
+        title: true,
+        department: true,
+      },
     });
+    const identities: PreviousIdentity[] = rows.map((r) => ({
+      externalJobId: r.externalJobId,
+      detailUrl: r.detailUrl,
+      title: r.title,
+      department: r.department,
+    }));
     const out = new Map<string, PreviousLocation>();
     const ambiguous = new Set<string>();
     for (const r of rows) {
@@ -3581,15 +3489,16 @@ async function readPreviousLocations(siteId: string): Promise<Map<string, Previo
         `[scrape] ${ambiguous.size} previous job key(s) are not unique; those rows carry nothing forward`,
       );
     }
-    return out;
+    return { locations: out, identities };
   } catch (err) {
     // Same trade as the listing counts above: losing the baseline costs the
-    // carry-forward, which is far smaller than failing a working scrape.
+    // carry-forward (and tonight's churn check), which is far smaller than
+    // failing a working scrape.
     console.warn(
       "[scrape] could not read previous locations:",
       err instanceof Error ? err.message : String(err),
     );
-    return new Map();
+    return { locations: new Map(), identities: [] };
   }
 }
 
@@ -4318,7 +4227,7 @@ async function executeScrape(
 
   // What this site publishes for each job right now. Read BEFORE the
   // delete/re-create, because after it there is nothing left to read.
-  const previousLocations = await readPreviousLocations(site.id);
+  const { locations: previousLocations, identities: previousIdentities } = await readPreviousLocations(site.id);
 
   // Site-level default location (e.g. company HQ) for jobs that print none of
   // their own. Applied below only after extraction comes up empty AND the job
@@ -4651,13 +4560,36 @@ async function executeScrape(
     const savedJobs = await prisma.job.findMany({
       where: { scrapeRunId },
       select: {
+        externalJobId: true,
+        detailUrl: true,
+        department: true,
         location: true,
+        locations: true,
         title: true,
         description: true,
         requirements: true,
+        publishDate: true,
+        ageBucket: true,
       },
     });
-    scrapeWarnings.push(...buildLocationWarnings(savedJobs));
+    // The value checks (addsite2 phase two, step 2b; worker/lib/valueChecks.ts),
+    // once per run, manual and scheduled alike. They warn and queue; nothing
+    // here blocks or undoes the write above.
+    const checks = runValueChecks({
+      saved: savedJobs,
+      previous: previousIdentities,
+      formBlobs: rows.map((r) => ({
+        key: jobKeyOf({ externalJobId: r.externalJobId ?? null, detailUrl: r.detailUrl ?? null, title: r.title }),
+        formData: ((r.rawData ?? {}) as Record<string, unknown>)["_formData"] as string | undefined,
+      })),
+      idSeeds: recordsToPersist.map(({ normalized }, i) => ({
+        extracted: normalized.externalJobId,
+        id: idFallback.ids[i] ?? null,
+      })),
+      listingItemsSeen: context.listingItemsSeen ?? null,
+      savedCount,
+    });
+    scrapeWarnings.push(...checks.warnings);
     // Stored location overrides not on city.csv, skipped by the gate (worker/lib/jobLocation.ts).
     scrapeWarnings.push(...overrideWarnings);
     // What each listing page contributed, saved/seen. Only present on a site
@@ -4666,59 +4598,46 @@ async function executeScrape(
     scrapeWarnings.push(...listingWarnings);
     // Carry-forward silently off for this site tonight (worker/lib/detailPlan.ts).
     if (detailChurnWarning) scrapeWarnings.push(detailChurnWarning);
-    // Apply forms whose captured fields are per-session (a nonce, an
-    // anti-forgery token, a captcha): the operator is told they cannot be
-    // replayed server-side (worker/lib/valueChecks.ts).
-    const replay = applyReplayTokenFinding(
-      rows.map((r) => ((r.rawData ?? {}) as Record<string, unknown>)["_formData"] as string | undefined),
-    );
-    if (replay) scrapeWarnings.push(applyReplayTokenWarning(replay));
     // A selector kept although auto-detect found more rows (worker/lib/zeroMatch.ts).
     scrapeWarnings.push(...scopeSuspectWarnings(runMode.extract));
-    // TIER 1 — cards shown on the listing vs rows actually written. The gap is
-    // never an error on its own: true duplicate postings, dead detail pages
-    // skipped by design, validator rejects, the maxJobs cap and cards with no
-    // http apply link are all legitimate. But nothing else measures it, and it
-    // is the only in-run signal for a dedup collapse (samelet shipped 7 of 8
-    // jobs on a reused requisition number) or for cards silently dropped for
-    // want of a detail URL. Reported, never enforced.
-    if (
-      context.listingItemsSeen != null &&
-      context.listingItemsSeen > savedCount &&
-      savedCount > 0
-    ) {
-      const lost = context.listingItemsSeen - savedCount;
-      scrapeWarnings.push(
-        `listing_vs_saved_gap: ${context.listingItemsSeen} card(s) on the listing but ` +
-          `${savedCount} job(s) saved (${lost} unaccounted) — check for duplicate ids, ` +
-          `cards with no detail URL, or rejected records`,
-      );
-    }
-
-    // The site has no id mapping and is leaning on the synthesised fallback.
-    // Not a failure — it scrapes and passes the activation gate — but a native
-    // id is always better, so make the reliance visible rather than silent.
-    if (idFallback.synthesized > 0) {
-      scrapeWarnings.push(
-        `synthesised_external_job_id: ${idFallback.synthesized}/${recordsToPersist.length} job(s) ` +
-          `had no externalJobId and were keyed on a content hash — prefer a native id`,
-      );
-    }
-    // Two jobs hashed identically (same title, department and detail URL), so
-    // they collapse into one row. This is the silent job-loss class in
-    // LRN-ID-8 and it does need a human.
-    if (idFallback.collisions > 0) {
-      scrapeWarnings.push(
-        `synthesised_id_collision: ${idFallback.collisions} job(s) share a synthesised id ` +
-          `and will dedup into one row — the site needs a real externalJobId`,
-      );
-    }
     if (scrapeWarnings.length > 0) {
       await prisma.scrapeRun.update({
         where: { id: scrapeRunId },
         data: { warnings: scrapeWarnings },
       });
       console.warn(`[scrape] completion warnings for ${site.id}:`, scrapeWarnings);
+    }
+
+    // The fix queue (step 1a's planFixItems): a check that fires opens a CHECK
+    // item once, a check that stopped firing closes its item. Only the codes
+    // runValueChecks queues take part; auto: items, other checks' items and
+    // MANUAL items are never touched. An open item that fires again gets
+    // tonight's detail and jobs.
+    const openItems = await prisma.fixItem.findMany({
+      where: { siteId: site.id, source: "CHECK", resolvedAt: null, code: { in: [...VALUE_CHECK_QUEUE_CODES] } },
+      select: { id: true, source: true, code: true, field: true },
+    });
+    const queue = planValueCheckItems(checks.findings, openItems);
+    const now = new Date();
+    for (const f of queue.open as ValueCheckFinding[]) {
+      await prisma.fixItem.create({
+        data: { siteId: site.id, field: f.field, source: "CHECK", code: f.code, detail: f.detail ?? null, jobIds: f.jobIds, openedAt: now },
+      });
+    }
+    if (queue.close.length > 0) {
+      await prisma.fixItem.updateMany({
+        where: { id: { in: queue.close.map((c) => c.id) } },
+        data: { resolvedAt: now, resolvedBy: "CHECK" },
+      });
+    }
+    for (const item of openItems) {
+      const f = checks.findings.find((x) => x.code === item.code);
+      if (f && queue.keep.includes(item.id)) {
+        await prisma.fixItem.update({ where: { id: item.id }, data: { detail: f.detail ?? null, jobIds: f.jobIds } });
+      }
+    }
+    if (queue.open.length + queue.close.length > 0) {
+      console.info(`[scrape] fix queue for ${site.id}: opened ${queue.open.length}, closed ${queue.close.length}`);
     }
   } catch (err) {
     // Warnings are best-effort telemetry — never fail a good scrape over them.

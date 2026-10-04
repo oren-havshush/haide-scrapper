@@ -267,6 +267,20 @@ console.log("# 4 — fresh-window skips are one line");
   assert(!/too recent to scrape/.test(plain), "and the line is absent when nothing was fresh-skipped");
 }
 
+// ---------------------------------------------------------------------------
+console.log("# 5 — the step 2b checks that are queue items name their site (owner, 2026-10-03)");
+// ---------------------------------------------------------------------------
+{
+  const text = render([
+    item({ siteId: "r", siteUrl: "https://region.test", warnings: ["region_over_city: 1 job(s) stored a region while the ad names a city (e.g. השפלה -> גבעת שמואל)"] }),
+    item({ siteId: "g", siteUrl: "https://gap.test", warnings: ["listing_vs_saved_gap: 8 card(s) on the listing but 7 job(s) saved (1 unaccounted)"] }),
+    item({ siteId: "u", siteUrl: "https://unknown.test", warnings: ["unknown_location_rate: 3/5 job(s) have no location (60%)"] }),
+  ]);
+  assert(/region_over_city \(1\)\n\s+https:\/\/region\.test — 1 job\(s\)/.test(text), `region_over_city names its site\n${text}`);
+  assert(/listing_vs_saved_gap \(1\)\n\s+https:\/\/gap\.test — 8 card\(s\)/.test(text), "listing_vs_saved_gap names its site");
+  assert(/unknown_location_rate \(1\)\n\s+https:\/\/unknown\.test — 3\/5/.test(text), "unknown_location_rate names its site");
+}
+
 if (failures > 0) {
   console.error(`\n${failures} assertion(s) failed`);
   process.exit(1);
