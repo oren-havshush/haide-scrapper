@@ -4102,3 +4102,19 @@
 - **Also:** QA's `NEEDS_MANUAL` here is OneTrust's `#filter-apply-handler` (`LRN-FORM-9`).
 - **Generalizes to:** every ASSA ABLOY brand site on OneCMS (`/etc.clientlibs/assa-abloy-onecms/`).
   **Home:** `addsite2-recipes/setupscript-patterns.md` §11; `company-profile.md` §4.5.
+
+### LRN-ID-12 — A printed job number shared by two different postings
+- **Date:** 2026-10-04
+- **Site:** shapir.co.il (`cmutiiuct000201rrqifp8081`)
+- **Signal:** every title prints `משרה [מס] N`, but 3 of 74 numbers (3582, 3644, 3645) each sit on
+  two postings with different bodies and regions. Plain `<site>-N` would let dedup keep one of each
+  pair and silently drop 3 real postings. `verify-jobids` cannot see this: it only checks the ids it
+  is given, and after the collapse those are already distinct.
+- **Fix (owner, 2026-10-04):** keep `<site>-N` for unique numbers; for a colliding number, BOTH
+  postings get `<site>-N-haideHash(slug)` (slug from the per-job share URL, even though that URL
+  itself returns 500). The known colliding numbers are pinned in the setupScript, so a pair losing
+  one member does not re-key the survivor; a new clash is detected at runtime by counting numbers
+  on the page. Not the WordPress post id (owner rule: never a post id).
+- **Check:** before the first config, count distinct printed numbers against the item count; on a
+  clash, diff the bodies to tell a re-post (same text) from two vacancies.
+- **Generalizes to:** any board whose recruiters reuse a req number across regional variants.

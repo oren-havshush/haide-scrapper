@@ -1,0 +1,127 @@
+{
+  "_exportedAt": "2026-10-04T09:03:05.046Z",
+  "_note": "Mirror of the live config. The DB is authoritative; the worker never reads this file. setupScript lives alongside in <slug>.setup.js.",
+  "id": "cmutiiuct000201rrqifp8081",
+  "siteUrl": "https://www.shapir.co.il/%D7%93%D7%A8%D7%95%D7%A9%D7%99%D7%9D/",
+  "companyName": "קבוצת שפיר",
+  "status": "ACTIVE",
+  "setupScriptFile": "shapir--fp8081.setup.js",
+  "pageFlow": [],
+  "fieldMappings": {
+    "_meta": {
+      "savedAt": "2026-10-04T08:58:49.217Z",
+      "pagination": null,
+      "formCapture": {
+        "fields": [
+          {
+            "name": "firstName",
+            "label": "שם פרטי",
+            "tagName": "INPUT",
+            "required": true,
+            "fieldType": "text"
+          },
+          {
+            "name": "lastName",
+            "label": "שם משפחה",
+            "tagName": "INPUT",
+            "required": true,
+            "fieldType": "text"
+          },
+          {
+            "name": "phone",
+            "label": "מספר טלפון",
+            "tagName": "INPUT",
+            "required": true,
+            "fieldType": "tel"
+          },
+          {
+            "name": "email",
+            "label": "דוא'ל",
+            "tagName": "INPUT",
+            "required": true,
+            "fieldType": "email"
+          },
+          {
+            "name": "notes",
+            "label": "ספר לנו על עצמך",
+            "tagName": "TEXTAREA",
+            "required": true,
+            "fieldType": "textarea"
+          },
+          {
+            "name": "cv",
+            "label": "צרף קובץ קו\"ח",
+            "tagName": "INPUT",
+            "required": true,
+            "fieldType": "file"
+          },
+          {
+            "name": "jobTitle",
+            "label": "jobTitle",
+            "tagName": "INPUT",
+            "required": false,
+            "fieldType": "hidden"
+          },
+          {
+            "name": "jobID",
+            "label": "jobID",
+            "tagName": "INPUT",
+            "required": false,
+            "fieldType": "hidden"
+          }
+        ],
+        "method": "POST",
+        "actionUrl": "https://www.shapir.co.il/wp-content/themes/shapir-theme/api/",
+        "formSelector": "form#submitCV:has(input[type=\"file\"][name])"
+      },
+      "listingUrls": null,
+      "itemSelector": ".job-collapsible",
+      "minPublishDate": null,
+      "minPublishDays": null,
+      "revealSelector": null,
+      "listingSelector": null,
+      "applyLoginReason": null,
+      "browserOverrides": null,
+      "loadMoreSelector": null,
+      "locationFallback": null,
+      "originalMappings": null,
+      "applyRequiresLogin": false
+    },
+    "title": {
+      "source": "MANUAL",
+      "selector": ".__ai-title",
+      "confidence": 1,
+      "capturedOnUrl": "https://www.shapir.co.il/%D7%93%D7%A8%D7%95%D7%A9%D7%99%D7%9D/"
+    },
+    "location": {
+      "source": "MANUAL",
+      "selector": ".__ai-location",
+      "confidence": 1,
+      "capturedOnUrl": "https://www.shapir.co.il/%D7%93%D7%A8%D7%95%D7%A9%D7%99%D7%9D/"
+    },
+    "description": {
+      "source": "MANUAL",
+      "selector": ".__ai-description",
+      "confidence": 1,
+      "capturedOnUrl": "https://www.shapir.co.il/%D7%93%D7%A8%D7%95%D7%A9%D7%99%D7%9D/"
+    },
+    "requirements": {
+      "source": "MANUAL",
+      "selector": ".__ai-requirements",
+      "confidence": 1,
+      "capturedOnUrl": "https://www.shapir.co.il/%D7%93%D7%A8%D7%95%D7%A9%D7%99%D7%9D/"
+    },
+    "externalJobId": {
+      "source": "MANUAL",
+      "selector": ".__ai-id",
+      "confidence": 1,
+      "capturedOnUrl": "https://www.shapir.co.il/%D7%93%D7%A8%D7%95%D7%A9%D7%99%D7%9D/"
+    },
+    "employmentType": {
+      "source": "MANUAL",
+      "selector": ".__ai-type",
+      "confidence": 1,
+      "capturedOnUrl": "https://www.shapir.co.il/%D7%93%D7%A8%D7%95%D7%A9%D7%99%D7%9D/"
+    }
+  }
+}

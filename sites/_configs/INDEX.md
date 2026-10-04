@@ -178,6 +178,7 @@ several listing pages back into one and stops publishing the rest.
 | קבוצת כהנא | ACTIVE | 6 | 2074 | 1 | `kahane--8cvjyo` |
 | קבוצת כלמוביל | ACTIVE | 6 | 5430 | 1 | `colmobil--39frf6` |
 | קבוצת שגריר שרותי רכב בעמ | ACTIVE | 6 | 2367 | 1 | `shagrir--i3nkhe` |
+| קבוצת שפיר | ACTIVE | 6 | 7396 | 1 | `shapir--fp8081` |
 | קדמי ביטוח | ACTIVE | 5 | 1209 | 1 | `kedmi770--e2pnpm` |
 | קופת חולים מכבי | ACTIVE | 6 | 2407 | 1 | `maccabi4u--eazu8j` |
 | קידום | ACTIVE | 8 | 6139 | 1 | `kidum--wb3q8e` |
