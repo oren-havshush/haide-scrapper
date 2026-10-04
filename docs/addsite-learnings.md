@@ -4141,3 +4141,23 @@
 - **Check:** before the first config, count distinct printed numbers against the item count; on a
   clash, diff the bodies to tell a re-post (same text) from two vacancies.
 - **Generalizes to:** any board whose recruiters reuse a req number across regional variants.
+
+---
+
+## LRN-SETUP-22 — a WPBakery (`vc_grid`) listing re-renders its cards after load and wipes injected spans
+
+- **Date / site:** 2026-10-04 · ledico.com/careers (BeTheme + WPBakery "load-more" grids).
+- **Signal:** the setupScript runs to completion (a trace shows every card fetched and every field
+  built), yet reading the cards afterwards finds **no** `.__ai-*` span at all — every injected field
+  reads `null`, while the cards and their titles are still there.
+- **Mechanism:** the grid HTML is server-rendered, so the cards exist when the script starts, but
+  WPBakery's own JS then fetches `vc_get_vc_grid_data` and replaces the grid's contents. The spans
+  were appended to nodes that no longer exist. The stable-count poll (`LRN-SETUP-13`) does not catch
+  this, because the count is the same before and after the swap.
+- **Fix:** do not attach to the cards. Read `{href, title}` from them, then build a hidden
+  `#haide-jobs-root` with one `[data-haide-job]` per job (an `a.__ai-link` for `detailUrl` plus the
+  `.__ai-*` fields) and point `itemSelector` at it, as in the heara pattern. The page's re-render
+  cannot touch a root it does not own.
+- **Generalizes to:** any listing whose framework hydrates or re-fetches a server-rendered list
+  (WPBakery grids, Elementor loop grids, some Jet listings). The tell is that the script logs success
+  and the fields are still empty.
