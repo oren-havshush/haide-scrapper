@@ -4161,3 +4161,22 @@
 - **Generalizes to:** any listing whose framework hydrates or re-fetches a server-rendered list
   (WPBakery grids, Elementor loop grids, some Jet listings). The tell is that the script logs success
   and the fields are still empty.
+
+## LRN-HQ-9 — a street named after a person whose name is a city: `שד’ אריאל שרון` read as `אריאל`, and the training facility taken for the HQ
+
+- **Date / site:** 2026-10-04 · ofeksec.org.il (מערך אופק).
+- **Signal:** the `company-profile` dry run reported `COMPLETE … city=אריאל`, address `שד’ אריאל שרון 3`.
+  Ariel Sharon Boulevard is a street; `אריאל` is a real city.csv entry, so the city gate passed it.
+- **What was true:** the contact page prints two labelled addresses, `מתקן הדרכה: שד’ אריאל שרון 3,
+  אור יהודה` and `המשרדים שלנו: שד’ אריאל שרון 8, אור יהודה`. The capture took the first street line
+  (the training facility) and the first city-looking word in it, never reaching the real city on the
+  next line.
+- **Fix (operator paths, owner decision, no extractor change):** `PUT /company-hq-city` `אור יהודה`
+  (`operator`) BEFORE the real run, so the capture kept it; after the run, `PUT /company-profile?force=1`
+  with only `companyHqAddress` (the offices line, verbatim) and `companyAbout`.
+- **Rule:** when the captured city is a word inside the street name, it is the street, not the city.
+  Read the line after the street line. When a page labels several addresses, the HQ is the one
+  labelled as offices (`המשרדים`, `משרדי החברה`, `הנהלה`), never a training site, warehouse or branch.
+- **Generalises to:** streets named after people whose names contain a city.csv entry (אריאל שרון →
+  `אריאל`, יגאל אלון → `אלון`; both checked against city.csv). Same family as the `LRN-HQ-8` idiom
+  and the deferred Hebrew-prefix city follow-up.
