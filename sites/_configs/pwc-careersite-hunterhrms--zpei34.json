@@ -1,0 +1,143 @@
+{
+  "_exportedAt": "2026-10-04T11:20:07.758Z",
+  "_note": "Mirror of the live config. The DB is authoritative; the worker never reads this file. setupScript lives alongside in <slug>.setup.js.",
+  "id": "cmutms886005801rryuzpei34",
+  "siteUrl": "https://pwc-careersite.hunterhrms.com/",
+  "companyName": "PwC Israel",
+  "status": "ACTIVE",
+  "setupScriptFile": "pwc-careersite-hunterhrms--zpei34.setup.js",
+  "pageFlow": [
+    {
+      "url": "https://pwc-careersite.hunterhrms.com/",
+      "action": "navigate"
+    },
+    {
+      "url": "https://pwc-careersite.hunterhrms.com/job?jid=*",
+      "action": "a.__ai-link"
+    }
+  ],
+  "fieldMappings": {
+    "_meta": {
+      "savedAt": "2026-10-04T10:59:00.035Z",
+      "pagination": null,
+      "formCapture": {
+        "fields": [
+          {
+            "name": "employeeFullname",
+            "label": "שם מלא",
+            "tagName": "input",
+            "required": true,
+            "fieldType": "text"
+          },
+          {
+            "name": "employeeEmail",
+            "label": "כתובת דוא\"ל",
+            "tagName": "input",
+            "required": true,
+            "fieldType": "email"
+          },
+          {
+            "name": "employeePhoneNumber",
+            "label": "נייד",
+            "tagName": "input",
+            "required": true,
+            "fieldType": "text"
+          },
+          {
+            "name": "personalNote",
+            "label": "הערות",
+            "tagName": "textarea",
+            "required": false,
+            "fieldType": "textarea"
+          },
+          {
+            "name": "resume",
+            "label": "קובץ קורות חיים",
+            "tagName": "input",
+            "required": true,
+            "fieldType": "file"
+          },
+          {
+            "name": "agreeToTerms",
+            "label": "אני מאשר/ת כי המידע שמסרתי ישמש את PwC Israel לצורך בחינת מועמדותי",
+            "tagName": "input",
+            "required": false,
+            "fieldType": "checkbox"
+          },
+          {
+            "name": "pwcUpdatesAgreed",
+            "label": "אני מאשר/ת ל-PwC Israel לשלוח לי עדכונים מעת לעת",
+            "tagName": "input",
+            "required": false,
+            "fieldType": "checkbox"
+          }
+        ],
+        "method": "POST",
+        "enctype": "multipart/form-data",
+        "actionUrl": "https://niloo-server.herokuapp.com/actions-pwc-career",
+        "formSelector": "form:has(input[name=\"employeeFullname\"])"
+      },
+      "listingUrls": null,
+      "itemSelector": ".__ai-job",
+      "minPublishDate": null,
+      "minPublishDays": null,
+      "revealSelector": null,
+      "listingSelector": null,
+      "applyLoginReason": null,
+      "browserOverrides": null,
+      "loadMoreSelector": null,
+      "locationFallback": null,
+      "originalMappings": null,
+      "applyRequiresLogin": false
+    },
+    "title": {
+      "source": "MANUAL",
+      "selector": ".__ai-title",
+      "confidence": 0.95,
+      "capturedOnUrl": "https://pwc-careersite.hunterhrms.com/"
+    },
+    "location": {
+      "source": "MANUAL",
+      "selector": ".__ai-location",
+      "confidence": 0.95,
+      "capturedOnUrl": "https://pwc-careersite.hunterhrms.com/"
+    },
+    "detailUrl": {
+      "source": "MANUAL",
+      "selector": "a.__ai-link",
+      "confidence": 0.95,
+      "extractAttr": "href",
+      "capturedOnUrl": "https://pwc-careersite.hunterhrms.com/"
+    },
+    "department": {
+      "source": "MANUAL",
+      "selector": ".__ai-dept",
+      "confidence": 0.95,
+      "capturedOnUrl": "https://pwc-careersite.hunterhrms.com/"
+    },
+    "description": {
+      "source": "MANUAL",
+      "selector": "#__ai-detail .__ai-description",
+      "confidence": 0.95,
+      "capturedOnUrl": "https://pwc-careersite.hunterhrms.com/job?jid=715"
+    },
+    "publishDate": {
+      "source": "MANUAL",
+      "selector": ".__ai-date",
+      "confidence": 0.95,
+      "capturedOnUrl": "https://pwc-careersite.hunterhrms.com/"
+    },
+    "requirements": {
+      "source": "MANUAL",
+      "selector": "#__ai-detail .__ai-requirements",
+      "confidence": 0.95,
+      "capturedOnUrl": "https://pwc-careersite.hunterhrms.com/job?jid=715"
+    },
+    "externalJobId": {
+      "source": "MANUAL",
+      "selector": ".__ai-id",
+      "confidence": 0.95,
+      "capturedOnUrl": "https://pwc-careersite.hunterhrms.com/"
+    }
+  }
+}

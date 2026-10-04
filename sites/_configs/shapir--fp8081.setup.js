@@ -4,10 +4,10 @@
     // (the /משרות/<slug>/ share links return 500). Id = printed number "משרה [מס] N" -> shapir-N;
     // numbers shared by two different postings (3582/3644/3645, plus any new clash on the page) get
     // shapir-N-haideHash(share-URL slug) so both ship (owner, 2026-10-04).
-    // Location (owner, 2026-10-04): a city from the closed PLACES list named in the title, else one on a
-    // body line that starts with a cue (מיקום / המשרה ממוקמת ב) and is nothing but that name, else the
-    // card's region mapped to its verbatim city.csv entry; anything else -> Unknown. The text wins over
-    // the card. Quarry/plant names (עציונה, ורד, נטוף, זנוח, קציר ים המלח, מרחבים) are deliberately not
+    // Location (manager rule, 2026-10-04): the card's region wins. A city from the closed PLACES list named
+    // in the title, else on a body line that starts with a cue (מיקום / המשרה ממוקמת ב) and is nothing but
+    // that name, is used only if AREA puts it inside the card's region (פריסה ארצית holds all; no known
+    // region -> the city). Else the region mapped to its city.csv entry; else Unknown. Quarry/plant names (עציונה, ורד, נטוף, זנוח, קציר ים המלח, מרחבים) are deliberately not
     // places. "למפעלי הבטון בירושלים" keeps the region (owner). Titles are read, never changed.
     // Body: description/requirements split by headings, labels dropped; "התפקיד כולל:" after a
     // description heading opens requirements (the employer's second label, like a repeated תיאור).
@@ -23,6 +23,10 @@
     var TITLE_PLACE = new RegExp('(^|[^' + HE + '])([ובלה]{0,2})(' + ALT + ')(?![' + HE + '])', 'g');
     var CUE = /^[^\p{L}\d]*(?:מיקום(?:\s+המשרה)?\s*[:\-–]?\s*|המשרה\s+ממוקמת\s+ב)(.+)$/u;
     function canon(s) { return PLACES[s.replace(/\s+/g, ' ')] || null; }
+    var M = 'אזור מרכז', S = 'אזור שפלה', J = 'אזור ירושלים', N = 'אזור צפון';
+    var AREA = { 'ירושלים': [J], 'בית שמש': [J, S], 'נס ציונה': [S, M], 'רמת השרון': ['אזור השרון', M], 'יהוד': [M, S],
+      'עפולה': [N], 'חיפה': [N], 'יוקנעם': [N], 'פתח תקווה': [M], 'תל אביב-יפו': [M] };
+    function inside(p, reg) { return !!p && (!reg || reg === 'פריסה ארצית' || AREA[p].indexOf(reg) >= 0); }
     function one(list) { var u = list.filter(function (v, i) { return list.indexOf(v) === i; }); return u.length === 1 ? u[0] : null; }
     function titlePlace(t) {
       var out = [], m;
@@ -109,7 +113,8 @@
       function add(cls, v) { if (!v) return; var s = document.createElement('span'); s.className = cls; s.style.display = 'none'; s.textContent = v; it.appendChild(s); }
       add('__ai-title', title);
       add('__ai-id', id);
-      add('__ai-location', titlePlace(title) || cuePlace(all) || REGION[region] || 'Unknown');
+      var reg = REGION[region], tp = titlePlace(title), cp = cuePlace(all);
+      add('__ai-location', (inside(tp, reg) ? tp : inside(cp, reg) ? cp : null) || reg || 'Unknown');
       add('__ai-type', type);
       add('__ai-description', desc.join('\n'));
       add('__ai-requirements', req.join('\n'));
