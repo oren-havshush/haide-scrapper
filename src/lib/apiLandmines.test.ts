@@ -70,6 +70,30 @@ const threw = (fn: () => unknown): string | null => {
     assert(other.status === 500, "an unexpected error is still a 500");
   }
 
+  // --- an unrecognised query key is named as a parameter, not "(body)" (owner, 2026-10-03)
+  {
+    const messageFor = async (query: Record<string, string>) => {
+      try {
+        siteListQuerySchema.parse(query);
+      } catch (e) {
+        const res = formatErrorResponse(e);
+        return { status: res.status, message: ((await res.json()) as { error: { message: string } }).error.message };
+      }
+      return { status: 200, message: "" };
+    };
+    const one = await messageFor({ id: "x" });
+    assert(one.status === 400, `?id=x: 400 (got ${one.status})`);
+    assert(one.message === "unrecognized parameter(s): id", `?id=x names the parameter (got ${one.message})`);
+    const two = await messageFor({ id: "x", search: "y", page: "1" });
+    assert(two.message === "unrecognized parameter(s): id, search", `two unknown keys, one message (got ${two.message})`);
+    const mixed = await messageFor({ id: "x", pageSize: "500" });
+    assert(
+      mixed.message.includes("unrecognized parameter(s): id") && mixed.message.includes("pageSize: "),
+      `with another issue, both are named (got ${mixed.message})`,
+    );
+    assert(!mixed.message.includes("(body)"), `and "(body)" is gone (got ${mixed.message})`);
+  }
+
   // --- (e) the strict /api/sites query ----------------------------------------------------
   {
     const allowed = { page: "2", pageSize: "100", status: "ACTIVE", policyStatus: "OK", siteUrl: "https://x.test/", companyNameSearch: "a", urlSearch: "b", sortBy: "createdAt", sortOrder: "asc" };

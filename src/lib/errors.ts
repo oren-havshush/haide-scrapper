@@ -101,9 +101,15 @@ export function formatErrorResponse(error: unknown): NextResponse<ApiErrorRespon
   // A schema a route parsed with .parse() rather than .safeParse(): pageSize
   // above 100 was a 500 that callers read as an empty list (landmines d, h, i).
   // Each issue names its path.
+  // An unrecognised key (a strict schema) has an empty path; it is named as a
+  // parameter, which is what it is on the query routes (owner, 2026-10-03).
   if (error instanceof ZodError) {
     const message = error.issues
-      .map((i) => `${i.path.length ? i.path.join(".") : "(body)"}: ${i.message}`)
+      .map((i) => {
+        const where = i.path.length ? `${i.path.join(".")}: ` : "";
+        if (i.code === "unrecognized_keys") return `${where}unrecognized parameter(s): ${i.keys.join(", ")}`;
+        return `${i.path.length ? i.path.join(".") : "(body)"}: ${i.message}`;
+      })
       .join("; ");
     return NextResponse.json({ error: { code: "VALIDATION_ERROR", message } }, { status: 400 });
   }
