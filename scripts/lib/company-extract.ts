@@ -1012,8 +1012,10 @@ const SVG_URL = /\.svgz?($|\?|#)/i;
  * offenders, and they are always on a vendor host, so the host is the reliable
  * discriminator.
  */
+// Dots escaped and the prefix anchored to a real dot (2026-10-05): written
+// unescaped, any character stood in for a dot, so "notfacebook.com" matched.
 const WIDGET_HOSTS =
-  /(^|.)(butterfly-button.web.app|userway.org|accessiway.com|nagich.co.il|nagish.li|negishut.com|enable.co.il|equalweb.com|tawk.to|intercom.(io|com)|zendesk.com|hotjar.com|cookiebot.com|onetrust.com|trustpilot.com|gravatar.com|googletagmanager.com|facebook.com|doubleclick.net)$/i;
+  /(^|\.)(butterfly-button\.web\.app|userway\.org|accessiway\.com|nagich\.co\.il|nagish\.li|negishut\.com|enable\.co\.il|equalweb\.com|tawk\.to|intercom\.(io|com)|zendesk\.com|hotjar\.com|cookiebot\.com|onetrust\.com|trustpilot\.com|gravatar\.com|googletagmanager\.com|facebook\.com|doubleclick\.net)$/i;
 
 /** True for a third-party widget/vendor host — never the company itself. */
 export function isWidgetHost(host: string): boolean {

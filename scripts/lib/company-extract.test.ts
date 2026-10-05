@@ -38,6 +38,7 @@ import {
   sanitizeModelText,
   inlineLogoRejection,
   isHomeLink,
+  isWidgetHost,
   modelAboutRejection,
   type HarvestedLink,
   type InlineLogo,
@@ -973,6 +974,29 @@ function testLogoCandidates() {
  * text, or too short to describe anything. Both fixtures are verbatim from the
  * 2026-10-05 dry run, where each would have been stored as the company's about.
  */
+/**
+ * WIDGET_HOSTS was written with unescaped dots and a "(^|.)" prefix, so any
+ * character stood in for a dot: it refused "notfacebook.com" and
+ * "facebookXcom". Escaped, it must still refuse every host and subdomain it
+ * refused before, and nothing that merely resembles one.
+ */
+function testWidgetHosts() {
+  const listed = [
+    "butterfly-button.web.app", "userway.org", "accessiway.com", "nagich.co.il", "nagish.li",
+    "negishut.com", "enable.co.il", "equalweb.com", "tawk.to", "intercom.io", "intercom.com",
+    "zendesk.com", "hotjar.com", "cookiebot.com", "onetrust.com", "trustpilot.com",
+    "gravatar.com", "googletagmanager.com", "facebook.com", "doubleclick.net",
+  ];
+  for (const host of listed) {
+    assert.equal(isWidgetHost(host), true, `${host} is still refused`);
+    assert.equal(isWidgetHost(`cdn.${host}`), true, `cdn.${host} is still refused`);
+    assert.equal(isWidgetHost(host.toUpperCase()), true, `${host} in capitals is still refused`);
+  }
+  for (const host of ["notfacebook.com", "facebookxcom", "myhotjar.com", "nagishxli", "butterfly-buttonxwebxapp", "acme.co.il"]) {
+    assert.equal(isWidgetHost(host), false, `${host} is not a widget host`);
+  }
+}
+
 function testModelAboutRefusal() {
   // careers.iec.co.il: the model returned a page heading.
   assert.ok(modelAboutRejection("על חברת החשמל"), "a 13-character heading is refused");
@@ -1257,6 +1281,7 @@ function main() {
   testLogoContextFilters();
   testModelOutputSanitising();
   testModelAboutRefusal();
+  testWidgetHosts();
   testStatus();
   console.log(
     "PASS: company-profile extraction (homepage, JSON-LD, about, address+city gate, logo, status)",
