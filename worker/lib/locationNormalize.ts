@@ -49,8 +49,33 @@ export function squash(s: string): string {
 /** A "מיקום:" / "מיקום המשרה:" label that leaked into the value. */
 const LABEL = /^\s*מיקום(\s+המשרה)?\s*:?\s+/;
 
+/**
+ * City abbreviations, written with gershayim. Each is also an alias with ''
+ * (two apostrophes, which is what squash() makes of ׳׳) and with a leading ב
+ * ("in"), in both spellings (round 3, owner 2026-10-06). The scanner refuses a
+ * match that a Hebrew letter precedes, so "בת"א" needs its own key;
+ * gomobile.co.il's address ended "בית קנדי ראשל''צ" and the company-profile
+ * gate read no city from it.
+ */
+const CITY_ABBREVIATIONS: Readonly<Record<string, string>> = {
+  'ראשל"צ': "ראשון לציון",
+  'ת"א': "תל אביב-יפו",
+  'פ"ת': "פתח תקווה",
+  'ב"ש': "באר שבע",
+  'כ"ס': "כפר סבא",
+  'ר"ג': "רמת גן",
+};
+
+const ABBREVIATION_ALIASES: Readonly<Record<string, string>> = Object.fromEntries(
+  Object.entries(CITY_ABBREVIATIONS).flatMap(([written, city]) => {
+    const doubled = written.replace('"', "''");
+    return [written, doubled, `ב${written}`, `ב${doubled}`].map((key) => [key, city]);
+  }),
+);
+
 /** Region spellings, abbreviations and known variants -> canonical. Keys are squash()ed. */
 export const LOCATION_ALIAS: Readonly<Record<string, string>> = {
+  ...ABBREVIATION_ALIASES,
   מרכז: "אזור מרכז", המרכז: "אזור מרכז", "אזור המרכז": "אזור מרכז",
   "גוש דן": "אזור מרכז", "מרכז גוש דן": "אזור מרכז", "מרכז-גוש דן": "אזור מרכז",
   "אזור גוש דן": "אזור מרכז",
@@ -66,9 +91,8 @@ export const LOCATION_ALIAS: Readonly<Record<string, string>> = {
   // fine when its value is itself a region ("ירושלים יו\"ש" -> "אזור ירושלים"):
   // that keeps the area the ad actually gave. Removed 2026-09-17 for turning an
   // area into a city the ad never stated — see AREA_LABEL below.
-  // abbreviations
-  'ת"א': "תל אביב-יפו", "תל אביב": "תל אביב-יפו", 'ת"א-יפו': "תל אביב-יפו",
-  'פ"ת': "פתח תקווה", 'ראשל"צ': "ראשון לציון", 'ב"ש': "באר שבע", 'ר"ג': "רמת גן",
+  // abbreviations: the city ones are CITY_ABBREVIATIONS, above
+  "תל אביב": "תל אביב-יפו", 'ת"א-יפו': "תל אביב-יפו",
   // spelling variants seen live
   "פתח תיקווה": "פתח תקווה", "פתח תקוה": "פתח תקווה", "פתח תיקוה": "פתח תקווה",
   "פתח-תקווה": "פתח תקווה", "נצרת עלית": "נצרת עילית", יקנעם: "יוקנעם",

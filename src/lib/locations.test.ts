@@ -165,6 +165,35 @@ console.log("\n# every produced value is storable");
   }
 }
 
+console.log("\n# city abbreviations: both quote styles, with and without a leading ב");
+{
+  // Round 3 (owner, 2026-10-06): an address the company-profile gate read as no
+  // city at all — gomobile.co.il's "בית קנדי ראשל''צ" — because only the
+  // gershayim spelling was an alias, and never with "in" (ב) in front.
+  // '' is two ASCII apostrophes; squash() turns ׳׳ into the same, and ״ into ".
+  const abbreviations: [string, string, string][] = [
+    ["ראשל", "צ", "ראשון לציון"],
+    ["ת", "א", "תל אביב-יפו"],
+    ["פ", "ת", "פתח תקווה"],
+    ["ב", "ש", "באר שבע"],
+    ["כ", "ס", "כפר סבא"],
+    ["ר", "ג", "רמת גן"],
+  ];
+  for (const [head, tail, city] of abbreviations) {
+    assert(isCanonicalLocation(city), `${city} is a city.csv entry`);
+    for (const quote of ['"', "''", "״", "׳׳"]) {
+      for (const prefix of ["", "ב"]) {
+        const written = `${prefix}${head}${quote}${tail}`;
+        eq(normalizeLocations(written), [city], `${written} -> ${city}`);
+      }
+    }
+  }
+  eq(normalizeLocations("בית קנדי ראשל''צ"), ["ראשון לציון"], "gomobile's segment, verbatim, names ראשון לציון");
+  eq(normalizeLocations("משרדינו בת''א"), ["תל אביב-יפו"], "inside a longer line, with a leading ב");
+  eq(resolveLocationInput("בכ\"ס, ר''ג").list, ["כפר סבא", "רמת גן"], "the dashboard write path takes them too");
+  eq(normalizeLocations("בבית"), [], "a ב-word is not an abbreviation");
+}
+
 console.log("\n# IL_CANONICAL still equals CSV files/city.csv");
 {
   // Production cannot read the CSV (standalone image), so this test is the only
