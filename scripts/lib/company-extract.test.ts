@@ -42,6 +42,7 @@ import {
   modelAboutRejection,
   modelAboutGrounding,
   modelAddressUsable,
+  stripPoBox,
   compactAddressAnchored,
   type HarvestedLink,
   type InlineLogo,
@@ -1150,9 +1151,21 @@ function testModelAddressUsable() {
   assert.equal(modelAddressUsable("Hasivim St. P.O.B 7551"), false, "nor in English");
   assert.equal(modelAddressUsable("ירושלים"), false, "a city on its own");
 
+  // Round 3 (h): a PO box segment is dropped from a model address wherever it
+  // sits, and the street part kept. eimsys.co.il, verbatim from dry run 3.
+  assert.equal(stripPoBox("18 Hasivim St. Petach P.O.B 7551"), "18 Hasivim St. Petach", "eimsys: the P.O.B tail is dropped");
+  assert.equal(stripPoBox("רחוב קציר א.ת. באר טוביה, ת.ד. 1325"), "רחוב קציר א.ת. באר טוביה", "benjerry: the ת.ד. part is dropped");
+  assert.equal(stripPoBox("ת.ד. 55, רחוב הרצל 3, חולון"), "רחוב הרצל 3, חולון", "at the start");
+  assert.equal(stripPoBox("רחוב הרצל 3, ת\"ד 55, חולון"), "רחוב הרצל 3, חולון", "in the middle, gershayim written with a quote");
+  assert.equal(stripPoBox("Hamelacha 12 POB 3301 Netanya"), "Hamelacha 12 Netanya", "POB inside a part");
+  assert.equal(stripPoBox("P.O. Box 7551, Petah Tikva"), "Petah Tikva", "P.O. Box");
+  assert.equal(stripPoBox("רחוב הרצל 3, חולון"), "רחוב הרצל 3, חולון", "nothing to drop");
+  assert.equal(modelAddressUsable(stripPoBox("18 Hasivim St. Petach P.O.B 7551")), true, "eimsys' street part is still usable");
+
   const source = readFileSync(join(__dirname, "..", "company-profile.ts"), "utf8");
   const merge = source.slice(source.indexOf("// --- 3. LLM fallback"), source.indexOf("// --- 4. City, through the gate"));
-  assert.ok(/modelAddressUsable\(llm\.hqAddress\)/.test(merge), "captureSite() takes a model address only through modelAddressUsable");
+  assert.ok(/modelAddressUsable\(modelAddress\)/.test(merge), "captureSite() takes a model address only through modelAddressUsable");
+  assert.ok(/const modelAddress = stripPoBox\(llm\.hqAddress\)/.test(merge), "after its PO box is dropped");
 }
 
 /**

@@ -78,6 +78,7 @@ import {
   pickDirectionsUrl,
   pickPolicyUrl,
   sanitizeModelText,
+  stripPoBox,
   type LogoCandidate,
   type ModelSource,
   type OrganizationLd,
@@ -1471,9 +1472,12 @@ async function captureSite(
       // A model address with no street word and house number is dropped, and
       // with it any city it would have decided (modelAddressUsable): dry run
       // 2 took ירושלים from "בפאתי ירושלים".
+      // Its PO box is dropped first, wherever it sits (stripPoBox): eimsys got
+      // "18 Hasivim St. Petach P.O.B 7551".
       if (!address && llm.hqAddress) {
-        if (modelAddressUsable(llm.hqAddress)) {
-          address = llm.hqAddress;
+        const modelAddress = stripPoBox(llm.hqAddress);
+        if (modelAddressUsable(modelAddress)) {
+          address = modelAddress;
           result.provenance.address = "llm";
         } else {
           console.info(`[company-profile] llm address refused (no street and house number): ${llm.hqAddress}`);

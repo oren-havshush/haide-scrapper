@@ -1373,6 +1373,23 @@ export function modelAboutGrounding(about: string, sources: readonly ModelSource
   return null;
 }
 
+/** A PO box and its number: ת.ד. / ת"ד / ת״ד, P.O.B, POB, P.O. Box, PO Box. */
+const PO_BOX = /(?<=^|[\s,;(])(?:ת\.?\s?ד\.?|ת["״]ד|p\.?\s?o\.?\s?b(?:ox)?\.?|po\s?box)\s*:?\s*\d+/gi;
+
+/**
+ * A model address with its PO box dropped wherever it sits, the street part
+ * kept (round 3, 2026-10-06). eimsys.co.il's model address was
+ * "18 Hasivim St. Petach P.O.B 7551": a PO box is not where a company is.
+ */
+export function stripPoBox(address: string): string {
+  return address
+    .replace(PO_BOX, " ")
+    .split(",")
+    .map((part) => part.replace(/\s+/g, " ").trim())
+    .filter(Boolean)
+    .join(", ");
+}
+
 /** Street words, compared as WHOLE tokens: "בדרך" ("on the way") is not "דרך". */
 const STREET_TOKENS = new Set([
   "רחוב", "רח'", "רח׳", "שדרות", "שד'", "שד׳", "שדרת", "דרך", "סמטת", "סמטה", "כיכר", "ככר",
