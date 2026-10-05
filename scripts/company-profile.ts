@@ -68,6 +68,7 @@ import {
   homepageFromLinks,
   homepageFromOgUrl,
   isBotChallengePage,
+  modelAboutGrounding,
   modelAboutRejection,
   parseJsonLdOrganization,
   pickAboutUrl,
@@ -76,6 +77,7 @@ import {
   pickPolicyUrl,
   sanitizeModelText,
   type LogoCandidate,
+  type ModelSource,
   type OrganizationLd,
   type PageHarvest,
 } from "./lib/company-extract";
@@ -823,7 +825,7 @@ interface LlmFields {
  * missing about-line is never worth failing a capture over.
  */
 async function llmFallback(
-  texts: { url: string; text: string }[],
+  texts: ModelSource[],
   need: { about: boolean; address: boolean },
 ): Promise<LlmFields> {
   const empty: LlmFields = { about: null, hqAddress: null };
@@ -878,9 +880,12 @@ async function llmFallback(
     >;
     // The about text is refused when it is a heading, policy text or too short
     // (modelAboutRejection): careers.iec.co.il got "על חברת החשמל" and
-    // egged.co.il its privacy policy before this check.
+    // egged.co.il its privacy policy before this check. Since round 2 it must
+    // also be mostly verbatim from the site and from no policy page
+    // (modelAboutGrounding): the model paraphrased egged's policy past the
+    // word list.
     let about = need.about ? sanitizeModelText(parsed.about, 600) : null;
-    const refused = about ? modelAboutRejection(about) : null;
+    const refused = about ? (modelAboutRejection(about) ?? modelAboutGrounding(about, texts)) : null;
     if (refused) {
       console.info(`[company-profile] llm about refused: ${refused}`);
       about = null;
@@ -1402,13 +1407,14 @@ async function captureSite(
 
     // --- 3. LLM fallback, only for what is still missing -------------------
     if (opts.useLlm && (!about || !address)) {
-      const sources = [{ url: homepage.url, text: homepage.bodyText }];
+      const sources: ModelSource[] = [{ url: homepage.url, text: homepage.bodyText }];
       if (aboutPage) sources.push({ url: aboutPage.url, text: aboutPage.bodyText });
       if (directionsPage && directionsPage !== contactPage) {
         sources.push({ url: directionsPage.url, text: directionsPage.bodyText });
       }
       if (contactPage) sources.push({ url: contactPage.url, text: contactPage.bodyText });
-      if (policyPage) sources.push({ url: policyPage.url, text: policyPage.bodyText });
+      // Marked, so modelAboutGrounding() refuses about text copied from it.
+      if (policyPage) sources.push({ url: policyPage.url, text: policyPage.bodyText, policy: true });
       if (homepage.footerText) {
         sources.push({ url: `${homepage.url}#footer`, text: homepage.footerText });
       }

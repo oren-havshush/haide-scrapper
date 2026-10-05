@@ -40,6 +40,7 @@ import {
   isHomeLink,
   isWidgetHost,
   modelAboutRejection,
+  modelAboutGrounding,
   type HarvestedLink,
   type InlineLogo,
   type PageHarvest,
@@ -1024,6 +1025,65 @@ function testModelAboutRefusal() {
   assert.ok(/modelAboutRejection\(/.test(fallback), "llmFallback() runs modelAboutRejection on the about text");
 }
 
+/**
+ * Round 2 (2026-10-06): the model's about text is accepted only if most of its
+ * sentences appear verbatim in a paragraph of the site, and never if one comes
+ * from a policy or terms page. A word list could not hold: in dry run 2 the
+ * model paraphrased egged's privacy policy with none of the policy words.
+ * Fixtures verbatim from dry run 2 and from the pages it read.
+ */
+function testModelAboutGrounding() {
+  const eggedAbout =
+    "קבוצת אגד (אגד חברה לתחבורה בע״מ, דרך אגד עוטף ירושלים בע״מ, אגד החזקות בע\"מ, אגד פלוס בע\"מ, אגד רמת הגולן בע\"מ, אגד מטרו בע\"מ - יחדיו \"הקבוצה\") מפעילה את יישומון egg ואת יישומון Call Bus, בנוסף לאתרים בכתובות שונות. אנו אוספים מידע בממשקים הדיגיטליים למטרות תפעול, ניהול ואספקת השירותים, למתן שירות למשתמשים, ביצוע בקרות תפעוליות ושיפור השירותים.";
+  const eggedPrivacy = {
+    url: "https://www.egged.co.il/privacy",
+    text:
+      "מדיניות הפרטיות מנוסחת בלשון זכר מטעמי נוחות בלבד, ופונה לכלל המגדרים. \n\n" +
+      "קבוצת אגד (אגד חברה לתחבורה בע״מ, דרך אגד עוטף ירושלים בע״מ, אגד החזקות בע\"מ, אגד פלוס בע\"מ, אגד רמת הגולן בע\"מ, אגד מטרו בע\"מ  - יחדיו \"הקבוצה\") מפעילה את יישומון egg (\"היישומון\") ואת יישומון Call Bus (\"יישומון Call Bus\"), בנוסף לאתרים בכתובות:",
+    policy: true,
+  };
+  assert.ok(modelAboutGrounding(eggedAbout, [eggedPrivacy]), "egged: a paraphrase of its privacy policy is refused");
+
+  const iecAbout =
+    "אודות חברת החשמל החברה חורגת מגבולות כדי לשמור על הזרם, וזמינים עבורך 24/7. השירותים הדיגיטליים שלנו כוללים את אתר האינטרנט, אפליקציות, שירות דיגיטלי בווטסאפ, שירות דיגיטלי בפייסבוק מסנג'ר ועוד.";
+  const iecHome = {
+    url: "https://www.iec.co.il/home",
+    text: "זמינים עבורך 24/7\n\nבימים א'-ה': מ- 08:00 עד 19:00, ביום ו' וערבי חג: מ-08:00 עד 13:00\n\nלאחר שעות הפעילות הרגילות, זמינים בטלפון בכל שעה בנושאי מפגעים והפסקות חשמל",
+  };
+  assert.ok(modelAboutGrounding(iecAbout, [iecHome]), "careers.iec: text the site does not carry is refused");
+
+  // Copied verbatim from the privacy page: refused for its source, even though
+  // every sentence is verbatim.
+  const fromPolicy = modelAboutGrounding("מדיניות הפרטיות מנוסחת בלשון זכר מטעמי נוחות בלבד, ופונה לכלל המגדרים.", [eggedPrivacy]);
+  assert.ok(fromPolicy && /policy|terms/.test(fromPolicy), "verbatim from a policy page is refused as policy");
+  // A policy page is known by its URL too, not only by the flag.
+  assert.ok(
+    modelAboutGrounding("מדיניות הפרטיות מנוסחת בלשון זכר מטעמי נוחות בלבד, ופונה לכלל המגדרים.", [{ url: eggedPrivacy.url, text: eggedPrivacy.text }]),
+    "a /privacy URL counts as a policy source without the flag",
+  );
+
+  // alubin.com's about page paragraph, verbatim: copied whole, it is accepted.
+  const alubinPara =
+    "חברת אלובין הינה מהחברות הותיקות והמובילות בישראל ליצור ואספקת פרופילי אלומיניום לבנייה ותעשייה. מאז הקמתה בשנת 1958 מיצבה את עצמה אלובין כמובילת שוק בתחום ייצור ופיתוח מערכות אלומיניום.";
+  const alubin = [{ url: "https://alubin.com/about", text: `תפריט\n\n${alubinPara}\n\nצור קשר` }];
+  assert.equal(modelAboutGrounding(alubinPara, alubin), null, "verbatim from the about page is accepted");
+  // Whitespace and quote styles do not count as changes.
+  assert.equal(modelAboutGrounding(alubinPara.replace(/ /g, "  "), alubin), null, "doubled spaces still match");
+  // Most, not all: two of three verbatim passes, one of three does not.
+  const [s1, s2] = alubinPara.split(/(?<=\.)\s+/);
+  const invented = "החברה מעסיקה מאות עובדים במפעלים ברחבי הארץ.";
+  assert.equal(modelAboutGrounding(`${s1} ${s2} ${invented}`, alubin), null, "two of three sentences verbatim is most");
+  assert.ok(modelAboutGrounding(`${s1} ${invented} החברה מייצאת לעשרות מדינות בעולם.`, alubin), "one of three is not");
+  // A sentence split across two paragraphs is not "in a paragraph".
+  assert.ok(modelAboutGrounding(s1, [{ url: "https://alubin.com/about", text: s1.replace("לבנייה", "\n\nלבנייה") }]), "a sentence must sit inside one paragraph");
+
+  // And the fallback applies it, with the policy page marked as policy.
+  const source = readFileSync(join(__dirname, "..", "company-profile.ts"), "utf8");
+  const fallback = source.slice(source.indexOf("async function llmFallback("), source.indexOf("// Logo\n"));
+  assert.ok(/modelAboutGrounding\(/.test(fallback), "llmFallback() runs modelAboutGrounding on the about text");
+  assert.ok(/url: policyPage\.url, text: policyPage\.bodyText, policy: true/.test(source), "the policy page is passed as a policy source");
+}
+
 function testModelOutputSanitising() {
   // Markup must never survive — companyAbout may be rendered unescaped.
   assert.equal(
@@ -1281,6 +1341,7 @@ function main() {
   testLogoContextFilters();
   testModelOutputSanitising();
   testModelAboutRefusal();
+  testModelAboutGrounding();
   testWidgetHosts();
   testStatus();
   console.log(

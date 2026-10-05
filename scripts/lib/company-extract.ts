@@ -1279,6 +1279,60 @@ export function modelAboutRejection(text: string): string | null {
   return null;
 }
 
+/** One page the model was given, as the capture read it. */
+export interface ModelSource {
+  url: string;
+  text: string;
+  /** A privacy, terms or other policy page. A /privacy-like URL counts too. */
+  policy?: boolean;
+}
+
+/** Sentences shorter than this ("ועוד.") are not counted either way. */
+const GROUNDING_MIN_SENTENCE = 15;
+
+/** Whitespace and quote styles are not changes; trailing sentence punctuation is dropped. */
+function normaliseForMatch(s: string): string {
+  return s
+    .replace(/[״“”]/g, '"')
+    .replace(/[׳‘’]/g, "'")
+    .replace(/\s+/g, " ")
+    .trim()
+    .replace(/[.!?]+$/, "")
+    .trim();
+}
+
+/**
+ * Why the model's about text is not grounded in the site, or null (round 2,
+ * 2026-10-06). Accepted only when MOST of its sentences — more than half —
+ * appear verbatim inside one paragraph (one line of the page's text) of a
+ * source the model was given, and never when any sentence comes from a policy
+ * or terms page. In dry run 2 the model paraphrased egged.co.il's privacy
+ * policy using none of the words modelAboutRejection looks for; a word list
+ * cannot keep up with a paraphrase, a verbatim check can.
+ */
+export function modelAboutGrounding(about: string, sources: readonly ModelSource[]): string | null {
+  const sentences = about
+    .split(/(?<=[.!?])\s+/)
+    .map(normaliseForMatch)
+    .filter((s) => s.length >= GROUNDING_MIN_SENTENCE);
+  if (sentences.length === 0) return "no sentence long enough to check";
+
+  const paragraphs = sources.map((src) => ({
+    policy: src.policy === true || isPolicyUrlPath(src.url),
+    lines: src.text.split(/\n+/).map(normaliseForMatch).filter(Boolean),
+  }));
+  let verbatim = 0;
+  for (const sentence of sentences) {
+    const hits = paragraphs.filter((p) => p.lines.some((line) => line.includes(sentence)));
+    if (hits.some((p) => p.policy)) return "copied from a policy or terms page";
+    if (hits.length > 0) verbatim += 1;
+  }
+  if (verbatim * 2 <= sentences.length) {
+    return `only ${verbatim} of ${sentences.length} sentences appear verbatim on the site`;
+  }
+  return null;
+}
+
 // ---------------------------------------------------------------------------
 // Status
 // ---------------------------------------------------------------------------
