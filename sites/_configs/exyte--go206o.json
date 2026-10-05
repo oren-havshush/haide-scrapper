@@ -1,0 +1,2491 @@
+{
+  "_exportedAt": "2026-10-05T14:09:34.144Z",
+  "_note": "Mirror of the live config. The DB is authoritative; the worker never reads this file. setupScript lives alongside in <slug>.setup.js.",
+  "id": "cmuvb2fw5000f01qp1vgo206o",
+  "siteUrl": "https://careers.exyte.net/global/en",
+  "companyName": "Exyte Israel",
+  "status": "ACTIVE",
+  "setupScriptFile": "exyte--go206o.setup.js",
+  "pageFlow": [],
+  "fieldMappings": {
+    "_meta": {
+      "savedAt": "2026-10-05T13:49:49.571Z",
+      "pagination": null,
+      "formCapture": {
+        "fields": [
+          {
+            "name": "resume",
+            "label": "Resume",
+            "accept": ".doc,.docx,.pdf,.txt",
+            "tagName": "INPUT",
+            "required": false,
+            "fieldType": "file"
+          },
+          {
+            "name": "coverLetter",
+            "label": "Cover Letter",
+            "accept": ".doc,.docx,.pdf,.txt",
+            "tagName": "INPUT",
+            "required": false,
+            "fieldType": "file"
+          },
+          {
+            "name": "additionalDocument",
+            "label": "Additional Document",
+            "accept": ".doc,.docx,.pdf,.txt",
+            "tagName": "INPUT",
+            "required": false,
+            "fieldType": "file"
+          },
+          {
+            "name": "firstName",
+            "label": "First Name",
+            "tagName": "INPUT",
+            "required": true,
+            "fieldType": "text"
+          },
+          {
+            "name": "lastName",
+            "label": "Last Name",
+            "tagName": "INPUT",
+            "required": true,
+            "fieldType": "text"
+          },
+          {
+            "name": "email",
+            "label": "Email",
+            "tagName": "INPUT",
+            "required": true,
+            "fieldType": "text"
+          },
+          {
+            "name": "countryPhoneCode",
+            "label": "Country/Region Code",
+            "options": [
+              {
+                "label": "Please Select",
+                "value": ""
+              },
+              {
+                "label": "Afghanistan (+93)",
+                "value": "AFG_93"
+              },
+              {
+                "label": "Åland Islands (+358)",
+                "value": "ALA_358"
+              },
+              {
+                "label": "Albania (+355)",
+                "value": "ALB_355"
+              },
+              {
+                "label": "Algeria (+213)",
+                "value": "DZA_213"
+              },
+              {
+                "label": "American Samoa (+1)",
+                "value": "ASM_1"
+              },
+              {
+                "label": "Andorra (+376)",
+                "value": "AND_376"
+              },
+              {
+                "label": "Angola (+244)",
+                "value": "AGO_244"
+              },
+              {
+                "label": "Anguilla (+1)",
+                "value": "AIA_1"
+              },
+              {
+                "label": "Antigua and Barbuda (+1)",
+                "value": "ATG_1"
+              },
+              {
+                "label": "Argentina (+54)",
+                "value": "ARG_54"
+              },
+              {
+                "label": "Armenia (+374)",
+                "value": "ARM_374"
+              },
+              {
+                "label": "Aruba (+297)",
+                "value": "ABW_297"
+              },
+              {
+                "label": "Australia (+61)",
+                "value": "AUS_61"
+              },
+              {
+                "label": "Austria (+43)",
+                "value": "AUT_43"
+              },
+              {
+                "label": "Azerbaijan (+994)",
+                "value": "AZE_994"
+              },
+              {
+                "label": "Bahamas (+1)",
+                "value": "BHS_1"
+              },
+              {
+                "label": "Bahrain (+973)",
+                "value": "BHR_973"
+              },
+              {
+                "label": "Bangladesh (+880)",
+                "value": "BGD_880"
+              },
+              {
+                "label": "Barbados (+1)",
+                "value": "BRB_1"
+              },
+              {
+                "label": "Belarus (+375)",
+                "value": "BLR_375"
+              },
+              {
+                "label": "Belgium (+32)",
+                "value": "BEL_32"
+              },
+              {
+                "label": "Belize (+501)",
+                "value": "BLZ_501"
+              },
+              {
+                "label": "Benin (+229)",
+                "value": "BEN_229"
+              },
+              {
+                "label": "Bermuda (+1)",
+                "value": "BMU_1"
+              },
+              {
+                "label": "Bhutan (+975)",
+                "value": "BTN_975"
+              },
+              {
+                "label": "Bolivia (+591)",
+                "value": "BOL_591"
+              },
+              {
+                "label": "Bonaire, Sint Eustatius, and Saba (+599)",
+                "value": "BES_599"
+              },
+              {
+                "label": "Bosnia and Herzegovina (+387)",
+                "value": "BIH_387"
+              },
+              {
+                "label": "Botswana (+267)",
+                "value": "BWA_267"
+              },
+              {
+                "label": "Brazil (+55)",
+                "value": "BRA_55"
+              },
+              {
+                "label": "British Indian Ocean Territory (+246)",
+                "value": "IOT_246"
+              },
+              {
+                "label": "British Virgin Islands (+1)",
+                "value": "VGB_1"
+              },
+              {
+                "label": "Brunei (+673)",
+                "value": "BRN_673"
+              },
+              {
+                "label": "Bulgaria (+359)",
+                "value": "BGR_359"
+              },
+              {
+                "label": "Burkina Faso (+226)",
+                "value": "BFA_226"
+              },
+              {
+                "label": "Burundi (+257)",
+                "value": "BDI_257"
+              },
+              {
+                "label": "Cabo Verde (+238)",
+                "value": "CPV_238"
+              },
+              {
+                "label": "Cambodia (+855)",
+                "value": "KHM_855"
+              },
+              {
+                "label": "Cameroon (+237)",
+                "value": "CMR_237"
+              },
+              {
+                "label": "Canada (+1)",
+                "value": "CAN_1"
+              },
+              {
+                "label": "Cayman Islands (+1)",
+                "value": "CYM_1"
+              },
+              {
+                "label": "Central African Republic (+236)",
+                "value": "CAF_236"
+              },
+              {
+                "label": "Chad (+235)",
+                "value": "TCD_235"
+              },
+              {
+                "label": "Chile (+56)",
+                "value": "CHL_56"
+              },
+              {
+                "label": "China (+86)",
+                "value": "CHN_86"
+              },
+              {
+                "label": "Christmas Island (+61)",
+                "value": "CXR_61"
+              },
+              {
+                "label": "Cocos (Keeling) Islands (+61)",
+                "value": "CCK_61"
+              },
+              {
+                "label": "Colombia (+57)",
+                "value": "COL_57"
+              },
+              {
+                "label": "Comoros (+269)",
+                "value": "COM_269"
+              },
+              {
+                "label": "Congo (+242)",
+                "value": "COG_242"
+              },
+              {
+                "label": "Congo, Democratic Republic of the (+243)",
+                "value": "COD_243"
+              },
+              {
+                "label": "Cook Islands (+682)",
+                "value": "COK_682"
+              },
+              {
+                "label": "Costa Rica (+506)",
+                "value": "CRI_506"
+              },
+              {
+                "label": "Croatia (+385)",
+                "value": "HRV_385"
+              },
+              {
+                "label": "Cuba (+53)",
+                "value": "CUB_53"
+              },
+              {
+                "label": "Curaçao (+599)",
+                "value": "CUW_599"
+              },
+              {
+                "label": "Cyprus (+357)",
+                "value": "CYP_357"
+              },
+              {
+                "label": "Czech Republic (+420)",
+                "value": "CZE_420"
+              },
+              {
+                "label": "Côte d’Ivoire (+225)",
+                "value": "CIV_225"
+              },
+              {
+                "label": "Denmark (+45)",
+                "value": "DNK_45"
+              },
+              {
+                "label": "Djibouti (+253)",
+                "value": "DJI_253"
+              },
+              {
+                "label": "Dominica (+1)",
+                "value": "DMA_1"
+              },
+              {
+                "label": "Dominican Republic (+1)",
+                "value": "DOM_1"
+              },
+              {
+                "label": "Ecuador (+593)",
+                "value": "ECU_593"
+              },
+              {
+                "label": "Egypt (+20)",
+                "value": "EGY_20"
+              },
+              {
+                "label": "El Salvador (+503)",
+                "value": "SLV_503"
+              },
+              {
+                "label": "Equatorial Guinea (+240)",
+                "value": "GNQ_240"
+              },
+              {
+                "label": "Eritrea (+291)",
+                "value": "ERI_291"
+              },
+              {
+                "label": "Estonia (+372)",
+                "value": "EST_372"
+              },
+              {
+                "label": "Ethiopia (+251)",
+                "value": "ETH_251"
+              },
+              {
+                "label": "Falkland Islands (+500)",
+                "value": "FLK_500"
+              },
+              {
+                "label": "Faroe Islands (+298)",
+                "value": "FRO_298"
+              },
+              {
+                "label": "Fiji (+679)",
+                "value": "FJI_679"
+              },
+              {
+                "label": "Finland (+358)",
+                "value": "FIN_358"
+              },
+              {
+                "label": "France (+33)",
+                "value": "FRA_33"
+              },
+              {
+                "label": "French Guiana (+594)",
+                "value": "GUF_594"
+              },
+              {
+                "label": "French Polynesia (+689)",
+                "value": "PYF_689"
+              },
+              {
+                "label": "Gabon (+241)",
+                "value": "GAB_241"
+              },
+              {
+                "label": "Gambia (+220)",
+                "value": "GMB_220"
+              },
+              {
+                "label": "Georgia (+995)",
+                "value": "GEO_995"
+              },
+              {
+                "label": "Germany (+49)",
+                "value": "DEU_49"
+              },
+              {
+                "label": "Ghana (+233)",
+                "value": "GHA_233"
+              },
+              {
+                "label": "Gibraltar (+350)",
+                "value": "GIB_350"
+              },
+              {
+                "label": "Greece (+30)",
+                "value": "GRC_30"
+              },
+              {
+                "label": "Greenland (+299)",
+                "value": "GRL_299"
+              },
+              {
+                "label": "Grenada (+1)",
+                "value": "GRD_1"
+              },
+              {
+                "label": "Guadeloupe (+590)",
+                "value": "GLP_590"
+              },
+              {
+                "label": "Guam (+1)",
+                "value": "GUM_1"
+              },
+              {
+                "label": "Guatemala (+502)",
+                "value": "GTM_502"
+              },
+              {
+                "label": "Guernsey (+44)",
+                "value": "GGY_44"
+              },
+              {
+                "label": "Guinea (+224)",
+                "value": "GIN_224"
+              },
+              {
+                "label": "Guinea-Bissau (+245)",
+                "value": "GNB_245"
+              },
+              {
+                "label": "Guyana (+592)",
+                "value": "GUY_592"
+              },
+              {
+                "label": "Haiti (+509)",
+                "value": "HTI_509"
+              },
+              {
+                "label": "Holy See (Vatican City State) (+39)",
+                "value": "VAT_39"
+              },
+              {
+                "label": "Honduras (+504)",
+                "value": "HND_504"
+              },
+              {
+                "label": "Hong Kong (+852)",
+                "value": "HKG_852"
+              },
+              {
+                "label": "Hungary (+36)",
+                "value": "HUN_36"
+              },
+              {
+                "label": "Iceland (+354)",
+                "value": "ISL_354"
+              },
+              {
+                "label": "India (+91)",
+                "value": "IND_91"
+              },
+              {
+                "label": "Indonesia (+62)",
+                "value": "IDN_62"
+              },
+              {
+                "label": "Iran (+98)",
+                "value": "IRN_98"
+              },
+              {
+                "label": "Iraq (+964)",
+                "value": "IRQ_964"
+              },
+              {
+                "label": "Ireland (+353)",
+                "value": "IRL_353"
+              },
+              {
+                "label": "Isle of Man (+44)",
+                "value": "IMN_44"
+              },
+              {
+                "label": "Israel (+972)",
+                "value": "ISR_972"
+              },
+              {
+                "label": "Italy (+39)",
+                "value": "ITA_39"
+              },
+              {
+                "label": "Jamaica (+1)",
+                "value": "JAM_1"
+              },
+              {
+                "label": "Japan (+81)",
+                "value": "JPN_81"
+              },
+              {
+                "label": "Jersey (+44)",
+                "value": "JEY_44"
+              },
+              {
+                "label": "Jordan (+962)",
+                "value": "JOR_962"
+              },
+              {
+                "label": "Kazakhstan (+7)",
+                "value": "KAZ_7"
+              },
+              {
+                "label": "Kenya (+254)",
+                "value": "KEN_254"
+              },
+              {
+                "label": "Kiribati (+686)",
+                "value": "KIR_686"
+              },
+              {
+                "label": "Korea, Democratic People’s Republic of (+850)",
+                "value": "PRK_850"
+              },
+              {
+                "label": "Korea, Republic of (+82)",
+                "value": "KOR_82"
+              },
+              {
+                "label": "Workday Phone - Kosovo",
+                "value": "KSV_386"
+              },
+              {
+                "label": "Kuwait (+965)",
+                "value": "KWT_965"
+              },
+              {
+                "label": "Kyrgyzstan (+996)",
+                "value": "KGZ_996"
+              },
+              {
+                "label": "Laos (+856)",
+                "value": "LAO_856"
+              },
+              {
+                "label": "Latvia (+371)",
+                "value": "LVA_371"
+              },
+              {
+                "label": "Lebanon (+961)",
+                "value": "LBN_961"
+              },
+              {
+                "label": "Lesotho (+266)",
+                "value": "LSO_266"
+              },
+              {
+                "label": "Liberia (+231)",
+                "value": "LBR_231"
+              },
+              {
+                "label": "Libya (+218)",
+                "value": "LBY_218"
+              },
+              {
+                "label": "Liechtenstein (+423)",
+                "value": "LIE_423"
+              },
+              {
+                "label": "Lithuania (+370)",
+                "value": "LTU_370"
+              },
+              {
+                "label": "Luxembourg (+352)",
+                "value": "LUX_352"
+              },
+              {
+                "label": "Macao (+853)",
+                "value": "MAC_853"
+              },
+              {
+                "label": "Macedonia, the Former Yugoslav Republic of (+389)",
+                "value": "MKD_389"
+              },
+              {
+                "label": "Madagascar (+261)",
+                "value": "MDG_261"
+              },
+              {
+                "label": "Malawi (+265)",
+                "value": "MWI_265"
+              },
+              {
+                "label": "Malaysia (+60)",
+                "value": "MYS_60"
+              },
+              {
+                "label": "Maldives (+960)",
+                "value": "MDV_960"
+              },
+              {
+                "label": "Mali (+223)",
+                "value": "MLI_223"
+              },
+              {
+                "label": "Malta (+356)",
+                "value": "MLT_356"
+              },
+              {
+                "label": "Marshall Islands (+692)",
+                "value": "MHL_692"
+              },
+              {
+                "label": "Martinique (+596)",
+                "value": "MTQ_596"
+              },
+              {
+                "label": "Mauritania (+222)",
+                "value": "MRT_222"
+              },
+              {
+                "label": "Mauritius (+230)",
+                "value": "MUS_230"
+              },
+              {
+                "label": "Mayotte (+262)",
+                "value": "MYT_262"
+              },
+              {
+                "label": "Mexico (+52)",
+                "value": "MEX_52"
+              },
+              {
+                "label": "Micronesia, Federated States of (+691)",
+                "value": "FSM_691"
+              },
+              {
+                "label": "Moldova (+373)",
+                "value": "MDA_373"
+              },
+              {
+                "label": "Monaco (+377)",
+                "value": "MCO_377"
+              },
+              {
+                "label": "Mongolia (+976)",
+                "value": "MNG_976"
+              },
+              {
+                "label": "Montenegro (+382)",
+                "value": "MNE_382"
+              },
+              {
+                "label": "Montserrat (+1)",
+                "value": "MSR_1"
+              },
+              {
+                "label": "Morocco (+212)",
+                "value": "MAR_212"
+              },
+              {
+                "label": "Mozambique (+258)",
+                "value": "MOZ_258"
+              },
+              {
+                "label": "Myanmar (+95)",
+                "value": "MMR_95"
+              },
+              {
+                "label": "Namibia (+264)",
+                "value": "NAM_264"
+              },
+              {
+                "label": "Nauru (+674)",
+                "value": "NRU_674"
+              },
+              {
+                "label": "Nepal (+977)",
+                "value": "NPL_977"
+              },
+              {
+                "label": "Netherlands (+31)",
+                "value": "NLD_31"
+              },
+              {
+                "label": "New Caledonia (+687)",
+                "value": "NCL_687"
+              },
+              {
+                "label": "New Zealand (+64)",
+                "value": "NZL_64"
+              },
+              {
+                "label": "Nicaragua (+505)",
+                "value": "NIC_505"
+              },
+              {
+                "label": "Niger (+227)",
+                "value": "NER_227"
+              },
+              {
+                "label": "Nigeria (+234)",
+                "value": "NGA_234"
+              },
+              {
+                "label": "Niue (+683)",
+                "value": "NIU_683"
+              },
+              {
+                "label": "Norfolk Island (+672)",
+                "value": "NFK_672"
+              },
+              {
+                "label": "Northern Mariana Islands (+1)",
+                "value": "MNP_1"
+              },
+              {
+                "label": "Norway (+47)",
+                "value": "NOR_47"
+              },
+              {
+                "label": "Oman (+968)",
+                "value": "OMN_968"
+              },
+              {
+                "label": "Pakistan (+92)",
+                "value": "PAK_92"
+              },
+              {
+                "label": "Palau (+680)",
+                "value": "PLW_680"
+              },
+              {
+                "label": "Palestine (+970)",
+                "value": "PSE_970"
+              },
+              {
+                "label": "Panama (+507)",
+                "value": "PAN_507"
+              },
+              {
+                "label": "Papua New Guinea (+675)",
+                "value": "PNG_675"
+              },
+              {
+                "label": "Paraguay (+595)",
+                "value": "PRY_595"
+              },
+              {
+                "label": "Peru (+51)",
+                "value": "PER_51"
+              },
+              {
+                "label": "Philippines (+63)",
+                "value": "PHL_63"
+              },
+              {
+                "label": "Pitcairn Islands (+64)",
+                "value": "PCN_64"
+              },
+              {
+                "label": "Poland (+48)",
+                "value": "POL_48"
+              },
+              {
+                "label": "Portugal (+351)",
+                "value": "PRT_351"
+              },
+              {
+                "label": "Puerto Rico (+1)",
+                "value": "PRI_1"
+              },
+              {
+                "label": "Qatar (+974)",
+                "value": "QAT_974"
+              },
+              {
+                "label": "Reunion (+262)",
+                "value": "REU_262"
+              },
+              {
+                "label": "Romania (+40)",
+                "value": "ROU_40"
+              },
+              {
+                "label": "Russian Federation (+7)",
+                "value": "RUS_7"
+              },
+              {
+                "label": "Rwanda (+250)",
+                "value": "RWA_250"
+              },
+              {
+                "label": "Saint Barthelemy (+590)",
+                "value": "BLM_590"
+              },
+              {
+                "label": "Saint Helena, Ascension and Tristan da Cunha (+247)",
+                "value": "SHN_247"
+              },
+              {
+                "label": "Saint Helena, Ascension and Tristan da Cunha (+290)",
+                "value": "SHN_290"
+              },
+              {
+                "label": "Saint Kitts and Nevis (+869)",
+                "value": "KNA_869"
+              },
+              {
+                "label": "Saint Lucia (+1)",
+                "value": "LCA_1"
+              },
+              {
+                "label": "Saint Martin (+590)",
+                "value": "MAF_590"
+              },
+              {
+                "label": "Saint Pierre and Miquelon (+508)",
+                "value": "SPM_508"
+              },
+              {
+                "label": "Saint Vincent and the Grenadines (+1)",
+                "value": "VCT_1"
+              },
+              {
+                "label": "Samoa (+685)",
+                "value": "WSM_685"
+              },
+              {
+                "label": "San Marino (+378)",
+                "value": "SMR_378"
+              },
+              {
+                "label": "Sao Tome and Principe (+239)",
+                "value": "STP_239"
+              },
+              {
+                "label": "Saudi Arabia (+966)",
+                "value": "SAU_966"
+              },
+              {
+                "label": "Senegal (+221)",
+                "value": "SEN_221"
+              },
+              {
+                "label": "Serbia (+381)",
+                "value": "SRB_381"
+              },
+              {
+                "label": "Seychelles (+248)",
+                "value": "SYC_248"
+              },
+              {
+                "label": "Sierra Leone (+232)",
+                "value": "SLE_232"
+              },
+              {
+                "label": "Singapore (+65)",
+                "value": "SGP_65"
+              },
+              {
+                "label": "Sint Maarten (+1)",
+                "value": "SXM_1"
+              },
+              {
+                "label": "Slovakia (+421)",
+                "value": "SVK_421"
+              },
+              {
+                "label": "Slovenia (+386)",
+                "value": "SVN_386"
+              },
+              {
+                "label": "Solomon Islands (+677)",
+                "value": "SLB_677"
+              },
+              {
+                "label": "Somalia (+252)",
+                "value": "SOM_252"
+              },
+              {
+                "label": "South Africa (+27)",
+                "value": "ZAF_27"
+              },
+              {
+                "label": "South Sudan (+211)",
+                "value": "SSD_211"
+              },
+              {
+                "label": "Spain (+34)",
+                "value": "ESP_34"
+              },
+              {
+                "label": "Sri Lanka (+94)",
+                "value": "LKA_94"
+              },
+              {
+                "label": "Sudan (+249)",
+                "value": "SDN_249"
+              },
+              {
+                "label": "Suriname (+597)",
+                "value": "SUR_597"
+              },
+              {
+                "label": "Svalbard and Jan Mayen (+47)",
+                "value": "SJM_47"
+              },
+              {
+                "label": "Swaziland (+268)",
+                "value": "SWZ_268"
+              },
+              {
+                "label": "Sweden (+46)",
+                "value": "SWE_46"
+              },
+              {
+                "label": "Switzerland (+41)",
+                "value": "CHE_41"
+              },
+              {
+                "label": "Syria (+963)",
+                "value": "SYR_963"
+              },
+              {
+                "label": "Taiwan (+886)",
+                "value": "TWN_886"
+              },
+              {
+                "label": "Tajikistan (+992)",
+                "value": "TJK_992"
+              },
+              {
+                "label": "Tanzania (+255)",
+                "value": "TZA_255"
+              },
+              {
+                "label": "Thailand (+66)",
+                "value": "THA_66"
+              },
+              {
+                "label": "Timor-Leste (+670)",
+                "value": "TLS_670"
+              },
+              {
+                "label": "Togo (+228)",
+                "value": "TGO_228"
+              },
+              {
+                "label": "Tokelau (+690)",
+                "value": "TKL_690"
+              },
+              {
+                "label": "Tonga (+676)",
+                "value": "TON_676"
+              },
+              {
+                "label": "Trinidad and Tobago (+1)",
+                "value": "TTO_1"
+              },
+              {
+                "label": "Tunisia (+216)",
+                "value": "TUN_216"
+              },
+              {
+                "label": "Turkey (+90)",
+                "value": "TUR_90"
+              },
+              {
+                "label": "Turkmenistan (+993)",
+                "value": "TKM_993"
+              },
+              {
+                "label": "Turks and Caicos Islands (+1)",
+                "value": "TCA_1"
+              },
+              {
+                "label": "Tuvalu (+688)",
+                "value": "TUV_688"
+              },
+              {
+                "label": "U. S. Virgin Islands (+1)",
+                "value": "VIR_1"
+              },
+              {
+                "label": "Uganda (+256)",
+                "value": "UGA_256"
+              },
+              {
+                "label": "Ukraine (+380)",
+                "value": "UKR_380"
+              },
+              {
+                "label": "United Arab Emirates (+971)",
+                "value": "ARE_971"
+              },
+              {
+                "label": "United Kingdom (+44)",
+                "value": "GBR_44"
+              },
+              {
+                "label": "United States Minor Outlying Islands (+1)",
+                "value": "UMI_1"
+              },
+              {
+                "label": "United States of America (+1)",
+                "value": "USA_1"
+              },
+              {
+                "label": "Uruguay (+598)",
+                "value": "URY_598"
+              },
+              {
+                "label": "Uzbekistan (+998)",
+                "value": "UZB_998"
+              },
+              {
+                "label": "Vanuatu (+678)",
+                "value": "VUT_678"
+              },
+              {
+                "label": "Venezuela (+58)",
+                "value": "VEN_58"
+              },
+              {
+                "label": "Vietnam (+84)",
+                "value": "VNM_84"
+              },
+              {
+                "label": "Wallis and Futuna (+681)",
+                "value": "WLF_681"
+              },
+              {
+                "label": "Western Sahara (+212)",
+                "value": "ESH_212"
+              },
+              {
+                "label": "Yemen (+967)",
+                "value": "YEM_967"
+              },
+              {
+                "label": "Zambia (+260)",
+                "value": "ZMB_260"
+              },
+              {
+                "label": "Zimbabwe (+263)",
+                "value": "ZWE_263"
+              }
+            ],
+            "tagName": "SELECT",
+            "required": true,
+            "fieldType": "select"
+          },
+          {
+            "name": "phoneNumber",
+            "label": "Phone number (Personal)",
+            "tagName": "INPUT",
+            "required": true,
+            "fieldType": "text"
+          },
+          {
+            "name": "questionSponsorship",
+            "label": "Do you require sponsorship by Exyte Group to gain legal work status in the country which you have applied?",
+            "options": [
+              {
+                "label": "Please Select",
+                "value": ""
+              },
+              {
+                "label": "Yes",
+                "value": "985"
+              },
+              {
+                "label": "No",
+                "value": "984"
+              }
+            ],
+            "tagName": "SELECT",
+            "required": true,
+            "fieldType": "select"
+          },
+          {
+            "name": "questionWork",
+            "label": "Have you worked for Exyte Group, directly or indirectly, in the past?",
+            "options": [
+              {
+                "label": "Please Select",
+                "value": ""
+              },
+              {
+                "label": "No",
+                "value": "8576"
+              },
+              {
+                "label": "Yes directly",
+                "value": "8577"
+              },
+              {
+                "label": "Yes indirectly",
+                "value": "8578"
+              }
+            ],
+            "tagName": "SELECT",
+            "required": true,
+            "fieldType": "select"
+          },
+          {
+            "name": "recruitingChannel",
+            "label": "How were you made aware of this position?",
+            "options": [
+              {
+                "label": "Please Select",
+                "value": ""
+              },
+              {
+                "label": "Agency",
+                "value": "277080"
+              },
+              {
+                "label": "Exyte Career Homepage",
+                "value": "277081"
+              },
+              {
+                "label": "Job Board",
+                "value": "277082"
+              },
+              {
+                "label": "Other",
+                "value": "277084"
+              },
+              {
+                "label": "Referral from an Exyte employee",
+                "value": "277085"
+              },
+              {
+                "label": "LinkedIn",
+                "value": "277083"
+              },
+              {
+                "label": "Xing",
+                "value": "277086"
+              },
+              {
+                "label": "Indeed",
+                "value": "277140"
+              },
+              {
+                "label": "Stepstone",
+                "value": "277141"
+              },
+              {
+                "label": "Instagram",
+                "value": "277142"
+              },
+              {
+                "label": "Twitter",
+                "value": "277143"
+              },
+              {
+                "label": "kununu",
+                "value": "277144"
+              }
+            ],
+            "tagName": "SELECT",
+            "required": true,
+            "fieldType": "select"
+          },
+          {
+            "name": "questionReferal",
+            "label": "Employee Reference at Exyte",
+            "options": [
+              {
+                "label": "Please Select",
+                "value": ""
+              },
+              {
+                "label": "Yes",
+                "value": "985"
+              },
+              {
+                "label": "No",
+                "value": "984"
+              }
+            ],
+            "tagName": "SELECT",
+            "required": true,
+            "fieldType": "select"
+          },
+          {
+            "name": "country",
+            "label": "Country/Region of Residence",
+            "options": [
+              {
+                "label": "Please Select",
+                "value": ""
+              },
+              {
+                "label": "AALAND ISLANDS",
+                "value": "1891"
+              },
+              {
+                "label": "AFGHANISTAN",
+                "value": "1889"
+              },
+              {
+                "label": "ALBANIA",
+                "value": "1892"
+              },
+              {
+                "label": "ALGERIA",
+                "value": "1894"
+              },
+              {
+                "label": "AMERICAN SAMOA",
+                "value": "1893"
+              },
+              {
+                "label": "ANDORRA",
+                "value": "1895"
+              },
+              {
+                "label": "ANGOLA",
+                "value": "1896"
+              },
+              {
+                "label": "ANGUILLA",
+                "value": "1897"
+              },
+              {
+                "label": "ANTARCTICA",
+                "value": "1943"
+              },
+              {
+                "label": "ANTIGUA AND BARBUDA",
+                "value": "1898"
+              },
+              {
+                "label": "ARGENTINA",
+                "value": "1899"
+              },
+              {
+                "label": "ARMENIA",
+                "value": "1900"
+              },
+              {
+                "label": "ARUBA",
+                "value": "1901"
+              },
+              {
+                "label": "AUSTRALIA",
+                "value": "1903"
+              },
+              {
+                "label": "AUSTRIA",
+                "value": "1904"
+              },
+              {
+                "label": "AZERBAIJAN",
+                "value": "1912"
+              },
+              {
+                "label": "BAHAMAS",
+                "value": "1905"
+              },
+              {
+                "label": "BAHRAIN",
+                "value": "1906"
+              },
+              {
+                "label": "BANGLADESH",
+                "value": "1907"
+              },
+              {
+                "label": "BARBADOS",
+                "value": "1908"
+              },
+              {
+                "label": "BELARUS",
+                "value": "1941"
+              },
+              {
+                "label": "BELGIUM",
+                "value": "1910"
+              },
+              {
+                "label": "BELIZE",
+                "value": "1911"
+              },
+              {
+                "label": "BENIN",
+                "value": "1949"
+              },
+              {
+                "label": "BERMUDA",
+                "value": "1914"
+              },
+              {
+                "label": "BHUTAN",
+                "value": "1913"
+              },
+              {
+                "label": "BOLIVIA (PLURINATIONAL STATE OF)",
+                "value": "1902"
+              },
+              {
+                "label": "BONAIRE, SINT EUSTATIUS AND SABA",
+                "value": "1915"
+              },
+              {
+                "label": "BOSNIA AND HERZEGOVINA",
+                "value": "1917"
+              },
+              {
+                "label": "BOTSWANA",
+                "value": "1916"
+              },
+              {
+                "label": "BOUVET ISLAND",
+                "value": "1918"
+              },
+              {
+                "label": "BRAZIL",
+                "value": "1919"
+              },
+              {
+                "label": "BRITISH INDIAN OCEAN TERRITORY",
+                "value": "1920"
+              },
+              {
+                "label": "BRUNEI DARUSSALAM",
+                "value": "12441"
+              },
+              {
+                "label": "BULGARIA",
+                "value": "1921"
+              },
+              {
+                "label": "BURKINA FASO",
+                "value": "1922"
+              },
+              {
+                "label": "BURUNDI",
+                "value": "1923"
+              },
+              {
+                "label": "CABO VERDE",
+                "value": "1929"
+              },
+              {
+                "label": "CAMBODIA",
+                "value": "1925"
+              },
+              {
+                "label": "CAMEROON",
+                "value": "1927"
+              },
+              {
+                "label": "CANADA",
+                "value": "1926"
+              },
+              {
+                "label": "CAYMAN ISLANDS",
+                "value": "1932"
+              },
+              {
+                "label": "CENTRAL AFRICAN REPUBLIC",
+                "value": "1928"
+              },
+              {
+                "label": "CHAD",
+                "value": "1930"
+              },
+              {
+                "label": "CHILE",
+                "value": "12440"
+              },
+              {
+                "label": "CHINA",
+                "value": "1933"
+              },
+              {
+                "label": "CHRISTMAS ISLAND",
+                "value": "1934"
+              },
+              {
+                "label": "COCOS (KEELING) ISLANDS",
+                "value": "1935"
+              },
+              {
+                "label": "COLOMBIA",
+                "value": "1936"
+              },
+              {
+                "label": "COMOROS",
+                "value": "1937"
+              },
+              {
+                "label": "CONGO, THE DEMOCRATIC REPUBLIC OF THE",
+                "value": "1938"
+              },
+              {
+                "label": "CONGO",
+                "value": "11733"
+              },
+              {
+                "label": "COOK ISLANDS",
+                "value": "1939"
+              },
+              {
+                "label": "COSTA RICA",
+                "value": "1942"
+              },
+              {
+                "label": "CÔTE D'IVOIRE",
+                "value": "1945"
+              },
+              {
+                "label": "CROATIA",
+                "value": "1946"
+              },
+              {
+                "label": "CUBA",
+                "value": "1944"
+              },
+              {
+                "label": "CURAÇAO",
+                "value": "1948"
+              },
+              {
+                "label": "CYPRUS",
+                "value": "1950"
+              },
+              {
+                "label": "CZECH REPUBLIC",
+                "value": "1940"
+              },
+              {
+                "label": "DENMARK",
+                "value": "276840"
+              },
+              {
+                "label": "DJIBOUTI",
+                "value": "277483"
+              },
+              {
+                "label": "DOMINICA",
+                "value": "277482"
+              },
+              {
+                "label": "DOMINICAN REPUBLIC",
+                "value": "277481"
+              },
+              {
+                "label": "ECUADOR",
+                "value": "277480"
+              },
+              {
+                "label": "EGYPT",
+                "value": "277479"
+              },
+              {
+                "label": "EL SALVADOR",
+                "value": "277478"
+              },
+              {
+                "label": "EQUATORIAL GUINEA",
+                "value": "277477"
+              },
+              {
+                "label": "ERITREA",
+                "value": "277476"
+              },
+              {
+                "label": "ESTONIA",
+                "value": "277475"
+              },
+              {
+                "label": "ESWATINI",
+                "value": "277474"
+              },
+              {
+                "label": "ETHIOPIA",
+                "value": "277473"
+              },
+              {
+                "label": "FALKLAND ISLANDS (MALVINAS)",
+                "value": "277472"
+              },
+              {
+                "label": "FAROE ISLANDS",
+                "value": "277471"
+              },
+              {
+                "label": "FIJI",
+                "value": "277470"
+              },
+              {
+                "label": "FINLAND",
+                "value": "277469"
+              },
+              {
+                "label": "FRANCE",
+                "value": "277468"
+              },
+              {
+                "label": "FRENCH GUIANA",
+                "value": "277467"
+              },
+              {
+                "label": "FRENCH POLYNESIA",
+                "value": "277466"
+              },
+              {
+                "label": "FRENCH SOUTHERN TERRITORIES",
+                "value": "277465"
+              },
+              {
+                "label": "GABON",
+                "value": "277464"
+              },
+              {
+                "label": "GAMBIA",
+                "value": "277463"
+              },
+              {
+                "label": "GEORGIA",
+                "value": "277462"
+              },
+              {
+                "label": "GERMANY",
+                "value": "277461"
+              },
+              {
+                "label": "GHANA",
+                "value": "277460"
+              },
+              {
+                "label": "GIBRALTAR",
+                "value": "277459"
+              },
+              {
+                "label": "GREECE",
+                "value": "277458"
+              },
+              {
+                "label": "GREENLAND",
+                "value": "277457"
+              },
+              {
+                "label": "GRENADA",
+                "value": "277456"
+              },
+              {
+                "label": "GUADELOUPE",
+                "value": "277455"
+              },
+              {
+                "label": "GUAM",
+                "value": "277454"
+              },
+              {
+                "label": "GUATEMALA",
+                "value": "277453"
+              },
+              {
+                "label": "GUERNSEY",
+                "value": "277452"
+              },
+              {
+                "label": "GUINEA-BISSAU",
+                "value": "277450"
+              },
+              {
+                "label": "GUINEA",
+                "value": "277451"
+              },
+              {
+                "label": "GUYANA",
+                "value": "277449"
+              },
+              {
+                "label": "HAITI",
+                "value": "277448"
+              },
+              {
+                "label": "HEARD ISLAND AND MCDONALD ISLANDS",
+                "value": "277447"
+              },
+              {
+                "label": "HOLY SEE (VATICAN CITY STATE)",
+                "value": "277446"
+              },
+              {
+                "label": "HONDURAS",
+                "value": "277445"
+              },
+              {
+                "label": "HONG KONG",
+                "value": "277444"
+              },
+              {
+                "label": "HUNGARY",
+                "value": "277443"
+              },
+              {
+                "label": "ICELAND",
+                "value": "277442"
+              },
+              {
+                "label": "INDIA",
+                "value": "277441"
+              },
+              {
+                "label": "INDONESIA",
+                "value": "277440"
+              },
+              {
+                "label": "IRAN, ISLAMIC REPUBLIC OF",
+                "value": "277439"
+              },
+              {
+                "label": "IRAQ",
+                "value": "277438"
+              },
+              {
+                "label": "IRELAND",
+                "value": "277437"
+              },
+              {
+                "label": "ISLE OF MAN",
+                "value": "277436"
+              },
+              {
+                "label": "ISRAEL",
+                "value": "277435"
+              },
+              {
+                "label": "ITALY",
+                "value": "277434"
+              },
+              {
+                "label": "JAMAICA",
+                "value": "277433"
+              },
+              {
+                "label": "JAPAN",
+                "value": "277432"
+              },
+              {
+                "label": "JERSEY",
+                "value": "277431"
+              },
+              {
+                "label": "JORDAN",
+                "value": "277430"
+              },
+              {
+                "label": "KAZAKHSTAN",
+                "value": "277429"
+              },
+              {
+                "label": "KENYA",
+                "value": "277428"
+              },
+              {
+                "label": "KIRIBATI",
+                "value": "277427"
+              },
+              {
+                "label": "KOREA, DEMOCRATIC PEOPLE'S REPUBLIC OF",
+                "value": "277426"
+              },
+              {
+                "label": "KOREA, REPUBLIC OF",
+                "value": "277425"
+              },
+              {
+                "label": "KOSOVO",
+                "value": "277424"
+              },
+              {
+                "label": "KUWAIT",
+                "value": "277423"
+              },
+              {
+                "label": "KYRGYZSTAN",
+                "value": "277422"
+              },
+              {
+                "label": "LAO PEOPLE'S DEMOCRATIC REPUBLIC",
+                "value": "277421"
+              },
+              {
+                "label": "LATVIA",
+                "value": "277420"
+              },
+              {
+                "label": "LEBANON",
+                "value": "277419"
+              },
+              {
+                "label": "LESOTHO",
+                "value": "277418"
+              },
+              {
+                "label": "LIBERIA",
+                "value": "277417"
+              },
+              {
+                "label": "LIBYA",
+                "value": "277416"
+              },
+              {
+                "label": "LIECHTENSTEIN",
+                "value": "277415"
+              },
+              {
+                "label": "LITHUANIA",
+                "value": "277414"
+              },
+              {
+                "label": "LUXEMBOURG",
+                "value": "277413"
+              },
+              {
+                "label": "MACAO",
+                "value": "277412"
+              },
+              {
+                "label": "MADAGASCAR",
+                "value": "277410"
+              },
+              {
+                "label": "MALAWI",
+                "value": "277409"
+              },
+              {
+                "label": "MALAYSIA",
+                "value": "277408"
+              },
+              {
+                "label": "MALDIVES",
+                "value": "277407"
+              },
+              {
+                "label": "MALI",
+                "value": "277406"
+              },
+              {
+                "label": "MALTA",
+                "value": "277405"
+              },
+              {
+                "label": "MARSHALL ISLANDS",
+                "value": "277404"
+              },
+              {
+                "label": "MARTINIQUE",
+                "value": "277403"
+              },
+              {
+                "label": "MAURITANIA",
+                "value": "277402"
+              },
+              {
+                "label": "MAURITIUS",
+                "value": "277401"
+              },
+              {
+                "label": "MAYOTTE",
+                "value": "277400"
+              },
+              {
+                "label": "MEXICO",
+                "value": "277399"
+              },
+              {
+                "label": "MICRONESIA, FEDERATED STATES OF",
+                "value": "277398"
+              },
+              {
+                "label": "MOLDOVA, REPUBLIC OF",
+                "value": "277397"
+              },
+              {
+                "label": "MONACO",
+                "value": "277396"
+              },
+              {
+                "label": "MONGOLIA",
+                "value": "277395"
+              },
+              {
+                "label": "MONTENEGRO",
+                "value": "277394"
+              },
+              {
+                "label": "MONTSERRAT",
+                "value": "277393"
+              },
+              {
+                "label": "MOROCCO",
+                "value": "277392"
+              },
+              {
+                "label": "MOZAMBIQUE",
+                "value": "277391"
+              },
+              {
+                "label": "MYANMAR",
+                "value": "277390"
+              },
+              {
+                "label": "NAMIBIA",
+                "value": "277389"
+              },
+              {
+                "label": "NAURU",
+                "value": "277388"
+              },
+              {
+                "label": "NEPAL",
+                "value": "277387"
+              },
+              {
+                "label": "NETHERLANDS ANTILLES",
+                "value": "277385"
+              },
+              {
+                "label": "NETHERLANDS",
+                "value": "277386"
+              },
+              {
+                "label": "NEW CALEDONIA",
+                "value": "277384"
+              },
+              {
+                "label": "NEW ZEALAND",
+                "value": "277383"
+              },
+              {
+                "label": "NICARAGUA",
+                "value": "277382"
+              },
+              {
+                "label": "NIGER",
+                "value": "277381"
+              },
+              {
+                "label": "NIGERIA",
+                "value": "277380"
+              },
+              {
+                "label": "NIUE",
+                "value": "277379"
+              },
+              {
+                "label": "NORFOLK ISLAND",
+                "value": "277378"
+              },
+              {
+                "label": "NORTHERN MARIANA ISLANDS",
+                "value": "277377"
+              },
+              {
+                "label": "NORWAY",
+                "value": "277376"
+              },
+              {
+                "label": "OMAN",
+                "value": "277375"
+              },
+              {
+                "label": "PAKISTAN",
+                "value": "277374"
+              },
+              {
+                "label": "PALAU",
+                "value": "277373"
+              },
+              {
+                "label": "PALESTINE, STATE OF",
+                "value": "277372"
+              },
+              {
+                "label": "PANAMA",
+                "value": "277371"
+              },
+              {
+                "label": "PAPUA NEW GUINEA",
+                "value": "277370"
+              },
+              {
+                "label": "PARAGUAY",
+                "value": "277369"
+              },
+              {
+                "label": "PERU",
+                "value": "277368"
+              },
+              {
+                "label": "PHILIPPINES",
+                "value": "277367"
+              },
+              {
+                "label": "PITCAIRN",
+                "value": "277366"
+              },
+              {
+                "label": "POLAND",
+                "value": "277365"
+              },
+              {
+                "label": "PORTUGAL",
+                "value": "277364"
+              },
+              {
+                "label": "PUERTO RICO",
+                "value": "277363"
+              },
+              {
+                "label": "QATAR",
+                "value": "277362"
+              },
+              {
+                "label": "REPUBLIC OF NORTH MACEDONIA",
+                "value": "277411"
+              },
+              {
+                "label": "RÉUNION",
+                "value": "277361"
+              },
+              {
+                "label": "ROMANIA",
+                "value": "277360"
+              },
+              {
+                "label": "RUSSIAN FEDERATION",
+                "value": "277359"
+              },
+              {
+                "label": "RWANDA",
+                "value": "277358"
+              },
+              {
+                "label": "SAINT BARTHÉLEMY",
+                "value": "277357"
+              },
+              {
+                "label": "SAINT HELENA",
+                "value": "277356"
+              },
+              {
+                "label": "SAINT KITTS AND NEVIS",
+                "value": "277355"
+              },
+              {
+                "label": "SAINT LUCIA",
+                "value": "277354"
+              },
+              {
+                "label": "SAINT MARTIN",
+                "value": "277353"
+              },
+              {
+                "label": "SAINT PIERRE AND MIQUELON",
+                "value": "277352"
+              },
+              {
+                "label": "SAINT VINCENT AND THE GRENADINES",
+                "value": "277351"
+              },
+              {
+                "label": "SAMOA",
+                "value": "277350"
+              },
+              {
+                "label": "SAN MARINO",
+                "value": "277349"
+              },
+              {
+                "label": "SAO TOME AND PRINCIPE",
+                "value": "277348"
+              },
+              {
+                "label": "SAUDI ARABIA",
+                "value": "277347"
+              },
+              {
+                "label": "SENEGAL",
+                "value": "277346"
+              },
+              {
+                "label": "SERBIA",
+                "value": "277345"
+              },
+              {
+                "label": "SEYCHELLES",
+                "value": "277344"
+              },
+              {
+                "label": "SIERRA LEONE",
+                "value": "277343"
+              },
+              {
+                "label": "SINGAPORE",
+                "value": "277342"
+              },
+              {
+                "label": "SINT MAARTEN",
+                "value": "277341"
+              },
+              {
+                "label": "SLOVAKIA",
+                "value": "277340"
+              },
+              {
+                "label": "SLOVENIA",
+                "value": "277339"
+              },
+              {
+                "label": "SOLOMON ISLANDS",
+                "value": "277338"
+              },
+              {
+                "label": "SOMALIA",
+                "value": "277337"
+              },
+              {
+                "label": "SOUTH AFRICA",
+                "value": "277336"
+              },
+              {
+                "label": "SOUTH GEORGIA AND THE SOUTH SANDWICH ISLANDS",
+                "value": "277335"
+              },
+              {
+                "label": "SOUTH SUDAN",
+                "value": "277334"
+              },
+              {
+                "label": "SPAIN",
+                "value": "277333"
+              },
+              {
+                "label": "SRI LANKA",
+                "value": "277332"
+              },
+              {
+                "label": "SUDAN",
+                "value": "277331"
+              },
+              {
+                "label": "SURINAME",
+                "value": "277330"
+              },
+              {
+                "label": "SVALBARD AND JAN MAYEN",
+                "value": "277329"
+              },
+              {
+                "label": "SWEDEN",
+                "value": "277328"
+              },
+              {
+                "label": "SWITZERLAND",
+                "value": "277327"
+              },
+              {
+                "label": "SYRIAN ARAB REPUBLIC",
+                "value": "277326"
+              },
+              {
+                "label": "TAIWAN",
+                "value": "277325"
+              },
+              {
+                "label": "TAJIKISTAN",
+                "value": "277324"
+              },
+              {
+                "label": "TANZANIA, UNITED REPUBLIC OF",
+                "value": "277323"
+              },
+              {
+                "label": "THAILAND",
+                "value": "277322"
+              },
+              {
+                "label": "TIMOR-LESTE",
+                "value": "277321"
+              },
+              {
+                "label": "TOGO",
+                "value": "277320"
+              },
+              {
+                "label": "TOKELAU",
+                "value": "277319"
+              },
+              {
+                "label": "TONGA",
+                "value": "277318"
+              },
+              {
+                "label": "TRINIDAD AND TOBAGO",
+                "value": "277317"
+              },
+              {
+                "label": "TUNISIA",
+                "value": "277316"
+              },
+              {
+                "label": "TÜRKIYE",
+                "value": "277315"
+              },
+              {
+                "label": "TURKMENISTAN",
+                "value": "277314"
+              },
+              {
+                "label": "TURKS AND CAICOS ISLANDS",
+                "value": "277313"
+              },
+              {
+                "label": "TUVALU",
+                "value": "277312"
+              },
+              {
+                "label": "UGANDA",
+                "value": "277311"
+              },
+              {
+                "label": "UKRAINE",
+                "value": "277310"
+              },
+              {
+                "label": "UNITED ARAB EMIRATES",
+                "value": "277309"
+              },
+              {
+                "label": "UNITED KINGDOM",
+                "value": "277308"
+              },
+              {
+                "label": "UNITED STATES MINOR OUTLYING ISLANDS",
+                "value": "277306"
+              },
+              {
+                "label": "UNITED STATES",
+                "value": "277307"
+              },
+              {
+                "label": "URUGUAY",
+                "value": "277305"
+              },
+              {
+                "label": "UZBEKISTAN",
+                "value": "277304"
+              },
+              {
+                "label": "VANUATU",
+                "value": "277303"
+              },
+              {
+                "label": "VENEZUELA (BOLIVARIAN REPUBLIC OF)",
+                "value": "277302"
+              },
+              {
+                "label": "VIET NAM",
+                "value": "277301"
+              },
+              {
+                "label": "VIRGIN ISLANDS, BRITISH",
+                "value": "277300"
+              },
+              {
+                "label": "VIRGIN ISLANDS, U.S.",
+                "value": "277299"
+              },
+              {
+                "label": "WALLIS AND FUTUNA",
+                "value": "277298"
+              },
+              {
+                "label": "WESTERN SAHARA",
+                "value": "277297"
+              },
+              {
+                "label": "YEMEN",
+                "value": "YEMEN"
+              },
+              {
+                "label": "ZAMBIA",
+                "value": "ZAMBIA"
+              },
+              {
+                "label": "ZIMBABWE",
+                "value": "ZIMBABWE"
+              }
+            ],
+            "tagName": "SELECT",
+            "required": true,
+            "fieldType": "select"
+          },
+          {
+            "name": "city",
+            "label": "City of Residence",
+            "tagName": "INPUT",
+            "required": true,
+            "fieldType": "text"
+          },
+          {
+            "name": "applicantSource",
+            "label": "How did you hear about us?",
+            "tagName": "INPUT",
+            "required": false,
+            "fieldType": "text"
+          },
+          {
+            "name": "agreeToPrivacyStatement",
+            "label": "I have read and understood the data processing information.",
+            "tagName": "INPUT",
+            "required": true,
+            "fieldType": "checkbox"
+          },
+          {
+            "name": "emailAgreement",
+            "label": "I would like Exyte Group to consider me for other positions worldwide, store my data and contact me about positions beyond my application even if I am unsuccessful at an application.",
+            "tagName": "INPUT",
+            "required": false,
+            "fieldType": "checkbox"
+          },
+          {
+            "name": "referredbyEmpID",
+            "label": "",
+            "value": "",
+            "tagName": "INPUT",
+            "required": false,
+            "fieldType": "hidden"
+          },
+          {
+            "name": "referrerToken",
+            "label": "",
+            "value": "",
+            "tagName": "INPUT",
+            "required": false,
+            "fieldType": "hidden"
+          },
+          {
+            "name": "loginType",
+            "label": "",
+            "value": "apply",
+            "tagName": "INPUT",
+            "required": false,
+            "fieldType": "hidden"
+          },
+          {
+            "name": "username",
+            "label": "",
+            "value": "",
+            "tagName": "INPUT",
+            "required": false,
+            "fieldType": "hidden"
+          },
+          {
+            "name": "title",
+            "label": "",
+            "value": "",
+            "tagName": "INPUT",
+            "required": false,
+            "fieldType": "hidden"
+          },
+          {
+            "name": "jobLocation",
+            "label": "",
+            "tagName": "INPUT",
+            "required": false,
+            "fieldType": "hidden"
+          },
+          {
+            "name": "jobCategory",
+            "label": "",
+            "tagName": "INPUT",
+            "required": false,
+            "fieldType": "hidden"
+          },
+          {
+            "name": "resumePath",
+            "label": "",
+            "value": "",
+            "tagName": "INPUT",
+            "required": false,
+            "fieldType": "hidden"
+          },
+          {
+            "name": "resumeName",
+            "label": "",
+            "value": "",
+            "tagName": "INPUT",
+            "required": false,
+            "fieldType": "hidden"
+          },
+          {
+            "name": "resumeFileSize",
+            "label": "",
+            "value": "",
+            "tagName": "INPUT",
+            "required": false,
+            "fieldType": "hidden"
+          },
+          {
+            "name": "jobCountry",
+            "label": "",
+            "value": "Israel",
+            "tagName": "INPUT",
+            "required": false,
+            "fieldType": "hidden"
+          },
+          {
+            "name": "stepNum",
+            "label": "",
+            "value": "1",
+            "tagName": "INPUT",
+            "required": false,
+            "fieldType": "hidden"
+          },
+          {
+            "name": "flowNumber",
+            "label": "",
+            "value": "1",
+            "tagName": "INPUT",
+            "required": false,
+            "fieldType": "hidden"
+          },
+          {
+            "name": "jobId",
+            "label": "",
+            "tagName": "INPUT",
+            "required": false,
+            "fieldType": "hidden"
+          },
+          {
+            "name": "jobTitle",
+            "label": "",
+            "tagName": "INPUT",
+            "required": false,
+            "fieldType": "hidden"
+          },
+          {
+            "name": "applySource",
+            "label": "",
+            "value": "",
+            "tagName": "INPUT",
+            "required": false,
+            "fieldType": "hidden"
+          },
+          {
+            "name": "jobSeqNo",
+            "label": "",
+            "tagName": "INPUT",
+            "required": false,
+            "fieldType": "hidden"
+          },
+          {
+            "name": "cellPhone",
+            "label": "",
+            "value": "",
+            "tagName": "INPUT",
+            "required": false,
+            "fieldType": "hidden"
+          },
+          {
+            "name": "locale",
+            "label": "",
+            "value": "en_global",
+            "tagName": "INPUT",
+            "required": false,
+            "fieldType": "hidden"
+          },
+          {
+            "name": "appLocale",
+            "label": "",
+            "value": "en_US",
+            "tagName": "INPUT",
+            "required": false,
+            "fieldType": "hidden"
+          },
+          {
+            "name": "resumeBucketId",
+            "label": "",
+            "value": "",
+            "tagName": "INPUT",
+            "required": false,
+            "fieldType": "hidden"
+          },
+          {
+            "name": "resumeRelativePath",
+            "label": "",
+            "value": "",
+            "tagName": "INPUT",
+            "required": false,
+            "fieldType": "hidden"
+          },
+          {
+            "name": "apTxnId",
+            "label": "",
+            "tagName": "INPUT",
+            "required": false,
+            "fieldType": "hidden"
+          },
+          {
+            "name": "isResume",
+            "label": "",
+            "value": "",
+            "tagName": "INPUT",
+            "required": false,
+            "fieldType": "hidden"
+          }
+        ],
+        "method": "POST",
+        "actionUrl": "https://careers.exyte.net/applySubmit",
+        "formSelector": "form.rjsf"
+      },
+      "listingUrls": null,
+      "itemSelector": ".__haide-job",
+      "minPublishDate": null,
+      "minPublishDays": null,
+      "revealSelector": null,
+      "listingSelector": null,
+      "applyLoginReason": null,
+      "browserOverrides": null,
+      "loadMoreSelector": null,
+      "locationFallback": null,
+      "originalMappings": null,
+      "applyRequiresLogin": false
+    },
+    "title": {
+      "source": "manual",
+      "selector": ".__ai-title",
+      "confidence": 0.95,
+      "capturedOnUrl": "https://careers.exyte.net/global/en"
+    },
+    "location": {
+      "source": "manual",
+      "selector": ".__ai-location",
+      "confidence": 0.95,
+      "capturedOnUrl": "https://careers.exyte.net/global/en"
+    },
+    "detailUrl": {
+      "source": "manual",
+      "selector": ".__ai-url",
+      "confidence": 0.95,
+      "capturedOnUrl": "https://careers.exyte.net/global/en"
+    },
+    "department": {
+      "source": "manual",
+      "selector": ".__ai-dept",
+      "confidence": 0.9,
+      "capturedOnUrl": "https://careers.exyte.net/global/en"
+    },
+    "description": {
+      "source": "manual",
+      "selector": ".__ai-description",
+      "confidence": 0.9,
+      "capturedOnUrl": "https://careers.exyte.net/global/en"
+    },
+    "publishDate": {
+      "source": "manual",
+      "selector": ".__ai-date",
+      "confidence": 0.9,
+      "capturedOnUrl": "https://careers.exyte.net/global/en"
+    },
+    "requirements": {
+      "source": "manual",
+      "selector": ".__ai-requirements",
+      "confidence": 0.85,
+      "capturedOnUrl": "https://careers.exyte.net/global/en"
+    },
+    "externalJobId": {
+      "source": "manual",
+      "selector": ".__ai-eid",
+      "confidence": 0.95,
+      "capturedOnUrl": "https://careers.exyte.net/global/en"
+    }
+  }
+}

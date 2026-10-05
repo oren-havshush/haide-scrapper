@@ -32,6 +32,7 @@ several listing pages back into one and stops publishing the rest.
 | ERN | ACTIVE | 6 | 7423 | 1 | `ern--tcdrkt` |
 | ESO Group | ACTIVE | 4 | 577 | 1 | `eso-group--mgz38v` |
 | Eimsys | ACTIVE | 4 | 302 | 1 | `eimsys--an8gzs` |
+| Exyte Israel | ACTIVE | 8 | 4512 | 1 | `exyte--go206o` |
 | Fritz | ACTIVE | 5 | 5110 | 1 | `fritz--wafrzk` |
 | G STAT | ACTIVE | 5 | 1682 | 1 | `g-stat--yvpgzk` |
 | Gtech | ACTIVE | 6 | 4590 | 1 | `gtech--7udl8v` |
@@ -75,6 +76,7 @@ several listing pages back into one and stops publishing the rest.
 | אביבים השמה | ACTIVE | 6 | 3739 | 1 | `avivim-hr--f3d9j7` |
 | אגד | ACTIVE | 7 | 5669 | 1 | `egged--4qc6cy` |
 | אדוויס | ACTIVE | 6 | 2334 | 1 | `advice--eq0sxw` |
+| אוורסט טכנולוגיות בע"מ | ACTIVE | 8 | 5555 | 1 | `everest-t--fb9tm0` |
 | אופרייט | ACTIVE | 6 | 7093 | 1 | `opl--u03od8` |
 | איי פורס בע"מ | ACTIVE | 9 | 7966 | 1 | `iforc--jtz6km` |
 | אינטרטול מכונות לעיבוד שבבי בע"מ | ACTIVE | 5 | 3234 | 1 | `intertool--77txdy` |
@@ -117,6 +119,7 @@ several listing pages back into one and stops publishing the rest.
 | הראל ביטוח ופיננסים | ACTIVE | 7 | 5527 | 1 | `adamtotal--cemdht` |
 | וילי פוד | ACTIVE | 8 | 2768 | 1 | `willi-food--tsircs` |
 | ויסוצקי | ACTIVE | 6 | 777 | 1 | `app-civi--jgqwu7` |
+| זיגזג | ACTIVE | 5 | 2627 | 1 | `zig-zag--8ogbov` |
 | חברת החשמל | ACTIVE | 8 | 3910 | 1 | `iec--7d28yg` |
 | חיותא | ACTIVE | 3 | — | 1 | `chayuta--6foa66` |
 | חלילית | ACTIVE | 6 | 4757 | 1 | `halilit--0vwgee` |
@@ -181,6 +184,7 @@ several listing pages back into one and stops publishing the rest.
 | פרופורציה | ACTIVE | 7 | 3530 | 1 | `proportsia--msnicc` |
 | פתרונות עדיפים-ביטוח | ACTIVE | 6 | 4489 | 1 | `adifim--26vavw` |
 | צ'יטה שליחויות | ACTIVE | 4 | 332 | 1 | `chitadelivery--xpwqf1` |
+| צרפתי שמעון | ACTIVE | 5 | 3075 | 1 | `s-sarfati--5dr0yc` |
 | קבוצת אמנת- Sysnet | ACTIVE | 3 | — | 1 | `amanet--ihg3a3` |
 | קבוצת ברן | ACTIVE | 8 | 7783 | 1 | `barangroup--36lhv6` |
 | קבוצת ויזל - פוקס | ACTIVE | 4 | 2133 | 1 | `dreamjobs--43loqz` |
