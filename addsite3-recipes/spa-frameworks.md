@@ -24,7 +24,10 @@ detailUrl:    a[data-automation-id='jobItem'] [attr: href]  ← absolute URL
 - **UA override required:** Workday returns a client-rendered shell to headless browsers without a real UA. Always include `browserOverrides.userAgent`.
 - **Department:** not in the listing item — lives in a filter facet sidebar. Use `setupScript` to read the currently-selected facet and inject it, OR accept missing department (Tier-B, not blocking).
 - **detailUrl is absolute:** no need to resolve against siteUrl.
-- **Pagination:** Workday listing pages use an "offset" query param (`&offset=20`). If site has >25 jobs, add a `pageFlow` or multi-page `setupScript`. See `pagination-and-loading.md`.
+- **Pagination:** enumerate every posting through the tenant's JSON list API
+  (`POST /wday/cxs/<tenant>/<site>/jobs`, offset until `total`) in a single-page setupScript,
+  and enrich descriptions from the per-job JSON (`LRN-SPA-1`, NVIDIA 480/480). The HTML
+  `&offset=N` pages are the fallback only. See `pagination-and-loading.md` §4.
 - **Apply form:** Workday uses its own hosted apply flow. `formStatus` will be `URL` (external apply link). Capture the detail-page apply URL as `applicationInfo`.
 
 ### formCapture
@@ -420,9 +423,11 @@ platform (אלו"ט: 46 postings naming ~25 towns). There the place is stated in
 the only safe way to read it is a **closed table written into the setupScript** whose every
 canonical value was checked verbatim against BOTH `CSV files/city.csv` and the worker's list,
 matched **whole-word** with one or two Hebrew prefix letters peeled off. A token outside the
-table must inject **nothing**: `resolveJobLocation()` returns `location: list[0] ?? extracted`,
-so an injected value that `normalizeLocations()` cannot resolve ships **raw** as the job's
-location — the gate you were relying on is not the one the worker applies. Substring matching
+table must inject **nothing**. Since the city gate (`LRN-LOC-16`, pinned by
+`worker/lib/jobLocation.test.ts`), `resolveJobLocation()` stores `list[0] ?? "Unknown"`: an
+injected value that `normalizeLocations()` cannot resolve no longer ships raw, it ships as
+**`Unknown`** — and a near-miss that *does* resolve ships as the wrong town. Either way the
+table, not the gate, is what makes the value right. Substring matching
 against `city.csv` is not usable: on this board it produced `מעון` out of `למעונות` and `עופר`
 out of `כפר עופרים`. Full rule and the measured table: `LRN-LOC-16`, `sites/alut/notes.md`.
 

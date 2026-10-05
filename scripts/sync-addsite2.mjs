@@ -162,9 +162,11 @@ if (CHECK_MODE) {
 
   // ---- check-learnings: cited ids exist, ids unique, every learning has a status row --
   const learningProblems = runCheckLearnings(ROOT);
-  for (const p of learningProblems) console.error(`LEARNINGS: ${p}`);
-  if (learningProblems.length > 0) drift = true;
-  else console.log('OK: learnings — cited ids exist, ids are unique, every learning has a status row');
+  // A learning with no status row is a warning until the addsite3 switch (SWITCH_AT).
+  for (const w of learningProblems.warnings) console.warn(`WARN: LEARNINGS: ${w}`);
+  for (const e of learningProblems.errors) console.error(`LEARNINGS: ${e}`);
+  if (learningProblems.errors.length > 0) drift = true;
+  else console.log(`OK: learnings — cited ids exist, ids are unique, every RECIPE line cites its id${learningProblems.warnings.length ? ` (${learningProblems.warnings.length} warning(s))` : ''}`);
   process.exit(drift ? 1 : 0);
 }
 

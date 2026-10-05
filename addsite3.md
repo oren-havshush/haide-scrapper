@@ -46,7 +46,7 @@ AUTH="Authorization: Bearer $TOKEN"
 - Never commit an ACTIVE site with only title+location (no description, no apply path).
 - Never use index-based `externalJobId` (`item-0`, `item-1`). Dedup will collapse on re-scrape.
 - Never skip the `verify-config` gate after a PUT — the analyzer overwrites configs.
-- Never run parallel prod scrapes — the worker is single-threaded FIFO; parallel scrapes queue, not parallelise.
+- Never run parallel prod scrapes — the worker is single-threaded FIFO; parallel scrapes queue, not parallelise. (`LRN-WRK-3`)
 - Never send an `adminNote` longer than **2,000 characters** — the PATCH returns a bare `400` and the note is not updated. Check the length first and re-read after; rewrite a long note compactly rather than truncating it (`LRN-API-9`).
 
 ### 0.3 Inputs
@@ -87,10 +87,18 @@ For each URL in `work-list.json`:
 **Outcomes:** `ACTIVE` | `SKIPPED` | `REVIEW` | `REQUEUE` | `ERROR`
 
 ### B1.5 Reactivating SKIPPED/FAILED (--force)
-If the existing status is SKIPPED or FAILED and `--force` is set:
-1. `PATCH /api/sites/<id>` → `{ "status": "ANALYZING" }` (only ANALYZING is accepted from SKIPPED).
-2. Wait for status to leave ANALYZING (poll GET, max 60 s).
-3. Then treat as a fresh site (proceed from §3).
+If the existing status is SKIPPED or FAILED and `--force` is set, pick the route by what
+the stored config is worth (`LRN-RACE-3`; `src/lib/statusTransitions.ts`):
+- **SKIPPED whose reason lay outside the config** (a WAF block, a login-gated apply, a
+  policy) and has lifted: `PATCH /api/sites/<id>` → `{ "status": "REVIEW" }`. SKIPPED →
+  REVIEW is allowed and keeps the config and the listings; check and fix the config from
+  there (the `fix` command, guarded run, promote). gazit and sinaistore came back this way.
+- **Rebuild from scratch, or a FAILED site** (FAILED cannot go to REVIEW):
+  1. `PATCH /api/sites/<id>` → `{ "status": "ANALYZING" }`. This re-queues the analyzer,
+     which overwrites `fieldMappings` and clears `configLocked`.
+  2. Wait for the status to leave ANALYZING (poll GET). If it is still ANALYZING after the
+     poll, PATCH it to REVIEW, confirm that stuck, and only then PUT (`LRN-RACE-4`).
+  3. Then treat it as a fresh site (proceed from §3).
 
 ### B2 Gate matrix (per site in batch)
 
@@ -435,10 +443,10 @@ curl -s -A "$REAL_UA" "$URL" -o listing.html
 | Field | Strategy |
 |---|---|
 | `title` | Direct text selector inside item. |
-| `externalJobId` | **One rule: native id first; with no native id, emit no id at all.** (1) A **native id**: an attribute (`data-job-id`, `data-id`), **a req number printed on the card or in the title** (`"משרה 231: …"` → regex it out), a **CMS record id** (`_id`), or a **Latin/ASCII slug** from `detailUrl`. (2) **No native id → the setupScript emits no `externalJobId` at all.** The worker synthesises `h-<haideHash(title\|department\|url)>` itself (`worker/lib/synthesizeJobId.ts`), so the id equals the worker's by construction, and a collision is counted (the run warns `synthesised_external_job_id`), never silently skipped. **No in-page `haideHash`, no `seen[…]` skip** — `verify-jobids` exits 2 on either for an addsite3 site. **A Hebrew (non-Latin) slug is not a native id**, neither percent-encoded (`%d7%a0…`, a 200-char blob) nor decoded (raw Hebrew): emit nothing, and the worker hashes the job through its url (`LRN-ID-6`; iforc.co.il shipped a raw Hebrew slug on 2026-09-17 and had to be re-keyed). **Never index-based.** **CAUTION:** a printed "job number" field (e.g. `numberJob`) can be reused across distinct postings by the same recruiter — verify uniqueness. Prefer the unique record ID (e.g. CMS `_id`) when a printed number collides. If `saved jobs < API count` after scraping, the id field is non-unique. **NAMESPACE a bare numeric req number** (`LRN-ID-11`): `verify-jobids` rejects any id matching `/^(item[-_]?)?\d{1,4}$/` as index-based, and it cannot tell the employer's own `4907` from a row index. Store `<site>-4907`, not `4907` — same stable native key, self-describing, and it clears the gate. Do it on the FIRST config: the id is the dedup key, so prefixing later re-keys every job. Expect `addsite-qa` to then flag the mirror-image suspect (`looks like URL/title slug`) because the code also appears in the detail URL — settle that with evidence (all ids match `^<site>-\d+$`, each code equals its own detail-URL segment, distinct == total) and record it in `adminNote`. |
-| `description` | Often only on the detail page — map `detailUrl` and let worker fetch it. **Locate the body by dumping the FULL visible text** of a detail page (render it, print `innerText`) and finding the prose container — do NOT guess semantic selectors (`.order_description`) and give up when they're absent; the real body may live in a differently-named block (`.job_desc`). **Never substitute metadata (category/area/clinic/department) for a real description** — a 1–2 line metadata string that trips the QA correctness suspect "description present but avg N chars while detail body is >X chars" is a BLOCKER, not shippable (`LRN-SETUP-4`). **If the detail page splits the body into labeled sections (תיאור / דרישות / כישורים / תנאים), the analyzer maps only ONE — capture them all**, but split them: requirements-class sections go to `requirements`, the rest merge into `description` (setupScript §8, *Job body rules* below). **If the text comes back as one run-on line, preserve block line breaks** via the `structuredText` helper — NEVER `.replace(/\s+/g,' ')` (setupScript §7). **Capture the COMPLETE body — never cherry-pick only the headings you recognise.** A detail-fetch that grabs only `description`+`requirements` silently drops the meta block (employment type, hours, **division/department**) and intro lines that the site shows per job. Route typed meta into its own field, fold the rest into `description` (setupScript §11, `LRN-SETUP-3`). |
+| `externalJobId` | **One rule: native id first; with no native id, emit no id at all.** (1) A **native id**: an attribute (`data-job-id`, `data-id`), **a req number printed on the card or in the title** (`"משרה 231: …"` → regex it out), a **CMS record id** (`_id`), or a **Latin/ASCII slug** from `detailUrl`. (2) **No native id → the setupScript emits no `externalJobId` at all.** The worker synthesises `h-<haideHash(title\|department\|url)>` itself (`worker/lib/synthesizeJobId.ts`), so the id equals the worker's by construction, and a collision is counted (the run warns `synthesised_external_job_id`), never silently skipped. **No in-page `haideHash`, no `seen[…]` skip** — `verify-jobids` exits 2 on either for an addsite3 site. **A Hebrew (non-Latin) slug is not a native id**, neither percent-encoded (`%d7%a0…`, a 200-char blob) nor decoded (raw Hebrew): emit nothing, and the worker hashes the job through its url (`LRN-ID-6`; iforc.co.il shipped a raw Hebrew slug on 2026-09-17 and had to be re-keyed). **Never index-based.** **CAUTION:** a printed "job number" field (e.g. `numberJob`) can be reused across distinct postings by the same recruiter — verify uniqueness. Prefer the unique record ID (e.g. CMS `_id`) when a printed number collides. If `saved jobs < API count` after scraping, the id field is non-unique. **NAMESPACE a bare numeric req number** (`LRN-ID-11`): `verify-jobids` rejects any id matching `/^(item[-_]?)?\d{1,4}$/` as index-based, and it cannot tell the employer's own `4907` from a row index. Store `<site>-4907`, not `4907` — same stable native key, self-describing, and it clears the gate. Do it on the FIRST config: the id is the dedup key, so prefixing later re-keys every job. Expect `addsite-qa` to then flag the mirror-image suspect (`looks like URL/title slug`) because the code also appears in the detail URL — settle that with evidence (all ids match `^<site>-\d+$`, each code equals its own detail-URL segment, distinct == total) and record it in `adminNote`. (`LRN-ID-12`) |
+| `description` | Often only on the detail page — map `detailUrl` and let worker fetch it. **Locate the body by dumping the FULL visible text** of a detail page (render it, print `innerText`) and finding the prose container — do NOT guess semantic selectors (`.order_description`) and give up when they're absent; the real body may live in a differently-named block (`.job_desc`). **Never substitute metadata (category/area/clinic/department) for a real description** — a 1–2 line metadata string that trips the QA correctness suspect "description present but avg N chars while detail body is >X chars" is a BLOCKER, not shippable (`LRN-SETUP-4`). **If the detail page splits the body into labeled sections (תיאור / דרישות / כישורים / תנאים), the analyzer maps only ONE — capture them all**, but split them: requirements-class sections go to `requirements`, the rest merge into `description` (setupScript §8, *Job body rules* below). **If the text comes back as one run-on line, preserve block line breaks** via the `structuredText` helper — NEVER `.replace(/\s+/g,' ')` (setupScript §7). **Capture the COMPLETE body — never cherry-pick only the headings you recognise.** A detail-fetch that grabs only `description`+`requirements` silently drops the meta block (employment type, hours, **division/department**) and intro lines that the site shows per job. Route typed meta into its own field, fold the rest into `description` (setupScript §11, `LRN-SETUP-3`). (`LRN-WRK-6`) |
 | `detailUrl` | Anchor `href` inside item; must be stable (not JS-generated blob). **Cards with no http href are silently DROPPED** — Navigate Mode builds its output only from collected detail URLs, so a `mailto:`/`tel:`/JS apply target means that job never becomes a row (pac.ac.il: 7 cards, 6 jobs). On a site with mixed apply paths this loses only the odd ones out. Decide deliberately and record it in `adminNote` (`LRN-WRK-16`). |
-| `location` | Direct selector; `setupScript` if embedded in a formatted string or in the title (split on dash); or **hardcode a constant** (inject `.__ai-location`) for a confirmed single-office / nationwide employer — this **overrides the gazetteer** (`locationFallback` only fills when extraction is empty, so it can't fix a wrong gazetteer guess) (`LRN-LOC-1`). |
+| `location` | Direct selector; `setupScript` if embedded in a formatted string or in the title (split on dash); or **hardcode a constant** (inject `.__ai-location`) for a confirmed single-office / nationwide employer — this **overrides the gazetteer** (`locationFallback` only fills when extraction is empty, so it can't fix a wrong gazetteer guess) (`LRN-LOC-1`). (`LRN-LOC-3`) |
 | `publishDate` | If not in item DOM → skip (don't block ACTIVE on a missing Tier-B field). |
 | `deadline` | First-class field (dashboard "Application Deadline"). If the job prints an apply cutoff (e.g. `ניתן להגיש מועמדות עד לתאריך D.M.YYYY`), parse → ISO and map it. To **drop past-deadline jobs**, do it in setupScript (no worker drop-expired exists) — setupScript §12, `LRN-WRK-10`. |
 | `requirements` | **Its own field, never duplicated in `description`** — owner rule, see *Job body rules* below. Route דרישות / כישורים / Qualifications / Skills sections here, preserving line breaks (§7), and remove them from the description (setupScript §8–9, `LRN-SETUP-10/15`). On a **Wix repeater** it's a separate `comp-*__item-<suffix>` the analyzer misses — recover via the shared suffix (`LRN-SPA-6`). |
@@ -447,7 +455,7 @@ curl -s -A "$REAL_UA" "$URL" -o listing.html
 These were each raised as a correction on a live site (heara.co.il, news.ipvsecurity.com,
 enviro-services.co.il — 2026-09-15/16) and confirmed as fleet-wide. They decide *which field*
 text lands in; they never rewrite the employer's words (publish content as-is).
-1. **Requirements live only in `requirements`.** A דרישות / כישורים / Qualifications line is
+1. **Requirements live only in `requirements`.** A דרישות / כישורים / Qualifications line is (`LRN-SETUP-7`)
    moved, not copied — the description must not repeat it. **A requirement line with no heading
    is still a requirement** ("ניסיון-חובה"); the intro/role line, hours and pay stay put —
    classification rules and the traps in `LRN-SETUP-18`.
@@ -464,7 +472,7 @@ text lands in; they never rewrite the employer's words (publish content as-is).
    posting belongs to the standalone posting. **On a listing-only site that clones the card per
    track, give every clone a distinct card href (`#<n>`)** — the worker dedups items on the card
    link, so identical clones silently collapse back into one job (`LRN-WRK-20`).
-6. **How-to-apply lines leave the description.** When the apply path is email, the page's own
+6. **How-to-apply lines leave the description.** When the apply path is email, the page's own (`LRN-SETUP-12`)
    instruction for that email goes to `applicationInfo` with the job's number (Step 5a). On a
    staffing-agency board, the agency's own name/office/recruiter lines go too — but only lines
    proven to be the agency's; a number that may be the hiring company's stays (`LRN-SETUP-17`).
@@ -536,7 +544,7 @@ Russian, Arabic, Amharic, French — is **dropped**. This is a fleet rule, not a
 - Cite `LRN-LANG-1`, which holds the measurements. Standing exception: alut's `alut-915276`
   (Arabic, Hura) predates the rule and was kept by owner decision.
 
-**Coverage gate — MANDATORY:**
+**Coverage gate — MANDATORY:** (`LRN-COV-1`)
 Establish the true total before submitting. Never silently ship only page 1.
 ```
 # Count items in DOM, compare against total displayed on page ("Showing 1–20 of 87 jobs")
@@ -550,7 +558,7 @@ If extracted < total and you haven't handled pagination → read `addsite3-recip
 visitor can reach in the site's own job listing: the cards on the page, plus every page or
 batch reachable through a control the page actually shows — a page link, a "load more"
 button, infinite scroll. Follow that paging; never paging the page does not offer.
-- An endpoint that returns more than the listing shows — `found_posts`, a `pagenum`/`page`
+- An endpoint that returns more than the listing shows — `found_posts`, a `pagenum`/`page` (`LRN-COV-6`)
   query parameter with no link on the page, a REST route, a feed, a sitemap — is **not** a
   coverage source. The extra jobs are hidden, and they are usually the ones the employer
   retired. Such a source may still supply a *field* (a body, a date) for a job the page shows.
@@ -573,7 +581,7 @@ When a value is **not extractable by a CSS selector alone**, write a `setupScrip
 Signal: field value is embedded inside formatted text, inside a sibling, or dynamically generated.
 → Read `addsite3-recipes/setupscript-patterns.md`.
 
-**setupScript rules (always apply):**
+**setupScript rules (always apply):** (`LRN-WRK-2`)
 - Inject a `<span class="__ai-<field>">value</span>` appended to the **item root element**.
 - Guard against re-run duplication: `if (item.querySelector('.__ai-<field>')) return;`
 - `await` is supported; IIFE not needed.
@@ -657,7 +665,7 @@ npx tsx sites/_shared/dryrun.ts '{
 
 ## 8. Step 5b — Apply form capture (run when no captured form yet)
 
-> **This step is MANDATORY before the first PUT — not optional, not a remediation
+> **This step is MANDATORY before the first PUT — not optional, not a remediation (`LRN-APPLY-2`)
 > step.** The ONLY reasons to skip it are: (a) `triage`/QA already reports
 > `formStatus: CAPTURED`, (b) Step 5a detected email apply (`formStatus: EMAIL`),
 > or (c) a per-item apply URL is already mapped. Otherwise you MUST attempt capture
@@ -805,12 +813,12 @@ compares the stored script with your file byte for byte and exits 2 if they diff
 under the cap, cut comments and duplicated helpers, and prove the shorter script yields
 identical jobs in the dry-run before re-PUTting. Cite: `LRN-API-7`.
 
-**LANDMINE — honored vs ignored fields:**
+**LANDMINE — honored vs ignored fields:** (`LRN-WRK-1`)
 The worker honors **only**: `selector`, `extractAttr`, `confidence`, `source`, `capturedOnUrl`.
 It **ignores** (silently): `regex`, `transform`, `extractRegex`, `postProcess`, `extract`.
 Use `setupScript` for any transformation the worker can't do with a plain selector.
 
-**BOM-free UTF-8:** Hebrew form labels must be written without a BOM. On Windows, write JSON via Node (`fs.writeFileSync(..., 'utf8')`) not PowerShell echo.
+**BOM-free UTF-8:** Hebrew form labels must be written without a BOM. On Windows, write JSON via Node (`fs.writeFileSync(..., 'utf8')`) not PowerShell echo. (`LRN-API-2`)
 
 ```bash
 curl -s -X PUT "$BASE/api/sites/$SITE_ID/config" \
@@ -1021,8 +1029,9 @@ that becomes nothing is how the archive reached 160 entries the skill never read
   first: `pnpm check:skills` fails on a duplicated id (LRN-SPA-13 was used twice on
   2026-10-04 and had to be renumbered).
 - **Add its row to `docs/learnings-status.tsv` in the same commit**:
-  `CODE <test or file>`, `RECIPE <addsite3 file:line>`, or `RETIRED <why>`.
-  `pnpm check:skills` fails on a learning with no row.
+  `CODE <test or file>`, `RECIPE <addsite3 file:line>`, or `RETIRED <why>`. A RECIPE
+  line, or one of the three lines after it, must cite the id. `pnpm check:skills` warns
+  on a learning with no row until the addsite3 switch, and fails on one after it.
 - **Becomes a recipe line?** Write that line into `addsite3.md` or `addsite3-recipes/`
   in the same commit, citing the id. Never into `addsite2.md` or `addsite2-recipes/`
   (frozen).
@@ -1040,7 +1049,7 @@ its jobs belong to. Hand off to the `/company-profile` skill — dry run, look, 
 # 1) Dry run: scrapes and prints, writes nothing
 npx tsx scripts/company-profile.ts --site $SITE_ID --dry-run --no-llm --out profile.jsonl
 # 2) LOOK, per company-profile.md §3.1: open the would-be logo, read the about text,
-#    check the city against every street address the company prints
+#    check the city against every street address the company prints (`LRN-HQ-1`)
 # 3) Only then, the real run
 npx tsx scripts/company-profile.ts --site $SITE_ID
 ```

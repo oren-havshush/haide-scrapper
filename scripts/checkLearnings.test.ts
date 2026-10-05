@@ -10,7 +10,7 @@
 
 import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
-import { checkLearnings, learningIds } from "./lib/checkLearnings.mjs";
+import { SWITCH_AT, checkLearnings, learningIds } from "./lib/checkLearnings.mjs";
 
 let failures = 0;
 function assert(cond: boolean, msg: string) {
@@ -20,7 +20,7 @@ function assert(cond: boolean, msg: string) {
   }
 }
 const ROOT = join(__dirname, "..");
-type Problem = { kind: string; id?: string; where?: string; detail: string };
+type Problem = { kind: string; id?: string; where?: string; detail: string; severity: "error" | "warning" };
 
 const LEARNINGS = [
   "# Learnings",
@@ -38,18 +38,26 @@ const TSV = [
   "LRN-B-1\tRETIRED\tsuperseded by LRN-A-1\t\tsame rule",
 ].join("\n");
 const files = new Set(["worker/lib/x.test.ts", "addsite3-recipes/r.md"]);
-const lines: Record<string, number> = { "addsite3-recipes/r.md": 10 };
+// r.md: 10 lines; line 4 carries LRN-A-2, line 9 cites LRN-A-20 (a different id).
+const texts: Record<string, string[]> = {
+  "addsite3-recipes/r.md": ["# r", "intro", "the lesson, in a sentence that runs", "onto a line citing (`LRN-A-2`)", "", "", "", "", "see LRN-A-20", "end"],
+};
 const env = {
   fileExists: (p: string) => files.has(p),
-  lineCount: (p: string) => lines[p] ?? 0,
+  readLines: (p: string) => texts[p] ?? null,
 };
-const run = (over: { learnings?: string; tsv?: string; cited?: Array<{ file: string; text: string }> } = {}): Problem[] =>
+const run = (
+  over: { learnings?: string; tsv?: string; cited?: Array<{ file: string; text: string }>; switchAt?: Date | null; now?: Date } = {},
+): Problem[] =>
   checkLearnings({
     learningsText: over.learnings ?? LEARNINGS,
     tsvText: over.tsv ?? TSV,
     cited: over.cited ?? [{ file: "addsite3.md", text: "Cite: `LRN-A-1` and LRN-B-1." }],
+    switchAt: over.switchAt === undefined ? null : over.switchAt,
+    now: over.now ?? new Date("2026-10-05T12:00:00Z"),
     ...env,
   });
+const severity = (ps: Problem[], kind: string) => ps.find((p) => p.kind === kind)?.severity;
 const kinds = (ps: Problem[]) => ps.map((p) => `${p.kind}:${p.id ?? ""}`).sort();
 
 // --- the ids ---------------------------------------------------------------------------
@@ -89,12 +97,35 @@ assert(run().length === 0, `a clean set has no problems (${JSON.stringify(run())
   assert(kinds(notAddsite3).includes("bad-reference:LRN-A-2"), "a RECIPE row must point into addsite3, never frozen addsite2");
   // The company lessons (LRN-HQ-*, LRN-LOGO-*) are carried by company-profile.md, the
   // canonical skill addsite3 §14 runs; it is checked by check:skills like addsite3.
-  lines["company-profile.md"] = 300;
+  texts["company-profile.md"] = Array.from({ length: 300 }, (_, i) => (i === 208 ? "the HQ rule (`LRN-A-2`)" : "x"));
   const company = run({ tsv: TSV.replace("addsite3-recipes/r.md:2", "company-profile.md:209") });
   assert(company.length === 0, `a RECIPE row may point into company-profile.md (${JSON.stringify(company)})`);
-  delete lines["company-profile.md"];
+  delete texts["company-profile.md"];
   const emptyWhy = run({ tsv: TSV.replace("superseded by LRN-A-1", "") });
   assert(kinds(emptyWhy).includes("bad-reference:LRN-B-1"), "a RETIRED row must say why");
+}
+
+// --- (b) a RECIPE line must cite its id, on the line or the three after it (owner, 2026-10-05)
+{
+  const at = (n: number) => run({ tsv: TSV.replace("addsite3-recipes/r.md:2", `addsite3-recipes/r.md:${n}`) });
+  assert(at(4).length === 0, "the citing line itself passes");
+  assert(at(1).length === 0, "three lines above the citation passes (a sentence that runs on)");
+  assert(kinds(at(5)).includes("bad-reference:LRN-A-2"), `a line with no citation in reach fails (${JSON.stringify(at(5))})`);
+  assert(kinds(at(9)).includes("bad-reference:LRN-A-2"), "LRN-A-20 is not a citation of LRN-A-2");
+  assert(severity(at(5), "bad-reference") === "error", "and it is an error");
+}
+
+// --- (a) a learning with no row: a warning until the switch, an error from it -------
+{
+  const tsv = TSV.split("\n").filter((l) => !l.startsWith("LRN-A-2")).join("\n");
+  const switchAt = new Date("2026-11-01T00:00:00Z");
+  assert(severity(run({ tsv, switchAt: null }), "no-status") === "warning", "no switch date yet: a warning");
+  assert(severity(run({ tsv, switchAt, now: new Date("2026-10-31T23:59:59Z") }), "no-status") === "warning", "before the switch: a warning");
+  assert(severity(run({ tsv, switchAt, now: new Date("2026-11-01T00:00:00Z") }), "no-status") === "error", "at the switch: an error");
+  assert(severity(run({ tsv, switchAt, now: new Date("2026-12-01T00:00:00Z") }), "no-status") === "error", "after it: an error");
+  assert(severity(run({ learnings: LEARNINGS + "### LRN-A-2 — again\n" }), "duplicate") === "error", "a duplicate is an error either side");
+  assert(severity(run({ cited: [{ file: "addsite3.md", text: "LRN-Q-1" }] }), "cited-missing") === "error", "so is a cited-but-missing id");
+  assert(SWITCH_AT === null, "SWITCH_AT stays null until step 7 records the switch");
 }
 
 // --- aliases: the old id of a renumbered learning ------------------------------------
@@ -114,9 +145,12 @@ assert(run().length === 0, `a clean set has no problems (${JSON.stringify(run())
     tsvText: existsSync(tsvPath) ? readFileSync(tsvPath, "utf8") : "",
     cited,
     fileExists: (rel: string) => existsSync(join(ROOT, rel)),
-    lineCount: (rel: string) => (existsSync(join(ROOT, rel)) ? readFileSync(join(ROOT, rel), "utf8").split(/\r?\n/).length : 0),
+    readLines: (rel: string) => (existsSync(join(ROOT, rel)) ? readFileSync(join(ROOT, rel), "utf8").split(/\r?\n/) : null),
+    switchAt: SWITCH_AT ? new Date(SWITCH_AT) : null,
+    now: new Date(),
   });
-  assert(p.length === 0, `the repo passes check-learnings (${p.length} problem(s): ${kinds(p).slice(0, 25).join(", ")}${p.length > 25 ? ", …" : ""})`);
+  const errors = p.filter((x) => x.severity === "error");
+  assert(errors.length === 0, `the repo has no check-learnings errors (${errors.length}: ${kinds(errors).slice(0, 25).join(", ")}${errors.length > 25 ? ", …" : ""})`);
 }
 
 // --- it runs inside check:skills -----------------------------------------------------------
@@ -124,6 +158,7 @@ assert(run().length === 0, `a clean set has no problems (${JSON.stringify(run())
   const sync = readFileSync(join(ROOT, "scripts", "sync-addsite2.mjs"), "utf8");
   assert(/from '\.\/check-learnings\.mjs'|from '\.\/lib\/checkLearnings\.mjs'/.test(sync), "the sync script imports the check");
   assert(/runCheckLearnings\(/.test(sync.slice(sync.indexOf("if (CHECK_MODE)"))), "and --check runs it");
+  assert(/learningProblems\.errors\.length > 0\) drift = true/.test(sync), "only its errors fail the check; warnings are printed");
 }
 
 if (failures > 0) {

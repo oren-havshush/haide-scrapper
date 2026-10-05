@@ -10,6 +10,17 @@
 // The check fails on an LRN- id cited in addsite3 that the archive lacks, on a
 // duplicated id, and on a learning with no row (or a row naming no learning).
 
+/**
+ * The addsite3 switch date (step 7; owner, 2026-10-05). Until it, a learning with
+ * no status row is a WARNING — the other session still onboards on frozen
+ * addsite2, which does not say to add one. From it, the row is required. Step 7
+ * sets this to the switchAt it records.
+ */
+export const SWITCH_AT = null;
+
+/** How many lines after a RECIPE reference may hold its citation (a sentence that runs on). */
+const CITE_REACH = 3;
+
 const HEADING = /^(#{2,4}) (LRN-[A-Z]+-\d+)\b/;
 const CITED = /\bLRN-[A-Z]+-\d+\b/g;
 const STATUSES = new Set(['CODE', 'RECIPE', 'RETIRED']);
@@ -49,17 +60,29 @@ function referenceProblem(row, env) {
     // the canonical skill addsite3 §14 runs. Never frozen addsite2.
     const m = row.reference.match(/^((?:addsite3\.md)|(?:addsite3-recipes\/[^:]+\.md)|(?:company-profile\.md)):(\d+)$/);
     if (!m) return `${row.reference} is not an addsite3.md, addsite3-recipes/ or company-profile.md file:line`;
-    const n = env.lineCount(m[1]);
-    if (n === 0) return `${m[1]} does not exist`;
-    if (Number(m[2]) < 1 || Number(m[2]) > n) return `${m[1]} has ${n} lines, not ${m[2]}`;
+    const lines = env.readLines(m[1]);
+    if (!lines) return `${m[1]} does not exist`;
+    const at = Number(m[2]);
+    if (at < 1 || at > lines.length) return `${m[1]} has ${lines.length} lines, not ${at}`;
+    // The line, or the three after it, must cite the id (owner, 2026-10-05): a line
+    // number alone goes stale silently when text above it moves.
+    const reach = lines.slice(at - 1, at + CITE_REACH);
+    if (!reach.some((l) => citesId(l, row.id))) return `${m[1]}:${at} (or the ${CITE_REACH} lines after it) does not cite ${row.id}`;
   }
   return null;
 }
 
+/** True when `line` names `id` itself, not a longer id that starts with it (LRN-A-2 vs LRN-A-20). */
+function citesId(line, id) {
+  for (const m of String(line).matchAll(CITED)) if (m[0] === id) return true;
+  return false;
+}
+
 /**
  * @param {{ learningsText: string, tsvText: string, cited: Array<{file: string, text: string}>,
- *           fileExists: (rel: string) => boolean, lineCount: (rel: string) => number }} a
- * @returns {Array<{ kind: string, id?: string, where?: string, detail: string }>}
+ *           fileExists: (rel: string) => boolean, readLines: (rel: string) => string[] | null,
+ *           switchAt?: Date | null, now?: Date }} a
+ * @returns {Array<{ kind: string, id?: string, where?: string, detail: string, severity: 'error' | 'warning' }>}
  */
 export function checkLearnings(a) {
   const problems = [];
@@ -100,5 +123,8 @@ export function checkLearnings(a) {
   for (const id of seen.keys()) {
     if (!rowIds.has(id)) problems.push({ kind: 'no-status', id, detail: `${id} has no row in docs/learnings-status.tsv` });
   }
-  return problems;
+  // Every problem is an error, except a missing row before the switch (SWITCH_AT).
+  const now = a.now ?? new Date();
+  const switched = a.switchAt != null && now.getTime() >= a.switchAt.getTime();
+  return problems.map((p) => ({ ...p, severity: p.kind === 'no-status' && !switched ? 'warning' : 'error' }));
 }

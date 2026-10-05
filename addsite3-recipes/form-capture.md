@@ -167,7 +167,7 @@ Cite: `LRN-FORM-3`.
 
 ---
 
-## 1. Quick check — is the form on the listing or the detail page?
+## 1. Quick check — is the form on the listing or the detail page? (`LRN-APPLY-1`)
 
 The apply form **almost always lives on the per-job detail page**, not the listing.
 Cite: `LRN-APPLY-3` — the "form is on detail page" lesson.
@@ -292,7 +292,7 @@ relatives radio (+ its conditional details text) was absent until captured this 
 
 ---
 
-## 3. Newsletter-form shadow (common pitfall)
+## 3. Newsletter-form shadow (common pitfall) (`LRN-APPLY-5`)
 
 **Problem:** the site has a newsletter subscription form AND an apply form. The capture script finds the newsletter form first (it has more fields in the DOM).
 

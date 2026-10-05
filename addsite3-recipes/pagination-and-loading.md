@@ -20,7 +20,7 @@ If `extracted === total` → no pagination needed, proceed.
 
 **LANDMINE:** never silently ship page-1-only. If coverage is unclear, instrument it.
 
-**Custom CMS sites are often API-backed too** — not just named SPA frameworks.
+**Custom CMS sites are often API-backed too** — not just named SPA frameworks. (`LRN-SPA-1`)
 If DOM scraping returns a suspiciously low or round count (10, 20…) and
 scroll/load-more does nothing, open the Network tab before concluding the site
 has a DOM pagination problem. Many custom .NET/Umbraco/CMS sites expose a JSON
@@ -31,7 +31,7 @@ via `fetch()` and rebuild the DOM from the response — this is cheaper and more
 reliable than DOM-based pagination. Reference: my.migdal.co.il (43 jobs via
 `/data/api/ContentData/FrontContentData?ListType=Jobs`, DOM only showed 10).
 
-**WordPress `admin-ajax.php` — use the "all jobs" action, not the "hot/featured" one.**
+**WordPress `admin-ajax.php` — use the "all jobs" action, not the "hot/featured" one.** (`LRN-COV-3`)
 WordPress job boards often fire multiple AJAX calls on page load:
 - one for **all jobs** (e.g. `action=tb_get_jobs`) — returns the full list
 - one for **featured/hot jobs** (e.g. `action=tb_get_hot_jobs`) — returns only 3–5 highlighted items
@@ -41,7 +41,7 @@ action will look identical in structure but return a tiny subset. Use the action
 that returns the highest count. Cite: `LRN-COV-2` (tigbur.co.il — `tb_get_hot_jobs`
 returned 5 jobs; `tb_get_jobs` returned 576).
 
-> **Scope first (owner rule, addsite3 §6.2, `LRN-COV-9`):** ship only the jobs a visitor
+> **Scope first (owner rule, addsite3 §6.2, `LRN-COV-9`, `LRN-WP-2`):** ship only the jobs a visitor
 > can reach in the listing. REST, a feed or a `found_posts` count may return MORE than the
 > page shows — those extra posts are hidden jobs, not missed ones. Use these endpoints to
 > supply fields for the jobs the page shows, and take the job SET from the listing.
@@ -235,9 +235,30 @@ If the page uses a virtual/windowed list (items are removed from DOM as you scro
 
 ---
 
-## 4. Workday pagination
+## 4. Workday pagination — use the JSON list API, not the HTML pages (`LRN-SPA-1`)
 
-Workday uses `&offset=N` (not a page number):
+Workday is an offset-paginated SPA: the page URL does not change between pages, so the
+worker's URL pagination cannot drive it. **Enumerate through the tenant's list API in the
+setupScript, on a single-page config (`pageFlow: []`)** — the NVIDIA build, 480/480 jobs
+(`sites/nvidia/setup.js`):
+
+1. `POST <origin>/wday/cxs/<tenant>/<site>/jobs` with
+   `{ appliedFacets, limit: 20, offset, searchText }` (`credentials: 'include'`), adding
+   20 to `offset` until it reaches the response's `total` or a batch comes back empty.
+   Filter to Israel with the location facet ids (`appliedFacets.locations`), else
+   `searchText: 'Israel'`.
+2. Rebuild the results list: one row per posting, a title anchor to
+   `<origin>/<site><externalPath>`, and injected spans for the id (`bulletFields[0]`),
+   the location (`locationsText`) and the posted date (`postedOn`).
+3. Enrich the description from `GET <origin>/wday/cxs/<tenant>/<site><externalPath>`
+   (JSON), with bounded concurrency (~6) and a retry on 429/5xx — Workday throttles
+   bursts. Expect ~90–95% description coverage; a throttled job keeps its list fields.
+
+The same holds for the other offset-API ATSes (Greenhouse, Lever, iCIMS,
+SmartRecruiters, Ashby): find the list endpoint first.
+
+**Fallback only — the HTML offset pages**, when no list API answers. `&offset=N`, not a
+page number:
 ```json
 {
   "pageFlow": {
