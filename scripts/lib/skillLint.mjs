@@ -11,6 +11,24 @@ const RULES = [
     rule: 'removed rule "Prefer h-<hash>": native id first, else no id (the worker synthesises it); step 4',
     pattern: /Prefer\s+`?h-<hash>`?/,
   },
+  // Step 6 (phase one M7): the owner ranks cost per site last, so the skill does
+  // not optimise for it, and a run no longer ends on a time cap or a fix count.
+  {
+    rule: 'removed goal "at low/minimum cost": the owner ranks cost last (addsite3 §0); step 6',
+    pattern: /\bat\s+(low|minimum)\s+cost\b/i,
+  },
+  {
+    rule: 'removed goal "lean-core cost goal": the owner ranks cost last (addsite3 §0); step 6',
+    pattern: /lean-core\s+cost\s+goal/i,
+  },
+  {
+    rule: 'removed SKIP budget "Time cap: 15 minutes": runs no longer end on a time cap; step 6',
+    pattern: /Time\s+cap:?\**\s*15\s*min/i,
+  },
+  {
+    rule: 'removed SKIP budget "≤ 3 total distinct fix attempts": runs no longer end on a fix count; step 6',
+    pattern: /3\s+total\s+distinct\s+fix\s+attempts/i,
+  },
 ];
 
 /** Every violation in the text, with its 1-based line number. */

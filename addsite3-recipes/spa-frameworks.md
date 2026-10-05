@@ -556,3 +556,32 @@ When you successfully onboard a site on an ATS not listed here:
    ```
 3. Append a section to this file with the working selectors and pitfalls.
 4. Commit both `scripts/site-patterns.json` and this recipe file.
+
+---
+
+## Carried from the learnings archive (step 6, 2026-10-05)
+
+- **Hunter "careersite" Next.js boards** (`*-careersite.hunterhrms.com`, not the BDO
+  `.job-card` template and not the Niloos Nuxt minisite above) (`LRN-SPA-18`): the jobs come
+  from a JSON API (the `get-jobs` / `get-job` server actions for the tenant), the board opens
+  on a default-filtered category tab (take every tab, not the one shown), and the apply form
+  differs per job — capture per job, with a `formSelector` that matches each variant.
+- **"No jobs in the HTML" does not mean there is an API** (`LRN-SPA-14`). Drive the control and
+  read the request log first: **zero requests** means the data is already in the page payload
+  (walk the whole `__NUXT__` / `__NEXT_DATA__` object for a known job key). Guessed API paths
+  return the SPA's own 404 page with status 200.
+- **Civi promos: probe detail pages in-page** (`LRN-SPA-15`). A cookieless out-of-page request
+  can 302 to `?ERROR 404`; load the board first, fetch from inside it, and never drop a job on
+  an out-of-page 404.
+- **Global Comeet boards: filter to Israel by data, not by heading** (`LRN-SPA-16`): keep a row
+  when `COMPANY_POSITIONS_DATA[…].location.country === "IL"`, keyed by the row's UID (group
+  headings may be departments); fall back to a printed `^Israel`; list the dropped UIDs in
+  `adminNote`.
+- **Comeet group headings are tenant-configurable** (`LRN-SPA-10`): `.positionsGroupTitle` can
+  be the location, not the department. Scope `data-qa` blocks to `.positionInfo`, strip label
+  lines in a loop, take the location from `headerLocation`, and drop non-Israeli items rather
+  than filtering by URL.
+- **ASSA ABLOY OneCMS / AEM** (`LRN-SPA-17`): detail bodies and the logo sit base64-encoded
+  (UTF-8 JSON) in custom-element `content` attributes. Decode with
+  `atob` → `TextDecoder` → `JSON.parse` in a polling listing-scope setupScript; the logo is in
+  the `gw-group-nav-header` JSON.

@@ -30,6 +30,24 @@ const ROOT = join(__dirname, "..");
   assert(lintAddsite3("the worker synthesises h-<haideHash(title|department|url)>").length === 0, "the new rule's own wording passes");
 }
 
+// --- step 6: the cost goal and the SKIP budget are gone (phase one M7) -------------------
+// The owner ranks cost last; addsite3 §0 states the ranking. A run no longer ends on a
+// time cap or a fix count.
+{
+  const caught = (s: string) => lintAddsite3(s).length === 1;
+  assert(caught("> Optimize: **correct-verdict rate at low cost.**"), `"at low cost" is caught`);
+  assert(caught("routed to human REVIEW — at minimum cost."), `"at minimum cost" is caught`);
+  assert(caught("5. **Time cap:** 15 minutes per site maximum."), `"Time cap: 15 minutes" is caught, bold or not`);
+  assert(caught("Time cap: 15 min per site"), "and its short form");
+  assert(caught("3. **Cap:** ≤ 3 total distinct fix attempts per site."), "the 3-fix cap is caught");
+  assert(caught("Pre-reading all recipes defeats the lean-core cost goal."), `"lean-core cost goal" is caught`);
+  assert(
+    lintAddsite3("> so the 15-minute worker timeout cuts off around **40 jobs**").length === 0,
+    "a fact about the worker's 15-minute timeout is not the budget",
+  );
+  assert(lintAddsite3("cost per site (last)").length === 0, "the ranking's own wording passes");
+}
+
 // --- addsite3.md as it stands --------------------------------------------------------
 {
   const hits = lintAddsite3(readFileSync(join(ROOT, "addsite3.md"), "utf8"));

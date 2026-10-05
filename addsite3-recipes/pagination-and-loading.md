@@ -96,7 +96,13 @@ problems at once: load-more coverage, description-on-detail, and throughput.
 
 **Pattern:** `?page=2`, `?p=2`, `&offset=20`.
 
-**Strategy A: multi-URL** — register each page as a separate `siteUrl` entry (limited, messy for many pages).
+**Strategy A: several listing pages of ONE employer** — one Site whose
+`_meta.listingUrls` names every page, never one Site per page (`LRN-CO-2`). Company
+identity lives on the Site, so a Site per page would publish one employer per page on
+the public site. `listingUrls` is the complete target set; a page that errors or goes
+dark refuses the night rather than publishing a shrunken set. See addsite3.md §2.3,
+"Careers-hub gate — ONE employer is ONE site". For many numbered pages of ONE listing,
+prefer B or C.
 
 **Strategy B: `pageFlow` config** — if the server supports predictable URL-based pagination:
 ```json
@@ -270,3 +276,15 @@ Always include a safety cap in pagination loops:
 - Timeout: if a page fetch takes > 10 s, stop and use what you have.
 
 After applying pagination, re-run the dry-run and re-check coverage.
+
+---
+
+## 6. Carried from the learnings archive (step 6, 2026-10-05)
+
+- **Elementor loop grids load more without a button you can see** (`LRN-COV-7`): grep every
+  Elementor loop grid for `e-load-more-anchor`. A `data-max-page` above 1 means you are reading
+  page 1 only. Cross-check the count against `/wp-json/wp/v2/<cpt>?per_page=100`.
+- **The setupScript runs once, on page 1** (`LRN-WRK-18`): the worker never re-runs it after
+  advancing a page, so a listing-scope field it injects exists on page 1 only (on later pages
+  ids fall back to hashes — the nightly flags that as partial `synthesised_external_job_id`).
+  Move the field to detail scope, or fetch and merge pages 2..N inside the script.

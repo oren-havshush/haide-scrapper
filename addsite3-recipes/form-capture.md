@@ -87,7 +87,7 @@ Cite: `LRN-FORM-3`.
 - **Fix:** treat Step 5b as **mandatory before the first PUT** whenever there is no
   captured form / email / per-item apply URL yet. If you only discover the gap at QA
   time, do NOT log REVIEW — go back to Step 5b, capture the form, re-PUT, re-scrape,
-  re-QA (within the §B2a remediation budget). A `NEEDS_MANUAL` reason is a remediable
+  re-QA (signal-gated, one attempt per fix class, addsite3.md §B2a). A `NEEDS_MANUAL` reason is a remediable
   signal, not a terminal verdict.
 - **Multi-form pages — enumerate ALL, then rank (`LRN-FORM-7`):** a page can carry
   3+ forms, some behind **secondary buttons/modals**. List every `<form>`, check EACH
@@ -159,7 +159,11 @@ Cite: `LRN-FORM-3`.
 | `formStatus: NEEDS_MANUAL` | Run this recipe. |
 | `formStatus: NONE` + apply form visible on detail page | Run this recipe. |
 | `formStatus: NONE` + apply requires login | SKIP. Do not attempt capture. |
-| `formStatus: NONE` + apply has Turnstile/CAPTCHA | SKIP. Log `LRN-APPLY-1`. |
+| `formStatus: NONE` + apply has a captcha | **Classify it first — a captcha is not one verdict** (addsite3.md, Turnstile/CAPTCHA gate, `LRN-APPLY-10`). |
+| ↳ blocking challenge (a Turnstile or reCAPTCHA **v2** interstitial, "verify you are human", a Ray ID): the fields never render | SKIP. Log `LRN-APPLY-3`. |
+| ↳ a Turnstile **inside** a form whose fields all render (AdamTotal tenants: `div.cf-turnstile` + a hidden `cf-turnstile-response`, no interstitial) | **Owner decision: ACTIVE** (`LRN-APPLY-11`). Capture the form statically, keep the hidden `cf-turnstile-response` field (required) so the gate shows in `_formData`, and say in `adminNote` that submission is behind Turnstile, with the real endpoint. |
+| ↳ invisible, score-based (reCAPTCHA **v3**: `api.js?render=<sitekey>`, a hidden `g-recaptcha-response`, no visible widget): the form renders in full | **Run this recipe** — the captcha gates submission, not capture. Keep the email / apply URL in `applicationInfo` as a fallback. The nightly warns `apply_replay_token` for the token field; that is expected. |
+| ↳ several forms, the prominent one captcha-gated | Enumerate every form and rank (`LRN-FORM-7`): captcha-free CV upload, then captcha-free contact form. SKIP only when every form is blocking-gated. |
 
 ---
 
@@ -516,3 +520,15 @@ is **no `<form>` at all**, not because of a decoy form.) Use the full field sche
 > Reference: `careers.topmatch.co.il/tadiran` (`cmqykv29i003i01nzvw1z5jpw`, 27 jobs,
 > 14 fields). Note: `careers.topmatch.co.il/diplomat-il` is the same platform and was
 > once logged "no apply path (NONE)" — that was wrong; apply §9 to fix it.
+
+---
+
+## 10. Carried from the learnings archive (step 6, 2026-10-05)
+
+- **When the form's markup does not say what it sends, read its submit handler**
+  (`LRN-FORM-11`): a file input with no `name`, or a submit that is `preventDefault`ed
+  (Shopify themes), means the browser never posts the form as written. Read the JS handler
+  (`fetch` / `FormData`), and build a static `formCapture` from what it actually sends, with a
+  `formSelector` that matches nothing live.
+- **Verify a submit by intercept-and-abort** (`LRN-WP-3`): route the form's POST in Playwright,
+  read the request it would send, and abort it. Never send a real application.

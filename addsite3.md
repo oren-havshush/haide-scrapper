@@ -16,9 +16,19 @@ platform: 'windows-powershell'
 
 > **Success is NOT a raw ACTIVE count.** Success = each site reaches its *correct*
 > terminal state — ACTIVE with complete, appliable jobs, OR SKIPPED with an honest
-> reason, OR routed to human REVIEW — at minimum cost. A confident SKIP is a success.
-> A false ACTIVE (partial data, apply behind login/Turnstile) is the cardinal failure.
-> Optimize: **correct-verdict rate at low cost.**
+> reason, OR routed to human REVIEW. A confident SKIP is a success. A false ACTIVE
+> (partial data, apply behind login/Turnstile) is the cardinal failure.
+>
+> **The owner's ranking (2026-09-29), in this order:**
+> 1. **Fewer wrong values published.** The public jobs site reads this database
+>    directly; a wrong value is worse than a missing one.
+> 2. **Owner time per site** — every fix after ACTIVE is the owner's time.
+> 3. **Fewer failed or REVIEW outcomes.**
+> 4. **More sites per week.**
+> 5. **Cost per site — last.**
+>
+> When two pull apart, the higher one wins: spend the extra build round rather than
+> publish a wrong value, and never end a site early to save cost or time.
 
 ---
 
@@ -93,22 +103,23 @@ If the existing status is SKIPPED or FAILED and `--force` is set:
 | Config clobbered after PUT | `verify-config` | Re-PUT (max 2×), then REVIEW |
 | Stored location absent from `city.csv` (exit 2) | `verify-location-csv` | Fix the value, re-scrape, re-run. Never ACTIVE while failing |
 
-### B2a Remediation budget
-Before remediation, check these invariants. A fix attempt only runs when its signal fires:
+### B2a Remediation discipline
+A fix attempt only runs when its signal fires. There is no time cap and no cap on the
+number of fix classes (step 6: cost per site is ranked last, §0):
 
 1. **Signal-gated:** only attempt a fix when a specific, diagnosable signal is present.
 2. **One-shot:** each fix class attempted at most once.
-3. **Cap:** ≤ 3 total distinct fix attempts per site.
-4. **2-no-progress stop:** if 2 remediation rounds yield no fill-rate improvement, stop and SKIP.
-5. **Time cap:** 15 minutes per site maximum.
+3. **2-no-progress stop:** if 2 remediation rounds yield no fill-rate improvement, stop.
 
-If budget exhausted → emit `SKIPPED` with the last observed failure reason.
+When no signal-gated fix remains, or the no-progress stop fires, the verdict is honest:
+`SKIPPED` with the last observed failure reason when the site cannot carry correct data,
+`REVIEW` when a human could confirm what you could not.
 
 ### B2b Closed fix set (cite recipe on signal)
 | Signal | Fix | Recipe |
 |---|---|---|
 | Items found on listing but detail pages Incapsula-blocked | Add `browserOverrides.userAgent` | [waf-bypasses.md] |
-| `setupScript` XHR fails with CSP error | Add `bypassCSP: true` | [waf-bypasses.md] |
+| `setupScript` XHR fails with CSP error | Add `browserOverrides.bypassCSP: true` (never top-level: ignored) | [waf-bypasses.md] |
 | Field value inside complex DOM not reachable by selector | Write `setupScript` to inject a span | [setupscript-patterns.md] |
 | Description is one run-on line, or missing labeled sections (דרישות/כישורים) | `structuredText` helper + merge sections | [setupscript-patterns.md §7–8] |
 | Apply form on detail page, not captured | Run Step 5b | [form-capture.md] |
@@ -639,7 +650,7 @@ npx tsx sites/_shared/dryrun.ts '{
 |---|---|
 | ≥2 items, title + externalJobId present | Proceed to §8 (PUT). |
 | Fewer than 2 items (0–1) | Check: wrong selector? JS-heavy page? → fix or read recipe. If 2nd attempt still <2 → SKIP. |
-| Items but no title | Fix `title` selector. Count against remediation budget. |
+| Items but no title | Fix `title` selector (one fix class, §B2a). |
 | Items but externalJobId all identical or index-based | Fix before PUT. **LANDMINE.** |
 
 ---
@@ -689,7 +700,9 @@ Reference: medulla.co.il (Elementor popup form: `post_id=18642`, `form_id=723b7d
 "has a captcha" is NOT one verdict. Two distinct cases:
 - **Blocking challenge** (Cloudflare Turnstile, reCAPTCHA **v2** checkbox/challenge):
   fires *before* the form is reachable, fields never render → `formStatus: NONE`,
-  SKIPPED. Log `LRN-APPLY-1` / `LRN-APPLY-3`.
+  SKIPPED. Log `LRN-APPLY-3`. A Turnstile **inside** a form whose fields all render is
+  not this case: owner decision ACTIVE, capture it statically with the hidden
+  `cf-turnstile-response` field and an `adminNote` (`LRN-APPLY-11`).
 - **Invisible / score-based** (reCAPTCHA **v3**): the form renders in full and every
   field is readable — the captcha gates **submission**, not **capture**. → **Capture the
   form normally.** Keep the careers email / apply URL in `applicationInfo` as a parallel
@@ -755,11 +768,10 @@ full field table in `form-capture.md` §9.
   "formCapture": null,             // REQUIRED — the captured object from §8, or null
   "listingUrls": ["…/a", "…/b"],   // optional — several listing pages of ONE employer (§2.3);
                                    //   REPLACES siteUrl as the scrape target set; same host
-  "browserOverrides": { ... },     // if reachability required UA
+  "browserOverrides": { ... },     // if reachability required UA; bypassCSP lives HERE too
   "setupScript": "...",            // if fields required injection
   // minPublishDays / minPublishDate — no longer needed; see §10
-  "minPublishDate": "YYYY-MM-DD",  // optional — only to set a hard frozen floor (rare)
-  "bypassCSP": true                // if setupScript XHRs a different subdomain
+  "minPublishDate": "YYYY-MM-DD"   // optional — only to set a hard frozen floor (rare)
 }
 ```
 
@@ -894,7 +906,7 @@ REASON=$(echo $QA_JSON | jq -r '.verdictReason')
 
 > **REVIEW is not always terminal — remediate first.** Before logging REVIEW,
 > inspect `verdictReason`. These reasons are **remediable signals**, not verdicts —
-> go fix them (within the §B2a remediation budget) and re-QA, do NOT log REVIEW:
+> go fix them (signal-gated, one attempt per fix class, §B2a) and re-QA, do NOT log REVIEW:
 > - `formStatus: NEEDS_MANUAL` / `NONE` with a visible apply form → go back to Step 5b
 >   and capture the form (this is the most common false-REVIEW; it stranded 3 sites
 >   in the 6.csv batch). Cite: `LRN-FORM-6`.
@@ -984,16 +996,38 @@ Cite: `LRN-LOC-4`, `LRN-WP-3`.
 
 ## 13. Step 10 — Log learning (if applicable)
 
-After each site, ask: did this site reveal a new failure mode or a new fix that generalises?
-If yes → append to `docs/addsite-learnings.md`:
+After each site, ask two separate questions. They have different destinations.
+
+**1. Did you see a defect on a LIVE site — wrong or missing values the public site
+already shows?** That is not a learning; it is work. Log it in the fix queue, so it is
+counted and somebody closes it:
 ```
-## LRN-<CATEGORY>-<N>
-- Date: YYYY-MM-DD
-- Site: <domain>
+npx tsx scripts/fix-log.ts --site <id> --field <APPLY|TITLE|DESCRIPTION|DATE|LOCATION|JOB_ID|COVERAGE|COMPANY|OTHER> --minutes <N> --note "<what is wrong, which jobs>"
+```
+(or "Add note" on the dashboard's Fixes page). The nightly value checks open CHECK items
+on their own; this is for what they cannot see.
+
+**2. Did this site reveal a failure mode or a fix that generalises?** Then append a
+learning to `docs/addsite-learnings.md` — and **name what it becomes**. A learning
+that becomes nothing is how the archive reached 160 entries the skill never read:
+```
+### LRN-<CATEGORY>-<N> — <one-line title>
+- Date / site: YYYY-MM-DD · <domain> (`<siteId>`)
 - Signal: <what you observed>
 - Fix: <what worked>
-- Generalises to: <other site types where this applies>
+- Becomes: <the check that now enforces it (test or file) | the addsite3 recipe line that carries it>
 ```
+- **Pick the next free id.** `grep -n "LRN-<CATEGORY>-" docs/addsite-learnings.md`
+  first: `pnpm check:skills` fails on a duplicated id (LRN-SPA-13 was used twice on
+  2026-10-04 and had to be renumbered).
+- **Add its row to `docs/learnings-status.tsv` in the same commit**:
+  `CODE <test or file>`, `RECIPE <addsite3 file:line>`, or `RETIRED <why>`.
+  `pnpm check:skills` fails on a learning with no row.
+- **Becomes a recipe line?** Write that line into `addsite3.md` or `addsite3-recipes/`
+  in the same commit, citing the id. Never into `addsite2.md` or `addsite2-recipes/`
+  (frozen).
+- **Becomes a check?** Say so in the learning, and name the check once it exists. Until
+  it does, the row is `RECIPE` with the line that tells operators what to do meanwhile.
 
 ---
 
@@ -1066,7 +1100,7 @@ that usually unlocks the address, about copy and logo together. See `/company-pr
 ## 16. Recipes (load on signal — do NOT pre-read all)
 
 Each recipe is in `addsite3-recipes/` and should be loaded **only when the named signal fires**.
-Pre-reading all recipes defeats the lean-core cost goal.
+Pre-reading all recipes buries the one that applies; load each when its signal fires.
 
 | Signal | Recipe file |
 |---|---|
@@ -1090,3 +1124,67 @@ Pre-reading all recipes defeats the lean-core cost goal.
 5. **Apply path is mandatory for ACTIVE.** No form + no email + no URL = SKIP, not ACTIVE.
 6. **Location values must be verified by code, not by fill rate.** Never mark ACTIVE without a passing `verify-location-csv` (exit 0). A 100% location fill says nothing about correctness — no other gate reads the values, and nothing auto-repairs a wrong one. Cite: `LRN-LOC-4`, `LRN-WP-3`.
 7. **REVIEW is not failure.** Routing to REVIEW with an honest reason is a correct outcome and saves both cost and product quality.
+
+---
+
+## 18. Carried from the learnings archive (step 6, 2026-10-05)
+
+Lessons that lived only in `docs/addsite-learnings.md`, each where it applies. One line
+each; the archive entry has the evidence.
+
+**Triage (§2)**
+- **The URL you asked for is not always the URL you got** (`LRN-CO-3`). After render, compare
+  `location.href` with the requested URL. A redirect on an old careers URL means re-discover
+  the board, not tune selectors; corroborate with the page text, not `topCluster`, and run the
+  §2.1 ATS gate before any SKIP.
+- **Re-triage a stored site before blaming its config** (`LRN-SPA-12`). On a re-onboard or a
+  blob/drift investigation, run triage on the stored `siteUrl` first: a 301 or a different
+  `topCluster` means the site was rebuilt.
+- **The employer is whoever the posting says it is** (`LRN-CO-1`). An explicit
+  employer-of-record statement in the ad outranks ownership, parent-company boilerplate and
+  the ATS host. Read one anomalous posting end to end before including or excluding it.
+- **Over 10 listing pages** (`LRN-CO-4`): `listingUrls` holds at most 10. Pool the rest in the
+  setupScript **all-or-nothing** — any failed page (an error, `r.redirected`, a page with no
+  job card) empties the grid rather than publishing a partial set. Test it by injecting a dead
+  link.
+
+**Build and PUT (§6, §9)**
+- **An ATS board on another host is its own Site** (`LRN-WRK-22`), never a
+  `pageFlow[0].url` or `listingUrls` pointer from the wrapper's record: `pageFlow[0].url` is
+  inert, `listingUrls` is host-locked, and a cross-host fetch is blocked. Decide before
+  building — `siteUrl` cannot be changed by any route. First check whether the wrapper host
+  serves the same jobs itself.
+- **One prose block per job: map it once** (`LRN-SETUP-8`) to `description`, leave
+  `requirements` unmapped, and let addsite-qa's "Tier-B exposed but unmapped: requirements"
+  stand — never duplicate the block into both fields.
+- **Detail-page fields need a two-step `pageFlow`** (`LRN-WRK-9`). With fewer than two steps
+  the worker extracts from the listing only, and nothing warns. Give the detail step a
+  `capturedOnUrl` that is a detail URL, and tag `title` / `detailUrl` / `externalJobId`
+  listing-scope (untagged fields default to detail scope).
+- **`GET /config` returns no `siteUrl`** (`LRN-API-10`). Take the listing URL from
+  `pageFlow[0].url` or the site row, and check every mapped field has a non-empty
+  `capturedOnUrl` before the PUT.
+- **Mirror configs with the full export, never `--site`** (`LRN-API-4`): `--site` regenerates
+  `INDEX.md` from one site, and every export rewrites `_exportedAt` — ignore diffs that touch
+  only that key.
+
+**Dates (§10)**
+- **A careers page's own sitemap date beats the feed date** (`LRN-AGE-2`): the feed's
+  `lastBuildDate` covers posts, and a careers PAGE is usually absent from it. Read the page's
+  `page-sitemap` `lastmod`, and record which signal a date came from.
+- **A sitemap date can be frozen** (`LRN-AGE-3`): check that `lastmod` values vary before
+  trusting one. `HEAD` each posting image for `Last-Modified` as per-posting evidence for the
+  owner.
+
+**QA and verdict (§12)**
+- **`NEEDS_MANUAL` with `formCount 0` is often a hidden consent-UI button** (`LRN-FORM-9`): the
+  QA probe matches OneTrust's `#filter-apply-handler` "Apply" before it looks for an apply URL.
+  Dump the matched elements, classify the real apply path (often a URL), and say so in
+  `adminNote` rather than logging REVIEW.
+- **A site-wide newsletter can satisfy the 3-field form probe** (`LRN-FORM-10`): the probe
+  tests "a form with 3+ fields" before "an email". When the only such form is the newsletter,
+  re-run `addsite-qa` with `--no-probe` and record both runs.
+- **`city.csv` has gaps; never pick a neighbour silently** (`LRN-LOC-15`). When a stated city
+  is missing, grep for the bare name and for rows containing it (pairs like `רמלה לוד`,
+  qualified names). Surface the job and the city to the owner; never write a neighbouring or
+  combined row on your own, and never edit `city.csv` unprompted — it is product data.

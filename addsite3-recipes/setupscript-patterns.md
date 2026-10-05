@@ -157,20 +157,22 @@ function haideJobId(title, department, url) {
 
 Signal: `data-elementor-type` in the page HTML, and clicking a job card opens a modal.
 
-**Strategy:** the worker does NOT click. Instead, enumerate popup templates directly from the DOM:
-```js
-// Elementor popups are pre-rendered but hidden — enumerate the templates
-const popups = document.querySelectorAll('[data-elementor-type="popup"], .elementor-popup-modal');
-for (const popup of popups) {
-  // each popup corresponds to one job — match by title
-  const title = popup.querySelector('.elementor-heading-title, h3')?.innerText?.trim();
-  // inject hidden spans so the worker can read popup content without clicking
-}
-```
+**Strategy (`LRN-SPA-3`, natali.co.il 11/11):** the popups are **not** pre-rendered — each
+mounts on click. The card's button encodes the popup id, which is the WP post id. In the
+setupScript, per card:
+1. hide cookie/marketing popups first, so they never open in its place;
+2. decode the id from the button's settings — `JSON.parse(atob(settings)).id` — and use it as
+   the stable `externalJobId`;
+3. open that popup programmatically
+   (`elementorProFrontend.modules.popup.showPopup({ id })`), wait for it to mount;
+4. read **only** its heading and text widgets — never the whole modal: the apply form's
+   `<select>` leaks its region options into the text — inject the fields into the card, close
+   the popup;
+5. ship the apply form as a static `formCapture`.
 
-This is complex and site-specific. If the popup approach doesn't yield ≥3 items reliably, fall back to:
+If the popup approach doesn't yield ≥3 items reliably, fall back to:
 1. Is there a separate listing page with all jobs (without popups)?  If yes, use that URL instead.
-2. Is there a JSON endpoint the page loads data from? Check Network tab → use `setupScript` with `fetch()` + `bypassCSP`.
+2. Is there a JSON endpoint the page loads data from? Check Network tab → use `setupScript` with `fetch()` (+ `browserOverrides.bypassCSP` if the call is cross-origin).
 
 ---
 
@@ -482,7 +484,7 @@ item's detail URL, parses the returned HTML, and injects `.__ai-description` /
 > (location, employment-scope, division) into their own fields, and fold the rest of
 > the prose into `description` so **nothing is lost**.
 
-> **⚠️ Strip related/recommended-jobs blocks BEFORE reading the body (`LRN-SETUP-5`).**
+> **⚠️ Strip related/recommended-jobs blocks BEFORE reading the body.**
 > The "capture the COMPLETE body" rule above means the *whole job content* — NOT the
 > "related jobs" / "more positions" widget that Drupal/WordPress job sites append at
 > the bottom of every detail page (Hebrew: **`משרות נוספות:`**; English: "Related
@@ -524,9 +526,15 @@ Two more rules that make this robust across all jobs on a site:
    `container.children` works for the first and silently fails for the second
    (requirements fold into description). Use
    `container.querySelectorAll('h2,h3,h4,p,ul,ol')` and skip nested lists.
-2. **Split on the requirements heading by position, not by container.** Flip a flag
-   when you reach the `דרישות` / `Requirements` heading; everything before = description,
-   everything after = requirements. Skip the meta block and the title/share footer.
+2. **Split with a two-bucket state machine, never "everything after the heading"**
+   (`LRN-SETUP-10`). A requirements heading (`דרישות`, `מה אנחנו מחפשים`, `מי מתאים`,
+   `כישורים`, `תנאי סף`, `Requirements`) switches the active bucket to requirements; only a
+   **description-class** heading (`תיאור`, `שעות`, `היקף`, `שכר`, `מה אנחנו מציעים`,
+   `מיקום`, `פרטים`) switches it back — requirement sub-heads (`השכלה:`, `ניסיון:`) never
+   do. Every block lands in exactly one bucket, so the fields cannot overlap. Match a
+   label **mid-line** too (`…טלפוני דרישות: ידע…`): keep the head, file the tail. A tail
+   split swallowed gazit's benefits block into requirements. Skip the meta block and the
+   title/share footer.
 
 ```js
 // LISTING page — fetch each detail page and inject its FULL body into the item.
@@ -582,7 +590,7 @@ for (const item of items) {
   or let the worker visit detail pages via a `detailUrl` mapping instead.
 - If the detail page splits the body into labeled sections, reuse the §8 merge logic
   on the fetched `doc`.
-- If `fetch()` to the detail page hits a CSP error, add `bypassCSP: true` to the config.
+- If `fetch()` to the detail page hits a CSP error, add `bypassCSP: true` inside `browserOverrides` (a top-level key is ignored).
 - **Dry-run on ≥2 structurally-different jobs** before PUT — the nesting trap (rule 1)
   only shows up when you compare a simple job against a richer one.
 
@@ -685,3 +693,78 @@ a `דרישות-`/`תיאור-` label, a requirement line, or the apply lines.
 
 **Reference:** heara.co.il (`cmu3x5es9000j01nvxaxhar00`) — 12 jobs from 9 headings (group 100 →
 101–106, closed 600 dropped), `sites/_configs/heara--xhar00.setup.js`.
+
+---
+
+## 14. Carried from the learnings archive (step 6, 2026-10-05)
+
+Lessons that lived only in `docs/addsite-learnings.md`. One line each; the archive
+entry has the evidence.
+
+- **Widget ids are not job ids** (`LRN-ID-3`). `#collapse-N`, `aria-controls` targets and
+  tab/accordion panel ids are positional or minted per render. A per-item hidden form
+  input — Elementor's `queried_id` / `post_id` — carries the real post id: map it with
+  `extractAttr: value`.
+- **A consecutive numeric run is index-based** (`LRN-ID-10`), even when it looks native:
+  `elementor-tab-content-4171`, `-4172`, … are panel positions. `verify-jobids` only flags a
+  bare `item-N` / `N`, so it passes these. Map the panel form's hidden `post_id` instead.
+- **One container per job needs more than the §11 split** (`LRN-SETUP-15`): (1) a
+  **repeated** `תיאור` label can open the requirements block — the first keeps description,
+  a second switches to requirements and its label is dropped; (2) test requirements-class
+  labels **first**, so `תנאי סף` is not caught by a description-class `תנאי`; (3) the legal
+  block is long (`המשרה מנוסחת…`, `המשרה מיועדת…`, `סודיות מובטחת`) — match its openers
+  regardless of length and switch to description; (4) only short single-line label nodes
+  may switch (an intro line `…דרוש/ה: חשמלאי/ת` must not); (5) drop a bare job-number line
+  (`מס' משרה-1118`), never a sentence that contains the number. Assert every original line
+  lands in exactly one bucket, except the intended drops.
+- **A setupScript degrades per item; it never throws out of its loop** (`LRN-WRK-19`). A throw
+  is logged but does not fail the run, and every item after it ships uninjected. Guard each
+  `querySelector`, wrap each `fetch` in `try`, and leave a field empty for that one item.
+- **The empty-location fallback reads title and body at their anchors** (`LRN-LOC-14`). A
+  title such as `… אתר נתניה` becomes the location when the card carries none. When titles
+  name sites, projects or branches, inject a location per item, or `Unknown`.
+- **A chain's branch label is a store name, not a town** (`LRN-LOC-12`), even when it is a
+  `city.csv` row. Resolve it through the chain's own store directory, then the ad body, then
+  the page's region heading, else `Unknown` — via an explicit title-to-city table.
+- **JS `\b` is ASCII-only** (`LRN-SETUP-5`): a `\b` next to a Hebrew letter never matches,
+  so a Hebrew label or section regex built with `\b` silently does nothing. Anchor on
+  whitespace, punctuation or line start instead (`(^|\s)`).
+- **Remove the permanent "position not on the list — send a CV" row** (`LRN-SETUP-6`) before
+  extraction (match its title, or its empty body). Print the item count before and after.
+- **`<br>`-separated, pretty-printed bodies turn into blank-line soup** (`LRN-SETUP-9`): the
+  worker maps `<br>` to a newline, so `\n<br>\n` becomes a blank line. Rebuild such blocks in
+  the setupScript — split on `<br>`, trim, drop empties, collapse whitespace last. Add
+  structure, never characters, and assert the content is preserved.
+- **Unwrap a `<li>` that only wraps a nested list** (`LRN-SETUP-14`) before extraction: the
+  worker prefixes a bullet to every `<li>` with any text, so a wrapper item holding only a
+  nested `<ul>`/`<ol>` ships an empty bullet line.
+- **Leave prose on its native nodes** (`LRN-SETUP-11`): a setupScript that injects
+  description or requirements as `textContent` flattens the worker's own `<br>` / `<li>`
+  structuring into a blob that survives every rescrape. Map prose fields to the site's DOM
+  nodes and keep the script for scalars (ids, dates, locations, apply targets). Inject prose
+  only when no native node holds it, and then through `structuredText` (§7).
+- **Prefer universal selectors on detail pages** (`LRN-WRK-4`): a WordPress site can mix
+  Elementor and Gutenberg/Classic posts, and an Elementor-only selector misses the others.
+  Use `article .entry-content` / `article h2`, and dry-run one detail page per layout variant.
+- **Target the smallest prose element** (`LRN-WRK-11`), never a wrapper that also holds the
+  apply form: the form's labels then ship as description. Grep the description for form
+  strings (`שם מלא`, `טלפון`, `העלאת קובץ`) before ACTIVE.
+- **The worker runs the script before the page's own JS rewrites the DOM** (`LRN-SETUP-20`):
+  wp-emoji and similar scripts swap characters afterwards. Never anchor on a line's first
+  character; classify on a copy with leading non-letters stripped, and store the original.
+- **A body that is one `<img>` with no text is unextractable** (`LRN-SETUP-21`). Ship the row
+  on title and apply path, say so in `adminNote`, and never invent or OCR a description.
+- **When a framework re-renders a server-rendered grid** (WPBakery `vc_grid`, Elementor
+  loop, Jet) and the script "succeeds" but every injected field is empty (`LRN-SETUP-22`):
+  read `{href, title}` from the grid, build your own hidden `#haide-jobs-root` with
+  `[data-haide-job]` items, and point the item selector there.
+- **Collapsed `<details>` read empty through `innerText`** (`LRN-WP-3`): force them open or
+  read `textContent`. An Elementor Loop Grid can carry every job **and** its apply form on the
+  listing itself.
+- **Hidden rows still extract** (`LRN-WP-4`): a WP board that hides every row until a filter is
+  submitted still yields them through `textContent` (it ignores `display:none`). Count from
+  the server HTML, add a `display:block !important` rule in the setupScript if the walk needs
+  visible rows, and drop the evergreen CV-drop row (`LRN-SETUP-6`).
+- **Skip a job only when an ancestor carries all three Elementor hidden classes**
+  (`LRN-COV-10`: `elementor-hidden-desktop`, `-tablet`, `-mobile`). Check the classes, not
+  `getComputedStyle`; ship what a visitor on some device sees.

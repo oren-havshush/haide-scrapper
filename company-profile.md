@@ -377,3 +377,34 @@ $TOKEN = Get-Content .claude\scrap-token -Raw | ForEach-Object { $_.Trim() }
    exist in the page; Playwright serialises the closure, so it throws on the first line.
    Where a `catch` returns a default, that arrives as "found nothing" and is invisible.
    Inline the logic instead — see `scripts/lib/svg-img-logos.ts`.
+
+---
+
+## 8. Carried from the learnings archive (step 6, 2026-10-05)
+
+Read with §3.1: after every capture, these are the address and city shapes the extractor
+still gets wrong. Each is a known extractor limit, left as an operator check by the owner.
+
+- **An address printed inside a sentence keeps the sentence** (`LRN-HQ-3`): read
+  `companyHqAddress` for a stray bracket, words of the surrounding sentence, or a cut-off last
+  word, and correct it to the address as printed.
+- **A company name that is also a place becomes the HQ city** (`LRN-HQ-4`): when
+  `companyHqCity` equals `companyName` or a word in it, or the address has no street and no
+  number, treat it as wrong until proven otherwise.
+- **A Hebrew one-letter prefix splits a two-word city** (`LRN-HQ-5`): if the captured city is a
+  short name and the address holds a longer `city.csv` entry ending in that word (`בני ברק` →
+  `ברק`, `גן יבנה` → `יבנה`), the prefix split it. Also check the address is labelled as the
+  head office at all.
+- **A thin but COMPLETE profile is not finished** (`LRN-HQ-6`): when the HQ city or address is
+  null, or `about` reads like a job detail, open the contact and about pages yourself. Write the
+  city through `PUT /company-hq-city` (the only route that runs the `city.csv` gate and records
+  operator evidence) and the address and about through `PUT /company-profile?force=1`, sending
+  only those keys.
+- **An HQ from outside the employer's site needs its provenance in `adminNote`**
+  (`LRN-HQ-7`): the operator route keeps `evidence.kind` and drops `evidence.url`, so write the
+  registry name, record number and URL into `adminNote` in the same session, saying which part
+  was verified.
+- **A street named after a person is not a city** (`LRN-HQ-9`): when the captured city is a word
+  inside the street name (`שד' אריאל שרון` → `אריאל`), read the next line. Where several
+  addresses are printed, the HQ is the one labelled as offices (`המשרדים`, `משרדי החברה`,
+  `הנהלה`), never a training site, warehouse or branch.
