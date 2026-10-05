@@ -1,0 +1,65 @@
+{
+  "_exportedAt": "2026-10-05T08:27:28.805Z",
+  "_note": "Mirror of the live config. The DB is authoritative; the worker never reads this file. setupScript lives alongside in <slug>.setup.js.",
+  "id": "cmuuxs1p3000v01shbz0212vn",
+  "siteUrl": "https://www.naya-tech.co.il/career",
+  "companyName": "Naya Technologies",
+  "status": "ACTIVE",
+  "setupScriptFile": "naya-tech--0212vn.setup.js",
+  "pageFlow": [],
+  "fieldMappings": {
+    "_meta": {
+      "savedAt": "2026-10-05T07:39:36.744Z",
+      "pagination": null,
+      "formCapture": null,
+      "listingUrls": null,
+      "itemSelector": "#haide-jobs-root [data-haide-job]",
+      "minPublishDate": null,
+      "minPublishDays": null,
+      "revealSelector": null,
+      "listingSelector": null,
+      "applyLoginReason": null,
+      "browserOverrides": null,
+      "loadMoreSelector": null,
+      "locationFallback": null,
+      "originalMappings": null,
+      "applyRequiresLogin": false
+    },
+    "title": {
+      "source": "MANUAL",
+      "selector": ".__ai-title",
+      "confidence": 1,
+      "capturedOnUrl": "https://www.naya-tech.co.il/career"
+    },
+    "location": {
+      "source": "MANUAL",
+      "selector": ".__ai-location",
+      "confidence": 1,
+      "capturedOnUrl": "https://www.naya-tech.co.il/career"
+    },
+    "description": {
+      "source": "MANUAL",
+      "selector": ".__ai-description",
+      "confidence": 1,
+      "capturedOnUrl": "https://www.naya-tech.co.il/career"
+    },
+    "requirements": {
+      "source": "MANUAL",
+      "selector": ".__ai-requirements",
+      "confidence": 1,
+      "capturedOnUrl": "https://www.naya-tech.co.il/career"
+    },
+    "externalJobId": {
+      "source": "MANUAL",
+      "selector": "[data-haide-job-id]",
+      "confidence": 1,
+      "capturedOnUrl": "https://www.naya-tech.co.il/career"
+    },
+    "applicationInfo": {
+      "source": "MANUAL",
+      "selector": ".__ai-apply",
+      "confidence": 1,
+      "capturedOnUrl": "https://www.naya-tech.co.il/career"
+    }
+  }
+}

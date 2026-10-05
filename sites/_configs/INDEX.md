@@ -35,6 +35,7 @@ several listing pages back into one and stops publishing the rest.
 | Fritz | ACTIVE | 5 | 5110 | 1 | `fritz--wafrzk` |
 | G STAT | ACTIVE | 5 | 1682 | 1 | `g-stat--yvpgzk` |
 | Gtech | ACTIVE | 6 | 4590 | 1 | `gtech--7udl8v` |
+| HOLO/OR | ACTIVE | 5 | 4393 | 1 | `holoor--q060ns` |
 | Hylabs | ACTIVE | 4 | 502 | 1 | `hylabs--gyocvt` |
 | IPV Security | ACTIVE | 6 | 3307 | 1 | `news-ipvsecurity--5knkts` |
 | Interaction | ACTIVE | 7 | 4541 | 1 | `interaction--e99vxv` |
@@ -43,6 +44,7 @@ several listing pages back into one and stops publishing the rest.
 | Medulla | ACTIVE | 8 | 7954 | 1 | `medulla--m2u5xb` |
 | Mentee Robotics | ACTIVE | 8 | 7617 | 1 | `comeet--lfseiu` |
 | Mobileye | ACTIVE | 9 | 6318 | 1 | `mobileye--6xnl0n` |
+| Naya Technologies | ACTIVE | 6 | 3558 | 1 | `naya-tech--0212vn` |
 | Ness-Tech | ACTIVE | 12 | 2989 | 1 | `ness-tech--w43uor` |
 | Nextcom Group | ACTIVE | 8 | 4808 | 1 | `nextcomgroup--nvjcxb` |
 | Novilis Software Systems | ACTIVE | 4 | 905 | 1 | `novilis--1u1jp3` |
@@ -59,6 +61,7 @@ several listing pages back into one and stops publishing the rest.
 | Tender Loving Care | ACTIVE | 4 | 1240 | 1 | `tl-care--cylsu8` |
 | ToTali | ACTIVE | 6 | 3739 | 1 | `totali--duk823` |
 | Top Match | ACTIVE | 6 | 759 | 1 | `topmatch--f67z41` |
+| Top Sky Line | ACTIVE | 5 | 3497 | 1 | `topskyline--wp6an1` |
 | Unitask | ACTIVE | 6 | 6543 | 1 | `unitask-inc--wsxup8` |
 | Waterfall Security | ACTIVE | 8 | 5161 | 1 | `waterfall-security--jam3c9` |
 | YES | ACTIVE | 7 | — | 1 | `yes--ekwenb` |
@@ -145,6 +148,7 @@ several listing pages back into one and stops publishing the rest.
 | מי עדן | ACTIVE | 5 | 4162 | 1 | `campaigns-meyeden--6u5xb3` |
 | מי שבע | ACTIVE | 5 | 1645 | 1 | `mey7--scshwy` |
 | מילואות | ACTIVE | 7 | 7931 | 1 | `milouot--dbfy4p` |
+| מינט טכנולוגיות | ACTIVE | 8 | 4291 | 1 | `minet--ho0kc8` |
 | מיקוד ביטחון ישראל בע''מ | ACTIVE | 7 | 3272 | 1 | `mikud-avtaha--x1f85a` |
 | מכון התקנים הישראלי | ACTIVE | 5 | 525 | 1 | `sii--t7eowl` |
 | מכון ויצמן למדע | ACTIVE | 6 | 1886 | 1 | `weizmann--lx3ol0` |

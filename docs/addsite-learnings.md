@@ -4180,3 +4180,27 @@
 - **Generalises to:** streets named after people whose names contain a city.csv entry (אריאל שרון →
   `אריאל`, יגאל אלון → `אלון`; both checked against city.csv). Same family as the `LRN-HQ-8` idiom
   and the deferred Hebrew-prefix city follow-up.
+
+## LRN-RACE-4 — a config PUT while the site is still ANALYZING leaves it stuck in ANALYZING for good
+
+- **Date / site:** 2026-10-05 · naya-tech.co.il (`cmuuxs1p3000v01shbz0212vn`), Wix.
+- **Signal:** the create-time ANALYSIS job never finished: status stayed `ANALYZING` past the §4
+  two-minute poll (over 9 minutes; the three sites onboarded just before it left ANALYZING in under a
+  minute). The onboarding helper did not stop on that and went on to the double-PUT, which succeeded
+  (200, `verify-config` OK, stored `setupScript` identical). The scrape then returned
+  `409 CONFLICT: Cannot trigger scrape for site with status ANALYZING`.
+- **Why it never resolves on its own:** the PUT sets `configLocked`. When the analyzer finishes on a
+  locked site it deliberately leaves BOTH the config and the status untouched
+  (`worker/jobs/analyze.ts:360`, the LRN-RACE-1/2 guard). Nothing else moves a site out of
+  ANALYZING, so a locked site that is still ANALYZING stays there, and every manual scrape is refused.
+  Why the analysis itself hung was not investigated; the worker was healthy (the scrape ran in ~30 s
+  once allowed).
+- **Fix:** `PATCH /api/sites/:id` `{"status":"REVIEW"}` (status alone, §0.2). ANALYZING → REVIEW is
+  an allowed transition (`src/lib/statusTransitions.ts:25`). The lock means a late analyzer can no
+  longer overwrite the config, so the PUT config survives. Then scrape and gate as usual.
+- **Rule:** never PUT while the site is ANALYZING (§4). If the status has not left ANALYZING after the
+  two-minute poll, stop: PATCH the status to REVIEW first, confirm it stuck, and only then PUT. A
+  scripted onboarding loop must treat "still ANALYZING after the poll" as a hard stop, not fall
+  through to the PUT.
+- **Generalizes to:** every new site and every `--force` reactivation (LRN-RACE-3), whenever the
+  analysis job is slow or hangs. **Home:** `addsite2.md` §4 (the ANALYZING poll).
