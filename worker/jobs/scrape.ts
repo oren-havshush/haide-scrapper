@@ -4,6 +4,7 @@ import { firstSeenFor } from "../lib/firstSeen";
 import { extractLiveFormData } from "../lib/formExtract";
 import { stampFormData, staticFormBlob } from "../lib/formFields";
 import { completeFormBlob } from "../lib/formShape";
+import { navigateWithRetry } from "../lib/navRetry";
 import {
   jobKeyOf,
   planValueCheckItems,
@@ -212,16 +213,21 @@ const NETWORKIDLE_GRACE_MS = 8_000;
 
 /**
  * Navigate without hanging on sites that never reach `networkidle` (chat widgets, analytics).
+ *
+ * `listingRetry`: a listing load that times out waits ~15 s and tries once more
+ * with a 60 s limit (worker/lib/navRetry.ts). Only the listing loads pass it;
+ * detail pages and pagination fail on the first timeout, as before.
  */
 async function gotoForgiving(
   page: Page,
   url: string,
   navTimeoutMs: number = NAVIGATION_TIMEOUT_MS,
+  opts: { listingRetry?: boolean } = {},
 ): Promise<import("playwright").Response | null> {
-  const response = await page.goto(url, {
-    waitUntil: "domcontentloaded",
-    timeout: navTimeoutMs,
-  });
+  const go = (timeout: number) => page.goto(url, { waitUntil: "domcontentloaded", timeout });
+  const response = opts.listingRetry
+    ? await navigateWithRetry(go, { firstTimeoutMs: navTimeoutMs, sleep: sleepMs, log: (m) => console.warn(m) })
+    : await go(navTimeoutMs);
   await page
     .waitForLoadState("networkidle", { timeout: NETWORKIDLE_GRACE_MS })
     .catch(() => {
@@ -1578,7 +1584,7 @@ async function extractRawFieldsWithPageFlow(
 ): Promise<Record<string, string>[]> {
   // Navigate to the first page flow URL (listing page)
   const listingStep = pageFlow[0];
-  await gotoForgiving(page, listingUrlOverride ?? listingStep.url, NAVIGATION_TIMEOUT_MS);
+  await gotoForgiving(page, listingUrlOverride ?? listingStep.url, NAVIGATION_TIMEOUT_MS, { listingRetry: true });
 
   // Wait for the listing page's waitFor selector if specified
   if (listingStep.waitFor) {
@@ -3736,7 +3742,7 @@ async function executeScrape(
       page.on("response", onResponse);
 
       // Navigate to the site URL -- domcontentloaded + best-effort networkidle
-      const navResponse = await gotoForgiving(page, targetUrl, NAVIGATION_TIMEOUT_MS);
+      const navResponse = await gotoForgiving(page, targetUrl, NAVIGATION_TIMEOUT_MS, { listingRetry: true });
       context.pageLoaded = true;
 
       // Many Israeli sites sit behind Reblaze (kramericaindustries.ac_v2.lib.js
