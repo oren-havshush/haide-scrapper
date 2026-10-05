@@ -1,0 +1,174 @@
+{
+  "_exportedAt": "2026-10-05T10:14:56.517Z",
+  "_note": "Mirror of the live config. The DB is authoritative; the worker never reads this file. setupScript lives alongside in <slug>.setup.js.",
+  "id": "cmuv1iwgt006401shg7gqg49g",
+  "siteUrl": "https://www.mymc.co.il/jobs/",
+  "companyName": "המרכז הרפואי מעיני הישועה",
+  "status": "ACTIVE",
+  "setupScriptFile": "mymc--gqg49g.setup.js",
+  "pageFlow": [],
+  "fieldMappings": {
+    "_meta": {
+      "savedAt": "2026-10-05T10:00:06.059Z",
+      "pagination": null,
+      "formCapture": {
+        "fields": [
+          {
+            "name": "post_id",
+            "group": "הגשת מועמדות",
+            "label": "",
+            "value": "1694",
+            "tagName": "INPUT",
+            "required": false,
+            "fieldType": "hidden"
+          },
+          {
+            "name": "form_id",
+            "group": "הגשת מועמדות",
+            "label": "",
+            "value": "d32ceee",
+            "tagName": "INPUT",
+            "required": false,
+            "fieldType": "hidden"
+          },
+          {
+            "name": "referer_title",
+            "group": "הגשת מועמדות",
+            "label": "",
+            "tagName": "INPUT",
+            "required": false,
+            "fieldType": "hidden"
+          },
+          {
+            "name": "queried_id",
+            "group": "הגשת מועמדות",
+            "label": "",
+            "tagName": "INPUT",
+            "required": false,
+            "fieldType": "hidden"
+          },
+          {
+            "name": "form_fields[name]",
+            "group": "הגשת מועמדות",
+            "label": "שם פרטי*",
+            "tagName": "INPUT",
+            "required": true,
+            "fieldType": "text"
+          },
+          {
+            "name": "form_fields[field_f43edb1]",
+            "group": "הגשת מועמדות",
+            "label": "שם משפחה*",
+            "tagName": "INPUT",
+            "required": true,
+            "fieldType": "text"
+          },
+          {
+            "name": "form_fields[field_81089b5]",
+            "group": "הגשת מועמדות",
+            "label": "טלפון*",
+            "tagName": "INPUT",
+            "required": true,
+            "fieldType": "tel"
+          },
+          {
+            "name": "form_fields[email]",
+            "group": "הגשת מועמדות",
+            "label": "מייל*",
+            "tagName": "INPUT",
+            "required": true,
+            "fieldType": "email"
+          },
+          {
+            "name": "form_fields[message]",
+            "group": "הגשת מועמדות",
+            "label": "רוצה להוסיף פרטים נוספים?",
+            "tagName": "TEXTAREA",
+            "required": false,
+            "fieldType": "textarea"
+          },
+          {
+            "name": "form_fields[appointmentFile]",
+            "group": "הגשת מועמדות",
+            "label": "",
+            "tagName": "INPUT",
+            "required": false,
+            "fieldType": "file"
+          },
+          {
+            "name": "form_fields[field_73208c4]",
+            "group": "הגשת מועמדות",
+            "label": "אני מאשר/ת שקראתי את מדיניות הפרטיות ואני מסכים/מה לשמירת המידע לצורך יצירת קשר.",
+            "tagName": "INPUT",
+            "required": true,
+            "fieldType": "checkbox"
+          }
+        ],
+        "method": "POST",
+        "actionUrl": "https://www.mymc.co.il/wp-admin/admin-ajax.php",
+        "formSelector": "form.elementor-form:has(input[type=\"file\"])"
+      },
+      "listingUrls": null,
+      "itemSelector": ".e-loop-item.type-jobs",
+      "minPublishDate": null,
+      "minPublishDays": null,
+      "revealSelector": null,
+      "listingSelector": null,
+      "applyLoginReason": null,
+      "browserOverrides": null,
+      "loadMoreSelector": null,
+      "locationFallback": null,
+      "originalMappings": null,
+      "applyRequiresLogin": false
+    },
+    "title": {
+      "source": "MANUAL",
+      "selector": ".__ai-title",
+      "confidence": 100,
+      "capturedOnUrl": "https://www.mymc.co.il/jobs/"
+    },
+    "location": {
+      "source": "MANUAL",
+      "selector": ".__ai-location",
+      "confidence": 100,
+      "capturedOnUrl": "https://www.mymc.co.il/jobs/"
+    },
+    "detailUrl": {
+      "source": "MANUAL",
+      "selector": ".__ai-link",
+      "confidence": 100,
+      "extractAttr": "href",
+      "capturedOnUrl": "https://www.mymc.co.il/jobs/"
+    },
+    "department": {
+      "source": "MANUAL",
+      "selector": ".__ai-department",
+      "confidence": 100,
+      "capturedOnUrl": "https://www.mymc.co.il/jobs/"
+    },
+    "description": {
+      "source": "MANUAL",
+      "selector": ".__ai-description",
+      "confidence": 100,
+      "capturedOnUrl": "https://www.mymc.co.il/jobs/"
+    },
+    "publishDate": {
+      "source": "MANUAL",
+      "selector": ".__ai-date",
+      "confidence": 100,
+      "capturedOnUrl": "https://www.mymc.co.il/jobs/"
+    },
+    "requirements": {
+      "source": "MANUAL",
+      "selector": ".__ai-requirements",
+      "confidence": 100,
+      "capturedOnUrl": "https://www.mymc.co.il/jobs/"
+    },
+    "externalJobId": {
+      "source": "MANUAL",
+      "selector": ".__ai-jobid",
+      "confidence": 100,
+      "capturedOnUrl": "https://www.mymc.co.il/jobs/"
+    }
+  }
+}

@@ -1,0 +1,156 @@
+{
+  "_exportedAt": "2026-10-05T10:14:59.670Z",
+  "_note": "Mirror of the live config. The DB is authoritative; the worker never reads this file. setupScript lives alongside in <slug>.setup.js.",
+  "id": "cmuv1r66s006901shx3hwp2jb",
+  "siteUrl": "https://webbingsolutions.com/careers/",
+  "companyName": "Webbing",
+  "status": "ACTIVE",
+  "setupScriptFile": "webbingsolutions--hwp2jb.setup.js",
+  "pageFlow": [],
+  "fieldMappings": {
+    "_meta": {
+      "savedAt": "2026-10-05T09:32:11.292Z",
+      "pagination": null,
+      "formCapture": {
+        "fields": [
+          {
+            "name": "firstName",
+            "group": "Apply for this job",
+            "label": "First name",
+            "tagName": "INPUT",
+            "required": true,
+            "fieldType": "text"
+          },
+          {
+            "name": "lastName",
+            "group": "Apply for this job",
+            "label": "Last name",
+            "tagName": "INPUT",
+            "required": true,
+            "fieldType": "text"
+          },
+          {
+            "name": "email",
+            "group": "Apply for this job",
+            "label": "Email",
+            "tagName": "INPUT",
+            "required": true,
+            "fieldType": "email"
+          },
+          {
+            "name": "phone",
+            "group": "Apply for this job",
+            "label": "Phone",
+            "tagName": "INPUT",
+            "required": true,
+            "fieldType": "tel"
+          },
+          {
+            "name": "cv",
+            "group": "Apply for this job",
+            "label": "Resume",
+            "accept": ".pdf,.doc,.docx,.rtf,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/rtf",
+            "tagName": "INPUT",
+            "required": true,
+            "fieldType": "file"
+          },
+          {
+            "name": "websiteUrl",
+            "group": "Apply for this job",
+            "label": "Personal website",
+            "tagName": "INPUT",
+            "required": false,
+            "fieldType": "url"
+          },
+          {
+            "name": "coverLetter",
+            "group": "Apply for this job",
+            "label": "Cover Letter",
+            "tagName": "INPUT",
+            "required": false,
+            "fieldType": "file"
+          },
+          {
+            "name": "portfolio",
+            "group": "Apply for this job",
+            "label": "Portfolio",
+            "tagName": "INPUT",
+            "required": false,
+            "fieldType": "file"
+          },
+          {
+            "name": "comment",
+            "group": "Apply for this job",
+            "label": "Personal note",
+            "tagName": "TEXTAREA",
+            "required": false,
+            "fieldType": "textarea"
+          }
+        ],
+        "method": "POST",
+        "actionUrl": "https://www.comeet.co/jobs/46.00E/apply",
+        "formSelector": "form.__comeet-apply-static"
+      },
+      "listingUrls": null,
+      "itemSelector": ".job",
+      "minPublishDate": null,
+      "minPublishDays": null,
+      "revealSelector": null,
+      "listingSelector": null,
+      "applyLoginReason": null,
+      "browserOverrides": {
+        "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+        "extraHeaders": {
+          "accept-language": "he-IL,he;q=0.9,en-US;q=0.8,en;q=0.7"
+        }
+      },
+      "loadMoreSelector": null,
+      "locationFallback": null,
+      "originalMappings": null,
+      "applyRequiresLogin": false
+    },
+    "title": {
+      "source": "MANUAL",
+      "selector": ".__ai-title",
+      "confidence": 100,
+      "capturedOnUrl": "https://webbingsolutions.com/careers/"
+    },
+    "location": {
+      "source": "MANUAL",
+      "selector": ".__ai-location",
+      "confidence": 100,
+      "capturedOnUrl": "https://webbingsolutions.com/careers/"
+    },
+    "detailUrl": {
+      "source": "MANUAL",
+      "selector": ".__ai-link",
+      "confidence": 100,
+      "extractAttr": "href",
+      "capturedOnUrl": "https://webbingsolutions.com/careers/"
+    },
+    "department": {
+      "source": "MANUAL",
+      "selector": ".__ai-department",
+      "confidence": 100,
+      "capturedOnUrl": "https://webbingsolutions.com/careers/"
+    },
+    "description": {
+      "source": "MANUAL",
+      "selector": ".__ai-description",
+      "confidence": 100,
+      "capturedOnUrl": "https://webbingsolutions.com/careers/"
+    },
+    "requirements": {
+      "source": "MANUAL",
+      "selector": ".__ai-requirements",
+      "confidence": 100,
+      "capturedOnUrl": "https://webbingsolutions.com/careers/"
+    },
+    "externalJobId": {
+      "source": "MANUAL",
+      "selector": ".__ai-jobid",
+      "confidence": 100,
+      "capturedOnUrl": "https://webbingsolutions.com/careers/"
+    }
+  }
+}
