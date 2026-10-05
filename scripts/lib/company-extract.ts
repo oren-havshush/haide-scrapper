@@ -844,8 +844,12 @@ export function extractLabelledAddress(text: string, maxCandidates = 5): string[
  * — a correct street and city, then a phone number and an email cut off
  * mid-word at the character cap.
  */
+// Round 3: also "|" before a phone number, and WhatsApp — ness-tech.co.il's
+// "אינפיניטי פארק, רעננה | 03-7666800 | וואטסאפ: 054-5977779" was stored whole.
+// A phone number here is 2-3 digits, an optional separator, then 6-7 digits,
+// so a 7-digit postal code after "|" is not one.
 const CONTACT_TAIL =
-  /[,;|]?\s*(?:טלפון|טל['׳]?|פקס|נייד|דוא["״']?ל|דואר אלקטרוני|מייל|וכן אצל|ב["״]כ |עו["״]ד |tel\.?|phone|fax|mobile|e-?mail|@)/i;
+  /[,;|]?\s*(?:טלפון|טל['׳]?|פקס|נייד|דוא["״']?ל|דואר אלקטרוני|מייל|וכן אצל|ב["״]כ |עו["״]ד |וו?אטסאפ|ווטסאפ|whatsapp|tel\.?|phone|fax|mobile|e-?mail|@)|\s*\|\s*\+?\d{2,3}[- ]?\d{6,7}/i;
 
 /**
  * Short lines that could be an address even though they name no street.
@@ -876,9 +880,16 @@ export function extractCompactAddressLines(text: string, maxCandidates = 6): str
 
   const out: string[] = [];
   for (const rawLine of text.split(/\n+/)) {
-    const line = rawLine.replace(/\s+/g, " ").trim();
-    if (line.length < 8 || line.length > 90) continue;
-    if (!/\d/.test(line)) continue;
+    const whole = rawLine.replace(/\s+/g, " ").trim();
+    // Round 3: a contact tail is CUT, not a reason to drop the line. A line
+    // that is all tail ("טל. 03-…") is still dropped. The required digit is
+    // looked for in the whole line, since ness-tech's only digits were in its
+    // phone numbers; addressFrom() still needs an anchor before the city.
+    const tail = CONTACT_TAIL.exec(whole);
+    if (tail && tail.index === 0) continue;
+    const line = tail ? whole.slice(0, tail.index).replace(/[\s,;|.–—-]+$/, "").trim() : whole;
+    if (line.length < 8 || whole.length > 90) continue;
+    if (!/\d/.test(whole)) continue;
 
     // An address is either COMMA-SEPARATED or very short. A sentence is
     // neither, and this is what separates them: polycad's homepage says
@@ -890,7 +901,6 @@ export function extractCompactAddressLines(text: string, maxCandidates = 6): str
     if (words.length > 10) continue;
     if (!/\p{L}/u.test(line)) continue;
     if (BRANCH_LINE.test(line)) continue;
-    if (CONTACT_TAIL.test(line)) continue;
 
     if (!out.includes(line)) out.push(line);
     if (out.length >= maxCandidates) break;

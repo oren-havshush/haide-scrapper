@@ -717,6 +717,21 @@ function testAddressAndCity() {
   // Contact lines carry digits but are not addresses.
   assert.deepEqual(extractCompactAddressLines("טל. 03-9483535"), []);
 
+  // Round 3 (g): the contact tail is CUT from a compact line, not a reason to
+  // drop it, and it also starts at "|" before a phone number and at וואטסאפ.
+  // ness-tech.co.il's contact page, verbatim from dry run 3: the whole line was
+  // stored as the HQ address, phone and WhatsApp numbers included.
+  assert.deepEqual(
+    extractCompactAddressLines("אינפיניטי פארק, רעננה | 03-7666800 | וואטסאפ: 054-5977779"),
+    ["אינפיניטי פארק, רעננה"],
+    "ness-tech: the phone and WhatsApp tail is cut, the address kept",
+  );
+  assert.deepEqual(extractCompactAddressLines("הבנאי 5, מודיעין | 08-9412345"), ["הבנאי 5, מודיעין"], "a | before a phone number starts the tail");
+  assert.deepEqual(extractCompactAddressLines("הבנאי 5, מודיעין ווטסאפ 050-1234567"), ["הבנאי 5, מודיעין"], "ווטסאפ starts the tail");
+  assert.deepEqual(extractCompactAddressLines("הבנאי 5, מודיעין, טלפון: 08-9412345"), ["הבנאי 5, מודיעין"], "טלפון starts the tail");
+  assert.deepEqual(extractCompactAddressLines("קיבוץ שפיים | 6099000"), ["קיבוץ שפיים | 6099000"], "a postal code after | is not a phone number");
+  assert.deepEqual(extractCompactAddressLines("וואטסאפ: 054-5977779"), [], "a line that is all tail is dropped");
+
   testOfficeListRuns();
 
   assert.equal(extractAddressLine("no address here at all"), null);
