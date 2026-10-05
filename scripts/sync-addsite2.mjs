@@ -25,6 +25,7 @@ import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { homedir } from 'node:os';
 import { lintAddsite3 } from './lib/skillLint.mjs';
+import { runCheckLearnings } from './check-learnings.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT = resolve(__dirname, '..');
@@ -158,6 +159,12 @@ if (CHECK_MODE) {
     if (hits.length > 0) drift = true;
     else console.log('OK: addsite3.md passes the skill lint');
   }
+
+  // ---- check-learnings: cited ids exist, ids unique, every learning has a status row --
+  const learningProblems = runCheckLearnings(ROOT);
+  for (const p of learningProblems) console.error(`LEARNINGS: ${p}`);
+  if (learningProblems.length > 0) drift = true;
+  else console.log('OK: learnings — cited ids exist, ids are unique, every learning has a status row');
   process.exit(drift ? 1 : 0);
 }
 

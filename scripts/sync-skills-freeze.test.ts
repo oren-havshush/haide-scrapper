@@ -15,7 +15,7 @@
 import { spawnSync } from "node:child_process";
 import { cpSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, writeFileSync, existsSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
 import { ADDSITE2_FREEZE_AT } from "../src/lib/fixScore";
 
 let failures = 0;
@@ -39,6 +39,18 @@ function sandbox(): string {
   // The script imports the addsite3 lint (step 4).
   mkdirSync(join(dir, "scripts", "lib"));
   cpSync(join(ROOT, "scripts", "lib", "skillLint.mjs"), join(dir, "scripts", "lib", "skillLint.mjs"));
+  // Step 6: --check also runs check-learnings, which reads the learnings archive and its status file.
+  cpSync(join(ROOT, "scripts", "check-learnings.mjs"), join(dir, "scripts", "check-learnings.mjs"));
+  cpSync(join(ROOT, "scripts", "lib", "checkLearnings.mjs"), join(dir, "scripts", "lib", "checkLearnings.mjs"));
+  mkdirSync(join(dir, "docs"));
+  for (const f of ["addsite-learnings.md", "learnings-status.tsv"]) cpSync(join(ROOT, "docs", f), join(dir, "docs", f));
+  // A CODE row names an enforcing file that must exist; give the sandbox those files.
+  for (const line of readFileSync(join(ROOT, "docs", "learnings-status.tsv"), "utf8").split(/\r?\n/).slice(1)) {
+    const [, status, ref] = line.split("\t");
+    if (status !== "CODE" || !ref || existsSync(join(dir, ref))) continue;
+    mkdirSync(dirname(join(dir, ref)), { recursive: true });
+    cpSync(join(ROOT, ref), join(dir, ref));
+  }
   for (const f of SKILL_FILES) {
     if (!existsSync(join(ROOT, f))) continue;
     cpSync(join(ROOT, f), join(dir, f));
