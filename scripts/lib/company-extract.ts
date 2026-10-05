@@ -1040,8 +1040,8 @@ function baseDomain(host: string): string {
  * on the public site looks broken, and it would fail the 64px floor anyway.
  */
 /**
- * True when `href` points at the site's own home page: same registrable
- * domain as the page, and a root path — "/", a language root ("/he/"), or a
+ * True when `href` points at the site's own home page: the page's own host
+ * (ignoring "www."), and a root path — "/", a language root ("/he/"), or a
  * "home"/"index" page. "#…" and "javascript:" are never home, even though "#"
  * resolves to the page itself.
  */
@@ -1051,7 +1051,10 @@ export function isHomeLink(href: string | null | undefined, pageUrl: string): bo
   try {
     const url = new URL(raw, pageUrl);
     if (url.protocol !== "http:" && url.protocol !== "https:") return false;
-    if (baseDomain(url.hostname) !== baseDomain(new URL(pageUrl).hostname)) return false;
+    // The same host, ignoring "www." (round 2): a sibling subdomain is another
+    // site — ness-tech.co.il's "Ness Place" mark links to homeil.ness-tech.co.il.
+    const host = (h: string) => h.toLowerCase().replace(/^www\./, "");
+    if (host(url.hostname) !== host(new URL(pageUrl).hostname)) return false;
     return /^\/(?:(?:he|en|ar|ru|fr|home|index(?:\.[a-z]+)?)\/?)?$/i.test(url.pathname);
   } catch {
     return false;

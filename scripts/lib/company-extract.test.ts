@@ -1382,6 +1382,19 @@ function testLogoContextFilters() {
   assert.ok(isHomeLink("/", page) && isHomeLink("https://www.acme.co.il", page) && isHomeLink("/he/", page) && isHomeLink("home", "https://acme.co.il/home"));
   assert.ok(!isHomeLink("#", page) && !isHomeLink("javascript:void(0);", page) && !isHomeLink("/about", page) && !isHomeLink("https://other.co.il/", page));
 
+  // Round 2: the same HOST, ignoring "www." — not merely the same registrable
+  // domain. ness-tech.co.il's header links its "Ness Place" mark, verbatim, to
+  // another site on a sibling subdomain; it counted as a home link.
+  assert.equal(isHomeLink("https://homeil.ness-tech.co.il", "https://www.ness-tech.co.il/"), false, "a sibling subdomain is not home");
+  assert.equal(isHomeLink("https://ness-tech.co.il/", "https://www.ness-tech.co.il/"), true, "www. is ignored");
+  assert.equal(isHomeLink("https://www.ness-tech.co.il/he/", "https://ness-tech.co.il/"), true, "either way round");
+  const nessPlace: InlineLogo = {
+    dataUrl: "data:image/png;base64,NESSPLACE", pathCount: 12, area: 9_276, pathCountKnown: true, width: 130.1, height: 71.3,
+    renderedWidth: 82, renderedHeight: 46, link: "https://homeil.ness-tech.co.il", inControl: false,
+    ancestry: "svg.#layer_1[] < a.#[אל ness place שלנו - נפתח בחלון חדש] < div.logo#[] < div.nessplace#[] < div.header-inner#[]",
+  };
+  assert.ok(inlineLogoRejection(nessPlace, "https://www.ness-tech.co.il/"), "ness-tech: the Ness Place mark links away from home");
+
   // The old shape (no signals at all) still passes through unchanged.
   assert.equal(inlineLogoRejection({ dataUrl: "data:image/png;base64,OLD", pathCount: 3, area: 3621 }, page), null);
 }
