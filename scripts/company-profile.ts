@@ -68,6 +68,7 @@ import {
   homepageFromLinks,
   homepageFromOgUrl,
   isBotChallengePage,
+  modelAboutRejection,
   parseJsonLdOrganization,
   pickAboutUrl,
   pickContactUrl,
@@ -875,8 +876,17 @@ async function llmFallback(
       string,
       unknown
     >;
+    // The about text is refused when it is a heading, policy text or too short
+    // (modelAboutRejection): careers.iec.co.il got "על חברת החשמל" and
+    // egged.co.il its privacy policy before this check.
+    let about = need.about ? sanitizeModelText(parsed.about, 600) : null;
+    const refused = about ? modelAboutRejection(about) : null;
+    if (refused) {
+      console.info(`[company-profile] llm about refused: ${refused}`);
+      about = null;
+    }
     return {
-      about: need.about ? sanitizeModelText(parsed.about, 600) : null,
+      about,
       hqAddress: need.address ? sanitizeModelText(parsed.hq_address, 300) : null,
     };
   } catch (error) {

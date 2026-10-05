@@ -1254,6 +1254,29 @@ export function sanitizeModelText(value: unknown, maxChars: number): string | nu
   return s.length > maxChars ? `${s.slice(0, maxChars).trimEnd()}…` : s;
 }
 
+/** Shorter than this, a model's about text describes nothing. */
+const MODEL_ABOUT_MIN_CHARS = 80;
+
+/** Policy, terms and cookie language: a page about the website, not the company. */
+const POLICY_TEXT =
+  /מדיניות|פרטיות|תנאי ה?שימוש|תקנון|עוגיות|מידע אישי|cookie|privacy|terms of (use|service)|personal (data|information)/i;
+
+/**
+ * Why the model's about text is refused, or null (task F, 2026-10-05). The
+ * model is told to return null when the source has no self-description, and
+ * instead returned careers.iec.co.il's page heading ("על חברת החשמל") and
+ * egged.co.il's privacy-policy opening. Refused: shorter than
+ * MODEL_ABOUT_MIN_CHARS, no sentence ending at all (a heading), or policy,
+ * terms or cookie language.
+ */
+export function modelAboutRejection(text: string): string | null {
+  const s = text.trim();
+  if (s.length < MODEL_ABOUT_MIN_CHARS) return `shorter than ${MODEL_ABOUT_MIN_CHARS} characters`;
+  if (!/[.!?׃]/.test(s)) return "a heading: no sentence ending";
+  if (POLICY_TEXT.test(s)) return "policy, terms or cookie text";
+  return null;
+}
+
 // ---------------------------------------------------------------------------
 // Status
 // ---------------------------------------------------------------------------

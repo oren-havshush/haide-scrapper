@@ -13,6 +13,8 @@
 //     server-side gate rejects anyway
 
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import {
   addressFromJsonLd,
   classifyProfileStatus,
@@ -36,6 +38,7 @@ import {
   sanitizeModelText,
   inlineLogoRejection,
   isHomeLink,
+  modelAboutRejection,
   type HarvestedLink,
   type InlineLogo,
   type PageHarvest,
@@ -965,6 +968,38 @@ function testLogoCandidates() {
 // Status
 // ---------------------------------------------------------------------------
 
+/**
+ * The model's about text is refused when it is a heading, policy or terms
+ * text, or too short to describe anything. Both fixtures are verbatim from the
+ * 2026-10-05 dry run, where each would have been stored as the company's about.
+ */
+function testModelAboutRefusal() {
+  // careers.iec.co.il: the model returned a page heading.
+  assert.ok(modelAboutRejection("על חברת החשמל"), "a 13-character heading is refused");
+  // egged.co.il: the model returned the privacy policy's opening.
+  assert.ok(
+    modelAboutRejection(
+      "אגד חברה לתחבורה בע״מ מפעילה את היישומון egg ואת יישומון Call Bus. הקבוצה מכבדת את פרטיותך, ושואפת לייעל את השירותים שהיא מספקת בהתאם לצרכי המשתמשים. מטרת מדיניות זו היא לפרט כל הנוגע למידע אישי הנאסף בעת השימוש בממשקים הדיגיטליים ואופן עיבודו.",
+    ),
+    "privacy-policy text is refused",
+  );
+  assert.ok(modelAboutRejection("השימוש באתר כפוף לתנאי השימוש ולתקנון האתר, כפי שיעודכנו מעת לעת על ידי החברה ובהתאם לשיקול דעתה."), "terms text is refused");
+  assert.ok(modelAboutRejection("This website uses cookies to improve your experience and to analyse traffic on our pages."), "a cookie notice is refused");
+  assert.ok(modelAboutRejection("אודות החברה ותחומי הפעילות שלה בישראל ובעולם לאורך השנים האחרונות"), "a long line with no sentence ending is a heading");
+  // A real one must pass: alubin.com's about, as the deterministic rules took it.
+  assert.equal(
+    modelAboutRejection(
+      "חברת אלובין הינה מהחברות הותיקות והמובילות בישראל ליצור ואספקת פרופילי אלומיניום לבנייה ותעשייה. מאז הקמתה בשנת 1958 מיצבה את עצמה אלובין כמובילת שוק בתחום.",
+    ),
+    null,
+    "a company describing itself is kept",
+  );
+  // And the fallback must actually apply it to the model's about text.
+  const source = readFileSync(join(__dirname, "..", "company-profile.ts"), "utf8");
+  const fallback = source.slice(source.indexOf("async function llmFallback("), source.indexOf("// Logo\n"));
+  assert.ok(/modelAboutRejection\(/.test(fallback), "llmFallback() runs modelAboutRejection on the about text");
+}
+
 function testModelOutputSanitising() {
   // Markup must never survive — companyAbout may be rendered unescaped.
   assert.equal(
@@ -1221,6 +1256,7 @@ function main() {
   testLogoCandidates();
   testLogoContextFilters();
   testModelOutputSanitising();
+  testModelAboutRefusal();
   testStatus();
   console.log(
     "PASS: company-profile extraction (homepage, JSON-LD, about, address+city gate, logo, status)",
