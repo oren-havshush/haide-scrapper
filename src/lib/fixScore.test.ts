@@ -3,15 +3,17 @@
 // addsite2 phase two, step 1a: the cohort score. Per site, the fix items opened
 // in the 14 days after it went ACTIVE — items, distinct fields, minutes — and
 // its final status. The primary score counts operator-logged (MANUAL) items
-// only. CHECK items are reported apart, and only for check codes that were live
-// across every scored window, so a check shipping mid-control cannot tilt the
-// comparison. Cohorts: control = untagged and created in [freezeAt, switchAt);
+// only. CHECK items are reported apart, and a code is scored for a site only if
+// it was live when that site's window opened (step 7), so a check shipping
+// mid-window cannot count for part of one. Cohorts: control = untagged and created in [freezeAt, switchAt);
 // test = tagged addsite3; untagged after the switch is listed, never scored.
 
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
+import { SWITCH_AT } from "../../scripts/lib/checkLearnings.mjs";
 import {
   ADDSITE2_FREEZE_AT,
+  ADDSITE3_SWITCH_AT,
   FIX_WINDOW_DAYS,
   cohortBoundsFrom,
   cohortOf,
@@ -140,7 +142,7 @@ eq(FIX_WINDOW_DAYS, 14, "the window is fourteen days");
   eq([noMinutes.items, noMinutes.minutes], [1, 0], "an item with no minutes logged still counts as an item");
 }
 
-// --- MANUAL is the score; CHECK only for codes live across every window ------
+// --- MANUAL is the score; CHECK only for codes live when the site's window opened --
 {
   const s = site();
   const t = s.activeAt!.getTime();
@@ -149,14 +151,19 @@ eq(FIX_WINDOW_DAYS, 14, "the window is fourteen days");
     item({ source: "CHECK", code: "apply_replay_token", field: "APPLY", openedAt: new Date(t + DAY), minutes: 30 }),
     item({ source: "CHECK", code: "undated_rate", field: "DATE", openedAt: new Date(t + 2 * DAY), minutes: null }),
   ];
-  const all = scoreSite(s, items, { now: NOW, bounds, comparableCheckCodes: new Set(["apply_replay_token"]) });
+  // undated_rate went live a day into this site's window: its item there is
+  // not scored, although it was opened after the code went live.
+  const liveFrom = { apply_replay_token: D("2026-09-01T00:00:00Z"), undated_rate: new Date(t + DAY) };
+  const all = scoreSite(s, items, { now: NOW, bounds, checkCodeLiveFrom: liveFrom });
   eq([all.items, all.minutes], [1, 5], "the primary score counts MANUAL items and minutes only");
-  eq(all.checkItems, 1, "CHECK items are counted apart, for comparable codes only");
+  eq(all.checkItems, 1, "CHECK items are counted apart, for codes live when the window opened");
   eq(all.checkCodes, ["apply_replay_token"], "and named");
-  eq(scoreSite(s, items, { now: NOW, bounds }).checkItems, 0, "with no comparable codes, no CHECK item counts");
+  eq(scoreSite(s, items, { now: NOW, bounds }).checkItems, 0, "with no live-from dates, no CHECK item counts");
+  const atOpen = scoreSite(s, items, { now: NOW, bounds, checkCodeLiveFrom: { ...liveFrom, undated_rate: new Date(t) } });
+  eq(atOpen.checkCodes, ["apply_replay_token", "undated_rate"], "a code live at the very instant the window opened is scored");
 
-  // Two cohorts. undated_rate went live after the control's first window
-  // opened, so comparing it would count it for test and not for control.
+  // Two cohorts. undated_rate went live after the control's window opened and
+  // before the test's: it is scored for the test site, not for the control.
   const ctl = site({ id: "c", siteUrl: "https://c.test" });
   const tst = site({
     id: "t",
@@ -171,15 +178,24 @@ eq(FIX_WINDOW_DAYS, 14, "the window is fourteen days");
     createdAt: D("2026-11-12T00:00:00Z"),
     activeAt: D("2026-11-13T00:00:00Z"),
   });
-  const rep = scoreCohorts([ctl, tst, late], [], {
+  const dated = (siteId: string, at: string) =>
+    item({ siteId, source: "CHECK", code: "undated_rate", field: "DATE", openedAt: D(at), minutes: null });
+  const rep = scoreCohorts([ctl, tst, late], [dated("c", "2026-10-15T00:00:00Z"), dated("t", "2026-11-12T00:00:00Z")], {
     now: NOW,
     bounds,
     checkCodeLiveFrom: {
       apply_replay_token: D("2026-09-01T00:00:00Z"),
-      undated_rate: D("2026-10-20T00:00:00Z"),
+      undated_rate: D("2026-10-10T00:00:00Z"),
     },
   });
-  eq(rep.comparableCheckCodes, ["apply_replay_token"], "only a code live before the earliest scored window compares");
+  eq(
+    rep.checkCodeSites,
+    { apply_replay_token: { control: 1, test: 1 }, undated_rate: { control: 0, test: 1 } },
+    "per code, the sites it was comparable on, by cohort",
+  );
+  eq(rep.sites.find((x) => x.siteId === "c")?.checkItems, 0, "the control's undated_rate item is not scored: live mid-window");
+  eq(rep.sites.find((x) => x.siteId === "t")?.checkItems, 1, "the test's is: live before its window opened");
+  assert(!("comparableCheckCodes" in rep), "the cross-cohort code list is gone");
   eq(rep.sites.map((x) => x.siteId).sort(), ["c", "t"], "control and test are scored");
   eq(rep.excluded.map((x) => x.siteId), ["late"], "the untagged after-switch site is listed and excluded");
   eq(rep.excluded[0]?.cohort, "addsite2_after_switch", "under its own name");
@@ -242,7 +258,7 @@ eq(FIX_WINDOW_DAYS, 14, "the window is fourteen days");
     bounds,
     checkCodeLiveFrom: { apply_replay_token: D("2026-10-01T00:00:00Z") },
   });
-  eq(rep.comparableCheckCodes, [], "the comparable-code cut-off uses firstActiveAt too");
+  eq(rep.checkCodeSites, { apply_replay_token: { control: 0, test: 0 } }, "the comparable-code cut-off uses firstActiveAt too");
 }
 
 // --- cohort summaries: median minutes, mean items, over complete windows ------
@@ -276,6 +292,19 @@ eq(FIX_WINDOW_DAYS, 14, "the window is fourteen days");
   eq(cohortOf(site({ createdAt: D("2026-09-30T20:59:59Z") }), def), "none", "one onboarded just before the freeze is not");
   const route = readFileSync(join(__dirname, "..", "app", "api", "dashboard", "fix-queue", "route.ts"), "utf8");
   assert(/bounds: cohortBoundsFrom\(/.test(route), "the fix-queue GET takes its bounds from cohortBoundsFrom");
+}
+
+// --- step 7: the switch time is the default switchAt, and equals SWITCH_AT ------------
+// The switch commit sets ADDSITE3_SWITCH_AT here and SWITCH_AT in
+// scripts/lib/checkLearnings.mjs; this pins the two together.
+{
+  eq(ADDSITE3_SWITCH_AT, SWITCH_AT, "ADDSITE3_SWITCH_AT equals SWITCH_AT in checkLearnings.mjs");
+  eq(ADDSITE3_SWITCH_AT, null, "no switch recorded yet");
+  const sw = cohortBoundsFrom({}, { switchAt: "2026-10-18T10:00:00.000Z" });
+  eq(sw.switchAt?.toISOString(), "2026-10-18T10:00:00.000Z", "a recorded switch is the default switchAt");
+  eq(sw.freezeAt?.toISOString(), ADDSITE2_FREEZE_AT, "freezeAt keeps its default beside it");
+  eq(cohortBoundsFrom({ switchAt: "2026-11-01T00:00:00Z" }, { switchAt: "2026-10-18T10:00:00.000Z" }).switchAt?.toISOString(), "2026-11-01T00:00:00.000Z", "the query still overrides");
+  eq(cohortOf(site({ createdAt: D("2026-10-19T00:00:00Z") }), sw), "addsite2_after_switch", "so the dashboard labels an untagged site created after it");
 }
 
 if (failures > 0) {

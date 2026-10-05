@@ -14,7 +14,9 @@
  * The addsite3 switch date (step 7; owner, 2026-10-05). Until it, a learning with
  * no status row is a WARNING — the other session still onboards on frozen
  * addsite2, which does not say to add one. From it, the row is required. Step 7
- * sets this to the switchAt it records.
+ * sets this to the switchAt it records, in the commit that records it, together
+ * with ADDSITE3_SWITCH_AT in src/lib/fixScore.ts (src/lib/fixScore.test.ts pins
+ * the two equal); the fix-queue GET and scripts/cohort-score.ts read that one.
  */
 export const SWITCH_AT = null;
 
