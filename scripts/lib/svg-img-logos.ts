@@ -130,6 +130,26 @@ export async function rasteriseSvgImgLogos(page: Page): Promise<InlineLogo[]> {
             if (!ctx) continue;
             ctx.drawImage(img, 0, 0, targetW, targetH);
 
+            // Colour of what was drawn, for the silhouette rule in
+            // inlineLogoRejection(). Same measurement as the inline path.
+            const pixels = ctx.getImageData(0, 0, targetW, targetH).data;
+            const buckets = new Map<number, number>();
+            let opaque = 0;
+            for (let p = 0; p < pixels.length; p += 4) {
+              if (pixels[p + 3] < 128) continue;
+              opaque++;
+              const key = ((pixels[p] >> 4) << 8) | ((pixels[p + 1] >> 4) << 4) | (pixels[p + 2] >> 4);
+              buckets.set(key, (buckets.get(key) || 0) + 1);
+            }
+            let topCount = 0;
+            let topKey = 0;
+            for (const [key, count] of buckets) {
+              if (count > topCount) {
+                topCount = count;
+                topKey = key;
+              }
+            }
+
             // The SVG's internals are not in this document, so <path> count —
             // which is how collectLogoCandidates() tells a full lockup from a
             // bare glyph — has to be read from the file itself. Same-origin,
@@ -176,6 +196,12 @@ export async function rasteriseSvgImgLogos(page: Page): Promise<InlineLogo[]> {
               link: img.closest("a")?.getAttribute("href") ?? null,
               inControl: !!img.closest(args.control),
               ancestry: trail.join(" < ").toLowerCase().slice(0, 1_000),
+              colour: {
+                sampled: targetW * targetH,
+                opaque,
+                dominantShare: opaque ? topCount / opaque : 0,
+                dominant: [(topKey >> 8) * 17, ((topKey >> 4) & 15) * 17, (topKey & 15) * 17],
+              },
             });
           } catch {
             // One unrasterisable image must not cost the others.

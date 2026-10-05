@@ -664,6 +664,7 @@ async function harvest(page: Page, url: string, patient = false): Promise<PageHa
         link: string | null;
         inControl: boolean;
         ancestry: string;
+        colour: { sampled: number; opaque: number; dominantShare: number; dominant: [number, number, number] };
       }[] = [];
       // Twelve, not six: since 2026-10-05 icons are filtered out by placement
       // (inlineLogoRejection), and a header with menu, search and social icons
@@ -682,6 +683,19 @@ async function harvest(page: Page, url: string, patient = false): Promise<PageHa
 
           const clone = svg.cloneNode(true) as SVGElement;
           clone.setAttribute("xmlns", "http://www.w3.org/2000/svg");
+
+          // The page's CSS does not travel with the serialised markup, so a
+          // mark coloured by a stylesheet rasterised as a black silhouette
+          // (ness-tech.co.il, dry run 2). Copy each element's COMPUTED fill and
+          // stroke onto its clone first; the elements correspond one to one.
+          const originals = [svg, ...Array.from(svg.querySelectorAll("*"))];
+          const copies = [clone, ...Array.from(clone.querySelectorAll("*"))];
+          for (let index = 0; index < originals.length && index < copies.length; index++) {
+            const computed = getComputedStyle(originals[index]);
+            const target = copies[index] as SVGElement;
+            if (computed.fill) target.style.setProperty("fill", computed.fill);
+            if (computed.stroke) target.style.setProperty("stroke", computed.stroke);
+          }
 
           // Intrinsic size, falling back to the viewBox — the rendered box is
           // the wrong source, since CSS often shrinks the mark.
@@ -721,6 +735,33 @@ async function harvest(page: Page, url: string, patient = false): Promise<PageHa
           if (!ctx) continue;
           ctx.drawImage(image, 0, 0, targetW, targetH);
 
+          // Colour of what was drawn, for the silhouette rule in
+          // inlineLogoRejection(): opaque pixels and the most common
+          // 4-bit-per-channel colour. Inline, no helpers (§7.10).
+          const pixels = ctx.getImageData(0, 0, targetW, targetH).data;
+          const buckets = new Map<number, number>();
+          let opaque = 0;
+          for (let p = 0; p < pixels.length; p += 4) {
+            if (pixels[p + 3] < 128) continue;
+            opaque++;
+            const key = ((pixels[p] >> 4) << 8) | ((pixels[p + 1] >> 4) << 4) | (pixels[p + 2] >> 4);
+            buckets.set(key, (buckets.get(key) || 0) + 1);
+          }
+          let topCount = 0;
+          let topKey = 0;
+          for (const [key, count] of buckets) {
+            if (count > topCount) {
+              topCount = count;
+              topKey = key;
+            }
+          }
+          const colour = {
+            sampled: targetW * targetH,
+            opaque,
+            dominantShare: opaque ? topCount / opaque : 0,
+            dominant: [(topKey >> 8) * 17, ((topKey >> 4) & 15) * 17, (topKey & 15) * 17] as [number, number, number],
+          };
+
           // No visibility measurement here on purpose. It used to live in this
           // loop and so ran ONLY for inline SVGs — which meant biopharmax.com,
           // whose JSON-LD PNG logo is equally invisible on a white page, was
@@ -751,6 +792,7 @@ async function harvest(page: Page, url: string, patient = false): Promise<PageHa
             link: svg.closest("a")?.getAttribute("href") ?? null,
             inControl: !!svg.closest(CONTROL_SELECTOR),
             ancestry: trail.join(" < ").toLowerCase().slice(0, 1_000),
+            colour,
           });
         } catch {
           // One unrasterisable SVG must not cost the whole harvest.

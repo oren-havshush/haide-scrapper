@@ -1422,6 +1422,36 @@ function testLogoContextFilters() {
   };
   assert.ok(inlineLogoRejection(nessPlace, "https://www.ness-tech.co.il/"), "ness-tech: the Ness Place mark links away from home");
 
+  // Round 2: a rasterised mark that is one near-black colour is a silhouette —
+  // an SVG whose fill came from the page's CSS, drawn with the default black.
+  // Colour statistics measured on the real rasters of dry run 2 (every pixel,
+  // alpha >= 128 opaque, RGB quantised to 4 bits per channel).
+  const withColour = (colour: InlineLogo["colour"]): InlineLogo => ({ ...base, colour });
+  assert.ok(
+    inlineLogoRejection(withColour({ sampled: 148_200, opaque: 134_157, dominantShare: 1, dominant: [0, 0, 0] }), page),
+    "ness-tech: the black silhouette of its glyph is refused",
+  );
+  assert.ok(inlineLogoRejection(withColour({ sampled: 40_000, opaque: 0, dominantShare: 0, dominant: [0, 0, 0] }), page), "a blank raster is refused");
+  // Single-colour marks that are NOT black silhouettes must survive: maccabi4u's
+  // blue and BDO's white are each 100% one colour, and both are correct logos.
+  for (const [name, colour] of [
+    ["maccabi4u (all blue)", { sampled: 226_380, opaque: 72_056, dominantShare: 1, dominant: [0, 68, 170] }],
+    ["BDO (all white)", { sampled: 155_648, opaque: 76_734, dominantShare: 1, dominant: [255, 255, 255] }],
+    ["kahane", { sampled: 393_600, opaque: 96_457, dominantShare: 0.5928, dominant: [255, 255, 255] }],
+    ["gomobile", { sampled: 117_600, opaque: 36_204, dominantShare: 0.3477, dominant: [238, 0, 136] }],
+    ["careers.iec", { sampled: 184_800, opaque: 55_633, dominantShare: 0.5266, dominant: [255, 85, 0] }],
+  ] as const) {
+    assert.equal(inlineLogoRejection(withColour({ ...colour, dominant: [...colour.dominant] as [number, number, number] }), page), null, `${name} is kept`);
+  }
+  // The harvest inlines computed fill and stroke into the clone before drawing,
+  // and measures colour on both rasterising paths.
+  const harvestSource = readFileSync(join(__dirname, "..", "company-profile.ts"), "utf8");
+  const svgLoop = harvestSource.slice(harvestSource.indexOf("const svgCandidates"), harvestSource.indexOf("inlineLogos.push({"));
+  assert.ok(/getComputedStyle\(/.test(svgLoop) && /setProperty\("fill"/.test(svgLoop) && /setProperty\("stroke"/.test(svgLoop), "computed fill and stroke are inlined into the clone");
+  assert.ok(svgLoop.indexOf('setProperty("fill"') < svgLoop.indexOf("serializeToString("), "before it is serialised and drawn");
+  assert.ok(/getImageData\(/.test(svgLoop), "the inline path measures colour");
+  assert.ok(/getImageData\(/.test(readFileSync(join(__dirname, "svg-img-logos.ts"), "utf8")), "the SVG <img> path measures colour");
+
   // The old shape (no signals at all) still passes through unchanged.
   assert.equal(inlineLogoRejection({ dataUrl: "data:image/png;base64,OLD", pathCount: 3, area: 3621 }, page), null);
 }

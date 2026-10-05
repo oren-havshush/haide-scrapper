@@ -90,6 +90,12 @@ export interface InlineLogo extends LogoPlacement {
   /** Rendered size on the page; 0x0 means hidden. */
   renderedWidth?: number;
   renderedHeight?: number;
+  /**
+   * Colour of the raster, measured in the page right after drawing (round 2):
+   * pixels with alpha >= 128 are opaque; the dominant colour is the most
+   * common 4-bit-per-channel bucket, given as 0..255 per channel.
+   */
+  colour?: { sampled: number; opaque: number; dominantShare: number; dominant: [number, number, number] };
 }
 
 export interface PageHarvest {
@@ -1143,8 +1149,23 @@ export function inlineLogoRejection(logo: InlineLogo, pageUrl: string): string |
   if (logo.pathCountKnown !== false && logo.pathCount < 2 && !isHomeLink(logo.link, pageUrl)) {
     return "a single-path SVG that does not link home";
   }
+  if (logo.colour) {
+    if (logo.colour.opaque === 0) return "a blank raster";
+    // One near-black colour: an SVG whose fill came from the page's CSS and was
+    // drawn with the default black (ness-tech.co.il, dry run 2). Black only, on
+    // purpose: maccabi4u's blue and BDO's white logos are each 100% one
+    // colour, and both are correct.
+    const [r, g, b] = logo.colour.dominant;
+    if (logo.colour.dominantShare >= SILHOUETTE_MIN_SHARE && Math.max(r, g, b) <= SILHOUETTE_MAX_CHANNEL) {
+      return "a single-colour black silhouette";
+    }
+  }
   return null;
 }
+
+/** A raster this much one colour, and that colour this dark, is a silhouette. */
+const SILHOUETTE_MIN_SHARE = 0.97;
+const SILHOUETTE_MAX_CHANNEL = 34;
 
 export function collectLogoCandidates(
   harvest: PageHarvest,
