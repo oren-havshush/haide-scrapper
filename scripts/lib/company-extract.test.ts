@@ -34,7 +34,10 @@ import {
   pickContactUrl,
   pickDirectionsUrl,
   sanitizeModelText,
+  inlineLogoRejection,
+  isHomeLink,
   type HarvestedLink,
+  type InlineLogo,
   type PageHarvest,
 } from "./company-extract";
 import { loadCityList, matchCityInAddress, isKnownCity, parseCityCsv } from "./city-csv";
@@ -971,6 +974,189 @@ function testStatus() {
   );
 }
 
+// ---------------------------------------------------------------------------
+// Logo context filters (task F, 2026-10-05)
+// ---------------------------------------------------------------------------
+//
+// The 2026-10-05 dry run over 48 ACTIVE sites would have stored 22 wrong logos
+// that passed every byte gate: an inline SVG or an SVG <img> in the header was
+// trusted outright, so search, menu, pause and accessibility icons won, and an
+// <img> with "logos" only in its filename (a TV-channel carousel) won too. The
+// signals below are VERBATIM from those pages (rendered size, intrinsic size,
+// <path> count, enclosing link, enclosing control, element + 5 ancestors).
+
+function testLogoContextFilters() {
+  // mikud-avtaha.co.il: the pojo accessibility toolbar's wheelchair, inline.
+  const wheelchair = {
+    dataUrl: "data:image/png;base64,WHEELCHAIR",
+    pathCount: 2,
+    area: 10_000,
+    width: 100,
+    height: 100,
+    renderedWidth: 32,
+    renderedHeight: 32,
+    link: "javascript:void(0);",
+    inControl: false,
+    ancestry:
+      "svg.#[] < a.pojo-a11y-toolbar-link pojo-a11y-toolbar-toggle-link#[כלי נגישות] < div.pojo-a11y-toolbar-toggle#[] < nav.pojo-a11y-toolbar-left pojo-a11y-#pojo-a11y-toolbar[] < body.rtl home page-template-default page page-id-1465#[]",
+  };
+  // shagrir.co.il: the carousel's pause button, inline.
+  const pause = {
+    dataUrl: "data:image/png;base64,PAUSE",
+    pathCount: 1,
+    area: 256,
+    width: 16,
+    height: 16,
+    renderedWidth: 16,
+    renderedHeight: 16,
+    link: null,
+    inControl: true,
+    ancestry:
+      "svg.bi bi-pause#[] < button.owlstop btn btn-sm btn-outline-danger#owl-play-stop[עצור ניגון] < div.owl-playstop#[] < div.owl-carousel owl-theme col-11 pr-0 owl-rtl owl-loaded owl-drag#carousel-homepage[] < div.header pb-4 row#[]",
+  };
+  // one1.co.il: the header search icon (search-icon.svg), an SVG <img> linking to "#".
+  const search = {
+    dataUrl: "data:image/png;base64,SEARCH",
+    pathCount: 1,
+    area: 529,
+    width: 23,
+    height: 23,
+    renderedWidth: 23,
+    renderedHeight: 23,
+    link: "#",
+    inControl: false,
+    ancestry: "img.lazyloaded#[icon] < a.link#[חיפוש] < div.search-btn#[] < div.search-part#[] < div.header-in#[] < div.container#[]",
+  };
+  // maccabi4u.co.il: Google Translate's gadget icon (Google_Translate_logo.svg —
+  // "logo" in its own file name), an SVG <img>, rendered 0x0.
+  const translate = {
+    dataUrl: "data:image/png;base64,TRANSLATE",
+    pathCount: 4,
+    area: 22_500,
+    width: 150,
+    height: 150,
+    renderedWidth: 0,
+    renderedHeight: 0,
+    link: null,
+    inControl: false,
+    ancestry: "img.goog-te-gadget-icon#[] < div.goog-te-gadget-simple#:0.targetlanguage[] < div.skiptranslate goog-te-gadget#[] < div.#google_translate_element[] < li.nav-item google-append#[] < ul.navbar-nav#[]",
+  };
+  // maccabi4u.co.il's real logo on the same page (לוגו-מכבי_אדר-דסקטופ.svg), linking home.
+  const maccabiLogo = {
+    dataUrl: "data:image/png;base64,MACCABI",
+    pathCount: 3,
+    area: 4_620,
+    width: 110,
+    height: 42,
+    renderedWidth: 87,
+    renderedHeight: 33,
+    link: "/",
+    inControl: false,
+    ancestry: "img.#[מכבי שירותי בריאות] < a.mobile-brand#[] < h1.#[] < nav.navbar navbar-expand-lg#[] < div.maccabi-hedear#[] < body.lang-he-il#[]",
+  };
+
+  for (const [name, logo] of [
+    ["wheelchair (mikud-avtaha)", wheelchair],
+    ["pause (shagrir)", pause],
+    ["search (one1)", search],
+    ["Google Translate (maccabi4u)", translate],
+  ] as const) {
+    assert.ok(inlineLogoRejection(logo, "https://www.example.co.il/"), `${name} must be refused`);
+  }
+
+  const maccabi: PageHarvest = {
+    ...emptyHarvest("https://www.maccabi4u.co.il/"),
+    // Highest path count first, the way the old ranking would have put it.
+    inlineLogos: [translate, maccabiLogo],
+  };
+  const maccabiCandidates = collectLogoCandidates(maccabi, null);
+  assert.deepEqual(
+    maccabiCandidates.map((c) => c.url),
+    ["data:image/png;base64,MACCABI"],
+    "maccabi4u: the translate icon is dropped and the home-linked logo is the only candidate",
+  );
+
+  // cellcom.co.il: a TV-channel carousel image. "logos" is only in its file
+  // name; it is not in the header and sits in a swiper slide. It won the dry run.
+  const cellcom: PageHarvest = {
+    ...emptyHarvest("https://cellcom.co.il/"),
+    images: [
+      {
+        src: "https://contentepi.cellcom.co.il/globalassets/tv--/1/channel_gallery_logos_102x80_kan11.png",
+        alt: "תמונות של ערוצים",
+        width: 102,
+        height: 80,
+        inHeader: false,
+        context: "homepagetvchannelslistblock__card",
+        link: null,
+        inControl: false,
+        ancestry:
+          "img.homepagetvchannelslistblock__image#[תמונות של ערוצים] < div.homepagetvchannelslistblock__card#[] < div.swiper-slide homepagetvchannelslistblock__slide#[] < div.swiper-wrapper#[] < div.swiper-container swiper-container-initialized#[] < div.homepagetvchannelslistblock#[]",
+      },
+    ],
+  };
+  assert.deepEqual(
+    collectLogoCandidates(cellcom, { logo: "https://contentepi.cellcom.co.il/globalassets/2/cellcom.png" }).map((c) => c.url),
+    ["https://contentepi.cellcom.co.il/globalassets/2/cellcom.png"],
+    "cellcom: the channel carousel image (כאן 11) is never a candidate",
+  );
+
+  // Logos that must survive. Rendered and intrinsic size, link and ancestry are
+  // verbatim from the same pages; an SVG <img>'s path count is read from its
+  // file at harvest time, so here it is left unknown.
+  const keep: [string, string, Partial<InlineLogo>][] = [
+    ["BDO (Hunter board, logo.svg)", "https://bdo-career.hunterhrms.com/%D7%9B%D7%9C-%D7%94%D7%9E%D7%A9%D7%A8%D7%95%D7%AA/",
+      { width: 152, height: 64, renderedWidth: 85, renderedHeight: 36, link: "https://bdo-career.hunterhrms.com/", ancestry: "img.custom-logo#[bdo] < a.custom-logo-link#[] < div.auto-width-logo wp-block-site-logo#[] < div.wp-block-group is-layout-flex wp-block-group-is-layout-flex#[]" }],
+    ["kahane (logo-light.svg)", "https://www.kahane.co.il/",
+      { width: 300, height: 82, renderedWidth: 166, renderedHeight: 46, link: "https://www.kahane.co.il", ancestry: "img.attachment-full size-full wp-image-22#[לוגו קבוצת כהנא] < a.#[] < div.elementor-widget-container#[] < div.elementor-element elementor-element-d9a8048 elementor-widget__width-auto elementor-widget elementor-widget-theme-site-logo elementor-widget-image#[]" }],
+    ["ness-tech (inline, square, two paths, home-linked)", "https://www.ness-tech.co.il/",
+      { pathCount: 2, pathCountKnown: true, width: 80.1, height: 80.1, renderedWidth: 69, renderedHeight: 69, link: "/", ancestry: "svg.#layer_1[] < a.#[ness חזור לדף הבית] < div.logo#[] < div.logoarea#[] < div.header-inner#[]" }],
+    ["eychut (logo-eychut.svg)", "https://eychut.org.il/",
+      { width: 146, height: 76, renderedWidth: 146, renderedHeight: 76, link: "https://eychut.org.il/", ancestry: "img.attachment-full size-full#[] < a.home-link#[] < div.col-1#[] < div.wrapper#[] < div.header-top#[] < header.site-header#masthead[]" }],
+    ["gomobile (logo-txt.svg)", "https://www.gomobile.co.il/",
+      { width: 196, height: 150, renderedWidth: 90, renderedHeight: 69, link: "/", ancestry: "img.#[go mobile] < a.router-link-active router-link-exact-active header-logo#[לחץ לעמוד הבית] < div.logo-place relative xl:self-start#[] < div.container flex justify-between items-center#[] < div.head-main py-2 lg:py-4#[]" }],
+    ["iec (logo-with-text.svg, link 'home')", "https://www.iec.co.il/home",
+      { width: 154, height: 75, renderedWidth: 152, renderedHeight: 75, link: "home", ancestry: "img.#[] < a.navbar-logo-container tw-relative tw-ms-[24px]#[קישור לדף הבית] < header.desktop-header#[] < div.desktop-layout-wrapper#[] < app-navbar.#[] < ng-component.#[]" }],
+  ];
+  for (const [name, pageUrl, signals] of keep) {
+    const logo = { dataUrl: "data:image/png;base64,OK", area: 1, inControl: false, pathCount: 0, pathCountKnown: false, ...signals };
+    assert.equal(inlineLogoRejection(logo as InlineLogo, pageUrl), null, `${name} must still be accepted`);
+  }
+
+  // The rules one at a time, on an otherwise acceptable home-linked mark.
+  const base: InlineLogo = {
+    dataUrl: "data:image/png;base64,BASE", pathCount: 5, area: 12_000, width: 200, height: 60,
+    renderedWidth: 160, renderedHeight: 48, link: "/", inControl: false, ancestry: "svg.#[] < a.site-logo#[] < header.#[]",
+  };
+  const page = "https://acme.co.il/";
+  assert.equal(inlineLogoRejection(base, page), null, "the base mark is accepted");
+  assert.ok(inlineLogoRejection({ ...base, renderedWidth: 0, renderedHeight: 0 }, page), "a hidden (0x0) SVG is refused");
+  assert.ok(inlineLogoRejection({ ...base, renderedWidth: 30, renderedHeight: 30 }, page), "under the 40px rendered floor is refused");
+  assert.ok(inlineLogoRejection({ ...base, renderedWidth: 160, renderedHeight: 12 }, page), "a 12px-high sliver is refused");
+  assert.ok(inlineLogoRejection({ ...base, width: 5, height: 12 }, page), "more than twice as tall as wide (a chevron) is refused");
+  assert.equal(inlineLogoRejection({ ...base, width: 6, height: 12 }, page), null, "exactly twice as tall is the floor, kept");
+  assert.ok(inlineLogoRejection({ ...base, inControl: true }, page), "inside a button or control is refused");
+  assert.ok(inlineLogoRejection({ ...base, link: "/about/" }, page), "a link that is not the home link is refused");
+  assert.ok(inlineLogoRejection({ ...base, link: "https://www.facebook.com/acme" }, page), "a link off-site is refused");
+  assert.ok(inlineLogoRejection({ ...base, link: "#" }, page), "a '#' link is not the home link");
+  assert.ok(inlineLogoRejection({ ...base, link: null, pathCount: 1 }, page), "a single-path SVG outside the home link is refused");
+  assert.equal(inlineLogoRejection({ ...base, pathCount: 1 }, page), null, "a single-path mark IN the home link is kept");
+  assert.equal(inlineLogoRejection({ ...base, link: null, pathCount: 1, pathCountKnown: false }, page), null, "an unknown path count is not held against it");
+  assert.ok(inlineLogoRejection({ ...base, link: null, ancestry: "svg.#[] < button.e-n-menu-toggle#[כפתור פתיחת תפריט] < nav.e-n-menu#[]" }, page), "a menu control is refused");
+  assert.ok(inlineLogoRejection({ ...base, link: null, ancestry: "svg.#[] < button.searchbtn#[] < form.#[]" }, page), "a search control is refused");
+  assert.ok(inlineLogoRejection({ ...base, ancestry: "svg.#[] < a.elementor-social-icon#[פייסבוק] < div.social#[]" }, page), "a social icon is refused even linked home");
+  assert.equal(
+    inlineLogoRejection({ ...base, ancestry: "svg.#[] < a.site-logo#[] < div.main-menu-wrapper#[] < header.#[]" }, page),
+    null,
+    "a home-linked logo inside a menu wrapper is kept",
+  );
+  assert.ok(isHomeLink("/", page) && isHomeLink("https://www.acme.co.il", page) && isHomeLink("/he/", page) && isHomeLink("home", "https://acme.co.il/home"));
+  assert.ok(!isHomeLink("#", page) && !isHomeLink("javascript:void(0);", page) && !isHomeLink("/about", page) && !isHomeLink("https://other.co.il/", page));
+
+  // The old shape (no signals at all) still passes through unchanged.
+  assert.equal(inlineLogoRejection({ dataUrl: "data:image/png;base64,OLD", pathCount: 3, area: 3621 }, page), null);
+}
+
 function main() {
   testHomepageDerivation();
   testHomepageFromLinks();
@@ -978,6 +1164,7 @@ function main() {
   testAbout();
   testAddressAndCity();
   testLogoCandidates();
+  testLogoContextFilters();
   testModelOutputSanitising();
   testStatus();
   console.log(

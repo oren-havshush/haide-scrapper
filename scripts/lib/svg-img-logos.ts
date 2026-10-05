@@ -35,8 +35,17 @@ import type { InlineLogo } from "./company-extract";
  */
 export const SVG_IMG_LOGO_SELECTOR = "header img, nav img, a[href='/'] img";
 
-/** Cap the work: a header with more images than this is a carousel, not a mark. */
-export const MAX_SVG_IMG_LOGOS = 4;
+/**
+ * Cap the work: a header with more images than this is a carousel, not a mark.
+ * Eight, not four, since 2026-10-05: icons are now filtered by placement
+ * (inlineLogoRejection), and four social icons ahead of the logo used to use
+ * up the budget.
+ */
+export const MAX_SVG_IMG_LOGOS = 8;
+
+/** A logo candidate inside one of these is a control's icon (LogoPlacement). */
+const CONTROL_SELECTOR =
+  "button, [role=button], [role=search], form, [aria-expanded], [aria-controls], [aria-haspopup]";
 
 /**
  * True when a URL points at an SVG file.
@@ -71,8 +80,8 @@ export function isSvgSrc(src: string): boolean {
 export async function rasteriseSvgImgLogos(page: Page): Promise<InlineLogo[]> {
   try {
     const logos = await page.evaluate(
-      async (args: { selector: string; max: number }) => {
-        const out: { dataUrl: string; pathCount: number; area: number }[] = [];
+      async (args: { selector: string; max: number; control: string }) => {
+        const out: InlineLogo[] = [];
 
         const found = Array.from(
           document.querySelectorAll(args.selector),
@@ -133,18 +142,40 @@ export async function rasteriseSvgImgLogos(page: Page): Promise<InlineLogo[]> {
             // glyph AND the full "כלמוביל Colmobil" lockup as this <img>, and
             // the glyph won a comparison it should have lost.
             let pathCount = 0;
+            let pathCountKnown = false;
             try {
               const markup = await (await fetch(resolved.href)).text();
               pathCount = (markup.match(/<path\b/gi) || []).length;
+              pathCountKnown = true;
             } catch {
               // Ordering signal only — a logo with an unknown count still
-              // beats no logo at all.
+              // beats no logo at all, and the path-count floor skips it.
+            }
+
+            // Placement, judged by inlineLogoRejection(). Inline, as above.
+            const rect = img.getBoundingClientRect();
+            const trail: string[] = [];
+            let walk: Element | null = img;
+            for (let depth = 0; depth < 6 && walk; depth++) {
+              trail.push(
+                `${walk.tagName.toLowerCase()}.${(walk.getAttribute("class") || "").trim()}#${walk.id || ""}` +
+                  `[${walk.getAttribute("aria-label") || walk.getAttribute("alt") || walk.getAttribute("title") || ""}]`,
+              );
+              walk = walk.parentElement;
             }
 
             out.push({
               dataUrl: canvas.toDataURL("image/png"),
               pathCount,
               area: Math.round(width * height),
+              pathCountKnown,
+              width,
+              height,
+              renderedWidth: Math.round(rect.width),
+              renderedHeight: Math.round(rect.height),
+              link: img.closest("a")?.getAttribute("href") ?? null,
+              inControl: !!img.closest(args.control),
+              ancestry: trail.join(" < ").toLowerCase().slice(0, 1_000),
             });
           } catch {
             // One unrasterisable image must not cost the others.
@@ -153,7 +184,7 @@ export async function rasteriseSvgImgLogos(page: Page): Promise<InlineLogo[]> {
 
         return out;
       },
-      { selector: SVG_IMG_LOGO_SELECTOR, max: MAX_SVG_IMG_LOGOS },
+      { selector: SVG_IMG_LOGO_SELECTOR, max: MAX_SVG_IMG_LOGOS, control: CONTROL_SELECTOR },
     );
 
     return logos as InlineLogo[];

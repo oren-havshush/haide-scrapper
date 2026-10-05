@@ -44,9 +44,31 @@ export interface HarvestedImage {
   inHeader: boolean;
   /** Nearest ancestor's class+id, lowercased — "logo" in here is a strong hint. */
   context: string;
+  /** Where the image sits; see LogoPlacement. Absent on older harvests. */
+  ancestry?: string;
+  link?: string | null;
+  inControl?: boolean;
 }
 
-export interface InlineLogo {
+/**
+ * Where a logo candidate sits on the page (task F, 2026-10-05). Collected by
+ * the harvest for every <img> and every inline or SVG-<img> logo, and judged
+ * by logoPlacementRejection(). Each field is optional: a harvest that did not
+ * record it is not held against the candidate.
+ */
+export interface LogoPlacement {
+  /**
+   * The element and its five nearest ancestors, lowercased, nearest first:
+   * `tag.class#id[aria-label|alt|title]`, joined with " < ".
+   */
+  ancestry?: string;
+  /** The raw href of the nearest enclosing <a>, or null when there is none. */
+  link?: string | null;
+  /** Inside a button, a [role=button|search], a form or an expandable control. */
+  inControl?: boolean;
+}
+
+export interface InlineLogo extends LogoPlacement {
   /** PNG data: URL. */
   dataUrl: string;
   /**
@@ -59,6 +81,14 @@ export interface InlineLogo {
    */
   pathCount: number;
   area: number;
+  /** False when the count could not be read (an SVG <img> whose file did not load). */
+  pathCountKnown?: boolean;
+  /** Intrinsic size (attributes, else viewBox; natural size for an SVG <img>). */
+  width?: number;
+  height?: number;
+  /** Rendered size on the page; 0x0 means hidden. */
+  renderedWidth?: number;
+  renderedHeight?: number;
 }
 
 export interface PageHarvest {
@@ -985,6 +1015,109 @@ function baseDomain(host: string): string {
  * render nothing, not a placeholder, not a favicon" — a 32px favicon upscaled
  * on the public site looks broken, and it would fail the 64px floor anyway.
  */
+/**
+ * True when `href` points at the site's own home page: same registrable
+ * domain as the page, and a root path — "/", a language root ("/he/"), or a
+ * "home"/"index" page. "#…" and "javascript:" are never home, even though "#"
+ * resolves to the page itself.
+ */
+export function isHomeLink(href: string | null | undefined, pageUrl: string): boolean {
+  const raw = (href ?? "").trim();
+  if (!raw || raw.startsWith("#") || /^javascript:/i.test(raw)) return false;
+  try {
+    const url = new URL(raw, pageUrl);
+    if (url.protocol !== "http:" && url.protocol !== "https:") return false;
+    if (baseDomain(url.hostname) !== baseDomain(new URL(pageUrl).hostname)) return false;
+    return /^\/(?:(?:he|en|ar|ru|fr|home|index(?:\.[a-z]+)?)\/?)?$/i.test(url.pathname);
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Words in a candidate's ancestry, lowercased. Tokens are split on anything
+ * that is not a Latin letter, digit or Hebrew letter, so "e-n-menu-toggle"
+ * yields "menu" and "toggle", and "pojo-a11y-toolbar" yields "a11y".
+ */
+function placementTokens(ancestry: string): string[] {
+  return ancestry.toLowerCase().split(/[^a-z0-9א-ת]+/).filter(Boolean);
+}
+
+/** A token starting with any of these is a widget's or a social network's. */
+const WIDGET_TOKEN_PREFIXES = [
+  "a11y", "accessib", "נגיש", "goog", "translate", "userway", "equalweb", "nagish",
+  "chatbot", "whatsapp", "facebook", "instagram", "linkedin", "tiktok",
+  "youtube", "twitter", "social",
+];
+/** A token starting with any of these is a carousel or a strip of other brands. */
+const CAROUSEL_TOKEN_PREFIXES = [
+  "swiper", "slick", "owl", "carousel", "slider", "gallery", "marquee", "clients", "partners",
+  "לקוחות", "שותפים",
+];
+/** A token starting with any of these is a page control's icon. */
+const CONTROL_TOKEN_PREFIXES = [
+  "search", "חיפוש", "menu", "תפריט", "hamburg", "burger", "toggle", "close", "סגור",
+  // "scrollbutton", not "scroll": a sticky header carries "scrolled".
+  "arrow", "chevron", "caret", "dropdown", "scrollbutton", "play", "pause",
+];
+
+const hasPrefix = (tokens: string[], prefixes: string[]) =>
+  tokens.some((t) => prefixes.some((p) => t.startsWith(p)));
+
+/**
+ * Why a logo candidate's PLACEMENT disqualifies it, or null. Shared by <img>
+ * candidates and inline/SVG-<img> ones (task F, 2026-10-05): the dry run over
+ * 48 sites would have stored search, menu, pause and accessibility icons, a
+ * Google Translate icon and a TV-channel carousel image as company logos.
+ * Every one of them passed the byte gate; only where it sat gave it away.
+ */
+export function logoPlacementRejection(p: LogoPlacement, pageUrl: string): string | null {
+  if (p.inControl) return "inside a button or control";
+  const homeLinked = isHomeLink(p.link, pageUrl);
+  const tokens = placementTokens(p.ancestry ?? "");
+  if (hasPrefix(tokens, WIDGET_TOKEN_PREFIXES)) return "a widget or social icon";
+  if (hasPrefix(tokens, CAROUSEL_TOKEN_PREFIXES)) return "inside a carousel or a strip of other brands";
+  if (p.link != null && !homeLinked) return "links somewhere other than the home page";
+  // A home link is the strongest logo signal a page offers, and themes often
+  // wrap it in a "main-menu" or "header-menu" container — so the control
+  // words are held only against a candidate that does not link home.
+  if (!homeLinked && hasPrefix(tokens, CONTROL_TOKEN_PREFIXES)) return "a search, menu or other control icon";
+  return null;
+}
+
+/** Below this rendered size an SVG is an icon, not a logo. */
+const INLINE_MIN_RENDERED_LONG = 40;
+const INLINE_MIN_RENDERED_SHORT = 16;
+/** Narrower than half its height: a chevron or a bar, not a mark. */
+const INLINE_MIN_ASPECT = 0.5;
+/** Wider than this: a rule or a divider. */
+const INLINE_MAX_ASPECT = 15;
+
+/**
+ * Why an inline or SVG-<img> logo candidate is refused, or null. Placement
+ * first (logoPlacementRejection), then shape: a rendered-size floor, an
+ * aspect floor, and a path-count floor for a mark that does not link home.
+ */
+export function inlineLogoRejection(logo: InlineLogo, pageUrl: string): string | null {
+  const placed = logoPlacementRejection(logo, pageUrl);
+  if (placed) return placed;
+  if (logo.renderedWidth !== undefined && logo.renderedHeight !== undefined) {
+    const long = Math.max(logo.renderedWidth, logo.renderedHeight);
+    const short = Math.min(logo.renderedWidth, logo.renderedHeight);
+    if (long < INLINE_MIN_RENDERED_LONG || short < INLINE_MIN_RENDERED_SHORT) {
+      return `renders at ${logo.renderedWidth}x${logo.renderedHeight}`;
+    }
+  }
+  if (logo.width && logo.height) {
+    const aspect = logo.width / logo.height;
+    if (aspect < INLINE_MIN_ASPECT || aspect > INLINE_MAX_ASPECT) return `aspect ${aspect.toFixed(2)}`;
+  }
+  if (logo.pathCountKnown !== false && logo.pathCount < 2 && !isHomeLink(logo.link, pageUrl)) {
+    return "a single-path SVG that does not link home";
+  }
+  return null;
+}
+
 export function collectLogoCandidates(
   harvest: PageHarvest,
   org: OrganizationLd | null,
@@ -1035,9 +1168,12 @@ export function collectLogoCandidates(
   // WITHIN the inline group rather than via the score, so that a wordmark
   // bonus can never leapfrog the company's own JSON-LD declaration; the final
   // sort is stable, so this order survives it among equal scores.
-  const rankedInline = [...harvest.inlineLogos].sort(
-    (a, b) => b.pathCount - a.pathCount || b.area - a.area,
-  );
+  // Placement and shape first (inlineLogoRejection): before 2026-10-05 every
+  // header SVG was trusted, and the richest one — often a menu or search
+  // icon — beat the real logo on path count.
+  const rankedInline = harvest.inlineLogos
+    .filter((logo) => inlineLogoRejection(logo, harvest.url) === null)
+    .sort((a, b) => b.pathCount - a.pathCount || b.area - a.area);
 
   for (const logo of rankedInline) {
     if (seen.has(logo.dataUrl)) continue;
@@ -1053,6 +1189,9 @@ export function collectLogoCandidates(
   for (const img of harvest.images) {
     const hint = `${img.alt} ${img.context} ${img.src}`.toLowerCase();
     if (!/logo|לוגו/.test(hint)) continue;
+    // The same placement rules as an inline SVG: cellcom.co.il's TV-channel
+    // carousel image had "logos" only in its file name and won.
+    if (logoPlacementRejection(img, harvest.url) !== null) continue;
     let score = 6;
     if (img.inHeader) score += 2;
     // Tracking pixels and spacers dressed up as logos.

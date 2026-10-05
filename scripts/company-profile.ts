@@ -494,6 +494,9 @@ async function harvest(page: Page, url: string, patient = false): Promise<PageHa
   try {
     const collected = await page.evaluate(async () => {
       const CHROME_SELECTOR = "header, nav, footer";
+      // A logo candidate inside one of these is a control's icon (LogoPlacement).
+      const CONTROL_SELECTOR =
+        "button, [role=button], [role=search], form, [aria-expanded], [aria-controls], [aria-haspopup]";
 
       const metas: Record<string, string> = {};
       for (const el of Array.from(document.querySelectorAll("meta"))) {
@@ -531,12 +534,25 @@ async function harvest(page: Page, url: string, patient = false): Promise<PageHa
         height: number;
         inHeader: boolean;
         context: string;
+        ancestry: string;
+        link: string | null;
+        inControl: boolean;
       }[] = [];
       for (const el of Array.from(document.querySelectorAll("img[src]")).slice(0, 200)) {
         const img = el as HTMLImageElement;
         const src = (img.getAttribute("src") || "").trim();
         if (!src || src.startsWith("data:")) continue;
         const parent = img.closest("[class], [id]");
+        // Placement, judged by logoPlacementRejection(); inline, see §7.10.
+        const trail: string[] = [];
+        let walk: Element | null = img;
+        for (let depth = 0; depth < 6 && walk; depth++) {
+          trail.push(
+            `${walk.tagName.toLowerCase()}.${(walk.getAttribute("class") || "").trim()}#${walk.id || ""}` +
+              `[${walk.getAttribute("aria-label") || walk.getAttribute("alt") || walk.getAttribute("title") || ""}]`,
+          );
+          walk = walk.parentElement;
+        }
         images.push({
           src,
           alt: (img.getAttribute("alt") || "").slice(0, 120),
@@ -544,6 +560,9 @@ async function harvest(page: Page, url: string, patient = false): Promise<PageHa
           height: img.naturalHeight || img.height || 0,
           inHeader: !!img.closest("header, nav"),
           context: `${parent?.className ?? ""} ${parent?.id ?? ""}`.toLowerCase().slice(0, 200),
+          ancestry: trail.join(" < ").toLowerCase().slice(0, 1_000),
+          link: img.closest("a")?.getAttribute("href") ?? null,
+          inControl: !!img.closest(CONTROL_SELECTOR),
         });
       }
 
@@ -560,6 +579,15 @@ async function harvest(page: Page, url: string, patient = false): Promise<PageHa
         const src = hit?.[2]?.trim();
         if (!src || src.startsWith("data:")) continue;
         const rect = el.getBoundingClientRect();
+        const trail: string[] = [];
+        let walk: Element | null = el;
+        for (let depth = 0; depth < 6 && walk; depth++) {
+          trail.push(
+            `${walk.tagName.toLowerCase()}.${(walk.getAttribute("class") || "").trim()}#${walk.id || ""}` +
+              `[${walk.getAttribute("aria-label") || walk.getAttribute("alt") || walk.getAttribute("title") || ""}]`,
+          );
+          walk = walk.parentElement;
+        }
         images.push({
           src,
           alt: (el.getAttribute("aria-label") || el.getAttribute("title") || "").slice(0, 120),
@@ -569,6 +597,9 @@ async function harvest(page: Page, url: string, patient = false): Promise<PageHa
           // "logo" is guaranteed to be in here by the selector above, which is
           // what makes collectLogoCandidates() pick these up.
           context: `${el.className ?? ""} ${el.id ?? ""} background`.toLowerCase().slice(0, 200),
+          ancestry: trail.join(" < ").toLowerCase().slice(0, 1_000),
+          link: el.closest("a")?.getAttribute("href") ?? null,
+          inControl: !!el.closest(CONTROL_SELECTOR),
         });
       }
 
@@ -616,10 +647,25 @@ async function harvest(page: Page, url: string, patient = false): Promise<PageHa
       // ever receives PNG bytes and still validates them, and because SVG is
       // vector the upscale to clear the floor is lossless rather than a blurry
       // stretch of a small bitmap.
-      const inlineLogos: { dataUrl: string; pathCount: number; area: number }[] = [];
+      const inlineLogos: {
+        dataUrl: string;
+        pathCount: number;
+        area: number;
+        pathCountKnown: boolean;
+        width: number;
+        height: number;
+        renderedWidth: number;
+        renderedHeight: number;
+        link: string | null;
+        inControl: boolean;
+        ancestry: string;
+      }[] = [];
+      // Twelve, not six: since 2026-10-05 icons are filtered out by placement
+      // (inlineLogoRejection), and a header with menu, search and social icons
+      // ahead of the logo used to spend the whole budget on them.
       const svgCandidates = Array.from(
         document.querySelectorAll("header svg, nav svg, a[href='/'] svg"),
-      ).slice(0, 6);
+      ).slice(0, 12);
 
       for (const svg of svgCandidates) {
         try {
@@ -675,11 +721,31 @@ async function harvest(page: Page, url: string, patient = false): Promise<PageHa
           // whose JSON-LD PNG logo is equally invisible on a white page, was
           // never flagged. measureLogoVisibility() now checks whichever
           // candidate actually wins, whatever its source.
+          // Placement, judged by inlineLogoRejection(). Written inline: no
+          // helper functions in a page.evaluate body (company-profile.md §7.10).
+          const rect = svg.getBoundingClientRect();
+          const trail: string[] = [];
+          let walk: Element | null = svg;
+          for (let depth = 0; depth < 6 && walk; depth++) {
+            trail.push(
+              `${walk.tagName.toLowerCase()}.${(walk.getAttribute("class") || "").trim()}#${walk.id || ""}` +
+                `[${walk.getAttribute("aria-label") || walk.getAttribute("alt") || walk.getAttribute("title") || ""}]`,
+            );
+            walk = walk.parentElement;
+          }
           inlineLogos.push({
             dataUrl: canvas.toDataURL("image/png"),
             // Ordering signals only — see InlineLogo in company-extract.ts.
             pathCount: svg.querySelectorAll("path").length,
             area: Math.round(width * height),
+            pathCountKnown: true,
+            width,
+            height,
+            renderedWidth: Math.round(rect.width),
+            renderedHeight: Math.round(rect.height),
+            link: svg.closest("a")?.getAttribute("href") ?? null,
+            inControl: !!svg.closest(CONTROL_SELECTOR),
+            ancestry: trail.join(" < ").toLowerCase().slice(0, 1_000),
           });
         } catch {
           // One unrasterisable SVG must not cost the whole harvest.
