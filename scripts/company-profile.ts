@@ -70,6 +70,7 @@ import {
   isBotChallengePage,
   modelAboutGrounding,
   modelAboutRejection,
+  modelAddressUsable,
   parseJsonLdOrganization,
   pickAboutUrl,
   pickContactUrl,
@@ -1424,9 +1425,16 @@ async function captureSite(
         about = llm.about;
         result.provenance.about = "llm";
       }
+      // A model address with no street word and house number is dropped, and
+      // with it any city it would have decided (modelAddressUsable): dry run
+      // 2 took ירושלים from "בפאתי ירושלים".
       if (!address && llm.hqAddress) {
-        address = llm.hqAddress;
-        result.provenance.address = "llm";
+        if (modelAddressUsable(llm.hqAddress)) {
+          address = llm.hqAddress;
+          result.provenance.address = "llm";
+        } else {
+          console.info(`[company-profile] llm address refused (no street and house number): ${llm.hqAddress}`);
+        }
       }
     }
 

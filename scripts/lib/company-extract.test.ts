@@ -41,6 +41,7 @@ import {
   isWidgetHost,
   modelAboutRejection,
   modelAboutGrounding,
+  modelAddressUsable,
   type HarvestedLink,
   type InlineLogo,
   type PageHarvest,
@@ -1084,6 +1085,34 @@ function testModelAboutGrounding() {
   assert.ok(/url: policyPage\.url, text: policyPage\.bodyText, policy: true/.test(source), "the policy page is passed as a policy source");
 }
 
+/**
+ * Round 2: a model-produced address feeds the city only if it holds a street
+ * word and a house number; otherwise address and city both stay empty. The
+ * five model addresses of dry run 2, verbatim.
+ */
+function testModelAddressUsable() {
+  assert.equal(modelAddressUsable("בפאתי ירושלים"), false, "chitadelivery: 'on the outskirts of Jerusalem' is not an address");
+  assert.equal(modelAddressUsable("קיבוץ משמר העמק 1923600"), false, "tama: a kibbutz and a postal code, no street, no house number");
+  assert.equal(
+    modelAddressUsable("רחוב קציר א.ת. באר טוביה, ת.ד. 1325"),
+    false,
+    "benjerry: a street with no number, and a PO box number is not a house number",
+  );
+  assert.equal(modelAddressUsable("18 Hasivim St. Petach P.O.B 7551"), true, "eimsys: St. with 18");
+  assert.equal(modelAddressUsable("רח' משה לוי 16, בית קנדי ראשל''צ"), true, "gomobile: רח' with 16");
+  assert.equal(modelAddressUsable("שדרות רוטשילד 50, תל אביב-יפו"), true, "שדרות with a number");
+  assert.equal(modelAddressUsable("דרך מנחם בגין 116, תל אביב יפו"), true, "דרך with a number");
+  assert.equal(modelAddressUsable("בדרך 5 ירושלים"), false, "a street word inside another word is not one");
+  assert.equal(modelAddressUsable("רחוב הנפח, מיקוד 5881804"), false, "a postal code is not a house number");
+  assert.equal(modelAddressUsable("רחוב קציר ת.ד. 1325"), false, "a PO box number in the street's own part is not a house number");
+  assert.equal(modelAddressUsable("Hasivim St. P.O.B 7551"), false, "nor in English");
+  assert.equal(modelAddressUsable("ירושלים"), false, "a city on its own");
+
+  const source = readFileSync(join(__dirname, "..", "company-profile.ts"), "utf8");
+  const merge = source.slice(source.indexOf("// --- 3. LLM fallback"), source.indexOf("// --- 4. City, through the gate"));
+  assert.ok(/modelAddressUsable\(llm\.hqAddress\)/.test(merge), "captureSite() takes a model address only through modelAddressUsable");
+}
+
 function testModelOutputSanitising() {
   // Markup must never survive — companyAbout may be rendered unescaped.
   assert.equal(
@@ -1342,6 +1371,7 @@ function main() {
   testModelOutputSanitising();
   testModelAboutRefusal();
   testModelAboutGrounding();
+  testModelAddressUsable();
   testWidgetHosts();
   testStatus();
   console.log(

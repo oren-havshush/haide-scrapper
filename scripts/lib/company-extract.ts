@@ -1333,6 +1333,42 @@ export function modelAboutGrounding(about: string, sources: readonly ModelSource
   return null;
 }
 
+/** Street words, compared as WHOLE tokens: "בדרך" ("on the way") is not "דרך". */
+const STREET_TOKENS = new Set([
+  "רחוב", "רח'", "רח׳", "שדרות", "שד'", "שד׳", "שדרת", "דרך", "סמטת", "סמטה", "כיכר", "ככר",
+  "מעלה", "נתיב", "שביל",
+  "st", "st.", "street", "rd", "rd.", "road", "ave", "ave.", "avenue", "blvd", "blvd.", "boulevard",
+  "lane", "ln", "ln.", "way",
+]);
+/** A number right after one of these is a PO box or a postal code, not a house number. */
+const NOT_HOUSE_NUMBER_BEFORE = new Set([
+  "ת.ד", "ת.ד.", "ת\"ד", "ת״ד", "מיקוד", "מיקוד:", "p.o.b", "p.o.b.", "pob", "po", "box", "p.o.", "p.o.box",
+]);
+
+/**
+ * True when a model-produced address names a street (round 2, 2026-10-06):
+ * one comma-separated part holds a street word AND a house number (1–4
+ * digits, optionally a Hebrew letter, not right after a PO-box or postal-code
+ * marker). Otherwise the capture keeps neither the address nor a city from
+ * it — dry run 2 took ירושלים from the model's "בפאתי ירושלים" ("on the
+ * outskirts of Jerusalem") and משמר העמק from "קיבוץ משמר העמק 1923600".
+ */
+export function modelAddressUsable(address: string): boolean {
+  for (const part of address.split(",")) {
+    const tokens = part.trim().split(/\s+/).filter(Boolean);
+    let street = false;
+    let number = false;
+    tokens.forEach((token, i) => {
+      const lower = token.toLowerCase();
+      if (STREET_TOKENS.has(lower)) street = true;
+      const previous = (tokens[i - 1] ?? "").toLowerCase();
+      if (/^\d{1,4}[א-ת]?$/.test(token) && !NOT_HOUSE_NUMBER_BEFORE.has(previous)) number = true;
+    });
+    if (street && number) return true;
+  }
+  return false;
+}
+
 // ---------------------------------------------------------------------------
 // Status
 // ---------------------------------------------------------------------------
