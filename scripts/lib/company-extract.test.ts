@@ -42,6 +42,7 @@ import {
   modelAboutRejection,
   modelAboutGrounding,
   modelAddressUsable,
+  compactAddressAnchored,
   type HarvestedLink,
   type InlineLogo,
   type PageHarvest,
@@ -1139,6 +1140,32 @@ function testModelAddressUsable() {
   assert.ok(/modelAddressUsable\(llm\.hqAddress\)/.test(merge), "captureSite() takes a model address only through modelAddressUsable");
 }
 
+/**
+ * Round 2: a compact address line (no street noun, found by
+ * extractCompactAddressLines) is taken only when something before its city
+ * anchors it as an address — a street word, an address label such as קיבוץ or
+ * כתובת, or a house number. Dry run 2 took two sentences as addresses because
+ * each was short, held a digit and named a real place.
+ */
+function testCompactAddressAnchor() {
+  const cities = loadCityList();
+  // cellcom.co.il's about page: "closing the 2G/3G networks". דור is a moshav.
+  assert.equal(compactAddressAnchored("סגירת רשתות דור 2/3", cities), false, "cellcom: a network-shutdown sentence is refused");
+  // iaa.gov.il's directions page: a photo-gallery caption. נתב"ג is a city.csv entry.
+  assert.equal(compactAddressAnchored('נתב"ג בתמונות שנת 2020', cities), false, "iaa: a gallery caption is refused");
+  // The two real shapes this path exists for (see extractCompactAddressLines).
+  assert.equal(compactAddressAnchored("ספיר 1 הרצליה", cities), true, "globrands: street name and house number before the city");
+  assert.equal(compactAddressAnchored("פוליכד בע״מ, קיבוץ שפיים, 6099000, ישראל", cities), true, "polycad: קיבוץ before the city");
+  assert.equal(compactAddressAnchored("קיבוץ רבדים, מיקוד 7982000", cities), true, "oneline: קיבוץ before the city");
+  assert.equal(compactAddressAnchored("כתובת: הרצליה 12", cities), true, "an address label before the city");
+  assert.equal(compactAddressAnchored("אופקים מיקוד: 84747", cities), false, "a city and a postal code alone are not anchored");
+  assert.equal(compactAddressAnchored("ת.ד. 1325 באר טוביה", cities), false, "a PO box number is not a house number");
+
+  const source = readFileSync(join(__dirname, "..", "company-profile.ts"), "utf8");
+  const fn = source.slice(source.indexOf("function addressFrom("), source.indexOf("function officeListCity("));
+  assert.ok(/compactAddressAnchored\(candidate, cities\)/.test(fn), "addressFrom() gates the compact path with compactAddressAnchored");
+}
+
 function testModelOutputSanitising() {
   // Markup must never survive — companyAbout may be rendered unescaped.
   assert.equal(
@@ -1411,6 +1438,7 @@ function main() {
   testModelAboutRefusal();
   testModelAboutGrounding();
   testModelAddressUsable();
+  testCompactAddressAnchor();
   testWidgetHosts();
   testStatus();
   console.log(

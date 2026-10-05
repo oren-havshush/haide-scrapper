@@ -58,6 +58,7 @@ import {
   addressFromJsonLd,
   classifyProfileStatus,
   collectLogoCandidates,
+  compactAddressAnchored,
   deriveHomepageCandidates,
   emptyHarvest,
   extractAboutText,
@@ -1649,8 +1650,11 @@ function addressFrom(text: string, cities: CityList): string | null {
   // Last: a short line that names a city but no street. Only reachable once the
   // two stricter patterns have failed, and still gated, so the risk is a line
   // that is short, carries a digit AND names a real city yet is not an address.
+  // That risk happened twice in dry run 2 (cellcom's "סגירת רשתות דור 2/3",
+  // iaa's gallery caption), so since round 2 something before the city must
+  // anchor it: a street word, an address label or a house number.
   for (const candidate of extractCompactAddressLines(text)) {
-    if (matchCityInAddress(candidate, cities)) return candidate;
+    if (matchCityInAddress(candidate, cities) && compactAddressAnchored(candidate, cities)) return candidate;
   }
   return null;
 }

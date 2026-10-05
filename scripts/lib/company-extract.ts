@@ -17,6 +17,7 @@
  */
 
 import { isAtsHost } from "../../src/lib/ats-hosts";
+import { matchCityInAddress, type CityList } from "./city-csv";
 import {
   getPolicyDocumentType,
   isPolicyLinkText,
@@ -1375,6 +1376,48 @@ export function modelAddressUsable(address: string): boolean {
     if (street && number) return true;
   }
   return false;
+}
+
+/**
+ * Address labels that anchor a compact line, compared as whole tokens after
+ * trailing punctuation is stripped. "אזור" is deliberately absent: it is a
+ * city (Azor) as well as the word for "zone".
+ */
+const ADDRESS_LABEL_TOKENS = new Set([
+  "כתובת", "כתובתנו", "מען", "משרדי", "משרדינו", "המשרדים", "הנהלה", "ההנהלה", "מטה",
+  "קיבוץ", "מושב", "א.ת", "פארק", "address", "office", "offices", "hq",
+]);
+
+/**
+ * True when something before the city in a compact address line anchors it as
+ * an address (round 2, 2026-10-06): a street word, an address label, or a
+ * house number (as in "ספיר 1 הרצליה", where Israeli addresses commonly drop
+ * the word רחוב). Dry run 2 took cellcom.co.il's "סגירת רשתות דור 2/3"
+ * ("closing the 2G/3G networks") and iaa.gov.il's gallery caption
+ * "נתב"ג בתמונות שנת 2020" as addresses: short, a digit, a real place — and
+ * nothing before the place that makes it an address.
+ *
+ * The city's position is found on token boundaries: the LAST token from which
+ * the remainder of the line still names the gate's city.
+ */
+export function compactAddressAnchored(line: string, cities: CityList): boolean {
+  const city = matchCityInAddress(line, cities);
+  if (!city) return false;
+  const tokens = line.trim().split(/\s+/).filter(Boolean);
+  let start = -1;
+  for (let k = tokens.length - 1; k >= 0; k--) {
+    if (matchCityInAddress(tokens.slice(k).join(" "), cities) === city) {
+      start = k;
+      break;
+    }
+  }
+  const before = tokens.slice(0, Math.max(start, 0)).map((t) => t.replace(/[,.:;]+$/, ""));
+  return before.some((token, i) => {
+    const lower = token.toLowerCase();
+    if (STREET_TOKENS.has(lower) || STREET_TOKENS.has(`${lower}.`) || ADDRESS_LABEL_TOKENS.has(lower)) return true;
+    const previous = (before[i - 1] ?? "").toLowerCase();
+    return /^\d{1,4}[א-ת]?$/.test(token) && !NOT_HOUSE_NUMBER_BEFORE.has(previous) && !NOT_HOUSE_NUMBER_BEFORE.has(`${previous}.`);
+  });
 }
 
 // ---------------------------------------------------------------------------
