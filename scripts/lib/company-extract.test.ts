@@ -78,6 +78,21 @@ function testHomepageDerivation() {
 
   assert.equal(isAtsHost("acme.comeet.co"), true);
   assert.equal(isAtsHost("acme.co.il"), false);
+
+  // ישראייר's careers page is https://lp.vp4.me/foma, a landing page on Smoove's
+  // host (vp4.me redirects to smoove.io). Derived as the employer's homepage, it
+  // gave the 2026-10-05 dry run Smoove's about text, address, city and logo.
+  assert.deepEqual(deriveHomepageCandidates("https://lp.vp4.me/foma"), [], "lp.vp4.me is Smoove's, not the employer's");
+  for (const host of ["lp.vp4.me", "vp4.me", "www.smoove.io", "smoove.io"]) {
+    assert.equal(isAtsHost(host), true, `${host} is a vendor host`);
+  }
+  assert.equal(isAtsHost("notvp4.me"), false, "only vp4.me itself and its subdomains");
+  assert.equal(
+    homepageFromLinks([{ href: "https://www.smoove.io/he/", text: "smoove", inChrome: true }], "https://lp.vp4.me/foma"),
+    null,
+    "a link to smoove.io is never the employer's homepage",
+  );
+  assert.equal(homepageFromOgUrl("https://www.smoove.io/he/", "https://lp.vp4.me/foma"), null, "nor is an og:url on smoove.io");
 }
 
 /**

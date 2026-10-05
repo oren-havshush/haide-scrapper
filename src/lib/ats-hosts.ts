@@ -44,6 +44,12 @@ const ATS_HOSTS: readonly RegExp[] = [
   /(^|\.)topmatch\.co\.il$/i,
   /(^|\.)hunterhrms\.com$/i,
   /(^|\.)adamtotal\.co\.il$/i,
+  // Smoove, a marketing-automation vendor: employers' landing pages sit on
+  // lp.vp4.me, and vp4.me itself redirects to smoove.io. ישראייר's careers page
+  // is lp.vp4.me/foma; the 2026-10-05 dry run derived lp.vp4.me as its homepage
+  // and captured Smoove's about text, address, city and logo.
+  /(^|\.)vp4\.me$/i,
+  /(^|\.)smoove\.io$/i,
 ];
 
 export function isAtsHost(host: string): boolean {
