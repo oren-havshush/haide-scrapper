@@ -434,8 +434,30 @@ function findOrganizationNode(node: unknown, depth: number): OrganizationLd | nu
 
 function asString(value: unknown): string | undefined {
   if (typeof value !== "string") return undefined;
-  const trimmed = value.trim();
+  const trimmed = decodeHtmlEntities(value).trim();
   return trimmed.length > 0 ? trimmed : undefined;
+}
+
+/** The named references JSON-LD writers actually emit. &nbsp; becomes a plain space. */
+const NAMED_ENTITIES: Record<string, string> = { amp: "&", quot: '"', apos: "'", lt: "<", gt: ">", nbsp: " " };
+
+/**
+ * Decode HTML character references in one pass. Some CMSs HTML-escape every
+ * JSON-LD string — sii.org.il's name, street and locality are all
+ * "&#x5DE;&#x5DB;…" — and taken as-is that text was headed for the HQ
+ * address column. One pass only, so "&amp;#x5E8;" stays the literal text
+ * "&#x5E8;"; an invalid code point or an unknown name is left as written.
+ */
+function decodeHtmlEntities(s: string): string {
+  if (!s.includes("&")) return s;
+  return s.replace(/&(#x[0-9a-f]+|#[0-9]+|[a-z]+);/gi, (whole, ref: string) => {
+    if (ref[0] === "#") {
+      const code = ref[1] === "x" || ref[1] === "X" ? parseInt(ref.slice(2), 16) : parseInt(ref.slice(1), 10);
+      const valid = code > 0 && code <= 0x10ffff && !(code >= 0xd800 && code <= 0xdfff);
+      return valid ? String.fromCodePoint(code) : whole;
+    }
+    return NAMED_ENTITIES[ref.toLowerCase()] ?? whole;
+  });
 }
 
 // ---------------------------------------------------------------------------

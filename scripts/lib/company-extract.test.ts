@@ -253,6 +253,46 @@ function testJsonLd() {
     ],
   });
 
+  // sii.org.il, verbatim (Organization node of its @graph): every Hebrew field
+  // is HTML-entity-encoded INSIDE the JSON. Taken as-is, the 2026-10-05 dry run
+  // would have stored "&#x5E8;&#x5D7;…" as the HQ address, and the city gate
+  // could not read a city out of it.
+  const sii = JSON.stringify({
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "Organization",
+        "@id": "https://www.sii.org.il/#organization",
+        name: "&#x5DE;&#x5DB;&#x5D5;&#x5DF; &#x5D4;&#x5EA;&#x5E7;&#x5E0;&#x5D9;&#x5DD; &#x5D4;&#x5D9;&#x5E9;&#x5E8;&#x5D0;&#x5DC;&#x5D9;",
+        alternateName: "SII",
+        url: "https://www.sii.org.il",
+        logo: { "@type": "ImageObject", url: "https://www.sii.org.il/assets/icons/logo.svg", width: 200, height: 60 },
+        address: {
+          "@type": "PostalAddress",
+          streetAddress: "&#x5E8;&#x5D7;&#x5D5;&#x5D1; &#x5D7;&#x5D9;&#x5D9;&#x5DD; &#x5DC;&#x5D1;&#x5E0;&#x5D5;&#x5DF; 42",
+          addressLocality: "&#x5EA;&#x5DC; &#x5D0;&#x5D1;&#x5D9;&#x5D1;",
+          postalCode: "6997701",
+          addressCountry: "IL",
+        },
+      },
+    ],
+  });
+  const siiOrg = parseJsonLdOrganization([sii]);
+  assert.equal(siiOrg?.name, "מכון התקנים הישראלי", "the name is decoded");
+  assert.equal(addressFromJsonLd(siiOrg), "רחוב חיים לבנון 42, תל אביב, 6997701", "the address is decoded");
+  assert.equal(siiOrg?.addressLocality, "תל אביב", "so the locality can reach the city gate");
+  // Decimal references, the named ones JSON-LD writers emit, and one pass only:
+  // "&amp;#x5E8;" is the literal text "&#x5E8;", not a letter.
+  const named = parseJsonLdOrganization([
+    JSON.stringify({ "@type": "Organization", name: "&#1488;&#1489; &amp; &quot;שות&apos;&quot; &lt;בע&quot;מ&gt;&nbsp;x &amp;#x5E8;" }),
+  ]);
+  assert.equal(named?.name, `אב & "שות'" <בע"מ> x &#x5E8;`, "decimal and named references decoded once");
+  assert.equal(
+    parseJsonLdOrganization([JSON.stringify({ "@type": "Organization", name: "&#xD800; &#x110000; &bogus;" })])?.name,
+    "&#xD800; &#x110000; &bogus;",
+    "an invalid or unknown reference is left as written",
+  );
+
   const org = parseJsonLdOrganization([graph]);
   assert.ok(org, "expected an Organization from the @graph shape");
   assert.equal(org.name, "אקמה בעמ");
