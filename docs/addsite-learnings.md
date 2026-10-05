@@ -1833,8 +1833,6 @@
   raw `innerHTML`, not `innerText`: the browser hides the extra newlines, so the defect
   is invisible until it reaches the database.
 
-## LRN-UI-1
-
 ### LRN-UI-1 — A correct Hebrew description renders as gibberish without `dir` on the block
 
 - **Date:** 2026-08-18
@@ -1928,7 +1926,8 @@
 
 ---
 
-### LRN-LOC-6 — A board that prints only a coarse region: mine the city out of the ad text in setupScript
+### LRN-LOC-17 — A board that prints only a coarse region: mine the city out of the ad text in setupScript
+- **Renumbered (step 6, 2026-10-05):** was the second `LRN-LOC-6`; the id was already taken by the `locations[]` dashboard learning above. Older references to "LRN-LOC-6" about mining a city from the ad text (tigbur's setup script, two worker test comments before this change) mean this one.
 - **Date / site:** 2026-08-19 · tigbur.co.il/לוח-משרות-ראשי (`cmszzye81000z01kfx0iobe0d`), 553 jobs
 - **Signal:** the feed exposes one coarse `region` per job (`מרכז - גוש דן`,
   `חיפה והצפון`) while the ad body names the real city. Mapping the region wins the
@@ -2068,7 +2067,8 @@
   stored `siteUrl`, or a `topCluster` that no longer matches the stored `itemSelector`, is
   the tell. **Home:** §2 triage / `recipes/spa-frameworks.md#civi`.
 
-### LRN-SPA-13 — Hunter "careersite" Next.js board: JSON API, default-filtered tab, per-job form variants
+### LRN-SPA-18 — Hunter "careersite" Next.js board: JSON API, default-filtered tab, per-job form variants
+- **Renumbered (step 6, 2026-10-05):** written on 2026-10-04 as `LRN-SPA-13`, an id the Comeet learning below has held since 2026-09-22. The pwc-careersite onboarding commit (`c04dc36`) cites it as LRN-SPA-13.
 - **Date / site:** 2026-10-04 · pwc-careersite.hunterhrms.com (`cmutms886005801rryuzpei34`), 51 jobs
 - **Signal:** a `*.hunterhrms.com` board that is NOT the BDO template (`.job-card`, LRN-SPA-7's
   Nuxt minisite neither). Next.js static export; cards are MUI divs with no `href`; jobs come
@@ -4204,3 +4204,111 @@
   through to the PUT.
 - **Generalizes to:** every new site and every `--force` reactivation (LRN-RACE-3), whenever the
   analysis job is slow or hangs. **Home:** `addsite2.md` §4 (the ANALYZING poll).
+
+---
+
+## Backfilled ids (addsite2 phase two, step 6, 2026-10-05)
+
+These eleven ids were cited in the skill and its recipes from June on, but never
+written here: each learning was born as a one-line citation inside the skill text.
+`scripts/check-learnings.mjs` now fails on a cited id the archive lacks, so each is
+recorded below from the text that cites it, with the date it was first cited. Nothing
+is added that the citing text does not say. Their status rows are in
+`docs/learnings-status.tsv`.
+
+### LRN-FORM-3 — An email-apply site is not a missing form: do not SKIP it
+
+- **First cited:** 2026-06-21 (`330a2ca`); references benjerry.co.il
+  (`cmqe6ce8q004401lcpn12brnw`), halilit.com.
+- **Signal:** Step 5b finds only a newsletter form, no per-job `detailUrl`, or
+  `formCapture: null`, because the site takes applications by email.
+- **Rule:** those are expected on an email-apply site. Capture the apply email as the
+  apply path and do not SKIP for want of a form. Recipe: `addsite3-recipes/form-capture.md`
+  §Step5a.
+
+### LRN-FORM-4 — A Dropzone upload is pure JS: the anchor URL is the apply link
+
+- **First cited:** 2026-06-21 (`76d89e5`); reference shagrir.co.il
+  (`cmqjkta3n000r01p6p7i3nkhe`).
+- **Rule:** a Dropzone CV upload has no server-side form fields to capture. Set
+  `formCapture: null` and use the apply anchor's URL as the apply link.
+
+### LRN-FORM-5 — A JS-only modal apply form: inject the apply URL, capture nothing
+
+- **First cited:** 2026-06-21 (`8d63c77`); reference tigbur.co.il
+  (`cmqjk3tp1000k01p64hssobp7`).
+- **Rule:** when the apply form is a JS-only modal, the setup script injects
+  `.__ai-apply-url` per item and `formCapture` is `null`; there is nothing to capture
+  server-side.
+
+### LRN-FORM-6 — Capture the form BEFORE the first PUT; a `NEEDS_MANUAL` REVIEW is remediable
+
+- **First cited:** 2026-06-22 (`009931e`); the 6.csv batch (clalitsmile, proportsia,
+  madanes).
+- **Signal:** a real apply form on the detail page, but the config was PUT and scraped
+  with no `formCapture`; QA returned `formStatus: NEEDS_MANUAL` / `NONE` and the site
+  was logged REVIEW. Three sites stalled this way, each costing a scrape and QA round.
+- **Rule:** Step 5b is mandatory before the first PUT whenever there is no captured
+  form, email or per-item apply URL yet. Found only at QA: go back to Step 5b, capture,
+  re-PUT, re-scrape, re-QA. `NEEDS_MANUAL` is a remediable signal, not a verdict. The
+  full text is the recipe's own heading in `addsite3-recipes/form-capture.md`.
+
+### LRN-FORM-7 — Multi-form pages: enumerate every form, then rank; prefer the CV upload
+
+- **First cited:** 2026-06-22 (`47a7583`); reference clalitsmile.co.il (Formidable
+  Forms, 3 forms).
+- **Signal:** the prominent "שליחת קו״ח" button is reCAPTCHA-gated, while a separate
+  generic-position button exposes a captcha-free CV upload.
+- **Rule:** do not stop at the first captcha-free form. List every `<form>`, including
+  those behind secondary buttons and modals, and prefer the one that accepts a CV file;
+  capture both when useful (CV upload primary, contact form fallback) in one merged
+  static blob.
+
+### LRN-FORM-8 — Capture choice fields WITH their options: radio groups too
+
+- **First cited:** 2026-06-25 (`0c009fa`).
+- **Signal:** `type="radio"` inputs are separate elements sharing one `name`, with the
+  question text in a sibling label or legend. Skipped, the dashboard shows the apply
+  form missing the whole question (e.g. "relatives at the company?").
+- **Rule:** capture a radio group as one field with its options, like a `<select>`.
+  Since step 2a this is enforced in code: `worker/lib/formFields.ts`
+  (`normalizeFormFields`), pinned by `worker/lib/formFields.test.ts`.
+
+### LRN-ID-5 — A non-unique native number collides: key on the record's unique internal id
+
+- **First cited:** 2026-06-21 (`330a2ca`).
+- **Signal:** the id gate exits 0, but saved jobs < the API/DOM total — the native
+  number the id is mapped to is not unique, so rows collapse in dedup.
+- **Rule:** switch `externalJobId` to the record's unique internal id (a CMS `_id`, a
+  DB row id, the detail URL path) and re-scrape. On a WordPress board, prefer the WP
+  post id over a printed or hidden "job number".
+
+### LRN-SETUP-1 — Never append to an element another field selector already reads
+
+- **First cited:** 2026-06-14 (`093cd54`); msh.co.il (department injection).
+- **Rule:** a setup script that appends injected text into an element some other field
+  selector reads corrupts that field's output. Inject into a fresh span of your own.
+
+### LRN-SETUP-2 — Description only on the detail page: write the detail-fetch setup script before the PUT
+
+- **First cited:** 2026-06-22 (`009931e`); madanes.com.
+- **Rule:** when description/requirements exist only on detail pages, write a
+  detail-fetch `setupScript` that `await fetch()`es each item's detail URL and injects
+  `.__ai-description` / `.__ai-requirements` into the listing item — in the build step,
+  before the PUT, not after QA flags `description=0`.
+
+### LRN-SETUP-3 — A detail-fetch script must capture the COMPLETE body, not the headings you recognised
+
+- **First cited:** 2026-06-22 (`ceb0bbf`); madanes.com.
+- **Signal:** the script grabbed only the two headings it recognised (e.g.
+  `במסגרת התפקיד` + `דרישות`) and dropped the rest of the ad.
+- **Rule:** capture the whole body container, then route labelled parts; never
+  cherry-pick known headings. Recipe: `addsite3-recipes/setupscript-patterns.md` §11.
+
+### LRN-SETUP-4 — Discovery first: dump the full visible text before deciding a field is absent
+
+- **First cited:** 2026-06-22 (`47a7583`); reference clalitsmile.co.il
+  (`cmqo82p3v000x01qpmtxsxv25`, 43 jobs).
+- **Rule:** locate the description by rendering a detail page and printing its full
+  `innerText`, then finding the prose container. Never guess selectors and give up;
+  a field is "not on the page" only after the dump shows it is not.

@@ -165,7 +165,7 @@ console.log("# tikshoov — the five false matches, each from its own real ad");
     "5102/4082: חניכה is not the kibbutz חניתה",
   );
 
-  // 5. יקום — inside מיקום, the label word itself (LRN-LOC-6). The anchored
+  // 5. יקום — inside מיקום, the label word itself (LRN-LOC-17). The anchored
   //    scan cannot make this mistake: מיקום is consumed AS the anchor.
   eq(
     extractLocationFromGazetteer("מיקום המשרה: עבודה מהבית (ההכשרה מתקיימת פרונטלית בנתניה)."),

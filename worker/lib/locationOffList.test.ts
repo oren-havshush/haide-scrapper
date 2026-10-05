@@ -213,7 +213,7 @@ console.log("# rule 4 — a region label never collapses into a city it does not
   // NOT asserted here: passing 4082's whole BODY through normalizeLocations
   // returns ["חניתה"] — the edit-distance-1 tail reads "חניכה" (mentoring) as
   // the kibbutz חניתה. That is a separate defect of the same family as
-  // LRN-LOC-6's "מיקום"->"יקום", not a region collapse, and no worker path
+  // LRN-LOC-17's "מיקום"->"יקום", not a region collapse, and no worker path
   // feeds a whole body to this function. Left for its own change.
 
   // No alias may map an area onto a single city. A region KEY is fine as long
