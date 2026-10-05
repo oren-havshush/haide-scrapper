@@ -883,10 +883,36 @@ function testLogoCandidates() {
   assert.ok(!urls.some((u) => u.endsWith(".svg")), "SVG is rejected at the gate — never propose it");
   assert.ok(!urls.includes("https://acme.co.il/img/hero.jpg"), "non-logo images must not be proposed");
 
-  // The 1x1 spacer is scored below og:image rather than ranked as a logo.
-  const spacerIndex = urls.indexOf("https://acme.co.il/img/spacer.gif");
-  const ogIndex = urls.indexOf("https://acme.co.il/social-banner.jpg");
+  // The 1x1 spacer is scored below og:image rather than ranked as a logo —
+  // where og:image is a candidate at all, which is on a careers board only.
+  const boardUrls = collectLogoCandidates(harvest, org, { careersBoard: true }).map((c) => c.url);
+  const spacerIndex = boardUrls.indexOf("https://acme.co.il/img/spacer.gif");
+  const ogIndex = boardUrls.indexOf("https://acme.co.il/social-banner.jpg");
+  assert.ok(ogIndex !== -1, "on a careers board og:image is a candidate");
   assert.ok(spacerIndex === -1 || spacerIndex > ogIndex, "a 1x1 spacer must not outrank og:image");
+  assert.ok(!urls.includes("https://acme.co.il/social-banner.jpg"), "on a company homepage og:image is never a candidate");
+
+  // Round 2: og:image is a social card. In dry run 2 it supplied calanit.co.il's
+  // campaign photo and teleclalcc.co.il's ELDAR (another company's) as logos
+  // from their homepages, and Israir's real logo from its careers board.
+  for (const [page, og] of [
+    ["https://calanit.co.il/", "https://calanit.co.il/wp-content/uploads/2023/02/homepage.png"],
+    ["https://www.teleclalcc.co.il/", "https://www.teleclalcc.co.il/wp-content/uploads/2021/02/eldar.jpg"],
+  ]) {
+    assert.deepEqual(collectLogoCandidates({ ...emptyHarvest(page), metas: { "og:image": og } }, null), [], `${page}: og:image is not a homepage logo`);
+  }
+  const israir = { ...emptyHarvest("https://lp.vp4.me/foma"), metas: { "og:image": "https://content.vp4.me/ETISIMCHI/Content/logo%20israir_900x160-r.png" } };
+  assert.deepEqual(
+    collectLogoCandidates(israir, null, { careersBoard: true }).map((c) => c.url),
+    ["https://content.vp4.me/ETISIMCHI/Content/logo%20israir_900x160-r.png"],
+    "lp.vp4.me: on the careers board, og:image stays a candidate",
+  );
+  const profileSource = readFileSync(join(__dirname, "..", "company-profile.ts"), "utf8");
+  assert.equal(
+    (profileSource.match(/collectLogoCandidates\(careers, null, \{ careersBoard: true \}\)/g) ?? []).length,
+    1,
+    "only the careers-board path asks for og:image",
+  );
 
   // Nothing to offer -> empty list, not a throw.
   assert.deepEqual(collectLogoCandidates(emptyHarvest("https://acme.co.il/"), null), []);

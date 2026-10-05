@@ -1281,7 +1281,7 @@ async function captureSite(
         ? await captureLogo(
             page,
             site.id,
-            collectLogoCandidates(careers, null),
+            collectLogoCandidates(careers, null, { careersBoard: true }),
             careers.url,
             opts.dryRun,
           )

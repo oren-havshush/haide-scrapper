@@ -1145,6 +1145,8 @@ export function inlineLogoRejection(logo: InlineLogo, pageUrl: string): string |
 export function collectLogoCandidates(
   harvest: PageHarvest,
   org: OrganizationLd | null,
+  /** careersBoard: the harvest is a careers board with no company homepage behind it. */
+  opts: { careersBoard?: boolean } = {},
 ): LogoCandidate[] {
   const out: LogoCandidate[] = [];
   const seen = new Set<string>();
@@ -1224,8 +1226,11 @@ export function collectLogoCandidates(
   }
 
   // og:image is meant for social cards, so it is often a banner rather than a
-  // logo. Tried last, below anything explicitly named a logo.
-  add(harvest.metas["og:image"], "og:image", 4);
+  // logo. Tried last, below anything explicitly named a logo — and only on a
+  // careers board (round 2, 2026-10-06). On a company homepage it gave dry run
+  // 2 calanit.co.il's campaign photo and teleclalcc.co.il's ELDAR card; on a
+  // landing-page board it gave Israir's real logo, where nothing else exists.
+  if (opts.careersBoard) add(harvest.metas["og:image"], "og:image", 4);
 
   return out.sort((a, b) => b.score - a.score);
 }
