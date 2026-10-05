@@ -154,11 +154,13 @@ several listing pages back into one and stops publishing the rest.
 | מיקוד ביטחון ישראל בע''מ | ACTIVE | 7 | 3272 | 1 | `mikud-avtaha--x1f85a` |
 | מכון התקנים הישראלי | ACTIVE | 5 | 525 | 1 | `sii--t7eowl` |
 | מכון ויצמן למדע | ACTIVE | 6 | 1886 | 1 | `weizmann--lx3ol0` |
+| מכון מור | ACTIVE | 8 | 4704 | 1 | `mor--rpuv3z` |
 | מנועי בית שמש | ACTIVE | 6 | 3232 | 1 | `comeet--18183k` |
 | מנרב | ACTIVE | 5 | 3145 | 1 | `minrav--hkk5r9` |
 | מסוף שירותי לוגיסטיקה | ACTIVE | 3 | 534 | 1 | `masof--2bfcz7` |
 | מערך אופק | ACTIVE | 7 | 4554 | 1 | `ofeksec--sihfn2` |
 | מקדונלדס | ACTIVE | 4 | — | 1 | `mcdonalds--x0odyk` |
+| מרטנס הופמן יועצים לניהול בע"מ | ACTIVE | 5 | 3696 | 1 | `mertens-hoffman--7hyv4n` |
 | מרכז האקדמי פרס | ACTIVE | 4 | 2397 | 1 | `pac--4xvfi9` |
 | מתן שירותי בריאות וסיעוד מתקדמים | ACTIVE | 7 | 5796 | 1 | `app-civi--cc1wag` |
 | נאות המושבה - גולדנקייר | ACTIVE | 3 | 700 | 1 | `gcare--2uvz1w` |
@@ -202,6 +204,7 @@ several listing pages back into one and stops publishing the rest.
 | ש.ב שמירה וביטחון | ACTIVE | 3 | — | 1 | `sbisrael--u0j3bu` |
 | ש.ל.ה שירותי רפואה | ACTIVE | 6 | 2199 | 1 | `clalitsmile--xsxv25` |
 | שטראוס | ACTIVE | 6 | — | 1 | `strauss-group--oeqo46` |
+| שמעוני מיכאל מפעלי מתכת בע"מ | ACTIVE | 6 | 4075 | 1 | `m-work--6gsmp3` |
 | שמרד אלקטרוניקה | ACTIVE | 4 | 1536 | 1 | `shamrad--dv1p94` |
 | תיגבור כח אדם | ACTIVE | 9 | 8000 | 1 | `tigbur--iobe0d` |
 | תייקום תקשורת | ACTIVE | 5 | 1351 | 1 | `tiecom--uy0ibi` |
