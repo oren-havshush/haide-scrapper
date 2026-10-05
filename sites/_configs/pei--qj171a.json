@@ -1,0 +1,146 @@
+{
+  "_exportedAt": "2026-10-05T10:15:02.878Z",
+  "_note": "Mirror of the live config. The DB is authoritative; the worker never reads this file. setupScript lives alongside in <slug>.setup.js.",
+  "id": "cmuv1zjob006c01shu6qj171a",
+  "siteUrl": "https://www.pei.co.il/jobs",
+  "companyName": "תשתיות אנרגיה בע\"מ",
+  "status": "ACTIVE",
+  "setupScriptFile": "pei--qj171a.setup.js",
+  "pageFlow": [],
+  "fieldMappings": {
+    "_meta": {
+      "savedAt": "2026-10-05T09:35:44.000Z",
+      "pagination": null,
+      "formCapture": {
+        "fields": [
+          {
+            "name": "_token",
+            "group": "הגשת מועמדות",
+            "label": "",
+            "tagName": "INPUT",
+            "required": false,
+            "fieldType": "hidden"
+          },
+          {
+            "name": "job_id",
+            "group": "הגשת מועמדות",
+            "label": "",
+            "tagName": "INPUT",
+            "required": false,
+            "fieldType": "hidden"
+          },
+          {
+            "name": "apply_token",
+            "group": "הגשת מועמדות",
+            "label": "",
+            "tagName": "INPUT",
+            "required": false,
+            "fieldType": "hidden"
+          },
+          {
+            "name": "pei_hp",
+            "group": "הגשת מועמדות",
+            "label": "אל תמלא שדה זה",
+            "tagName": "INPUT",
+            "required": false,
+            "fieldType": "text"
+          },
+          {
+            "name": "name",
+            "group": "הגשת מועמדות",
+            "label": "שם מלא",
+            "tagName": "INPUT",
+            "required": true,
+            "fieldType": "text"
+          },
+          {
+            "name": "email",
+            "group": "הגשת מועמדות",
+            "label": "דוא\"ל",
+            "tagName": "INPUT",
+            "required": true,
+            "fieldType": "email"
+          },
+          {
+            "name": "message",
+            "group": "הגשת מועמדות",
+            "label": "הודעה",
+            "tagName": "TEXTAREA",
+            "required": true,
+            "fieldType": "textarea"
+          },
+          {
+            "name": "cv",
+            "group": "הגשת מועמדות",
+            "label": "בחר קובץ",
+            "accept": ".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+            "tagName": "INPUT",
+            "required": true,
+            "fieldType": "file"
+          },
+          {
+            "name": "privacy_accepted",
+            "group": "הגשת מועמדות",
+            "label": "קראתי, ואני מאשר/ת לתש\"א לעשות שימוש בפרטים שלי לצורך בחינת התאמתי למשרה וחזרה אליי בעניין זה, בהתאם למדיניות הפרטיות של האתר.",
+            "value": "1",
+            "tagName": "INPUT",
+            "required": true,
+            "fieldType": "checkbox"
+          }
+        ],
+        "method": "POST",
+        "enctype": "multipart/form-data",
+        "actionUrl": "https://www.pei.co.il/jobs/apply",
+        "formSelector": "form.__pei-apply-static"
+      },
+      "listingUrls": null,
+      "itemSelector": "details.jobs-accordion__item",
+      "minPublishDate": null,
+      "minPublishDays": null,
+      "revealSelector": null,
+      "listingSelector": null,
+      "applyLoginReason": null,
+      "browserOverrides": null,
+      "loadMoreSelector": null,
+      "locationFallback": null,
+      "originalMappings": null,
+      "applyRequiresLogin": false
+    },
+    "title": {
+      "source": "MANUAL",
+      "selector": ".__ai-title",
+      "confidence": 100,
+      "capturedOnUrl": "https://www.pei.co.il/jobs"
+    },
+    "deadline": {
+      "source": "MANUAL",
+      "selector": ".__ai-deadline",
+      "confidence": 100,
+      "capturedOnUrl": "https://www.pei.co.il/jobs"
+    },
+    "location": {
+      "source": "MANUAL",
+      "selector": ".__ai-location",
+      "confidence": 100,
+      "capturedOnUrl": "https://www.pei.co.il/jobs"
+    },
+    "description": {
+      "source": "MANUAL",
+      "selector": ".__ai-description",
+      "confidence": 100,
+      "capturedOnUrl": "https://www.pei.co.il/jobs"
+    },
+    "requirements": {
+      "source": "MANUAL",
+      "selector": ".__ai-requirements",
+      "confidence": 100,
+      "capturedOnUrl": "https://www.pei.co.il/jobs"
+    },
+    "externalJobId": {
+      "source": "MANUAL",
+      "selector": ".__ai-jobid",
+      "confidence": 100,
+      "capturedOnUrl": "https://www.pei.co.il/jobs"
+    }
+  }
+}
