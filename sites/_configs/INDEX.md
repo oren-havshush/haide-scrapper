@@ -87,6 +87,7 @@ several listing pages back into one and stops publishing the rest.
 | אליקטרוניקס בע''מ | ACTIVE | 4 | 722 | 1 | `eliktronics--erhzvq` |
 | אלקטרה | ACTIVE | 7 | 1823 | 1 | `electra--cgkf66` |
 | אמביאנס קוסמטיקה רפואית | ACTIVE | 3 | 505 | 1 | `yafa-maximov--v1max5` |
+| אמנת ניהול ומערכות בע"מ | ACTIVE | 8 | 4952 | 1 | `amanet--zknvec` |
 | אנשים ומחשבים | ACTIVE | 5 | 2645 | 1 | `pc--51eg8t` |
 | אפטר סקול | ACTIVE | 5 | 5946 | 1 | `etgarim2000--zsyc2z` |
 | אשטרום | ACTIVE | 8 | 1341 | 1 | `ashtrom--9nr6ww` |
@@ -185,7 +186,6 @@ several listing pages back into one and stops publishing the rest.
 | פתרונות עדיפים-ביטוח | ACTIVE | 6 | 4489 | 1 | `adifim--26vavw` |
 | צ'יטה שליחויות | ACTIVE | 4 | 332 | 1 | `chitadelivery--xpwqf1` |
 | צרפתי שמעון | ACTIVE | 5 | 3075 | 1 | `s-sarfati--5dr0yc` |
-| קבוצת אמנת- Sysnet | ACTIVE | 3 | — | 1 | `amanet--ihg3a3` |
 | קבוצת ברן | ACTIVE | 8 | 7783 | 1 | `barangroup--36lhv6` |
 | קבוצת ויזל - פוקס | ACTIVE | 4 | 2133 | 1 | `dreamjobs--43loqz` |
 | קבוצת ח.י | ACTIVE | 4 | — | 1 | `hye--9i2hm3` |

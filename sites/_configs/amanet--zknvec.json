@@ -1,0 +1,77 @@
+{
+  "_exportedAt": "2026-10-06T07:29:48.954Z",
+  "_note": "Mirror of the live config. The DB is authoritative; the worker never reads this file. setupScript lives alongside in <slug>.setup.js.",
+  "id": "cmuwcacew002901qpppzknvec",
+  "siteUrl": "https://www.amanet.co.il/career/",
+  "companyName": "אמנת ניהול ומערכות בע\"מ",
+  "status": "ACTIVE",
+  "setupScriptFile": "amanet--zknvec.setup.js",
+  "pageFlow": [],
+  "fieldMappings": {
+    "_meta": {
+      "savedAt": "2026-10-06T07:11:28.237Z",
+      "pagination": null,
+      "formCapture": null,
+      "listingUrls": null,
+      "itemSelector": "#haide-jobs-root [data-haide-job]",
+      "minPublishDate": null,
+      "minPublishDays": null,
+      "revealSelector": null,
+      "listingSelector": null,
+      "applyLoginReason": null,
+      "browserOverrides": null,
+      "loadMoreSelector": null,
+      "locationFallback": null,
+      "originalMappings": null,
+      "applyRequiresLogin": false
+    },
+    "title": {
+      "source": "MANUAL",
+      "selector": ".__ai-title",
+      "confidence": 1,
+      "capturedOnUrl": "https://www.amanet.co.il/career/"
+    },
+    "location": {
+      "source": "MANUAL",
+      "selector": ".__ai-location",
+      "confidence": 1,
+      "capturedOnUrl": "https://www.amanet.co.il/career/"
+    },
+    "department": {
+      "source": "MANUAL",
+      "selector": ".__ai-department",
+      "confidence": 1,
+      "capturedOnUrl": "https://www.amanet.co.il/career/"
+    },
+    "description": {
+      "source": "MANUAL",
+      "selector": ".__ai-description",
+      "confidence": 1,
+      "capturedOnUrl": "https://www.amanet.co.il/career/"
+    },
+    "publishDate": {
+      "source": "MANUAL",
+      "selector": ".__ai-publishdate",
+      "confidence": 1,
+      "capturedOnUrl": "https://www.amanet.co.il/career/"
+    },
+    "requirements": {
+      "source": "MANUAL",
+      "selector": ".__ai-requirements",
+      "confidence": 1,
+      "capturedOnUrl": "https://www.amanet.co.il/career/"
+    },
+    "externalJobId": {
+      "source": "MANUAL",
+      "selector": "[data-haide-job-id]",
+      "confidence": 1,
+      "capturedOnUrl": "https://www.amanet.co.il/career/"
+    },
+    "applicationInfo": {
+      "source": "MANUAL",
+      "selector": ".__ai-apply-email",
+      "confidence": 1,
+      "capturedOnUrl": "https://www.amanet.co.il/career/"
+    }
+  }
+}
