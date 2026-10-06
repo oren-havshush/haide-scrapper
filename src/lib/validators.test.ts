@@ -81,7 +81,17 @@ const eq = (got: unknown, want: unknown, msg: string) => {
   assert(fixItemPatchSchema.safeParse({ resolved: true, note: "done" }).success, "resolve and note");
   assert(fixItemPatchSchema.safeParse({ minutes: null }).success, "a null clears minutes");
   assert(!fixItemPatchSchema.safeParse({}).success, "an empty PATCH is refused rather than silently doing nothing");
-  assert(!fixItemPatchSchema.safeParse({ resolvedBy: "CHECK" }).success, "and one naming a key it does not take");
+  assert(!fixItemPatchSchema.safeParse({ resolvedBy: "CHECK" }).success, "a resolvedBy without resolved: true is refused");
+  assert(!fixItemPatchSchema.safeParse({ source: "CHECK" }).success, "and one naming a key it does not take");
+
+  // (n), owner 2026-10-06: an item a write opened that was not a fix is
+  // closed as CHECK, with a note. MANUAL stays the default.
+  const check = fixItemPatchSchema.safeParse({ resolved: true, resolvedBy: "CHECK", note: "not a fix" });
+  assert(check.success, "resolved: true with resolvedBy CHECK and a note parses");
+  eq(check.success ? check.data.resolvedBy : null, "CHECK", "and keeps resolvedBy CHECK");
+  assert(fixItemPatchSchema.safeParse({ resolved: true, resolvedBy: "MANUAL" }).success, "resolvedBy MANUAL may be named");
+  assert(!fixItemPatchSchema.safeParse({ resolved: false, resolvedBy: "CHECK" }).success, "a reopen carries no resolvedBy");
+  assert(!fixItemPatchSchema.safeParse({ resolved: true, resolvedBy: "AUTO" }).success, "an unknown resolvedBy is refused");
 
   const q = fixQueueQuerySchema.safeParse({ open: "true", cohort: "control", freezeAt: "2026-10-01T00:00:00Z" });
   assert(q.success, "the list query parses");
