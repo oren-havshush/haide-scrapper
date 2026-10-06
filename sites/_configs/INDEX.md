@@ -100,7 +100,7 @@ several listing pages back into one and stops publishing the rest.
 | בנק הפועלים | ACTIVE | 6 | 4172 | 1 | `bankhapoalim--39tiof` |
 | גולדברג פרושן ושות' רואי חשבון | ACTIVE | 5 | 4236 | 1 | `goldpro--1pf5j6` |
 | גזית | ACTIVE | 7 | 7944 | 1 | `gazit--gejiix` |
-| גילאר | ACTIVE | 6 | — | 1 | `gilar--h7463m` |
+| גילאר בע"מ | ACTIVE | 7 | 2518 | 1 | `gilar--cw5j32` |
 | גלוברנדס | ACTIVE | 6 | 1635 | 1 | `globrands--5akm6u` |
 | דומיסיל יבוא וייצוא בע"מ | ACTIVE | 6 | 5566 | 1 | `domicile--chpkcu` |
 | האקדמית רמת גן | ACTIVE | 5 | 1124 | 1 | `landing-iac--3cdlhs` |
