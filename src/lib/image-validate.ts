@@ -38,6 +38,13 @@ export const MAX_LOGO_BYTES = 512 * 1024;
  */
 export const MIN_LOGO_DIMENSION = 64;
 export const MIN_LOGO_BYTES = 512;
+/**
+ * The floor for a logo an operator uploads by hand (owner, 2026-10-06): a human
+ * chose it, so a wide, short wordmark like oneline.co.il's 247x44 — the only
+ * size the company publishes — is allowed. The automatic capture keeps
+ * MIN_LOGO_DIMENSION. No caller can ask for a floor below this one.
+ */
+export const OPERATOR_MIN_LOGO_DIMENSION = 32;
 
 export type LogoFormat = "png" | "jpg" | "webp";
 
@@ -193,7 +200,10 @@ export function formatFromMagicBytes(bytes: Uint8Array): LogoFormat | null {
 export function inspectImage(
   bytes: Uint8Array,
   declaredContentType?: string | null,
+  /** minDimension: the operator path passes OPERATOR_MIN_LOGO_DIMENSION; clamped to it at the least. */
+  opts: { minDimension?: number } = {},
 ): ImageInspection {
+  const minDimension = Math.max(opts.minDimension ?? MIN_LOGO_DIMENSION, OPERATOR_MIN_LOGO_DIMENSION);
   if (bytes.length < MIN_LOGO_BYTES) {
     throw new ImageRejected(
       "too_small_bytes",
@@ -237,10 +247,10 @@ export function inspectImage(
     throw new ImageRejected("undecodable", `could not read dimensions from the ${format} header`);
   }
 
-  if (size.width < MIN_LOGO_DIMENSION || size.height < MIN_LOGO_DIMENSION) {
+  if (size.width < minDimension || size.height < minDimension) {
     throw new ImageRejected(
       "too_small_dimensions",
-      `image is ${size.width}x${size.height}, below the ${MIN_LOGO_DIMENSION}px floor ` +
+      `image is ${size.width}x${size.height}, below the ${minDimension}px floor ` +
         `(this is the rule that keeps favicons out of the logo store)`,
     );
   }

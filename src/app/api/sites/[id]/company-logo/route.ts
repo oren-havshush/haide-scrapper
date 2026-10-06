@@ -25,6 +25,10 @@ export async function POST(
 
     const contentType = request.headers.get("content-type");
     const sourceUrl = request.headers.get("x-logo-source-url");
+    // A hand upload by an operator: judged against a 32 px floor instead of 64
+    // (owner, 2026-10-06). scripts/company-profile.ts never sends this header,
+    // so the automatic capture keeps the 64 px floor.
+    const operator = request.headers.get("x-logo-provenance") === "operator";
 
     if (sourceUrl && sourceUrl.length > 1_000) {
       throw new ValidationError("x-logo-source-url exceeds 1000 characters");
@@ -43,7 +47,7 @@ export async function POST(
 
     // File first, DB second — an orphan file is harmless, a companyLogoPath
     // pointing at nothing is a broken image on the public site.
-    const stored = await storeLogo(id, bytes, contentType);
+    const stored = await storeLogo(id, bytes, contentType, { operator });
     const site = await saveCompanyLogo(id, stored.logoPath, sourceUrl);
     await applyAutoFix({
       request,

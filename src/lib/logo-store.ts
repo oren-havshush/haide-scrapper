@@ -13,7 +13,13 @@
 import { mkdir, rename, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { ValidationError } from "@/lib/errors";
-import { FORMAT_TO_CONTENT_TYPE, inspectImage, ImageRejected } from "@/lib/image-validate";
+import {
+  FORMAT_TO_CONTENT_TYPE,
+  inspectImage,
+  ImageRejected,
+  MIN_LOGO_DIMENSION,
+  OPERATOR_MIN_LOGO_DIMENSION,
+} from "@/lib/image-validate";
 import type { ImageInspection } from "@/lib/image-validate";
 
 /** Matches COMPANY_LOGO_DIR in the Dockerfile and docker-compose.yml. */
@@ -54,12 +60,16 @@ export async function storeLogo(
   siteId: string,
   bytes: Uint8Array,
   declaredContentType: string | null,
+  /** operator: a hand upload, judged against OPERATOR_MIN_LOGO_DIMENSION (32 px) instead of 64. */
+  opts: { operator?: boolean } = {},
 ): Promise<StoredLogo> {
   assertValidSiteId(siteId);
 
   let inspection: ImageInspection;
   try {
-    inspection = inspectImage(bytes, declaredContentType);
+    inspection = inspectImage(bytes, declaredContentType, {
+      minDimension: opts.operator ? OPERATOR_MIN_LOGO_DIMENSION : MIN_LOGO_DIMENSION,
+    });
   } catch (error) {
     if (error instanceof ImageRejected) {
       throw new ValidationError(`logo rejected (${error.reason}): ${error.message}`);
