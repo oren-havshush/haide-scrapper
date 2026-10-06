@@ -52,6 +52,15 @@ assert(/source: "MANUAL"/.test(createBody), "createFixItem writes source MANUAL 
 assert(!/input\.source|body\.source|\.\.\.input/.test(createBody), "and never takes a source (or a spread) from its input");
 assert(/resolvedBy: "MANUAL"/.test(svc), "an operator's resolve is recorded as resolvedBy MANUAL");
 
+// (n), owner 2026-10-06: the PATCH may close an item as CHECK; MANUAL stays the default.
+const update = svc.slice(svc.indexOf("export async function updateFixItem("));
+const updateBody = update.slice(0, update.indexOf("\n}\n"));
+assert(updateBody.length > 0, "updateFixItem exists");
+assert(
+  /patch\.resolved === true \? \{ resolvedAt: new Date\(\), resolvedBy: patch\.resolvedBy \?\? "MANUAL" \}/.test(updateBody),
+  "updateFixItem resolves as patch.resolvedBy, MANUAL by default",
+);
+
 // The Log-fix dialog's site list. Found in the 1a smoke run (2026-09-30): with
 // no empty option, a controlled value of "" left the browser showing the one
 // filtered site as selected, so clicking it fired no change and "Log fix"

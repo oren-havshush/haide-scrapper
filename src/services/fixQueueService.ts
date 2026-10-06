@@ -106,7 +106,7 @@ export async function updateFixItem(id: string, patch: z.infer<typeof fixItemPat
       ...(patch.minutes !== undefined ? { minutes: patch.minutes } : {}),
       ...(patch.note !== undefined ? { note: patch.note } : {}),
       ...(patch.operator !== undefined ? { operator: patch.operator } : {}),
-      ...(patch.resolved === true ? { resolvedAt: new Date(), resolvedBy: "MANUAL" as const } : {}),
+      ...(patch.resolved === true ? { resolvedAt: new Date(), resolvedBy: patch.resolvedBy ?? "MANUAL" } : {}),
       ...(patch.resolved === false ? { resolvedAt: null, resolvedBy: null } : {}),
     },
   });

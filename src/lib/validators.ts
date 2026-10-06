@@ -394,16 +394,24 @@ export const fixItemCreateSchema = z
   })
   .strict();
 
-/** PATCH /api/dashboard/fix-queue/[id] — minutes, resolve (or reopen), note. */
+/**
+ * PATCH /api/dashboard/fix-queue/[id] — minutes, resolve (or reopen), note.
+ * `resolvedBy` goes only with `resolved: true` and defaults to MANUAL; CHECK
+ * closes an item a write opened that was not a fix (n), owner 2026-10-06.
+ */
 export const fixItemPatchSchema = z
   .object({
     minutes: fixMinutes.nullable().optional(),
     resolved: z.boolean().optional(),
+    resolvedBy: z.enum(["MANUAL", "CHECK"]).optional(),
     note: z.string().max(2000).nullable().optional(),
     operator: z.string().min(1).max(80).optional(),
   })
   .strict()
-  .refine((b) => Object.keys(b).length > 0, { message: "nothing to change" });
+  .refine((b) => Object.keys(b).length > 0, { message: "nothing to change" })
+  .refine((b) => b.resolvedBy === undefined || b.resolved === true, {
+    message: "resolvedBy goes only with resolved: true",
+  });
 
 /**
  * GET /api/dashboard/fix-queue. `freezeAt` defaults to the addsite2 freeze

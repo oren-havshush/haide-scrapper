@@ -5,9 +5,9 @@ import { fixItemPatchSchema } from "@/lib/validators";
 import { updateFixItem } from "@/services/fixQueueService";
 
 /**
- * PATCH { minutes?, resolved?, note?, operator? } on one fix item (addsite2
- * phase two, step 1a). `resolved: true` closes it as resolvedBy MANUAL;
- * `resolved: false` reopens it.
+ * PATCH { minutes?, resolved?, resolvedBy?, note?, operator? } on one fix item
+ * (addsite2 phase two, step 1a). `resolved: true` closes it as resolvedBy
+ * MANUAL, or CHECK when named (n); `resolved: false` reopens it.
  */
 export async function PATCH(
   request: NextRequest,
