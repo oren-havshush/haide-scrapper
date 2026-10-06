@@ -133,7 +133,7 @@ several listing pages back into one and stops publishing the rest.
 | יעל גרופ | ACTIVE | 8 | 3283 | 1 | `yaelgroup--rdvk6e` |
 | יפאורה תבורי בע"מ | ACTIVE | 6 | 5295 | 1 | `jafora--zoe4h3` |
 | יקב טפרברג | ACTIVE | 3 | 889 | 1 | `teperbergwinery--unqlym` |
-| יקב סוכנות לביטוח | ACTIVE | 5 | — | 1 | `yekev--j5qpe6` |
+| יקב סוכנויות ביטוח | ACTIVE | 6 | 2609 | 1 | `yekev--r6r2a9` |
 | ישראייר | ACTIVE | 5 | 363 | 1 | `lp-vp4-me--qo0him` |
 | ישרוטל | ACTIVE | 6 | 7421 | 1 | `isrotel--dkz1ac` |
 | כלי זמר | ACTIVE | 6 | 5974 | 1 | `kley-zemer--t2o5co` |
