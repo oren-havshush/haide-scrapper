@@ -163,7 +163,7 @@ several listing pages back into one and stops publishing the rest.
 | מנרב | ACTIVE | 5 | 3145 | 1 | `minrav--hkk5r9` |
 | מסוף שירותי לוגיסטיקה | ACTIVE | 3 | 534 | 1 | `masof--2bfcz7` |
 | מערך אופק | ACTIVE | 7 | 4554 | 1 | `ofeksec--sihfn2` |
-| מקדונלדס | ACTIVE | 4 | — | 1 | `mcdonalds--x0odyk` |
+| מקדונלד'ס | ACTIVE | 6 | 3156 | 1 | `mcdonalds--vq8zrd` |
 | מרטנס הופמן יועצים לניהול בע"מ | ACTIVE | 5 | 3696 | 1 | `mertens-hoffman--7hyv4n` |
 | מרכז האקדמי פרס | ACTIVE | 4 | 2397 | 1 | `pac--4xvfi9` |
 | מתן שירותי בריאות וסיעוד מתקדמים | ACTIVE | 7 | 5796 | 1 | `app-civi--cc1wag` |
