@@ -38,6 +38,7 @@ import {
   sanitizeModelText,
   inlineLogoRejection,
   isHomeLink,
+  logoPlacementRejection,
   isWidgetHost,
   modelAboutRejection,
   modelAboutGrounding,
@@ -1479,6 +1480,51 @@ function testLogoContextFilters() {
   assert.ok(svgLoop.indexOf('setProperty("fill"') < svgLoop.indexOf("serializeToString("), "before it is serialised and drawn");
   assert.ok(/getImageData\(/.test(svgLoop), "the inline path measures colour");
   assert.ok(/getImageData\(/.test(readFileSync(join(__dirname, "svg-img-logos.ts"), "utf8")), "the SVG <img> path measures colour");
+
+  // (k), owner 2026-10-06: a home link is also one whose target IS the page the
+  // capture loaded. razel.co.il, verbatim: the capture loads http://www.razel.co.il/,
+  // and the header logo links to the CMS URL /html5/?_id=9172&did=8843&G=8843 —
+  // the same page (same canonical, identical text), but not a root path, so it
+  // was refused as "links somewhere other than the home page". The harvest
+  // fetches such a link and compares canonicals; linkIsPage is its answer.
+  const razelLogo = {
+    link: "/html5/?_id=9172&did=8843&G=8843",
+    inControl: false,
+    ancestry: "img.#[רזאל - משרות במיקור חוץ] < a.#[רזאל - משרות במיקור חוץ] < div.responsiveblock img sitelogo#[] < div.toprd#[] < div.#hresponsive[] < header.#[]",
+  };
+  assert.equal(logoPlacementRejection({ ...razelLogo, linkIsPage: true }, "http://www.razel.co.il/"), null, "razel: a link whose target is this page is a home link");
+  assert.ok(logoPlacementRejection(razelLogo, "http://www.razel.co.il/"), "without that evidence the CMS link is still not home");
+  assert.ok(logoPlacementRejection({ ...razelLogo, linkIsPage: false }, "http://www.razel.co.il/"), "nor when the fetched target is another page");
+  const razelPage: PageHarvest = {
+    ...emptyHarvest("http://www.razel.co.il/"),
+    images: [{ src: "/html5/WEB/8843/720Imgfile.png", alt: "רזאל - משרות במיקור חוץ", width: 219, height: 94, inHeader: true, context: "responsiveblock img sitelogo ", ...razelLogo, linkIsPage: true }],
+  };
+  assert.deepEqual(collectLogoCandidates(razelPage, null).map((c) => c.url), ["http://www.razel.co.il/html5/WEB/8843/720Imgfile.png"], "razel's logo is a candidate again");
+  const harvestCode = readFileSync(join(__dirname, "..", "company-profile.ts"), "utf8");
+  assert.ok(/linkIsPage/.test(harvestCode) && /rel=\["'\]canonical/.test(harvestCode), "the harvest records linkIsPage by comparing canonicals");
+
+  // (l), owner 2026-10-06: only a control NEARER than the enclosing link counts.
+  // abt-industry.co.il, measured on the page: the logo's <a class="navbar-brand">
+  // is its parent (depth 1), and the nearest control is a <form> six levels up,
+  // wrapping the whole collapsible navbar. Round 1 refused it as "inside a button
+  // or control"; the stored logo was right.
+  const abtLogo = {
+    link: "/",
+    controlDepth: 6,
+    linkDepth: 1,
+    ancestry: "img.#[] < a.navbar-brand#[] < div.#[] < div.navbar-header#[] < div.container#[] < nav.mainmenu navbar#[]",
+  };
+  assert.equal(logoPlacementRejection(abtLogo, "https://www.abt-industry.co.il/"), null, "abt-industry: a home link inside a form-wrapped navbar is accepted");
+  // shagrir.co.il's pause icon: its button is its parent, and there is no link.
+  assert.ok(logoPlacementRejection({ controlDepth: 1, linkDepth: -1, link: null, ancestry: "svg.bi bi-pause#[] < button.owlstop#[]" }, "https://www.shagrir.co.il/"), "shagrir: a control and no link is refused");
+  assert.ok(logoPlacementRejection({ ...abtLogo, controlDepth: 1, linkDepth: 3 }, "https://www.abt-industry.co.il/"), "a control nearer than the link is refused");
+  assert.equal(logoPlacementRejection({ ...abtLogo, controlDepth: -1 }, "https://www.abt-industry.co.il/"), null, "no control at all is fine");
+  const depthSources = [
+    readFileSync(join(__dirname, "..", "company-profile.ts"), "utf8"),
+    readFileSync(join(__dirname, "svg-img-logos.ts"), "utf8"),
+  ];
+  assert.equal(depthSources.reduce((n, s) => n + (s.match(/controlDepth,/g) ?? []).length, 0), 4, "all four harvest paths record controlDepth");
+  assert.equal(depthSources.reduce((n, s) => n + (s.match(/linkDepth,/g) ?? []).length, 0), 4, "and linkDepth");
 
   // The old shape (no signals at all) still passes through unchanged.
   assert.equal(inlineLogoRejection({ dataUrl: "data:image/png;base64,OLD", pathCount: 3, area: 3621 }, page), null);

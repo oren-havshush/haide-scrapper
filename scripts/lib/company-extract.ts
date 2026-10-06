@@ -48,7 +48,10 @@ export interface HarvestedImage {
   /** Where the image sits; see LogoPlacement. Absent on older harvests. */
   ancestry?: string;
   link?: string | null;
+  linkIsPage?: boolean;
   inControl?: boolean;
+  controlDepth?: number;
+  linkDepth?: number;
 }
 
 /**
@@ -65,8 +68,29 @@ export interface LogoPlacement {
   ancestry?: string;
   /** The raw href of the nearest enclosing <a>, or null when there is none. */
   link?: string | null;
+  /**
+   * The harvest fetched that link and its target is the page the capture
+   * loaded (same canonical URL): a CMS home such as razel.co.il's
+   * /html5/?_id=9172… is the home page under another address.
+   */
+  linkIsPage?: boolean;
   /** Inside a button, a [role=button|search], a form or an expandable control. */
   inControl?: boolean;
+  /**
+   * (l): how many levels up the nearest control and the nearest <a> are (0 = the
+   * element itself, -1 = none). When recorded, they replace inControl: only a
+   * control NEARER than the enclosing link counts, so a home-linked logo in a
+   * form-wrapped collapsible navbar (abt-industry.co.il) is not refused.
+   */
+  controlDepth?: number;
+  linkDepth?: number;
+}
+
+/** (l): a control counts only when it is nearer than the enclosing link. */
+function insideControl(p: LogoPlacement): boolean {
+  if (p.controlDepth === undefined) return p.inControl === true;
+  if (p.controlDepth < 0) return false;
+  return p.linkDepth === undefined || p.linkDepth < 0 || p.controlDepth < p.linkDepth;
 }
 
 export interface InlineLogo extends LogoPlacement {
@@ -1115,9 +1139,14 @@ const hasPrefix = (tokens: string[], prefixes: string[]) =>
  * Google Translate icon and a TV-channel carousel image as company logos.
  * Every one of them passed the byte gate; only where it sat gave it away.
  */
+/** A root-path link to the page's own host, or a link whose target is this very page (k). */
+function linksHome(p: LogoPlacement, pageUrl: string): boolean {
+  return isHomeLink(p.link, pageUrl) || (p.link != null && p.linkIsPage === true);
+}
+
 export function logoPlacementRejection(p: LogoPlacement, pageUrl: string): string | null {
-  if (p.inControl) return "inside a button or control";
-  const homeLinked = isHomeLink(p.link, pageUrl);
+  if (insideControl(p)) return "inside a button or control";
+  const homeLinked = linksHome(p, pageUrl);
   const tokens = placementTokens(p.ancestry ?? "");
   if (hasPrefix(tokens, WIDGET_TOKEN_PREFIXES)) return "a widget or social icon";
   if (hasPrefix(tokens, CAROUSEL_TOKEN_PREFIXES)) return "inside a carousel or a strip of other brands";
@@ -1156,7 +1185,7 @@ export function inlineLogoRejection(logo: InlineLogo, pageUrl: string): string |
     const aspect = logo.width / logo.height;
     if (aspect < INLINE_MIN_ASPECT || aspect > INLINE_MAX_ASPECT) return `aspect ${aspect.toFixed(2)}`;
   }
-  if (logo.pathCountKnown !== false && logo.pathCount < 2 && !isHomeLink(logo.link, pageUrl)) {
+  if (logo.pathCountKnown !== false && logo.pathCount < 2 && !linksHome(logo, pageUrl)) {
     return "a single-path SVG that does not link home";
   }
   if (logo.colour) {

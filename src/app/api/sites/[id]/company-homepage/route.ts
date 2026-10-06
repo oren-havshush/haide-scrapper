@@ -3,6 +3,7 @@ import { successResponse } from "@/lib/api-utils";
 import { formatErrorResponse, ValidationError } from "@/lib/errors";
 import { updateSiteCompanyHomepageSchema } from "@/lib/validators";
 import { saveCompanyHomepage } from "@/services/siteService";
+import { homepageOrigin } from "@/lib/companyHomepage";
 import { applyAutoFix, companySnapshotOf, siteStatusOf } from "@/services/autoFixService";
 
 // Operator-supplied company homepage, for a site whose jobs live on a
@@ -35,7 +36,9 @@ export async function PUT(
       );
     }
 
-    const site = await saveCompanyHomepage(id, parsed.data.companyHomepageUrl);
+    // The origin, as the capture stores it (m): a path here was rewritten at
+    // capture and read as a change (diplomat's /he/).
+    const site = await saveCompanyHomepage(id, homepageOrigin(parsed.data.companyHomepageUrl));
     await applyAutoFix({
       request,
       siteId: id,

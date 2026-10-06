@@ -69,6 +69,7 @@ import {
   homepageFromLinks,
   homepageFromOgUrl,
   isBotChallengePage,
+  isHomeLink,
   modelAboutGrounding,
   modelAboutRejection,
   modelAddressUsable,
@@ -542,7 +543,8 @@ async function harvest(page: Page, url: string, patient = false): Promise<PageHa
         context: string;
         ancestry: string;
         link: string | null;
-        inControl: boolean;
+        controlDepth: number;
+        linkDepth: number;
       }[] = [];
       for (const el of Array.from(document.querySelectorAll("img[src]")).slice(0, 200)) {
         const img = el as HTMLImageElement;
@@ -559,6 +561,15 @@ async function harvest(page: Page, url: string, patient = false): Promise<PageHa
           );
           walk = walk.parentElement;
         }
+        // (l): how far up the nearest control and the nearest link are.
+        let controlDepth = -1;
+        let linkDepth = -1;
+        let up: Element | null = img;
+        for (let depth = 0; up && (controlDepth < 0 || linkDepth < 0); depth++) {
+          if (controlDepth < 0 && up.matches(CONTROL_SELECTOR)) controlDepth = depth;
+          if (linkDepth < 0 && up.tagName === "A") linkDepth = depth;
+          up = up.parentElement;
+        }
         images.push({
           src,
           alt: (img.getAttribute("alt") || "").slice(0, 120),
@@ -568,7 +579,8 @@ async function harvest(page: Page, url: string, patient = false): Promise<PageHa
           context: `${parent?.className ?? ""} ${parent?.id ?? ""}`.toLowerCase().slice(0, 200),
           ancestry: trail.join(" < ").toLowerCase().slice(0, 1_000),
           link: img.closest("a")?.getAttribute("href") ?? null,
-          inControl: !!img.closest(CONTROL_SELECTOR),
+          controlDepth,
+          linkDepth,
         });
       }
 
@@ -594,6 +606,15 @@ async function harvest(page: Page, url: string, patient = false): Promise<PageHa
           );
           walk = walk.parentElement;
         }
+        // (l): how far up the nearest control and the nearest link are.
+        let controlDepth = -1;
+        let linkDepth = -1;
+        let up: Element | null = el;
+        for (let depth = 0; up && (controlDepth < 0 || linkDepth < 0); depth++) {
+          if (controlDepth < 0 && up.matches(CONTROL_SELECTOR)) controlDepth = depth;
+          if (linkDepth < 0 && up.tagName === "A") linkDepth = depth;
+          up = up.parentElement;
+        }
         images.push({
           src,
           alt: (el.getAttribute("aria-label") || el.getAttribute("title") || "").slice(0, 120),
@@ -605,7 +626,8 @@ async function harvest(page: Page, url: string, patient = false): Promise<PageHa
           context: `${el.className ?? ""} ${el.id ?? ""} background`.toLowerCase().slice(0, 200),
           ancestry: trail.join(" < ").toLowerCase().slice(0, 1_000),
           link: el.closest("a")?.getAttribute("href") ?? null,
-          inControl: !!el.closest(CONTROL_SELECTOR),
+          controlDepth,
+          linkDepth,
         });
       }
 
@@ -663,7 +685,8 @@ async function harvest(page: Page, url: string, patient = false): Promise<PageHa
         renderedWidth: number;
         renderedHeight: number;
         link: string | null;
-        inControl: boolean;
+        controlDepth: number;
+        linkDepth: number;
         ancestry: string;
         colour: { sampled: number; opaque: number; dominantShare: number; dominant: [number, number, number] };
       }[] = [];
@@ -780,6 +803,15 @@ async function harvest(page: Page, url: string, patient = false): Promise<PageHa
             );
             walk = walk.parentElement;
           }
+          // (l): how far up the nearest control and the nearest link are.
+          let controlDepth = -1;
+          let linkDepth = -1;
+          let up: Element | null = svg;
+          for (let depth = 0; up && (controlDepth < 0 || linkDepth < 0); depth++) {
+            if (controlDepth < 0 && up.matches(CONTROL_SELECTOR)) controlDepth = depth;
+            if (linkDepth < 0 && up.tagName === "A") linkDepth = depth;
+            up = up.parentElement;
+          }
           inlineLogos.push({
             dataUrl: canvas.toDataURL("image/png"),
             // Ordering signals only — see InlineLogo in company-extract.ts.
@@ -791,7 +823,8 @@ async function harvest(page: Page, url: string, patient = false): Promise<PageHa
             renderedWidth: Math.round(rect.width),
             renderedHeight: Math.round(rect.height),
             link: svg.closest("a")?.getAttribute("href") ?? null,
-            inControl: !!svg.closest(CONTROL_SELECTOR),
+            controlDepth,
+            linkDepth,
             ancestry: trail.join(" < ").toLowerCase().slice(0, 1_000),
             colour,
           });
@@ -825,6 +858,52 @@ async function harvest(page: Page, url: string, patient = false): Promise<PageHa
       ...harvested.inlineLogos,
       ...(await rasteriseSvgImgLogos(page)),
     ];
+
+    // (k): a logo whose link is not a root path may still link HOME — razel's
+    // header logo links to its CMS address /html5/?_id=9172…, which serves this
+    // same page. Fetch each such same-host link once (at most five) and compare
+    // its canonical URL with this page's; linkIsPage records the answer.
+    const pageHost = new URL(harvested.url).host;
+    const linkOwners = [
+      ...harvested.images.filter((img) => /logo|לוגו/i.test(`${img.alt} ${img.context} ${img.src} ${img.ancestry ?? ""}`)),
+      ...harvested.inlineLogos,
+    ].filter((c) => {
+      if (!c.link || /^(#|javascript:)/i.test(c.link.trim()) || isHomeLink(c.link, harvested.url)) return false;
+      try {
+        return new URL(c.link, harvested.url).host === pageHost;
+      } catch {
+        return false;
+      }
+    });
+    const targets = [...new Set(linkOwners.map((c) => c.link as string))].slice(0, 5);
+    if (targets.length > 0) {
+      const isPage = await page
+        .evaluate(async (hrefs: string[]) => {
+          const out: Record<string, boolean> = {};
+          const ownCanonical =
+            (document.querySelector("link[rel=canonical]") as HTMLLinkElement | null)?.href || location.href;
+          const own = ownCanonical.replace(/\/+$/, "").toLowerCase();
+          for (const href of hrefs) {
+            try {
+              const res = await fetch(new URL(href, location.href).href, {
+                credentials: "same-origin",
+                signal: AbortSignal.timeout(5_000),
+              });
+              const html = await res.text();
+              const hit =
+                /<link[^>]*rel=["']canonical["'][^>]*href=["']([^"']+)["']/i.exec(html) ||
+                /<link[^>]*href=["']([^"']+)["'][^>]*rel=["']canonical["']/i.exec(html);
+              const theirs = hit ? new URL(hit[1], res.url).href : res.url;
+              out[href] = theirs.replace(/\/+$/, "").toLowerCase() === own;
+            } catch {
+              out[href] = false;
+            }
+          }
+          return out;
+        }, targets)
+        .catch(() => ({}) as Record<string, boolean>);
+      for (const c of linkOwners) c.linkIsPage = isPage[c.link as string] === true;
+    }
 
     return harvested;
   } catch {
