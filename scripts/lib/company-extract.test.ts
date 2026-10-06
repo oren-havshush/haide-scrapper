@@ -38,6 +38,7 @@ import {
   sanitizeModelText,
   inlineLogoRejection,
   isHomeLink,
+  logoPlacementRejection,
   isWidgetHost,
   modelAboutRejection,
   modelAboutGrounding,
@@ -1479,6 +1480,28 @@ function testLogoContextFilters() {
   assert.ok(svgLoop.indexOf('setProperty("fill"') < svgLoop.indexOf("serializeToString("), "before it is serialised and drawn");
   assert.ok(/getImageData\(/.test(svgLoop), "the inline path measures colour");
   assert.ok(/getImageData\(/.test(readFileSync(join(__dirname, "svg-img-logos.ts"), "utf8")), "the SVG <img> path measures colour");
+
+  // (k), owner 2026-10-06: a home link is also one whose target IS the page the
+  // capture loaded. razel.co.il, verbatim: the capture loads http://www.razel.co.il/,
+  // and the header logo links to the CMS URL /html5/?_id=9172&did=8843&G=8843 —
+  // the same page (same canonical, identical text), but not a root path, so it
+  // was refused as "links somewhere other than the home page". The harvest
+  // fetches such a link and compares canonicals; linkIsPage is its answer.
+  const razelLogo = {
+    link: "/html5/?_id=9172&did=8843&G=8843",
+    inControl: false,
+    ancestry: "img.#[רזאל - משרות במיקור חוץ] < a.#[רזאל - משרות במיקור חוץ] < div.responsiveblock img sitelogo#[] < div.toprd#[] < div.#hresponsive[] < header.#[]",
+  };
+  assert.equal(logoPlacementRejection({ ...razelLogo, linkIsPage: true }, "http://www.razel.co.il/"), null, "razel: a link whose target is this page is a home link");
+  assert.ok(logoPlacementRejection(razelLogo, "http://www.razel.co.il/"), "without that evidence the CMS link is still not home");
+  assert.ok(logoPlacementRejection({ ...razelLogo, linkIsPage: false }, "http://www.razel.co.il/"), "nor when the fetched target is another page");
+  const razelPage: PageHarvest = {
+    ...emptyHarvest("http://www.razel.co.il/"),
+    images: [{ src: "/html5/WEB/8843/720Imgfile.png", alt: "רזאל - משרות במיקור חוץ", width: 219, height: 94, inHeader: true, context: "responsiveblock img sitelogo ", ...razelLogo, linkIsPage: true }],
+  };
+  assert.deepEqual(collectLogoCandidates(razelPage, null).map((c) => c.url), ["http://www.razel.co.il/html5/WEB/8843/720Imgfile.png"], "razel's logo is a candidate again");
+  const harvestCode = readFileSync(join(__dirname, "..", "company-profile.ts"), "utf8");
+  assert.ok(/linkIsPage/.test(harvestCode) && /rel=\["'\]canonical/.test(harvestCode), "the harvest records linkIsPage by comparing canonicals");
 
   // The old shape (no signals at all) still passes through unchanged.
   assert.equal(inlineLogoRejection({ dataUrl: "data:image/png;base64,OLD", pathCount: 3, area: 3621 }, page), null);

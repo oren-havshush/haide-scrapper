@@ -48,6 +48,7 @@ export interface HarvestedImage {
   /** Where the image sits; see LogoPlacement. Absent on older harvests. */
   ancestry?: string;
   link?: string | null;
+  linkIsPage?: boolean;
   inControl?: boolean;
 }
 
@@ -65,6 +66,12 @@ export interface LogoPlacement {
   ancestry?: string;
   /** The raw href of the nearest enclosing <a>, or null when there is none. */
   link?: string | null;
+  /**
+   * The harvest fetched that link and its target is the page the capture
+   * loaded (same canonical URL): a CMS home such as razel.co.il's
+   * /html5/?_id=9172… is the home page under another address.
+   */
+  linkIsPage?: boolean;
   /** Inside a button, a [role=button|search], a form or an expandable control. */
   inControl?: boolean;
 }
@@ -1115,9 +1122,14 @@ const hasPrefix = (tokens: string[], prefixes: string[]) =>
  * Google Translate icon and a TV-channel carousel image as company logos.
  * Every one of them passed the byte gate; only where it sat gave it away.
  */
+/** A root-path link to the page's own host, or a link whose target is this very page (k). */
+function linksHome(p: LogoPlacement, pageUrl: string): boolean {
+  return isHomeLink(p.link, pageUrl) || (p.link != null && p.linkIsPage === true);
+}
+
 export function logoPlacementRejection(p: LogoPlacement, pageUrl: string): string | null {
   if (p.inControl) return "inside a button or control";
-  const homeLinked = isHomeLink(p.link, pageUrl);
+  const homeLinked = linksHome(p, pageUrl);
   const tokens = placementTokens(p.ancestry ?? "");
   if (hasPrefix(tokens, WIDGET_TOKEN_PREFIXES)) return "a widget or social icon";
   if (hasPrefix(tokens, CAROUSEL_TOKEN_PREFIXES)) return "inside a carousel or a strip of other brands";
@@ -1156,7 +1168,7 @@ export function inlineLogoRejection(logo: InlineLogo, pageUrl: string): string |
     const aspect = logo.width / logo.height;
     if (aspect < INLINE_MIN_ASPECT || aspect > INLINE_MAX_ASPECT) return `aspect ${aspect.toFixed(2)}`;
   }
-  if (logo.pathCountKnown !== false && logo.pathCount < 2 && !isHomeLink(logo.link, pageUrl)) {
+  if (logo.pathCountKnown !== false && logo.pathCount < 2 && !linksHome(logo, pageUrl)) {
     return "a single-path SVG that does not link home";
   }
   if (logo.colour) {

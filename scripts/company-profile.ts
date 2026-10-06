@@ -69,6 +69,7 @@ import {
   homepageFromLinks,
   homepageFromOgUrl,
   isBotChallengePage,
+  isHomeLink,
   modelAboutGrounding,
   modelAboutRejection,
   modelAddressUsable,
@@ -825,6 +826,52 @@ async function harvest(page: Page, url: string, patient = false): Promise<PageHa
       ...harvested.inlineLogos,
       ...(await rasteriseSvgImgLogos(page)),
     ];
+
+    // (k): a logo whose link is not a root path may still link HOME — razel's
+    // header logo links to its CMS address /html5/?_id=9172…, which serves this
+    // same page. Fetch each such same-host link once (at most five) and compare
+    // its canonical URL with this page's; linkIsPage records the answer.
+    const pageHost = new URL(harvested.url).host;
+    const linkOwners = [
+      ...harvested.images.filter((img) => /logo|לוגו/i.test(`${img.alt} ${img.context} ${img.src} ${img.ancestry ?? ""}`)),
+      ...harvested.inlineLogos,
+    ].filter((c) => {
+      if (!c.link || /^(#|javascript:)/i.test(c.link.trim()) || isHomeLink(c.link, harvested.url)) return false;
+      try {
+        return new URL(c.link, harvested.url).host === pageHost;
+      } catch {
+        return false;
+      }
+    });
+    const targets = [...new Set(linkOwners.map((c) => c.link as string))].slice(0, 5);
+    if (targets.length > 0) {
+      const isPage = await page
+        .evaluate(async (hrefs: string[]) => {
+          const out: Record<string, boolean> = {};
+          const ownCanonical =
+            (document.querySelector("link[rel=canonical]") as HTMLLinkElement | null)?.href || location.href;
+          const own = ownCanonical.replace(/\/+$/, "").toLowerCase();
+          for (const href of hrefs) {
+            try {
+              const res = await fetch(new URL(href, location.href).href, {
+                credentials: "same-origin",
+                signal: AbortSignal.timeout(5_000),
+              });
+              const html = await res.text();
+              const hit =
+                /<link[^>]*rel=["']canonical["'][^>]*href=["']([^"']+)["']/i.exec(html) ||
+                /<link[^>]*href=["']([^"']+)["'][^>]*rel=["']canonical["']/i.exec(html);
+              const theirs = hit ? new URL(hit[1], res.url).href : res.url;
+              out[href] = theirs.replace(/\/+$/, "").toLowerCase() === own;
+            } catch {
+              out[href] = false;
+            }
+          }
+          return out;
+        }, targets)
+        .catch(() => ({}) as Record<string, boolean>);
+      for (const c of linkOwners) c.linkIsPage = isPage[c.link as string] === true;
+    }
 
     return harvested;
   } catch {
