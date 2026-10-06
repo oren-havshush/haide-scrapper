@@ -212,7 +212,7 @@ several listing pages back into one and stops publishing the rest.
 | שמרד אלקטרוניקה | ACTIVE | 4 | 1536 | 1 | `shamrad--dv1p94` |
 | תיגבור כח אדם | ACTIVE | 9 | 8000 | 1 | `tigbur--iobe0d` |
 | תייקום תקשורת | ACTIVE | 5 | 1351 | 1 | `tiecom--uy0ibi` |
-| תכלית ייעוץ עסקי | ACTIVE | 4 | — | 1 | `tachlit-biz--rw2x0o` |
+| תכלית ייעוץ עסקי | ACTIVE | 7 | 4851 | 1 | `tachlit-biz--zervox` |
 | תמה גרופ | ACTIVE | 4 | 2240 | 1 | `tama--rwlfxm` |
 | תמורה | ACTIVE | 4 | 6170 | 1 | `tmuralife--m6phhu` |
 | תנובה | ACTIVE | 5 | 1994 | 1 | `tnuva--7145ri` |

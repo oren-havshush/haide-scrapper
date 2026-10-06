@@ -1,0 +1,142 @@
+{
+  "_exportedAt": "2026-10-06T08:20:53.159Z",
+  "_note": "Mirror of the live config. The DB is authoritative; the worker never reads this file. setupScript lives alongside in <slug>.setup.js.",
+  "id": "cmuweagrq008301qpl5zervox",
+  "siteUrl": "https://tachlit.biz/%D7%93%D7%A8%D7%95%D7%A9%D7%99%D7%9D/",
+  "companyName": "תכלית ייעוץ עסקי",
+  "status": "ACTIVE",
+  "setupScriptFile": "tachlit-biz--zervox.setup.js",
+  "pageFlow": [],
+  "fieldMappings": {
+    "_meta": {
+      "savedAt": "2026-10-06T08:08:13.192Z",
+      "pagination": null,
+      "formCapture": {
+        "fields": [
+          {
+            "name": "post_id",
+            "group": "שלח קורות חיים:",
+            "label": "",
+            "tagName": "INPUT",
+            "required": false,
+            "fieldType": "hidden"
+          },
+          {
+            "name": "form_id",
+            "group": "שלח קורות חיים:",
+            "label": "",
+            "tagName": "INPUT",
+            "required": false,
+            "fieldType": "hidden"
+          },
+          {
+            "name": "referer_title",
+            "group": "שלח קורות חיים:",
+            "label": "",
+            "tagName": "INPUT",
+            "required": false,
+            "fieldType": "hidden"
+          },
+          {
+            "name": "queried_id",
+            "group": "שלח קורות חיים:",
+            "label": "",
+            "tagName": "INPUT",
+            "required": false,
+            "fieldType": "hidden"
+          },
+          {
+            "name": "form_fields[name]",
+            "group": "שלח קורות חיים:",
+            "label": "שם",
+            "tagName": "INPUT",
+            "required": false,
+            "fieldType": "text"
+          },
+          {
+            "name": "form_fields[email]",
+            "group": "שלח קורות חיים:",
+            "label": "אימייל",
+            "tagName": "INPUT",
+            "required": true,
+            "fieldType": "email"
+          },
+          {
+            "name": "form_fields[message]",
+            "group": "שלח קורות חיים:",
+            "label": "הודעה",
+            "tagName": "TEXTAREA",
+            "required": false,
+            "fieldType": "textarea"
+          },
+          {
+            "name": "form_fields[field_7428157][]",
+            "group": "שלח קורות חיים:",
+            "label": "העלה קובץ",
+            "tagName": "INPUT",
+            "required": true,
+            "fieldType": "file"
+          }
+        ],
+        "method": "POST",
+        "actionUrl": "https://tachlit.biz/wp-admin/admin-ajax.php",
+        "formSelector": "form.elementor-form:has(input[name=\"form_fields[field_7428157][]\"])"
+      },
+      "listingUrls": null,
+      "itemSelector": "#haide-jobs-root [data-haide-job]",
+      "minPublishDate": null,
+      "minPublishDays": null,
+      "revealSelector": null,
+      "listingSelector": null,
+      "applyLoginReason": null,
+      "browserOverrides": null,
+      "loadMoreSelector": null,
+      "locationFallback": null,
+      "originalMappings": null,
+      "applyRequiresLogin": false
+    },
+    "title": {
+      "source": "MANUAL",
+      "selector": ".__ai-title",
+      "confidence": 1,
+      "capturedOnUrl": "https://tachlit.biz/%D7%93%D7%A8%D7%95%D7%A9%D7%99%D7%9D/"
+    },
+    "location": {
+      "source": "MANUAL",
+      "selector": ".__ai-location",
+      "confidence": 1,
+      "capturedOnUrl": "https://tachlit.biz/%D7%93%D7%A8%D7%95%D7%A9%D7%99%D7%9D/"
+    },
+    "detailUrl": {
+      "source": "MANUAL",
+      "selector": "a.__ai-detail",
+      "confidence": 1,
+      "extractAttr": "href",
+      "capturedOnUrl": "https://tachlit.biz/%D7%93%D7%A8%D7%95%D7%A9%D7%99%D7%9D/"
+    },
+    "description": {
+      "source": "MANUAL",
+      "selector": ".__ai-description",
+      "confidence": 1,
+      "capturedOnUrl": "https://tachlit.biz/%D7%93%D7%A8%D7%95%D7%A9%D7%99%D7%9D/"
+    },
+    "publishDate": {
+      "source": "MANUAL",
+      "selector": ".__ai-publishdate",
+      "confidence": 1,
+      "capturedOnUrl": "https://tachlit.biz/%D7%93%D7%A8%D7%95%D7%A9%D7%99%D7%9D/"
+    },
+    "requirements": {
+      "source": "MANUAL",
+      "selector": ".__ai-requirements",
+      "confidence": 1,
+      "capturedOnUrl": "https://tachlit.biz/%D7%93%D7%A8%D7%95%D7%A9%D7%99%D7%9D/"
+    },
+    "externalJobId": {
+      "source": "MANUAL",
+      "selector": "[data-haide-job-id]",
+      "confidence": 1,
+      "capturedOnUrl": "https://tachlit.biz/%D7%93%D7%A8%D7%95%D7%A9%D7%99%D7%9D/"
+    }
+  }
+}
