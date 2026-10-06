@@ -66,12 +66,12 @@ several listing pages back into one and stops publishing the rest.
 | Unitask | ACTIVE | 6 | 6543 | 1 | `unitask-inc--wsxup8` |
 | Waterfall Security | ACTIVE | 8 | 5161 | 1 | `waterfall-security--jam3c9` |
 | Webbing | ACTIVE | 7 | 3874 | 1 | `webbingsolutions--hwp2jb` |
-| YES | ACTIVE | 7 | — | 1 | `yes--ekwenb` |
 | YKM | ACTIVE | 8 | 4431 | 1 | `ykm--gxcmnf` |
 | bank mizrahi tefahot | ACTIVE | 10 | — | 1 | `mizrahi-tefahot--a0zkf2` |
 | go mobile | ACTIVE | 6 | 1081 | 1 | `gomobile--zpvjhq` |
 | inManage | ACTIVE | 4 | 4219 | 1 | `inmanage--zjbxnf` |
 | safelog | ACTIVE | 5 | 2570 | 1 | `safelog--bd8461` |
+| yes | ACTIVE | 7 | 4400 | 1 | `yes--mvkb83` |
 | א.ב מתכננים | ACTIVE | 7 | 243 | 1 | `abt-industry--ldemj3` |
 | אביבים השמה | ACTIVE | 6 | 3739 | 1 | `avivim-hr--f3d9j7` |
 | אגד | ACTIVE | 7 | 5669 | 1 | `egged--4qc6cy` |
