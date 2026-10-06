@@ -122,7 +122,7 @@ several listing pages back into one and stops publishing the rest.
 | ויסוצקי | ACTIVE | 6 | 777 | 1 | `app-civi--jgqwu7` |
 | זיגזג | ACTIVE | 5 | 2627 | 1 | `zig-zag--8ogbov` |
 | חברת החשמל | ACTIVE | 8 | 3910 | 1 | `iec--7d28yg` |
-| חיותא | ACTIVE | 3 | — | 1 | `chayuta--6foa66` |
+| חיותא | ACTIVE | 6 | 4532 | 1 | `chayuta--wve8pb` |
 | חלילית | ACTIVE | 6 | 4757 | 1 | `halilit--0vwgee` |
 | חמת | ACTIVE | 7 | 3390 | 1 | `hamat-group--4ris60` |
 | טכניון | ACTIVE | 10 | — | 1 | `technion--8nqtph` |
