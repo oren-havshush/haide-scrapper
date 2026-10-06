@@ -1503,6 +1503,29 @@ function testLogoContextFilters() {
   const harvestCode = readFileSync(join(__dirname, "..", "company-profile.ts"), "utf8");
   assert.ok(/linkIsPage/.test(harvestCode) && /rel=\["'\]canonical/.test(harvestCode), "the harvest records linkIsPage by comparing canonicals");
 
+  // (l), owner 2026-10-06: only a control NEARER than the enclosing link counts.
+  // abt-industry.co.il, measured on the page: the logo's <a class="navbar-brand">
+  // is its parent (depth 1), and the nearest control is a <form> six levels up,
+  // wrapping the whole collapsible navbar. Round 1 refused it as "inside a button
+  // or control"; the stored logo was right.
+  const abtLogo = {
+    link: "/",
+    controlDepth: 6,
+    linkDepth: 1,
+    ancestry: "img.#[] < a.navbar-brand#[] < div.#[] < div.navbar-header#[] < div.container#[] < nav.mainmenu navbar#[]",
+  };
+  assert.equal(logoPlacementRejection(abtLogo, "https://www.abt-industry.co.il/"), null, "abt-industry: a home link inside a form-wrapped navbar is accepted");
+  // shagrir.co.il's pause icon: its button is its parent, and there is no link.
+  assert.ok(logoPlacementRejection({ controlDepth: 1, linkDepth: -1, link: null, ancestry: "svg.bi bi-pause#[] < button.owlstop#[]" }, "https://www.shagrir.co.il/"), "shagrir: a control and no link is refused");
+  assert.ok(logoPlacementRejection({ ...abtLogo, controlDepth: 1, linkDepth: 3 }, "https://www.abt-industry.co.il/"), "a control nearer than the link is refused");
+  assert.equal(logoPlacementRejection({ ...abtLogo, controlDepth: -1 }, "https://www.abt-industry.co.il/"), null, "no control at all is fine");
+  const depthSources = [
+    readFileSync(join(__dirname, "..", "company-profile.ts"), "utf8"),
+    readFileSync(join(__dirname, "svg-img-logos.ts"), "utf8"),
+  ];
+  assert.equal(depthSources.reduce((n, s) => n + (s.match(/controlDepth,/g) ?? []).length, 0), 4, "all four harvest paths record controlDepth");
+  assert.equal(depthSources.reduce((n, s) => n + (s.match(/linkDepth,/g) ?? []).length, 0), 4, "and linkDepth");
+
   // The old shape (no signals at all) still passes through unchanged.
   assert.equal(inlineLogoRejection({ dataUrl: "data:image/png;base64,OLD", pathCount: 3, area: 3621 }, page), null);
 }

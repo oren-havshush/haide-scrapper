@@ -183,6 +183,15 @@ export async function rasteriseSvgImgLogos(page: Page): Promise<InlineLogo[]> {
               );
               walk = walk.parentElement;
             }
+            // (l): how far up the nearest control and the nearest link are.
+            let controlDepth = -1;
+            let linkDepth = -1;
+            let up: Element | null = img;
+            for (let depth = 0; up && (controlDepth < 0 || linkDepth < 0); depth++) {
+              if (controlDepth < 0 && up.matches(args.control)) controlDepth = depth;
+              if (linkDepth < 0 && up.tagName === "A") linkDepth = depth;
+              up = up.parentElement;
+            }
 
             out.push({
               dataUrl: canvas.toDataURL("image/png"),
@@ -194,7 +203,8 @@ export async function rasteriseSvgImgLogos(page: Page): Promise<InlineLogo[]> {
               renderedWidth: Math.round(rect.width),
               renderedHeight: Math.round(rect.height),
               link: img.closest("a")?.getAttribute("href") ?? null,
-              inControl: !!img.closest(args.control),
+              controlDepth,
+              linkDepth,
               ancestry: trail.join(" < ").toLowerCase().slice(0, 1_000),
               colour: {
                 sampled: targetW * targetH,

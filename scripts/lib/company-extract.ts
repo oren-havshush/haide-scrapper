@@ -50,6 +50,8 @@ export interface HarvestedImage {
   link?: string | null;
   linkIsPage?: boolean;
   inControl?: boolean;
+  controlDepth?: number;
+  linkDepth?: number;
 }
 
 /**
@@ -74,6 +76,21 @@ export interface LogoPlacement {
   linkIsPage?: boolean;
   /** Inside a button, a [role=button|search], a form or an expandable control. */
   inControl?: boolean;
+  /**
+   * (l): how many levels up the nearest control and the nearest <a> are (0 = the
+   * element itself, -1 = none). When recorded, they replace inControl: only a
+   * control NEARER than the enclosing link counts, so a home-linked logo in a
+   * form-wrapped collapsible navbar (abt-industry.co.il) is not refused.
+   */
+  controlDepth?: number;
+  linkDepth?: number;
+}
+
+/** (l): a control counts only when it is nearer than the enclosing link. */
+function insideControl(p: LogoPlacement): boolean {
+  if (p.controlDepth === undefined) return p.inControl === true;
+  if (p.controlDepth < 0) return false;
+  return p.linkDepth === undefined || p.linkDepth < 0 || p.controlDepth < p.linkDepth;
 }
 
 export interface InlineLogo extends LogoPlacement {
@@ -1128,7 +1145,7 @@ function linksHome(p: LogoPlacement, pageUrl: string): boolean {
 }
 
 export function logoPlacementRejection(p: LogoPlacement, pageUrl: string): string | null {
-  if (p.inControl) return "inside a button or control";
+  if (insideControl(p)) return "inside a button or control";
   const homeLinked = linksHome(p, pageUrl);
   const tokens = placementTokens(p.ancestry ?? "");
   if (hasPrefix(tokens, WIDGET_TOKEN_PREFIXES)) return "a widget or social icon";

@@ -543,7 +543,8 @@ async function harvest(page: Page, url: string, patient = false): Promise<PageHa
         context: string;
         ancestry: string;
         link: string | null;
-        inControl: boolean;
+        controlDepth: number;
+        linkDepth: number;
       }[] = [];
       for (const el of Array.from(document.querySelectorAll("img[src]")).slice(0, 200)) {
         const img = el as HTMLImageElement;
@@ -560,6 +561,15 @@ async function harvest(page: Page, url: string, patient = false): Promise<PageHa
           );
           walk = walk.parentElement;
         }
+        // (l): how far up the nearest control and the nearest link are.
+        let controlDepth = -1;
+        let linkDepth = -1;
+        let up: Element | null = img;
+        for (let depth = 0; up && (controlDepth < 0 || linkDepth < 0); depth++) {
+          if (controlDepth < 0 && up.matches(CONTROL_SELECTOR)) controlDepth = depth;
+          if (linkDepth < 0 && up.tagName === "A") linkDepth = depth;
+          up = up.parentElement;
+        }
         images.push({
           src,
           alt: (img.getAttribute("alt") || "").slice(0, 120),
@@ -569,7 +579,8 @@ async function harvest(page: Page, url: string, patient = false): Promise<PageHa
           context: `${parent?.className ?? ""} ${parent?.id ?? ""}`.toLowerCase().slice(0, 200),
           ancestry: trail.join(" < ").toLowerCase().slice(0, 1_000),
           link: img.closest("a")?.getAttribute("href") ?? null,
-          inControl: !!img.closest(CONTROL_SELECTOR),
+          controlDepth,
+          linkDepth,
         });
       }
 
@@ -595,6 +606,15 @@ async function harvest(page: Page, url: string, patient = false): Promise<PageHa
           );
           walk = walk.parentElement;
         }
+        // (l): how far up the nearest control and the nearest link are.
+        let controlDepth = -1;
+        let linkDepth = -1;
+        let up: Element | null = el;
+        for (let depth = 0; up && (controlDepth < 0 || linkDepth < 0); depth++) {
+          if (controlDepth < 0 && up.matches(CONTROL_SELECTOR)) controlDepth = depth;
+          if (linkDepth < 0 && up.tagName === "A") linkDepth = depth;
+          up = up.parentElement;
+        }
         images.push({
           src,
           alt: (el.getAttribute("aria-label") || el.getAttribute("title") || "").slice(0, 120),
@@ -606,7 +626,8 @@ async function harvest(page: Page, url: string, patient = false): Promise<PageHa
           context: `${el.className ?? ""} ${el.id ?? ""} background`.toLowerCase().slice(0, 200),
           ancestry: trail.join(" < ").toLowerCase().slice(0, 1_000),
           link: el.closest("a")?.getAttribute("href") ?? null,
-          inControl: !!el.closest(CONTROL_SELECTOR),
+          controlDepth,
+          linkDepth,
         });
       }
 
@@ -664,7 +685,8 @@ async function harvest(page: Page, url: string, patient = false): Promise<PageHa
         renderedWidth: number;
         renderedHeight: number;
         link: string | null;
-        inControl: boolean;
+        controlDepth: number;
+        linkDepth: number;
         ancestry: string;
         colour: { sampled: number; opaque: number; dominantShare: number; dominant: [number, number, number] };
       }[] = [];
@@ -781,6 +803,15 @@ async function harvest(page: Page, url: string, patient = false): Promise<PageHa
             );
             walk = walk.parentElement;
           }
+          // (l): how far up the nearest control and the nearest link are.
+          let controlDepth = -1;
+          let linkDepth = -1;
+          let up: Element | null = svg;
+          for (let depth = 0; up && (controlDepth < 0 || linkDepth < 0); depth++) {
+            if (controlDepth < 0 && up.matches(CONTROL_SELECTOR)) controlDepth = depth;
+            if (linkDepth < 0 && up.tagName === "A") linkDepth = depth;
+            up = up.parentElement;
+          }
           inlineLogos.push({
             dataUrl: canvas.toDataURL("image/png"),
             // Ordering signals only — see InlineLogo in company-extract.ts.
@@ -792,7 +823,8 @@ async function harvest(page: Page, url: string, patient = false): Promise<PageHa
             renderedWidth: Math.round(rect.width),
             renderedHeight: Math.round(rect.height),
             link: svg.closest("a")?.getAttribute("href") ?? null,
-            inControl: !!svg.closest(CONTROL_SELECTOR),
+            controlDepth,
+            linkDepth,
             ancestry: trail.join(" < ").toLowerCase().slice(0, 1_000),
             colour,
           });
