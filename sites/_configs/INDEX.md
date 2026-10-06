@@ -188,7 +188,7 @@ several listing pages back into one and stops publishing the rest.
 | צרפתי שמעון | ACTIVE | 5 | 3075 | 1 | `s-sarfati--5dr0yc` |
 | קבוצת ברן | ACTIVE | 8 | 7783 | 1 | `barangroup--36lhv6` |
 | קבוצת ויזל - פוקס | ACTIVE | 4 | 2133 | 1 | `dreamjobs--43loqz` |
-| קבוצת ח.י | ACTIVE | 4 | — | 1 | `hye--9i2hm3` |
+| קבוצת ח.י. | ACTIVE | 5 | 4098 | 1 | `hye--27o6of` |
 | קבוצת טובול | ACTIVE | 6 | 1231 | 1 | `tuboul--hvbine` |
 | קבוצת יוניון | ACTIVE | 8 | 5649 | 1 | `unioncareer--mhsr2v` |
 | קבוצת כהנא | ACTIVE | 6 | 2074 | 1 | `kahane--8cvjyo` |

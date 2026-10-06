@@ -4067,6 +4067,19 @@
   sees). Check the classes, not `getComputedStyle`: the latter answers for the worker's viewport only.
 - **Generalizes to:** every Elementor jobs page built from sections rather than a CPT loop.
 
+## LRN-COV-11 — a listed card whose detail page says "המשרה נסגרה" is a closed job
+
+- **Date / site:** 2026-10-06, hye.co.il `/job` (Magento, `cmuwry2cr001t01pkjt27o6of`).
+- **Signal:** 14 cards on the listing; 3 detail pages render the full ad but replace the apply
+  form with `<h2>מצטערים, המשרה נסגרה</h2>`. The listing gives no hint.
+- **Trap:** every gate passes them. They have titles, bodies and ids, and `addsite-qa` reads
+  `formStatus` from a sampled page, so 3 jobs with no apply path ship among 11 that have one.
+- **Fix:** the listing setupScript fetches each detail page and removes the card when the page
+  says closed AND has no apply form; a fetch error keeps the card. Reopened jobs come back on
+  the next scrape. Coverage is reported as 11/14 with the dropped ids in `adminNote`.
+- **Generalizes to:** any board that marks closure on the detail page only. Read every detail
+  page's apply area, not just one.
+
 ## LRN-FORM-11
 - **Date / site:** 2026-09-29, 4chef.co.il `/pages/דרושים-ב-4chef` (Shopify page, 6 jobs in one accordion).
 - **Signal:** the apply popup is a normal Shopify contact form (`form#contact_form`,
