@@ -6,6 +6,7 @@ import {
   useQueryClient,
 } from "@tanstack/react-query";
 import { apiFetch } from "@/lib/fetch";
+import type { CompanyEditPlan } from "@/lib/companyEdit";
 
 interface UseSitesParams {
   page?: number;
@@ -166,6 +167,76 @@ export function useUpdateSiteCompanyHqCity() {
         body: JSON.stringify({ companyHqCity, evidence }),
       }),
     onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["sites"] });
+    },
+  });
+}
+
+/**
+ * The company edit form (o): one save, sent as requests to the existing routes,
+ * in order — homepage, HQ city, profile, logo. Each request is a separate
+ * write, so a failure stops the rest and reports which steps already landed.
+ *
+ * - homepage → PUT /company-homepage (stores the origin);
+ * - city     → PUT /company-hq-city with evidence "operator" (city.csv gate);
+ * - profile  → PUT /company-profile?force=1 with only the changed keys;
+ * - logo     → POST /company-logo, raw bytes, x-logo-provenance: operator
+ *              (32 px floor; magic bytes and the favicon refusal server-side).
+ */
+export function useEditSiteCompany() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({
+      siteId,
+      plan,
+      logo,
+    }: {
+      siteId: string;
+      plan: CompanyEditPlan;
+      logo: File | null;
+    }) => {
+      const done: string[] = [];
+      try {
+        if (plan.homepage !== undefined) {
+          await apiFetch(`/api/sites/${siteId}/company-homepage`, {
+            method: "PUT",
+            body: JSON.stringify({ companyHomepageUrl: plan.homepage }),
+          });
+          done.push("homepage");
+        }
+        if (plan.city !== undefined) {
+          await apiFetch(`/api/sites/${siteId}/company-hq-city`, {
+            method: "PUT",
+            body: JSON.stringify({ companyHqCity: plan.city, evidence: { kind: "operator" } }),
+          });
+          done.push("city");
+        }
+        if (Object.keys(plan.profile).length > 0) {
+          await apiFetch(`/api/sites/${siteId}/company-profile?force=1`, {
+            method: "PUT",
+            body: JSON.stringify(plan.profile),
+          });
+          done.push(Object.keys(plan.profile).map((k) => (k === "companyAbout" ? "about" : "address")).join(" and "));
+        }
+        if (logo) {
+          await apiFetch(`/api/sites/${siteId}/company-logo`, {
+            method: "POST",
+            headers: {
+              "Content-Type": logo.type || "application/octet-stream",
+              "x-logo-provenance": "operator",
+            },
+            body: logo,
+          });
+          done.push("logo");
+        }
+      } catch (err) {
+        const saved = done.length ? ` (already saved: ${done.join(", ")})` : "";
+        throw new Error(`${(err as Error).message}${saved}`);
+      }
+      return done;
+    },
+    onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ["sites"] });
     },
   });

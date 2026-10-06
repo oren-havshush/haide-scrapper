@@ -6,7 +6,7 @@ import {
   NotFoundError,
   ValidationError,
 } from "@/lib/errors";
-import { isCanonicalLocation, isRegionLocation, normalizeLocations } from "@/lib/locations";
+import { resolveHqCity } from "@/lib/locations";
 import { buildScrapeJobRow } from "@/lib/scrapeJobRow";
 import { findListingRunsBySiteIds } from "@/lib/listingRun";
 import { markFirstActive } from "@/lib/firstDates";
@@ -856,35 +856,9 @@ export async function saveCompanyHqCity(
     throw new NotFoundError("Site", siteId);
   }
 
-  const raw = city?.trim() || null;
-  let stored: string | null = null;
-
-  if (raw !== null) {
-    // Canonicalise BEFORE gating. A bare membership test would reject the
-    // spellings an operator actually types — ת"א, תל אביב — and would also
-    // reject ביל״ו typed with a real gershayim (U+05F4) even though ביל"ו is a
-    // legal entry, because only squash() unifies those characters.
-    const resolved = normalizeLocations(raw);
-
-    // An HQ is one place. normalizeLocations returns several for a comma list
-    // and passes an unresolved string through verbatim, so the result is
-    // re-checked rather than trusted.
-    if (resolved.length !== 1 || !isCanonicalLocation(resolved[0])) {
-      throw new ValidationError(
-        `Not a known city: "${raw}". A company HQ city must be a single entry ` +
-          `in "CSV files/city.csv" — check the spelling.`,
-      );
-    }
-    if (isRegionLocation(resolved[0])) {
-      throw new ValidationError(
-        `"${resolved[0]}" is a region, not a place. A job may be in a region; a ` +
-          `company headquarters is at an address.`,
-      );
-    }
-    // Store the canonical spelling, so a hand-typed "תל אביב" groups with every
-    // scraped "תל אביב-יפו" instead of splitting the dashboard's city filter.
-    stored = resolved[0];
-  }
+  // The city.csv gate: canonical spelling, or a ValidationError naming the
+  // value. See resolveHqCity() in src/lib/locations.ts.
+  const stored = resolveHqCity(city);
 
   // Composed here, never taken from the client, so no caller can claim a
   // provenance it does not have.

@@ -13,16 +13,17 @@ import { CompanyLogo } from "@/components/shared/CompanyLogo";
 import { CompanyProfileBadge } from "@/components/shared/CompanyProfileBadge";
 
 /**
- * Read-only view of everything scripts/company-profile.ts captured for a site.
- *
- * READ-ONLY on purpose. The capture is write-once (companyProfileAt gates it,
- * 409 without ?force=1), and the PUT endpoint deliberately refuses
- * companyLogoPath so no client can point the public site at an arbitrary path.
- * An edit form here would have to work around both, so correcting a value stays
- * a re-capture with --force rather than a dashboard field.
+ * View of everything scripts/company-profile.ts captured for a site.
  *
  * The point of this panel is REVIEW: 187 sites are captured once and never
  * refreshed, so a wrong value is permanent unless someone spots it.
+ *
+ * Correcting a value is the Edit button (o), owner 2026-10-06, which opens
+ * SiteCompanyEditDialog: a form over the existing routes, not a new write
+ * path. About and address go through PUT /company-profile?force=1 with only the
+ * changed keys; the homepage and HQ city through their operator routes; the
+ * logo as an operator upload, so the PUT still never takes a companyLogoPath.
+ * Every such write on an ACTIVE site opens its COMPANY fix item as before.
  */
 
 export interface CompanyProfileFields {
@@ -59,10 +60,12 @@ export function SiteCompanyProfileDialog({
   open,
   onOpenChange,
   site,
+  onEdit,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   site: CompanyProfileFields | null;
+  onEdit?: () => void;
 }) {
   if (!site) return null;
 
@@ -158,6 +161,7 @@ export function SiteCompanyProfileDialog({
         )}
 
         <DialogFooter>
+          {onEdit ? <Button onClick={onEdit}>Edit</Button> : null}
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             Close
           </Button>

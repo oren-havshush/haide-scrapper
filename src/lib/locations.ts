@@ -81,3 +81,39 @@ export function resolveLocationInput(raw: string): ResolvedLocation {
 
   return { primary: list[0], list };
 }
+
+/**
+ * The company HQ-city gate: a value a human typed becomes the canonical
+ * city.csv entry, or is refused. null (or blank) clears. Used by
+ * saveCompanyHqCity(), the one write path where a person types a city; lifted
+ * here (o) so its refusals can be tested without a database.
+ */
+export function resolveHqCity(city: string | null): string | null {
+  const raw = city?.trim() || null;
+  if (raw === null) return null;
+
+  // Canonicalise BEFORE gating. A bare membership test would reject the
+  // spellings an operator actually types — ת"א, תל אביב — and would also
+  // reject ביל״ו typed with a real gershayim (U+05F4) even though ביל"ו is a
+  // legal entry, because only squash() unifies those characters.
+  const resolved = normalizeLocations(raw);
+
+  // An HQ is one place. normalizeLocations returns several for a comma list
+  // and passes an unresolved string through verbatim, so the result is
+  // re-checked rather than trusted.
+  if (resolved.length !== 1 || !isCanonicalLocation(resolved[0])) {
+    throw new ValidationError(
+      `Not a known city: "${raw}". A company HQ city must be a single entry ` +
+        `in "CSV files/city.csv" — check the spelling.`,
+    );
+  }
+  if (isRegionLocation(resolved[0])) {
+    throw new ValidationError(
+      `"${resolved[0]}" is a region, not a place. A job may be in a region; a ` +
+        `company headquarters is at an address.`,
+    );
+  }
+  // The canonical spelling, so a hand-typed "תל אביב" groups with every
+  // scraped "תל אביב-יפו" instead of splitting the dashboard's city filter.
+  return resolved[0];
+}

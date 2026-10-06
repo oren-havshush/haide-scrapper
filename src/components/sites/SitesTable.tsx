@@ -20,6 +20,7 @@ import { SiteLocationOverridesDialog } from "@/components/sites/SiteLocationOver
 import { SiteNoteDialog } from "@/components/sites/SiteNoteDialog";
 import { SiteCompanyDialog } from "@/components/sites/SiteCompanyDialog";
 import { SiteCompanyProfileDialog } from "@/components/sites/SiteCompanyProfileDialog";
+import { SiteCompanyEditDialog } from "@/components/sites/SiteCompanyEditDialog";
 import { SiteHomepageDialog } from "@/components/sites/SiteHomepageDialog";
 import { SiteHqCityDialog } from "@/components/sites/SiteHqCityDialog";
 import { needsManualHomepage } from "@/lib/ats-hosts";
@@ -32,6 +33,7 @@ import {
   useUpdateSiteCompanyName,
   useUpdateSiteCompanyHomepage,
   useUpdateSiteCompanyHqCity,
+  useEditSiteCompany,
   useTriggerPolicyReview,
 } from "@/hooks/useSites";
 import { useTriggerScrape, useClearJobs } from "@/hooks/useScrapeRuns";
@@ -264,6 +266,7 @@ export function SitesTable({
   const [noteTargetId, setNoteTargetId] = useState<string | null>(null);
   const [companyTargetId, setCompanyTargetId] = useState<string | null>(null);
   const [profileTargetId, setProfileTargetId] = useState<string | null>(null);
+  const [editTargetId, setEditTargetId] = useState<string | null>(null);
   const [homepageTargetId, setHomepageTargetId] = useState<string | null>(null);
   const [hqCityTargetId, setHqCityTargetId] = useState<string | null>(null);
   const [scrapingSiteId, setScrapingSiteId] = useState<string | null>(null);
@@ -272,6 +275,7 @@ export function SitesTable({
   const updateCompany = useUpdateSiteCompanyName();
   const updateHomepage = useUpdateSiteCompanyHomepage();
   const updateHqCity = useUpdateSiteCompanyHqCity();
+  const editCompany = useEditSiteCompany();
   const deleteSiteMutation = useDeleteSite();
   const triggerScrape = useTriggerScrape();
   const clearJobs = useClearJobs();
@@ -810,6 +814,34 @@ export function SitesTable({
           if (!open) setProfileTargetId(null);
         }}
         site={sites.find((s) => s.id === profileTargetId) ?? null}
+        onEdit={() => {
+          setEditTargetId(profileTargetId);
+          setProfileTargetId(null);
+        }}
+      />
+
+      <SiteCompanyEditDialog
+        open={editTargetId !== null}
+        onOpenChange={(open) => {
+          if (!open) setEditTargetId(null);
+        }}
+        site={sites.find((s) => s.id === editTargetId) ?? null}
+        isSaving={editCompany.isPending}
+        onSave={(plan, logo) => {
+          const siteId = editTargetId;
+          if (!siteId) return;
+          editCompany.mutate(
+            { siteId, plan, logo },
+            {
+              onSuccess: (done) => {
+                toast.success(`Saved: ${done.join(", ")}`);
+                setEditTargetId(null);
+              },
+              // The route's own text: an off-list city, a refused logo, and so on.
+              onError: (err: Error) => toast.error(err.message),
+            },
+          );
+        }}
       />
 
       <SiteCompanyDialog
