@@ -54,7 +54,7 @@ several listing pages back into one and stops publishing the rest.
 | Personetics | ACTIVE | 5 | 1426 | 1 | `personetics--ovj4kr` |
 | Pharma Job | ACTIVE | 8 | 7523 | 1 | `pharma-job--z4r8el` |
 | PwC Israel | ACTIVE | 8 | 5141 | 1 | `pwc-careersite-hunterhrms--zpei34` |
-| RISCO Group | ACTIVE | 6 | — | 1 | `riscogroup--y39afy` |
+| RISCO | ACTIVE | 7 | 5806 | 2 | `riscogroup--7fzhg0` |
 | Rad | ACTIVE | 5 | 878 | 1 | `rad--ncqy5u` |
 | Rapyd | ACTIVE | 9 | — | 1 | `rapyd--udr6ty` |
 | TADIRAN GROUP | ACTIVE | 7 | 2620 | 1 | `topmatch--1z5jpw` |
