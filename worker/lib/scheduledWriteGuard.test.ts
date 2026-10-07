@@ -254,6 +254,13 @@ assert(
   assert(branch.includes("failScrapeRun("), "through failScrapeRun, which keeps a scheduled run's listings");
   assert(/warnings:\s*\[/.test(branch), "with a warning carrying both fills, for the report");
   assert(GATED.failScrapeRun.includes("warnings"), "and failScrapeRun writes that warning to the run");
+  // 8. The per-job verdict (owner, 2026-10-07): the scheduled branch reads the
+  // stored rows' ids and descriptions, passes describedJobsLost(...) in the same
+  // call, and the refusal's warning names the lost ids.
+  assert(/lost:\s*describedJobsLost\(/.test(callText), "8. the per-job loss is passed to planScheduledPersist in the same call");
+  const read = src.lastIndexOf("prisma.job.findMany", call);
+  assert(read >= 0 && /select:\s*\{\s*externalJobId:\s*true,\s*description:\s*true\s*\}/.test(src.slice(read, call)), "8. read from the stored rows before the plan");
+  assert(/lost ids/.test(branch), "8. the field_fill_drop warning names the lost ids");
   assert(
     /description:\s*FIELD_FILL_THRESHOLD/.test(src),
     "the activation gate and the fill guard share one 60%, so they cannot drift apart",

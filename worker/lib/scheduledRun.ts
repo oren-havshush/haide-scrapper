@@ -130,6 +130,44 @@ export function isFieldFillDrop(
   return previous.filled / previous.total >= threshold && next.filled / next.total < threshold;
 }
 
+/** One row's identity and description, stored or about to be written. */
+export type DescribedRow = { externalJobId: string | null; description: string | null };
+
+/** Stored jobs that had a description and would be written without one. */
+export type DescribedLoss = { lost: string[]; storedDescribed: number };
+
+/** Refused when at least this share of the stored described jobs is lost. */
+export const DESCRIBED_LOSS_RATIO = 0.2;
+
+const described = (d: string | null | undefined) => typeof d === "string" && d.trim().length > 0;
+
+/**
+ * The per-job side of the fill guard (owner, 2026-10-07). isFieldFillDrop
+ * judges totals and only across 60%, so a site already below it (allegronet
+ * 3/6 -> 0/6), a fall that stays above it, or a loss offset by new described
+ * jobs all committed. Matched by externalJobId: a stored job with a description
+ * whose new row has none is lost. A stored job no longer listed is not counted
+ * — the count guards judge that — and a row without an id cannot be matched.
+ */
+export function describedJobsLost(stored: DescribedRow[], next: DescribedRow[]): DescribedLoss {
+  const nextById = new Map<string, DescribedRow>();
+  for (const r of next) if (r.externalJobId && !nextById.has(r.externalJobId)) nextById.set(r.externalJobId, r);
+  const lost: string[] = [];
+  let storedDescribed = 0;
+  for (const r of stored) {
+    if (!r.externalJobId || !described(r.description)) continue;
+    storedDescribed++;
+    const n = nextById.get(r.externalJobId);
+    if (n && !described(n.description)) lost.push(r.externalJobId);
+  }
+  return { lost, storedDescribed };
+}
+
+/** At least one described job lost, and at least DESCRIBED_LOSS_RATIO of them. */
+export function isDescribedJobsLoss(loss: DescribedLoss): boolean {
+  return loss.lost.length >= 1 && loss.lost.length / loss.storedDescribed >= DESCRIBED_LOSS_RATIO;
+}
+
 export type PersistPlan =
   /** Nothing to write. Reported as `empty_results`; listings are left alone. */
   | { mode: "empty" }
@@ -161,6 +199,8 @@ export type PersistPlan =
       next: FillCount;
       rowCount: number;
       previousCount: number;
+      /** Stored described jobs that would be written bare (describedJobsLost). */
+      lost?: string[];
     }
   /** Delete + insert in one transaction, in this many `createMany` batches. */
   | { mode: "commit"; rowCount: number; batches: number };
@@ -181,7 +221,7 @@ export function planScheduledPersist(
   previousCount: number,
   thresholds: DropThresholds = DEFAULT_DROP_THRESHOLDS,
   walk: { paginationTruncated: boolean } = { paginationTruncated: false },
-  fill?: { description: { previous: FillCount; next: FillCount } },
+  fill?: { description: { previous: FillCount; next: FillCount; lost?: DescribedLoss } },
 ): PersistPlan {
   if (rowCount <= 0) return { mode: "empty" };
   if (rowCount > MAX_ROWS) return { mode: "oversize", rowCount, limit: MAX_ROWS };
@@ -191,17 +231,22 @@ export function planScheduledPersist(
   if (isSuspiciousDrop(previousCount, rowCount, thresholds)) {
     return { mode: "suspicious_drop", reason: "ratio", rowCount, previousCount, thresholds };
   }
-  if (fill && isFieldFillDrop(fill.description.previous, fill.description.next)) {
-    const { previous, next } = fill.description;
+  if (
+    fill &&
+    (isFieldFillDrop(fill.description.previous, fill.description.next) ||
+      (fill.description.lost !== undefined && isDescribedJobsLoss(fill.description.lost)))
+  ) {
+    const { previous, next, lost } = fill.description;
     return {
       mode: "field_fill_drop",
       field: "description",
-      previousFill: previous.filled / previous.total,
-      newFill: next.filled / next.total,
+      previousFill: previous.total > 0 ? previous.filled / previous.total : 0,
+      newFill: next.total > 0 ? next.filled / next.total : 0,
       previous,
       next,
       rowCount,
       previousCount,
+      ...(lost && lost.lost.length > 0 ? { lost: lost.lost } : {}),
     };
   }
   return { mode: "commit", rowCount, batches: Math.ceil(rowCount / INSERT_BATCH) };

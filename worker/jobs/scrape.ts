@@ -61,6 +61,7 @@ import {
   TX_MAX_WAIT_MS,
   TX_TIMEOUT_MS,
   chunkRows,
+  describedJobsLost,
   mayOverwriteAdminNote,
   planActivationGate,
   planApplyLoginSkip,
@@ -4342,6 +4343,12 @@ async function executeScrape(
       where: { siteId: site.id, description: { not: null }, NOT: { description: "" } },
     });
     const newDescribed = rows.filter((r) => typeof r.description === "string" && r.description.trim().length > 0).length;
+    // Per job (describedJobsLost, owner 2026-10-07): which stored described
+    // jobs, matched by externalJobId, this run would write without one.
+    const storedDescriptions = await prisma.job.findMany({
+      where: { siteId: site.id },
+      select: { externalJobId: true, description: true },
+    });
     const plan = planScheduledPersist(rows.length, previousCount, {
       minPrevious: sweepConfig.dropMinPrevious,
       keepRatio: sweepConfig.dropKeepRatio,
@@ -4351,6 +4358,10 @@ async function executeScrape(
       description: {
         previous: { filled: previousDescribed, total: previousCount },
         next: { filled: newDescribed, total: rows.length },
+        lost: describedJobsLost(
+          storedDescriptions,
+          rows.map((r) => ({ externalJobId: r.externalJobId ?? null, description: r.description ?? null })),
+        ),
       },
     });
 
@@ -4404,9 +4415,17 @@ async function executeScrape(
       // an HTTP/2 error. Refuse, keep the described rows, and put both fills on
       // the run's warnings so the report can name them.
       const pct = (f: number) => `${Math.round(f * 100)}%`;
+      // Per job (describedJobsLost): the stored described jobs this run would
+      // write bare, by externalJobId, so the report names them.
+      const lost = plan.lost ?? [];
       const fills =
-        `${plan.field} fill fell ${pct(plan.previousFill)} -> ${pct(plan.newFill)} ` +
-        `(${plan.next.filled} of ${plan.next.total} scraped, ${plan.previous.filled} of ${plan.previous.total} stored)`;
+        `${plan.field} fill ${plan.newFill < plan.previousFill ? "fell" : "went"} ` +
+        `${pct(plan.previousFill)} -> ${pct(plan.newFill)} ` +
+        `(${plan.next.filled} of ${plan.next.total} scraped, ${plan.previous.filled} of ${plan.previous.total} stored)` +
+        (lost.length > 0
+          ? `; ${lost.length} stored job(s) would lose it (lost ids: ` +
+            `${lost.slice(0, 10).join(", ")}${lost.length > 10 ? ", ..." : ""})`
+          : "");
       const message = `Refusing to replace ${plan.previousCount} listings: ${fills}, previous listings left untouched`;
       console.error(`[scrape] ${message}`);
       return await failScrapeRun(scrapeRunId, site.id, {

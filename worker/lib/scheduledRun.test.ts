@@ -17,6 +17,7 @@ import {
   INSERT_BATCH,
   MAX_ROWS,
   chunkRows,
+  describedJobsLost,
   isFieldFillDrop,
   isSuspiciousDrop,
   mayOverwriteAdminNote,
@@ -413,6 +414,86 @@ check("field_fill_drop", () => {
   assert(isFieldFillDrop({ filled: 12, total: 12 }, { filled: 0, total: 12 }), "isFieldFillDrop: the personetics shape");
   assert(!isFieldFillDrop({ filled: 0, total: 0 }, { filled: 0, total: 12 }), "isFieldFillDrop: nothing stored");
   assert(!isFieldFillDrop({ filled: 12, total: 12 }, { filled: 0, total: 0 }), "isFieldFillDrop: nothing new");
+});
+
+// ---------------------------------------------------------------------------
+// field_fill_drop, per job — a described job written bare (owner, 2026-10-07)
+// ---------------------------------------------------------------------------
+//
+// The threshold rule above cannot see a site that was already below 60%
+// (allegronet 3/6 -> 0/6 commits), a fall that stays above it, or a loss offset
+// by new described jobs. Matched by externalJobId: a stored job with a
+// description that would be written without one is lost. Refused when at least
+// one is lost and the lost are at least 20% of the stored described jobs.
+
+check("field_fill_drop per job", () => {
+  const row = (id: string | null, description: string | null) => ({ externalJobId: id, description });
+  const plan = (stored: ReturnType<typeof row>[], next: ReturnType<typeof row>[]) => {
+    const filled = (rows: ReturnType<typeof row>[]) => rows.filter((r) => (r.description ?? "").trim().length > 0).length;
+    return planScheduledPersist(next.length, stored.length, DEFAULT_DROP_THRESHOLDS, { paginationTruncated: false }, {
+      description: {
+        previous: { filled: filled(stored), total: stored.length },
+        next: { filled: filled(next), total: next.length },
+        lost: describedJobsLost(stored, next),
+      },
+    });
+  };
+
+  // 1. allegronet, already below 60%: 3/6 -> 0/6 with the same ids.
+  const allegroStored = [
+    row("allegronet-JB-4", "תיאור"), row("allegronet-JB-5", null), row("allegronet-JB-6", null),
+    row("allegronet-JB-7", "תיאור"), row("allegronet-JB-8", null), row("allegronet-JB-9", "תיאור"),
+  ];
+  const allegroNext = allegroStored.map((r) => row(r.externalJobId, null));
+  const a = plan(allegroStored, allegroNext);
+  assert(a.mode === "field_fill_drop", `1. allegronet 3/6 -> 0/6 is refused (got ${a.mode})`);
+  if (a.mode === "field_fill_drop") {
+    assert(JSON.stringify(a.lost) === JSON.stringify(["allegronet-JB-4", "allegronet-JB-7", "allegronet-JB-9"]), `naming the lost ids (got ${JSON.stringify(a.lost)})`);
+  }
+
+  // 2. mor: 4/7 -> 3/7, mor-1385 loses its description: 1 of 4 = 25%.
+  const morStored = [
+    row("mor-1101", null), row("mor-1232", "x"), row("mor-1326", "x"), row("mor-1338-a1x2lg", null),
+    row("mor-1338-q2ofyj", null), row("mor-1353", "x"), row("mor-1385", "x"),
+  ];
+  const morNext = morStored.map((r) => (r.externalJobId === "mor-1385" ? row("mor-1385", "  ") : r));
+  const m = plan(morStored, morNext);
+  assert(m.mode === "field_fill_drop", `2. mor 4/7 -> 3/7, one of four lost (25%), is refused (got ${m.mode})`);
+  if (m.mode === "field_fill_drop") assert(JSON.stringify(m.lost) === JSON.stringify(["mor-1385"]), "naming mor-1385");
+
+  // 3. ten described, one loses it: 10% < 20%, an employer edit, commits.
+  const ten = Array.from({ length: 10 }, (_, i) => row(`j${i}`, "x"));
+  const tenNext = ten.map((r) => (r.externalJobId === "j3" ? row("j3", "") : r));
+  assert(plan(ten, tenNext).mode === "commit", "3. one of ten described jobs losing it (10%) commits");
+
+  // 4. never described, still empty: not a loss.
+  const four = [row("a", null), row("b", "x"), row("c", "x"), row("d", "x"), row("e", "x")];
+  assert(plan(four, four.map((r) => r)).mode === "commit", "4. a job that was never described is not a loss");
+  assert(describedJobsLost(four, four).lost.length === 0, "4. describedJobsLost finds nothing");
+
+  // 5. a stored described job that is no longer listed is the count guards' business.
+  const five = [row("a", "x"), row("b", "x"), row("c", "x"), row("d", "x"), row("e", "x")];
+  const fiveNext = [row("b", "x"), row("c", "x"), row("d", "x"), row("e", "x")];
+  assert(describedJobsLost(five, fiveNext).lost.length === 0, "5. a job no longer listed is not a loss");
+  assert(plan(five, fiveNext).mode === "commit", "5. and commits (4 of 5 clears the count guard)");
+
+  // 6. offsetting: two lose their description while two new described jobs arrive.
+  const six = [row("a", "x"), row("b", "x"), row("c", "x"), row("d", "x")];
+  const sixNext = [row("a", ""), row("b", null), row("c", "x"), row("d", "x"), row("e", "x"), row("f", "x")];
+  const o = plan(six, sixNext);
+  assert(o.mode === "field_fill_drop", `6. two lost, offset by two new described jobs (fill 100% -> 67%), is refused (got ${o.mode})`);
+  if (o.mode === "field_fill_drop") assert(JSON.stringify(o.lost) === JSON.stringify(["a", "b"]), "naming a and b");
+
+  // 7. personetics 12/12 -> 0/12 is still refused, now by both rules.
+  const twelve = Array.from({ length: 12 }, (_, i) => row(`p${i}`, "x"));
+  const p = plan(twelve, twelve.map((r) => row(r.externalJobId, null)));
+  assert(p.mode === "field_fill_drop", `7. personetics 12/12 -> 0/12 is still refused (got ${p.mode})`);
+  if (p.mode === "field_fill_drop") assert((p.lost ?? []).length === 12, "and names all twelve");
+  const pl = describedJobsLost(twelve, twelve.map((r) => row(r.externalJobId, null)));
+  assert(pl.lost.length === 12 && pl.storedDescribed === 12, "7. describedJobsLost: 12 of 12");
+
+  // Rows without an id cannot be matched and are not counted either way.
+  assert(describedJobsLost([row(null, "x")], [row(null, "")]).lost.length === 0, "an unmatched row without an id is not a loss");
 });
 
 if (failures > 0) {
