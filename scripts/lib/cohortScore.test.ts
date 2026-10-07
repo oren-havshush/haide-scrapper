@@ -124,7 +124,7 @@ const NOW = new Date("2026-10-05T12:00:00.000Z");
 // ---- switchAt: the one recorded in checkLearnings.mjs SWITCH_AT -----------
 {
   const before = buildCohortReport({ sites: SITES, items: ITEMS, now: NOW });
-  eq(before.switchAt, null, "SWITCH_AT is null until the switch: no switchAt");
+  eq(before.switchAt?.toISOString() ?? null, "2026-10-07T09:31:51.000Z", "with no switchAt given, the recorded SWITCH_AT (2026-10-07T09:31:51Z) is used");
   const late = site("late", "2026-10-21T10:00:00.000Z", { createdAt: "2026-10-21T08:00:00.000Z" });
   const r = buildCohortReport({ sites: [...SITES, late], items: ITEMS, now: NOW, switchAt: "2026-10-18T10:00:00.000Z" });
   eq(r.switchAt?.toISOString(), "2026-10-18T10:00:00.000Z", "a given switchAt is used");

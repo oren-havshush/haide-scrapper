@@ -125,7 +125,13 @@ assert(run().length === 0, `a clean set has no problems (${JSON.stringify(run())
   assert(severity(run({ tsv, switchAt, now: new Date("2026-12-01T00:00:00Z") }), "no-status") === "error", "after it: an error");
   assert(severity(run({ learnings: LEARNINGS + "### LRN-A-2 — again\n" }), "duplicate") === "error", "a duplicate is an error either side");
   assert(severity(run({ cited: [{ file: "addsite3.md", text: "LRN-Q-1" }] }), "cited-missing") === "error", "so is a cited-but-missing id");
-  assert(SWITCH_AT === null, "SWITCH_AT stays null until step 7 records the switch");
+  // Step 7 recorded the switch on 2026-10-07 (owner: today, not at ten windows).
+  assert(SWITCH_AT === "2026-10-07T09:31:51.000Z", "SWITCH_AT records the switch, 2026-10-07T09:31:51Z");
+  assert(
+    SWITCH_AT !== null &&
+      severity(run({ tsv, switchAt: new Date(SWITCH_AT as unknown as string), now: new Date() }), "no-status") === "error",
+    "so from now on a learning with no status row is an error",
+  );
 }
 
 // --- aliases: the old id of a renumbered learning ------------------------------------

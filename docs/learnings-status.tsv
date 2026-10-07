@@ -172,3 +172,5 @@ LRN-SETUP-2	RECIPE	addsite3.md:704		backfilled 2026-10-05: the learning was born
 LRN-SETUP-3	RECIPE	addsite3-recipes/setupscript-patterns.md:477		backfilled 2026-10-05: the learning was born as this recipe citation
 LRN-SETUP-4	RECIPE	addsite3-recipes/setupscript-patterns.md:509		backfilled 2026-10-05: the learning was born as this recipe citation
 LRN-FORM-8	CODE	worker/lib/formFields.test.ts		radio groups as one field with options: normalizeFormFields (worker/lib/formFields.ts), pinned since step 2a
+LRN-COV-11	RECIPE	addsite3.md:1123		carried 2026-10-07 at the switch: section 16 signal row; the learning (hye.co.il, 2026-10-06) had no row
+LRN-WRK-23	RECIPE	addsite3.md:438		carried 2026-10-07 at the switch: itemSelector rules bullet; the learning (aig.co.il, 2026-10-07) had no row

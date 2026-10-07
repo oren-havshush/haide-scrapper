@@ -254,11 +254,13 @@ export function scoreCohorts(
 }
 
 /**
- * When operators switched to addsite3 (step 7); null until then. The switch
- * commit sets this and SWITCH_AT in scripts/lib/checkLearnings.mjs to the same
- * value (src/lib/fixScore.test.ts pins them equal).
+ * When operators switched to addsite3 (step 7): 2026-10-07T09:31:51Z, recorded
+ * by the switch commit together with SWITCH_AT in scripts/lib/checkLearnings.mjs
+ * (src/lib/fixScore.test.ts pins them equal). Owner, 2026-10-07: switch today
+ * rather than at ten completed control windows; the windows keep running, and
+ * the deletion decision still waits for ten addsite3 sites with completed ones.
  */
-export const ADDSITE3_SWITCH_AT: string | null = null;
+export const ADDSITE3_SWITCH_AT: string | null = "2026-10-07T09:31:51.000Z";
 
 /**
  * The cohort window for a query: freezeAt defaults to ADDSITE2_FREEZE_AT and

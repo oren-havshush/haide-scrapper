@@ -48,6 +48,10 @@ const SKILLS = [
       // since then with this unchanged skill are the control cohort
       // (src/lib/fixScore.ts ADDSITE2_FREEZE_AT carries the same value).
       freezeAt: '2026-09-30T21:00:00.000Z',
+      // Operators switched to addsite3 here (step 7, owner 2026-10-07). Control is
+      // untagged sites created in [freezeAt, switchAt); src/lib/fixScore.ts
+      // ADDSITE3_SWITCH_AT carries the same value.
+      switchAt: '2026-10-07T09:31:51.000Z',
       rule: 'delete 4 weeks after switch if addsite3 is no worse than control; see addsite2-phase2.md',
       sha256: {
         'addsite2.md': 'a8726e2d29756364882a49f13ab90e39605efe933fde8e165c8b4864a4e5bc48',

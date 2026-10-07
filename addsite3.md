@@ -435,6 +435,7 @@ curl -s -A "$REAL_UA" "$URL" -o listing.html
 **itemSelector rules:**
 - Must select every job row as consistent siblings — typically many, but as few as 2 on a genuinely small site (don't force ≥3; the volume bar is `< 2` → SKIP, see §7).
 - Each item must contain all mapped fields independently (no cross-item contamination).
+- Write item fields **relative to the item**, never starting with the item selector: the worker reads them with `itemHandle.$(selector)`, which cannot use the item itself as an ancestor, so `[class*="x"] > span` under item `[class*="x"]` matches nothing and every row drops with no warning. Use `span`, `:scope > span` or a class inside the item, and test with `elementHandle.$` from the item, not `document.querySelector` (`LRN-WRK-23`).
 - Prefer a dedicated job-card class over generic `<li>` or `<div>`.
 - Verify with the dry-run tool, not by eye.
 
@@ -1119,6 +1120,7 @@ Pre-reading all recipes buries the one that applies; load each when its signal f
 | `formStatus: NEEDS_MANUAL` or apply form capture needed; **Wix apply button opens a lightbox** (`aria-haspopup="dialog"` + `data-popupid`, no href); **TopMatch/RedMatch apply page** (`careers.topmatch.co.il/<tenant>/redmatch-apply/redmatch.apply.html`, no `<form>` element) | `addsite3-recipes/form-capture.md` (§8 Wix lightbox `LRN-APPLY-8`; §9 TopMatch/RedMatch `LRN-APPLY-9`) |
 | **Wix repeater** jobs board (`comp-*__item-<suffix>` rows), or a **Niloos/Hunter minisite** (`minisite.niloos.ai`, reCAPTCHA SPA) | `addsite3-recipes/spa-frameworks.md` (#wix / #niloos) |
 | Job prints an **apply deadline**; need to drop past-deadline jobs | `addsite3-recipes/setupscript-patterns.md` (§12, `LRN-WRK-10`) |
+| A listed card's **detail page says the job is closed** (e.g. `מצטערים, המשרה נסגרה` in place of the apply form) though the listing gives no hint | The listing setupScript fetches each detail page and removes the card when the page says closed AND has no apply form; a fetch error keeps the card. Read every detail page's apply area, not one sample; report coverage as kept/listed with the dropped ids in `adminNote` (`LRN-COV-11`). |
 | `extracted < total` (coverage gap), lazy loading, or "load more" detected | `addsite3-recipes/pagination-and-loading.md` |
 | A careers **hub** linking several listing pages of one employer (jobs split by department) | §2.3 — one site with `listingUrls`, never one site per link (`LRN-CO-2`). Not pagination. |
 

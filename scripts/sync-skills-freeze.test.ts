@@ -16,7 +16,7 @@ import { spawnSync } from "node:child_process";
 import { cpSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, writeFileSync, existsSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
-import { ADDSITE2_FREEZE_AT } from "../src/lib/fixScore";
+import { ADDSITE2_FREEZE_AT, ADDSITE3_SWITCH_AT } from "../src/lib/fixScore";
 
 let failures = 0;
 function assert(cond: boolean, msg: string) {
@@ -125,6 +125,11 @@ function oneByte(path: string): void {
   const script = readFileSync(join(ROOT, "scripts", "sync-addsite2.mjs"), "utf8");
   assert(script.includes(`freezeAt: '${ADDSITE2_FREEZE_AT}'`), `the SKILLS freeze note records freezeAt ${ADDSITE2_FREEZE_AT}`);
   assert(ADDSITE2_FREEZE_AT === "2026-09-30T21:00:00.000Z", "which is 2026-10-01 00:00 Asia/Jerusalem, later than the last addsite2 commit (a1c5672, 2026-09-30 10:05 +03:00)");
+  // Step 7: the freeze note records the switch, the same instant as ADDSITE3_SWITCH_AT.
+  assert(
+    ADDSITE3_SWITCH_AT !== null && script.includes(`switchAt: '${ADDSITE3_SWITCH_AT}'`),
+    `the SKILLS freeze note records switchAt ${ADDSITE3_SWITCH_AT}`,
+  );
 }
 
 // --- CI runs it under its new name ----------------------------------------------------------

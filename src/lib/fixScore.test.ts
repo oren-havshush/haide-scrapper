@@ -285,7 +285,7 @@ eq(FIX_WINDOW_DAYS, 14, "the window is fourteen days");
 {
   eq(ADDSITE2_FREEZE_AT, "2026-09-30T21:00:00.000Z", "freezeAt is 2026-10-01 00:00 Asia/Jerusalem");
   const def = cohortBoundsFrom({});
-  eq([def.freezeAt?.toISOString() ?? null, def.switchAt], [ADDSITE2_FREEZE_AT, null], "no query: freezeAt defaults to the freeze, no switch yet");
+  eq([def.freezeAt?.toISOString() ?? null, def.switchAt?.toISOString() ?? null], [ADDSITE2_FREEZE_AT, "2026-10-07T09:31:51.000Z"], "no query: freezeAt defaults to the freeze, switchAt to the recorded switch");
   eq(cohortBoundsFrom({ freezeAt: "2026-10-05T00:00:00Z" }).freezeAt?.toISOString(), "2026-10-05T00:00:00.000Z", "a freezeAt in the query still overrides");
   eq(cohortBoundsFrom({ switchAt: "2026-11-01T00:00:00Z" }).switchAt?.toISOString(), "2026-11-01T00:00:00.000Z", "and switchAt is read when given");
   eq(cohortOf(site({ createdAt: D("2026-10-01T06:00:00Z") }), def), "control", "a site onboarded with addsite2 on 2026-10-01 is control by default");
@@ -299,7 +299,11 @@ eq(FIX_WINDOW_DAYS, 14, "the window is fourteen days");
 // scripts/lib/checkLearnings.mjs; this pins the two together.
 {
   eq(ADDSITE3_SWITCH_AT, SWITCH_AT, "ADDSITE3_SWITCH_AT equals SWITCH_AT in checkLearnings.mjs");
-  eq(ADDSITE3_SWITCH_AT, null, "no switch recorded yet");
+  eq(ADDSITE3_SWITCH_AT, "2026-10-07T09:31:51.000Z", "the switch is recorded: 2026-10-07T09:31:51Z (owner: today, not at ten windows)");
+  const now = cohortBoundsFrom({});
+  eq(cohortOf(site({ createdAt: D("2026-10-07T09:31:50Z") }), now), "control", "an untagged site created a second before the switch is control");
+  eq(cohortOf(site({ createdAt: D("2026-10-07T09:31:51Z") }), now), "addsite2_after_switch", "one created at the switch is not");
+  eq(cohortOf(site({ createdAt: D("2026-10-07T09:31:51Z"), onboardingSkill: "addsite3" }), now), "test", "an addsite3-tagged site is test");
   const sw = cohortBoundsFrom({}, { switchAt: "2026-10-18T10:00:00.000Z" });
   eq(sw.switchAt?.toISOString(), "2026-10-18T10:00:00.000Z", "a recorded switch is the default switchAt");
   eq(sw.freezeAt?.toISOString(), ADDSITE2_FREEZE_AT, "freezeAt keeps its default beside it");

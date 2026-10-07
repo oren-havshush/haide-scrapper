@@ -18,7 +18,9 @@
  * with ADDSITE3_SWITCH_AT in src/lib/fixScore.ts (src/lib/fixScore.test.ts pins
  * the two equal); the fix-queue GET and scripts/cohort-score.ts read that one.
  */
-export const SWITCH_AT = null;
+// Recorded 2026-10-07 (owner: switch today; the control cohort is large enough
+// and its 14-day windows keep running on their own).
+export const SWITCH_AT = '2026-10-07T09:31:51.000Z';
 
 /** How many lines after a RECIPE reference may hold its citation (a sentence that runs on). */
 const CITE_REACH = 3;
