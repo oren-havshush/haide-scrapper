@@ -1,0 +1,165 @@
+{
+  "_exportedAt": "2026-10-07T15:03:46.941Z",
+  "_note": "Mirror of the live config. The DB is authoritative; the worker never reads this file. setupScript lives alongside in <slug>.setup.js.",
+  "id": "cmuy7b0gg002a01n1oukp1dtz",
+  "siteUrl": "https://www.comeet.com/jobs/eitanmedical/C6.00F",
+  "companyName": "Eitan Medical",
+  "status": "ACTIVE",
+  "setupScriptFile": "comeet--kp1dtz.setup.js",
+  "pageFlow": [
+    {
+      "url": "https://www.comeet.com/jobs/eitanmedical/C6.00F",
+      "action": "navigate",
+      "waitFor": ".positionItem"
+    },
+    {
+      "url": "https://www.comeet.com/jobs/eitanmedical/C6.00F/*",
+      "action": "a.positionItem",
+      "waitFor": "[data-qa=\"descriptionFieldContent\"]"
+    }
+  ],
+  "fieldMappings": {
+    "_meta": {
+      "savedAt": "2026-10-07T14:27:39.712Z",
+      "pagination": null,
+      "formCapture": {
+        "fields": [
+          {
+            "name": "firstName",
+            "label": "First name",
+            "tagName": "INPUT",
+            "required": true,
+            "fieldType": "text"
+          },
+          {
+            "name": "lastName",
+            "label": "Last name",
+            "tagName": "INPUT",
+            "required": true,
+            "fieldType": "text"
+          },
+          {
+            "name": "email",
+            "label": "Email",
+            "tagName": "INPUT",
+            "required": true,
+            "fieldType": "email"
+          },
+          {
+            "name": "phone",
+            "label": "Phone",
+            "tagName": "INPUT",
+            "required": true,
+            "fieldType": "tel"
+          },
+          {
+            "name": "cv",
+            "label": "Resume",
+            "tagName": "INPUT",
+            "required": true,
+            "fieldType": "file"
+          },
+          {
+            "name": "websiteUrl",
+            "label": "Personal website",
+            "tagName": "INPUT",
+            "required": false,
+            "fieldType": "url"
+          },
+          {
+            "name": "coverLetter",
+            "label": "Cover Letter",
+            "tagName": "INPUT",
+            "required": false,
+            "fieldType": "file"
+          },
+          {
+            "name": "portfolio",
+            "label": "Portfolio",
+            "tagName": "INPUT",
+            "required": false,
+            "fieldType": "file"
+          },
+          {
+            "name": "comment",
+            "label": "Personal note",
+            "tagName": "TEXTAREA",
+            "required": false,
+            "fieldType": "textarea"
+          },
+          {
+            "name": "g-recaptcha-response",
+            "label": "reCAPTCHA v3 token (browser-generated)",
+            "tagName": "TEXTAREA",
+            "required": false,
+            "fieldType": "hidden"
+          }
+        ],
+        "method": "POST",
+        "actionUrl": "https://www.comeet.co/jobs/C6.00F/<position-uid>/apply",
+        "formSelector": "form.__comeet-apply-static"
+      },
+      "listingUrls": null,
+      "itemSelector": "li:has(> a.positionItem)",
+      "minPublishDate": null,
+      "minPublishDays": null,
+      "revealSelector": null,
+      "listingSelector": null,
+      "applyLoginReason": null,
+      "browserOverrides": null,
+      "loadMoreSelector": null,
+      "locationFallback": null,
+      "originalMappings": null,
+      "applyRequiresLogin": false
+    },
+    "title": {
+      "source": "MANUAL",
+      "selector": ".positionLink",
+      "confidence": 1,
+      "capturedOnUrl": "https://www.comeet.com/jobs/eitanmedical/C6.00F"
+    },
+    "location": {
+      "source": "MANUAL",
+      "selector": ".__ai-location",
+      "confidence": 1,
+      "capturedOnUrl": "https://www.comeet.com/jobs/eitanmedical/C6.00F"
+    },
+    "detailUrl": {
+      "source": "MANUAL",
+      "selector": "a.positionItem",
+      "confidence": 1,
+      "extractAttr": "href",
+      "capturedOnUrl": "https://www.comeet.com/jobs/eitanmedical/C6.00F"
+    },
+    "department": {
+      "source": "MANUAL",
+      "selector": ".__ai-department",
+      "confidence": 1,
+      "capturedOnUrl": "https://www.comeet.com/jobs/eitanmedical/C6.00F"
+    },
+    "description": {
+      "source": "MANUAL",
+      "selector": ".__ai-description",
+      "confidence": 1,
+      "capturedOnUrl": "https://www.comeet.com/jobs/eitanmedical/C6.00F/process-engineer/85.275"
+    },
+    "requirements": {
+      "source": "MANUAL",
+      "selector": ".__ai-requirements",
+      "confidence": 1,
+      "capturedOnUrl": "https://www.comeet.com/jobs/eitanmedical/C6.00F/process-engineer/85.275"
+    },
+    "externalJobId": {
+      "source": "MANUAL",
+      "selector": ".__ai-jobid",
+      "confidence": 1,
+      "capturedOnUrl": "https://www.comeet.com/jobs/eitanmedical/C6.00F"
+    },
+    "employmentType": {
+      "source": "MANUAL",
+      "selector": ".__ai-employmentType",
+      "confidence": 1,
+      "capturedOnUrl": "https://www.comeet.com/jobs/eitanmedical/C6.00F/process-engineer/85.275"
+    }
+  }
+}

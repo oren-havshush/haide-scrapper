@@ -35,6 +35,7 @@ several listing pages back into one and stops publishing the rest.
 | ERN | ACTIVE | 6 | 7423 | 1 | `ern--tcdrkt` |
 | ESO Group | ACTIVE | 4 | 577 | 1 | `eso-group--mgz38v` |
 | Eimsys | ACTIVE | 4 | 302 | 1 | `eimsys--an8gzs` |
+| Eitan Medical | ACTIVE | 8 | 6738 | 1 | `comeet--kp1dtz` |
 | Exyte Israel | ACTIVE | 8 | 4512 | 1 | `exyte--go206o` |
 | Femi | ACTIVE | 6 | 6082 | 1 | `adamtotal--x0aqxh` |
 | Fritz | ACTIVE | 5 | 5110 | 1 | `fritz--wafrzk` |
@@ -109,6 +110,7 @@ several listing pages back into one and stops publishing the rest.
 | גילאר בע"מ | ACTIVE | 7 | 2518 | 1 | `gilar--cw5j32` |
 | גלוברנדס | ACTIVE | 6 | 1635 | 1 | `globrands--5akm6u` |
 | דומיסיל יבוא וייצוא בע"מ | ACTIVE | 6 | 5566 | 1 | `domicile--chpkcu` |
+| דיוטי פרי ג'יימס ריצ'רדסון | ACTIVE | 6 | 4985 | 1 | `adamtotal--dj7gwo` |
 | האקדמית רמת גן | ACTIVE | 5 | 1124 | 1 | `landing-iac--3cdlhs` |
 | הארה תוכניות העשרה בע"מ | ACTIVE | 6 | 6423 | 1 | `heara--xhar00` |
 | הבנק הבינלאומי | ACTIVE | 6 | 4541 | 1 | `fibi--4j7v1x` |
@@ -174,6 +176,7 @@ several listing pages back into one and stops publishing the rest.
 | מרכז האקדמי פרס | ACTIVE | 4 | 2397 | 1 | `pac--4xvfi9` |
 | מתן שירותי בריאות וסיעוד מתקדמים | ACTIVE | 7 | 5796 | 1 | `app-civi--cc1wag` |
 | נאות המושבה - גולדנקייר | ACTIVE | 3 | 700 | 1 | `gcare--2uvz1w` |
+| נגבה – ילדים ונוער בונים עתיד | ACTIVE | 5 | 4249 | 1 | `negba--9vi55x` |
 | נטלי | ACTIVE | 7 | 7964 | 1 | `app-civi--ai732i` |
 | נטפים | ACTIVE | 8 | 6573 | 1 | `comeet--4q2aga` |
 | נירלט | ACTIVE | 7 | 6577 | 1 | `nirlat--xluh8r` |
@@ -210,6 +213,7 @@ several listing pages back into one and stops publishing the rest.
 | קימאמה | ACTIVE | 6 | 2719 | 1 | `campkimama--lz6kls` |
 | קישורית | ACTIVE | 3 | 370 | 1 | `kishurit--gjuja3` |
 | קשת טעמים | ACTIVE | 7 | 7722 | 1 | `app-civi--tvlqmp` |
+| רותם תעשיות | ACTIVE | 10 | 5038 | 1 | `rotem-career--sl0akw` |
 | רזאל מערכות | ACTIVE | 5 | 1337 | 1 | `razel--i12d2f` |
 | רכבת ישראל | ACTIVE | 6 | — | 1 | `railcareer-adamtotal--52najw` |
 | רנואר | ACTIVE | 7 | 7879 | 3 | `renuar--vjy3cn` |

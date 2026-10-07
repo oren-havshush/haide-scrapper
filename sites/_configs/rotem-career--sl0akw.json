@@ -1,0 +1,269 @@
+{
+  "_exportedAt": "2026-10-07T15:03:47.096Z",
+  "_note": "Mirror of the live config. The DB is authoritative; the worker never reads this file. setupScript lives alongside in <slug>.setup.js.",
+  "id": "cmuy6dry5002001n1b1sl0akw",
+  "siteUrl": "https://rotem-career.co.il/",
+  "companyName": "רותם תעשיות",
+  "status": "ACTIVE",
+  "setupScriptFile": "rotem-career--sl0akw.setup.js",
+  "pageFlow": [
+    {
+      "url": "https://rotem-career.co.il/category/jobs/",
+      "action": "navigate"
+    },
+    {
+      "url": "https://rotem-career.co.il/20*/*/*/*/",
+      "action": "navigate"
+    }
+  ],
+  "fieldMappings": {
+    "_meta": {
+      "savedAt": "2026-10-07T14:03:18.201Z",
+      "pagination": null,
+      "formCapture": {
+        "fields": [
+          {
+            "name": "__fluent_form_embded_post_id",
+            "label": "",
+            "value": "766",
+            "tagName": "input",
+            "required": false,
+            "fieldType": "hidden"
+          },
+          {
+            "name": "_fluentform_4_fluentformnonce",
+            "label": "",
+            "value": "67bb36e041",
+            "tagName": "input",
+            "required": false,
+            "fieldType": "hidden"
+          },
+          {
+            "name": "_wp_http_referer",
+            "label": "",
+            "value": "/%d7%94%d7%92%d7%a9%d7%aa-%d7%9e%d7%95%d7%a2%d7%9e%d7%93%d7%95%d7%aa/",
+            "tagName": "input",
+            "required": false,
+            "fieldType": "hidden"
+          },
+          {
+            "name": "input_text",
+            "label": "מספר משרה",
+            "tagName": "input",
+            "required": false,
+            "fieldType": "text"
+          },
+          {
+            "name": "input_text_1",
+            "label": "שם פרטי",
+            "tagName": "input",
+            "required": true,
+            "fieldType": "text"
+          },
+          {
+            "name": "input_text_2",
+            "label": "שם משפחה",
+            "tagName": "input",
+            "required": true,
+            "fieldType": "text"
+          },
+          {
+            "name": "numeric-field",
+            "label": "מס' תעודת זהות",
+            "tagName": "input",
+            "required": true,
+            "fieldType": "number"
+          },
+          {
+            "name": "phone",
+            "label": "מס' טלפון",
+            "tagName": "input",
+            "required": true,
+            "fieldType": "tel"
+          },
+          {
+            "name": "email",
+            "label": "אימייל",
+            "tagName": "input",
+            "required": true,
+            "fieldType": "email"
+          },
+          {
+            "name": "input_text_3",
+            "label": "עיר מגורים",
+            "tagName": "input",
+            "required": true,
+            "fieldType": "text"
+          },
+          {
+            "name": "input_text_4",
+            "label": "במידה והשארתם את שדה 'מספר משרה' ריק, זה המקום לרשום לנו באיזה תחום אתם מחפשים משרה.",
+            "tagName": "input",
+            "required": false,
+            "fieldType": "text"
+          },
+          {
+            "name": "input_radio_1",
+            "label": "האם יש לך אזרחות נוספת?",
+            "options": [
+              {
+                "label": "כן",
+                "value": "כן "
+              },
+              {
+                "label": "לא",
+                "value": "לא "
+              }
+            ],
+            "tagName": "input",
+            "required": true,
+            "fieldType": "radio"
+          },
+          {
+            "name": "input_radio_2",
+            "label": "האם התמיינת בעבר למשרה אחרת ברותם תעשיות?",
+            "options": [
+              {
+                "label": "כן",
+                "value": "כן "
+              },
+              {
+                "label": "לא",
+                "value": "לא "
+              }
+            ],
+            "tagName": "input",
+            "required": true,
+            "fieldType": "radio"
+          },
+          {
+            "name": "input_radio",
+            "label": "בהתאם להוראות תקנות החברה הממשלתית (כללים בדבר העסקת קרובי משפחה), התשס\"ה ה-2005 הנך מתבקש למלא הצהרה זאת - האם יש לך קרובי משפחה שעובדים ברותם תעשיות?",
+            "options": [
+              {
+                "label": "כן",
+                "value": "כן "
+              },
+              {
+                "label": "לא",
+                "value": "לא "
+              }
+            ],
+            "tagName": "input",
+            "required": true,
+            "fieldType": "radio"
+          },
+          {
+            "name": "description",
+            "label": "במידה וכן, נא ציין את שם קרוב המשפחה ודרגת הקרבה:",
+            "tagName": "textarea",
+            "required": false,
+            "fieldType": "textarea"
+          },
+          {
+            "name": "file-upload",
+            "label": "קורות חיים",
+            "accept": ".jpg,.jpeg,.gif,.png,.bmp,.pdf,.doc,.ppt,.pps,.xls,.mdb,.docx,.xlsx,.pptx,.odt,.odp,.ods,.odg,.odc,.odb,.odf,.rtf,.txt",
+            "tagName": "input",
+            "required": false,
+            "fieldType": "file"
+          },
+          {
+            "name": "file-upload_2",
+            "label": "תעודת השכלה",
+            "accept": ".jpg,.jpeg,.gif,.png,.bmp,.pdf,.doc,.ppt,.pps,.xls,.mdb,.docx,.xlsx,.pptx,.odt,.odp,.ods,.odg,.odc,.odb,.odf,.rtf,.txt",
+            "tagName": "input",
+            "required": false,
+            "fieldType": "file"
+          },
+          {
+            "name": "file-upload_1",
+            "label": "מסמכים נוספים/אחרים",
+            "accept": ".jpg,.jpeg,.gif,.png,.bmp,.pdf,.doc,.ppt,.pps,.xls,.mdb,.docx,.xlsx,.pptx,.odt,.odp,.ods,.odg,.odc,.odb,.odf,.rtf,.txt",
+            "tagName": "input",
+            "required": false,
+            "fieldType": "file"
+          }
+        ],
+        "method": "POST",
+        "actionUrl": "https://rotem-career.co.il/%d7%94%d7%92%d7%a9%d7%aa-%d7%9e%d7%95%d7%a2%d7%9e%d7%93%d7%95%d7%aa/",
+        "formSelector": "form#fluentform_4"
+      },
+      "listingUrls": [
+        "https://rotem-career.co.il/category/jobs/"
+      ],
+      "itemSelector": "[data-elementor-type='archive'] article.elementor-post",
+      "minPublishDate": null,
+      "minPublishDays": null,
+      "revealSelector": null,
+      "listingSelector": null,
+      "applyLoginReason": null,
+      "browserOverrides": null,
+      "loadMoreSelector": null,
+      "locationFallback": null,
+      "originalMappings": null,
+      "applyRequiresLogin": false
+    },
+    "title": {
+      "source": "MANUAL",
+      "selector": ".__ai-title",
+      "confidence": 1,
+      "capturedOnUrl": "https://rotem-career.co.il/category/jobs/"
+    },
+    "deadline": {
+      "source": "MANUAL",
+      "selector": ".__ai-deadline",
+      "confidence": 1,
+      "capturedOnUrl": "https://rotem-career.co.il/2026/09/03/3000/"
+    },
+    "location": {
+      "source": "MANUAL",
+      "selector": ".__ai-location",
+      "confidence": 1,
+      "capturedOnUrl": "https://rotem-career.co.il/2026/09/03/3000/"
+    },
+    "detailUrl": {
+      "source": "MANUAL",
+      "selector": ".elementor-post__title a",
+      "confidence": 1,
+      "extractAttr": "href",
+      "capturedOnUrl": "https://rotem-career.co.il/category/jobs/"
+    },
+    "department": {
+      "source": "MANUAL",
+      "selector": ".__ai-dept",
+      "confidence": 1,
+      "capturedOnUrl": "https://rotem-career.co.il/2026/09/03/3000/"
+    },
+    "description": {
+      "source": "MANUAL",
+      "selector": ".__ai-description",
+      "confidence": 1,
+      "capturedOnUrl": "https://rotem-career.co.il/2026/09/03/3000/"
+    },
+    "publishDate": {
+      "source": "MANUAL",
+      "selector": ".elementor-post-date",
+      "confidence": 1,
+      "capturedOnUrl": "https://rotem-career.co.il/category/jobs/"
+    },
+    "requirements": {
+      "source": "MANUAL",
+      "selector": ".__ai-requirements",
+      "confidence": 1,
+      "capturedOnUrl": "https://rotem-career.co.il/2026/09/03/3000/"
+    },
+    "externalJobId": {
+      "source": "MANUAL",
+      "selector": ".__ai-id",
+      "confidence": 1,
+      "capturedOnUrl": "https://rotem-career.co.il/category/jobs/"
+    },
+    "employmentType": {
+      "source": "MANUAL",
+      "selector": ".__ai-type",
+      "confidence": 1,
+      "capturedOnUrl": "https://rotem-career.co.il/2026/09/03/3000/"
+    }
+  }
+}
