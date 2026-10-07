@@ -50,6 +50,16 @@ export const PENDING_DETAIL_KEY = "_pendingDetail";
 const DETAIL_URL_KEY = "_detailUrl";
 const NAV_STATUS_KEY = "_detailNavStatus";
 
+/**
+ * A detail page may declare itself unavailable (owner, 2026-10-07): a
+ * setupScript that recognises a "page does not exist" shell served with HTTP
+ * 200 (Civi, before a job's card is first clicked) injects an element matching
+ * this. The worker records the visit as failed with DETAIL_UNAVAILABLE_STATUS,
+ * so the row is not written bare and is never stamped for a carry.
+ */
+export const DETAIL_UNAVAILABLE_SELECTOR = "[data-haide-detail-unavailable]";
+export const DETAIL_UNAVAILABLE_STATUS = "unavailable";
+
 // ---------------------------------------------------------------------------
 // The fingerprint
 // ---------------------------------------------------------------------------

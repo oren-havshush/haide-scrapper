@@ -72,6 +72,8 @@ import {
   type WithheldWrite,
 } from "../lib/scheduledRun";
 import {
+  DETAIL_UNAVAILABLE_SELECTOR,
+  DETAIL_UNAVAILABLE_STATUS,
   PENDING_DETAIL_KEY,
   buildCarriedRawFields,
   fingerprintChurnWarning,
@@ -1996,6 +1998,20 @@ async function visitDetailPages(
         await runSetupScript(page, setupScript);
       }
 
+      // The page declared itself unavailable (detailPlan.ts
+      // DETAIL_UNAVAILABLE_SELECTOR): a "page does not exist" shell served
+      // with HTTP 200. A failed visit, like a dead link: no listing fields are
+      // seeded, so the row has no title and is not written, and it is counted
+      // under dead_detail_pages.
+      if (await page.$(DETAIL_UNAVAILABLE_SELECTOR).catch(() => null)) {
+        console.warn(`[scrape] Detail page declared itself unavailable: ${detailUrl}`);
+        rawFieldsList.push({
+          _detailUrl: detailUrl,
+          _detailNavStatus: DETAIL_UNAVAILABLE_STATUS,
+        });
+        continue;
+      }
+
       // Seed the row with listing-scope fields collected earlier from the
       // item card on the listing page. Detail-scope fields are extracted
       // below from the detail page DOM and overwrite empty seeds.
@@ -2780,7 +2796,7 @@ function countDeadDetailPages(rawFieldsList: Record<string, string>[]): number {
   let n = 0;
   for (const r of rawFieldsList) {
     const s = r["_detailNavStatus"];
-    if (s === "http_error" || s === "timeout" || s === "skipped_no_url") n++;
+    if (s === "http_error" || s === "timeout" || s === "skipped_no_url" || s === DETAIL_UNAVAILABLE_STATUS) n++;
   }
   return n;
 }
@@ -2819,7 +2835,7 @@ function buildScrapeWarnings(args: {
 
   if (deadDetailPages > 0) {
     warnings.push(
-      `dead_detail_pages: ${deadDetailPages} detail page(s) skipped (http_error/timeout)`,
+      `dead_detail_pages: ${deadDetailPages} detail page(s) skipped (http_error/timeout/unavailable)`,
     );
   }
 
