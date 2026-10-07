@@ -1,0 +1,174 @@
+{
+  "_exportedAt": "2026-10-07T11:56:28.453Z",
+  "_note": "Mirror of the live config. The DB is authoritative; the worker never reads this file. setupScript lives alongside in <slug>.setup.js.",
+  "id": "cmuy0nefp000d01n1k8llp8dl",
+  "siteUrl": "https://www.audiocodes.com/careers",
+  "companyName": "AudioCodes",
+  "status": "ACTIVE",
+  "setupScriptFile": "audiocodes--llp8dl.setup.js",
+  "pageFlow": [
+    {
+      "url": "https://www.audiocodes.com/careers",
+      "action": "navigate"
+    },
+    {
+      "url": "https://www.audiocodes.com/careers/positions/*",
+      "action": ".btn-holder a.btn:not(.btn-apply)"
+    }
+  ],
+  "fieldMappings": {
+    "_meta": {
+      "savedAt": "2026-10-07T11:23:35.573Z",
+      "pagination": null,
+      "formCapture": {
+        "fields": [
+          {
+            "name": "firstName",
+            "label": "First name",
+            "tagName": "INPUT",
+            "required": true,
+            "fieldType": "text"
+          },
+          {
+            "name": "lastName",
+            "label": "Last name",
+            "tagName": "INPUT",
+            "required": true,
+            "fieldType": "text"
+          },
+          {
+            "name": "email",
+            "label": "Email",
+            "tagName": "INPUT",
+            "required": true,
+            "fieldType": "email"
+          },
+          {
+            "name": "phone",
+            "label": "Phone",
+            "tagName": "INPUT",
+            "required": true,
+            "fieldType": "tel"
+          },
+          {
+            "name": "cv",
+            "label": "Resume",
+            "accept": ".pdf,.doc,.docx,.rtf,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/rtf",
+            "tagName": "INPUT",
+            "multiple": false,
+            "required": true,
+            "fieldType": "file"
+          },
+          {
+            "name": "websiteUrl",
+            "label": "Personal website",
+            "tagName": "INPUT",
+            "required": false,
+            "fieldType": "url"
+          },
+          {
+            "name": "coverLetter",
+            "label": "Cover Letter",
+            "tagName": "INPUT",
+            "multiple": false,
+            "required": false,
+            "fieldType": "file"
+          },
+          {
+            "name": "portfolio",
+            "label": "Portfolio",
+            "tagName": "INPUT",
+            "multiple": false,
+            "required": false,
+            "fieldType": "file"
+          },
+          {
+            "name": "comment",
+            "label": "Personal note",
+            "tagName": "TEXTAREA",
+            "required": false,
+            "fieldType": "textarea"
+          },
+          {
+            "name": "gdprConsent",
+            "label": "I agree that you can keep my data for an extended time period so that it will be easier for you to contact me about job opportunities.",
+            "tagName": "INPUT",
+            "required": false,
+            "fieldType": "checkbox"
+          },
+          {
+            "name": "g-recaptcha-response",
+            "label": "reCAPTCHA v3 token (browser-generated)",
+            "tagName": "TEXTAREA",
+            "required": false,
+            "fieldType": "hidden"
+          }
+        ],
+        "method": "POST",
+        "actionUrl": "",
+        "formSelector": "form#applyForm"
+      },
+      "listingUrls": null,
+      "itemSelector": ".positions-block .js-accordion",
+      "minPublishDate": null,
+      "minPublishDays": null,
+      "revealSelector": null,
+      "listingSelector": null,
+      "applyLoginReason": null,
+      "browserOverrides": null,
+      "loadMoreSelector": null,
+      "locationFallback": null,
+      "originalMappings": null,
+      "applyRequiresLogin": false
+    },
+    "title": {
+      "source": "MANUAL",
+      "selector": "h3.subtitle",
+      "confidence": 1,
+      "capturedOnUrl": "https://www.audiocodes.com/careers"
+    },
+    "location": {
+      "source": "MANUAL",
+      "selector": ".__ai-location",
+      "confidence": 1,
+      "capturedOnUrl": "https://www.audiocodes.com/careers"
+    },
+    "detailUrl": {
+      "source": "MANUAL",
+      "selector": ".btn-holder a.btn:not(.btn-apply)",
+      "confidence": 1,
+      "extractAttr": "href",
+      "capturedOnUrl": "https://www.audiocodes.com/careers"
+    },
+    "department": {
+      "source": "MANUAL",
+      "selector": "strong.position",
+      "confidence": 1,
+      "capturedOnUrl": "https://www.audiocodes.com/careers"
+    },
+    "description": {
+      "source": "MANUAL",
+      "selector": ".__ai-description",
+      "confidence": 1,
+      "capturedOnUrl": "https://www.audiocodes.com/careers/positions/73B62"
+    },
+    "requirements": {
+      "source": "MANUAL",
+      "selector": ".__ai-requirements",
+      "confidence": 1,
+      "capturedOnUrl": "https://www.audiocodes.com/careers/positions/73B62"
+    },
+    "externalJobId": {
+      "source": "MANUAL",
+      "selector": ".__ai-id",
+      "confidence": 1,
+      "capturedOnUrl": "https://www.audiocodes.com/careers"
+    },
+    "employmentType": {
+      "source": "MANUAL",
+      "selector": ".__ai-type",
+      "confidence": 1,
+      "capturedOnUrl": "https://www.audiocodes.com/careers/positions/73B62"
+    }
+  }
+}

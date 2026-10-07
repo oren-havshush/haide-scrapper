@@ -1,0 +1,150 @@
+{
+  "_exportedAt": "2026-10-07T11:56:28.737Z",
+  "_note": "Mirror of the live config. The DB is authoritative; the worker never reads this file. setupScript lives alongside in <slug>.setup.js.",
+  "id": "cmuy04w2s000101n144x0aqxh",
+  "siteUrl": "https://career.adamtotal.co.il/?token=401C99FB-1720-403D-AE53-D3C6C377A348",
+  "companyName": "Femi",
+  "status": "ACTIVE",
+  "setupScriptFile": "adamtotal--x0aqxh.setup.js",
+  "pageFlow": [],
+  "fieldMappings": {
+    "_meta": {
+      "savedAt": "2026-10-07T11:07:42.135Z",
+      "pagination": null,
+      "formCapture": {
+        "fields": [
+          {
+            "name": "domain",
+            "label": "domain",
+            "tagName": "input",
+            "required": false,
+            "fieldType": "hidden"
+          },
+          {
+            "name": "shared",
+            "label": "shared",
+            "tagName": "input",
+            "required": false,
+            "fieldType": "hidden"
+          },
+          {
+            "name": "isCampaign",
+            "label": "isCampaign",
+            "tagName": "input",
+            "required": false,
+            "fieldType": "hidden"
+          },
+          {
+            "name": "Fname",
+            "label": "שם פרטי",
+            "tagName": "input",
+            "required": true,
+            "fieldType": "text"
+          },
+          {
+            "name": "Lname",
+            "label": "שם משפחה",
+            "tagName": "input",
+            "required": true,
+            "fieldType": "text"
+          },
+          {
+            "name": "Phone",
+            "label": "טלפון",
+            "tagName": "input",
+            "required": true,
+            "fieldType": "text"
+          },
+          {
+            "name": "Email",
+            "label": "דוא\"ל",
+            "tagName": "input",
+            "required": true,
+            "fieldType": "email"
+          },
+          {
+            "name": "City",
+            "label": "עיר",
+            "tagName": "input",
+            "required": false,
+            "fieldType": "text"
+          },
+          {
+            "name": "Agreement1",
+            "label": "אני מסכים/ה לתנאי השימוש",
+            "tagName": "input",
+            "required": true,
+            "fieldType": "checkbox"
+          },
+          {
+            "name": "Agreement2",
+            "label": "מאשר/ת שמירת פרטיי במאגר",
+            "tagName": "input",
+            "required": true,
+            "fieldType": "checkbox"
+          },
+          {
+            "name": "CvFile",
+            "label": "צרף קורות חיים",
+            "tagName": "input",
+            "required": false,
+            "fieldType": "file"
+          },
+          {
+            "name": "cf-turnstile-response",
+            "label": "Cloudflare Turnstile token",
+            "tagName": "input",
+            "required": true,
+            "fieldType": "hidden"
+          }
+        ],
+        "method": "POST",
+        "actionUrl": "https://career.adamtotal.co.il/Jobs/SubmitApplication",
+        "formSelector": "form#ajax-cv-form"
+      },
+      "listingUrls": null,
+      "itemSelector": "article.job-card",
+      "minPublishDate": null,
+      "minPublishDays": null,
+      "revealSelector": null,
+      "listingSelector": null,
+      "applyLoginReason": null,
+      "browserOverrides": null,
+      "loadMoreSelector": null,
+      "locationFallback": null,
+      "originalMappings": null,
+      "applyRequiresLogin": false
+    },
+    "title": {
+      "source": "MANUAL",
+      "selector": "h4.job-title-button",
+      "confidence": 0.9
+    },
+    "location": {
+      "source": "MANUAL",
+      "selector": ".__ai-location",
+      "confidence": 0.9
+    },
+    "detailUrl": {
+      "source": "MANUAL",
+      "selector": "a.job-detail-link",
+      "confidence": 0.9,
+      "extractAttr": "href"
+    },
+    "description": {
+      "source": "MANUAL",
+      "selector": ".__ai-description",
+      "confidence": 0.9
+    },
+    "requirements": {
+      "source": "MANUAL",
+      "selector": ".__ai-requirements",
+      "confidence": 0.9
+    },
+    "externalJobId": {
+      "source": "MANUAL",
+      "selector": ".__ai-jobid",
+      "confidence": 0.9
+    }
+  }
+}

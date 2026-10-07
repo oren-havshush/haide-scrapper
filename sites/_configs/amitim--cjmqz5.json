@@ -1,0 +1,93 @@
+{
+  "_exportedAt": "2026-10-07T11:56:28.594Z",
+  "_note": "Mirror of the live config. The DB is authoritative; the worker never reads this file. setupScript lives alongside in <slug>.setup.js.",
+  "id": "cmuy0dfqb000701n1wscjmqz5",
+  "siteUrl": "https://amitim.com/career/jobs/",
+  "companyName": "עמיתים",
+  "status": "ACTIVE",
+  "setupScriptFile": "amitim--cjmqz5.setup.js",
+  "pageFlow": [
+    {
+      "url": "https://amitim.com/career/jobs/",
+      "action": "navigate"
+    },
+    {
+      "url": "https://amitim.com/job/*",
+      "action": "navigate"
+    }
+  ],
+  "fieldMappings": {
+    "_meta": {
+      "savedAt": "2026-10-07T11:14:02.208Z",
+      "pagination": null,
+      "formCapture": null,
+      "listingUrls": null,
+      "itemSelector": "ul.field-details-list > li",
+      "minPublishDate": null,
+      "minPublishDays": null,
+      "revealSelector": null,
+      "listingSelector": null,
+      "applyLoginReason": null,
+      "browserOverrides": null,
+      "loadMoreSelector": null,
+      "locationFallback": null,
+      "originalMappings": null,
+      "applyRequiresLogin": false
+    },
+    "title": {
+      "source": "MANUAL",
+      "selector": ".job-box-bottom",
+      "confidence": 1,
+      "capturedOnUrl": "https://amitim.com/career/jobs/"
+    },
+    "location": {
+      "source": "MANUAL",
+      "selector": ".__ai-location",
+      "confidence": 1,
+      "capturedOnUrl": "https://amitim.com/job/%d7%9e%d7%91%d7%a7%d7%a8-%d7%aa-%d7%a4%d7%a0%d7%99%d7%9d-jb-65/"
+    },
+    "detailUrl": {
+      "source": "MANUAL",
+      "selector": "a",
+      "confidence": 1,
+      "extractAttr": "href",
+      "capturedOnUrl": "https://amitim.com/career/jobs/"
+    },
+    "department": {
+      "source": "MANUAL",
+      "selector": ".__ai-department",
+      "confidence": 1,
+      "capturedOnUrl": "https://amitim.com/career/jobs/"
+    },
+    "description": {
+      "source": "MANUAL",
+      "selector": ".__ai-description",
+      "confidence": 1,
+      "capturedOnUrl": "https://amitim.com/job/%d7%9e%d7%91%d7%a7%d7%a8-%d7%aa-%d7%a4%d7%a0%d7%99%d7%9d-jb-65/"
+    },
+    "publishDate": {
+      "source": "MANUAL",
+      "selector": ".__ai-date",
+      "confidence": 1,
+      "capturedOnUrl": "https://amitim.com/job/%d7%9e%d7%91%d7%a7%d7%a8-%d7%aa-%d7%a4%d7%a0%d7%99%d7%9d-jb-65/"
+    },
+    "requirements": {
+      "source": "MANUAL",
+      "selector": ".__ai-requirements",
+      "confidence": 1,
+      "capturedOnUrl": "https://amitim.com/job/%d7%9e%d7%91%d7%a7%d7%a8-%d7%aa-%d7%a4%d7%a0%d7%99%d7%9d-jb-65/"
+    },
+    "externalJobId": {
+      "source": "MANUAL",
+      "selector": ".__ai-id",
+      "confidence": 1,
+      "capturedOnUrl": "https://amitim.com/career/jobs/"
+    },
+    "applicationInfo": {
+      "source": "MANUAL",
+      "selector": ".__ai-apply",
+      "confidence": 1,
+      "capturedOnUrl": "https://amitim.com/job/%d7%9e%d7%91%d7%a7%d7%a8-%d7%aa-%d7%a4%d7%a0%d7%99%d7%9d-jb-65/"
+    }
+  }
+}

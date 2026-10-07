@@ -24,15 +24,19 @@ several listing pages back into one and stops publishing the rest.
 | 4Chef | ACTIVE | 5 | 3777 | 1 | `4chef--fbqr3s` |
 | AGAS 3K | ACTIVE | 4 | 1049 | 1 | `agas--vfl5da` |
 | AIG | ACTIVE | 5 | 2625 | 1 | `aig--7dete3` |
+| Aerohandling | ACTIVE | 7 | 3693 | 1 | `aerohandling--jp4y4x` |
+| AudioCodes | ACTIVE | 8 | 6346 | 1 | `audiocodes--llp8dl` |
 | BDO | ACTIVE | 10 | 2810 | 1 | `bdo-career-hunterhrms--dgrgrm` |
 | Biopharmax | ACTIVE | 8 | 6183 | 1 | `biopharmax--slnx1p` |
 | CALANIT by one | ACTIVE | 8 | 7364 | 1 | `calanit--4tq06k` |
+| CallBiz | ACTIVE | 3 | 2040 | 1 | `callbiz--sf48jf` |
 | Ceragon | ACTIVE | 8 | 7483 | 1 | `comeet--ty14e5` |
 | DHL Express | ACTIVE | 7 | 3442 | 1 | `dhl--mwqiig` |
 | ERN | ACTIVE | 6 | 7423 | 1 | `ern--tcdrkt` |
 | ESO Group | ACTIVE | 4 | 577 | 1 | `eso-group--mgz38v` |
 | Eimsys | ACTIVE | 4 | 302 | 1 | `eimsys--an8gzs` |
 | Exyte Israel | ACTIVE | 8 | 4512 | 1 | `exyte--go206o` |
+| Femi | ACTIVE | 6 | 6082 | 1 | `adamtotal--x0aqxh` |
 | Fritz | ACTIVE | 5 | 5110 | 1 | `fritz--wafrzk` |
 | G STAT | ACTIVE | 5 | 1682 | 1 | `g-stat--yvpgzk` |
 | Gtech | ACTIVE | 6 | 4590 | 1 | `gtech--7udl8v` |
@@ -40,6 +44,7 @@ several listing pages back into one and stops publishing the rest.
 | Hylabs | ACTIVE | 4 | 502 | 1 | `hylabs--gyocvt` |
 | IPV Security | ACTIVE | 6 | 3307 | 1 | `news-ipvsecurity--5knkts` |
 | Interaction | ACTIVE | 7 | 4541 | 1 | `interaction--e99vxv` |
+| KOREN | ACTIVE | 4 | 3936 | 1 | `korenvs--x0vdiw` |
 | LEASE4U | ACTIVE | 8 | 6532 | 1 | `freesbe--6cznyg` |
 | Lime Digital | ACTIVE | 6 | 5282 | 1 | `limedigital--svqtde` |
 | Medulla | ACTIVE | 8 | 7954 | 1 | `medulla--m2u5xb` |
@@ -63,6 +68,7 @@ several listing pages back into one and stops publishing the rest.
 | ToTali | ACTIVE | 6 | 3739 | 1 | `totali--duk823` |
 | Top Match | ACTIVE | 6 | 759 | 1 | `topmatch--f67z41` |
 | Top Sky Line | ACTIVE | 5 | 3497 | 1 | `topskyline--wp6an1` |
+| Tri-Logical Technologies | ACTIVE | 6 | 5563 | 1 | `trilogical--9qx1ei` |
 | Unitask | ACTIVE | 6 | 6543 | 1 | `unitask-inc--wsxup8` |
 | Waterfall Security | ACTIVE | 8 | 5161 | 1 | `waterfall-security--jam3c9` |
 | Webbing | ACTIVE | 7 | 3874 | 1 | `webbingsolutions--hwp2jb` |
@@ -179,6 +185,7 @@ several listing pages back into one and stops publishing the rest.
 | סמלת | ACTIVE | 8 | 4203 | 1 | `samelet--16q1rd` |
 | סנו | ACTIVE | 6 | 5045 | 1 | `sano--mh8veb` |
 | עמותת איכות בשיקום | ACTIVE | 4 | 686 | 1 | `eychut--6336w9` |
+| עמיתים | ACTIVE | 9 | 6461 | 1 | `amitim--cjmqz5` |
 | ענבי ציון | ACTIVE | 7 | 4070 | 1 | `anvei-zion--o0cjxq` |
 | פוליכד | ACTIVE | 3 | 315 | 1 | `polycad--is4jw2` |
 | פליינג קרגו | ACTIVE | 9 | 7325 | 1 | `flying-cargo--pyuhhh` |
@@ -188,6 +195,7 @@ several listing pages back into one and stops publishing the rest.
 | צרפתי שמעון | ACTIVE | 5 | 3075 | 1 | `s-sarfati--5dr0yc` |
 | קבוצת ברן | ACTIVE | 8 | 7783 | 1 | `barangroup--36lhv6` |
 | קבוצת ויזל - פוקס | ACTIVE | 4 | 2133 | 1 | `dreamjobs--43loqz` |
+| קבוצת דוידוביץ' | ACTIVE | 7 | 4719 | 1 | `davidovitz--51rk2o` |
 | קבוצת ח.י. | ACTIVE | 5 | 4098 | 1 | `hye--27o6of` |
 | קבוצת טובול | ACTIVE | 6 | 1231 | 1 | `tuboul--hvbine` |
 | קבוצת יוניון | ACTIVE | 8 | 5649 | 1 | `unioncareer--mhsr2v` |
@@ -197,6 +205,7 @@ several listing pages back into one and stops publishing the rest.
 | קבוצת שפיר | ACTIVE | 6 | 7952 | 1 | `shapir--fp8081` |
 | קדמי ביטוח | ACTIVE | 5 | 1209 | 1 | `kedmi770--e2pnpm` |
 | קופת חולים מכבי | ACTIVE | 6 | 2407 | 1 | `maccabi4u--eazu8j` |
+| קורטק פתרונות קירור | ACTIVE | 5 | 4258 | 1 | `kortec--pdfonl` |
 | קידום | ACTIVE | 8 | 6139 | 1 | `kidum--wb3q8e` |
 | קימאמה | ACTIVE | 6 | 2719 | 1 | `campkimama--lz6kls` |
 | קישורית | ACTIVE | 3 | 370 | 1 | `kishurit--gjuja3` |
