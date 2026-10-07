@@ -176,7 +176,7 @@ several listing pages back into one and stops publishing the rest.
 | סימפלי קלאב בע"מ | ACTIVE | 8 | 4066 | 1 | `simplyclub--27xg35` |
 | סיני סטור | ACTIVE | 3 | 1002 | 1 | `sinaistore--uxgr3o` |
 | סלקום | ACTIVE | 6 | 2255 | 1 | `cellcom--ugxfm3` |
-| סמלת | ACTIVE | 8 | — | 1 | `samelet--i6xe7r` |
+| סמלת | ACTIVE | 8 | 4203 | 1 | `samelet--16q1rd` |
 | סנו | ACTIVE | 6 | 5045 | 1 | `sano--mh8veb` |
 | עמותת איכות בשיקום | ACTIVE | 4 | 686 | 1 | `eychut--6336w9` |
 | ענבי ציון | ACTIVE | 7 | 4070 | 1 | `anvei-zion--o0cjxq` |
