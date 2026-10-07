@@ -25,9 +25,9 @@ export function hqCityOptions(): string[] {
 }
 
 /**
- * True only for an exact option. The form sends nothing else: the route's gate
- * canonicalises loosely (normalizeLocations maps "תקווה" to תקומה, a different
- * town), so a typed near-miss must be stopped here, before any request.
+ * True only for an exact option. The form sends nothing else, so a typed
+ * near-miss is stopped before any request; the route's exact gate
+ * (resolveHqCity) refuses it again behind this.
  */
 export function isOfferedHqCity(value: string): boolean {
   return offered().has(value);

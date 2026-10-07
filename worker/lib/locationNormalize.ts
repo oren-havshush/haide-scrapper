@@ -57,7 +57,7 @@ const LABEL = /^\s*מיקום(\s+המשרה)?\s*:?\s+/;
  * gomobile.co.il's address ended "בית קנדי ראשל''צ" and the company-profile
  * gate read no city from it.
  */
-const CITY_ABBREVIATIONS: Readonly<Record<string, string>> = {
+export const CITY_ABBREVIATIONS: Readonly<Record<string, string>> = {
   'ראשל"צ': "ראשון לציון",
   'ת"א': "תל אביב-יפו",
   'פ"ת': "פתח תקווה",

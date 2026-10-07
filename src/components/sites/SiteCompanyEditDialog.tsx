@@ -32,8 +32,8 @@ import type { CompanyProfileFields } from "@/components/sites/SiteCompanyProfile
  * CLEARS the column).
  *
  * The city is picked from city.csv. The box offers the list, and Save refuses
- * anything that is not exactly an entry, because the route canonicalises
- * loosely and would store a near miss as a different town.
+ * anything that is not exactly an entry; the route's exact gate refuses it
+ * again behind this.
  */
 
 const MAX_ABOUT = 4_000;

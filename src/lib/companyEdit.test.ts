@@ -45,6 +45,20 @@ refused("פתח", /^Not a known city: "פתח"/, "part of a name is refused");
 refused("חיפה, עכו", /^Not a known city/, "two cities are refused: an HQ is one place");
 refused("אזור מרכז", /is a region, not a place/, "a region is refused");
 
+// Exact only (owner, 2026-10-07): a city.csv entry, or a CITY_ABBREVIATIONS
+// key stored as its full entry. No alias, fuzzy or English matching: the loose
+// gate stored "תקווה" as תקומה, a different town.
+refused("תקווה", /^Not a known city: "תקווה"\. .*pick the city from the list/, "a near miss is refused (the loose gate stored תקומה)");
+refused("Petah Tikva", /^Not a known city: "Petah Tikva"/, "an English name is refused");
+refused("פתח תקוה רבתי", /^Not a known city/, "a longer phrase containing a city is refused");
+refused("תל אביב", /^Not a known city/, "an alias that is not an abbreviation is refused");
+refused("בת\"א", /^Not a known city/, "an abbreviation with a leading ב is refused");
+eq(resolveHqCity("פ\"ת"), "פתח תקווה", "a listed abbreviation is stored as the full entry");
+eq(resolveHqCity("פ״ת"), "פתח תקווה", "the same abbreviation typed with a gershayim");
+eq(resolveHqCity("פ''ת"), "פתח תקווה", "or with two apostrophes");
+eq(resolveHqCity("ביל״ו"), "ביל\"ו", "an entry with a quote mark typed with a gershayim is the entry");
+eq(resolveHqCity("רמלה לוד"), "רמלה לוד", "an exact entry is accepted");
+
 // --- hqCityOptions: what the form offers -----------------------------------------
 const options = hqCityOptions();
 eq(options.includes("פתח תקווה"), true, "the options include פתח תקווה");
@@ -54,11 +68,10 @@ eq(options.every((o) => isCanonicalLocation(o)), true, "every option is a city.c
 eq(options.every((o) => resolveHqCity(o) === o), true, "every option passes the server gate unchanged");
 eq(new Set(options).size, options.length, "no option twice");
 
-// The form sends a city only when it is exactly one of the options. The route's
-// gate canonicalises loosely (it maps "תקווה" to תקומה, a different town, and
-// "Petah Tikva" to פתח תקווה), so a typed value must never reach it unchecked.
+// The form sends a city only when it is exactly one of the options, so a typed
+// value is stopped before any request; the route's exact gate is behind it.
 eq(isOfferedHqCity("פתח תקווה"), true, "an option is sendable");
-eq(isOfferedHqCity("תקווה"), false, "a near miss is not sendable, though the route would store תקומה");
+eq(isOfferedHqCity("תקווה"), false, "a near miss is not sendable");
 eq(isOfferedHqCity("Petah Tikva"), false, "an English name is not sendable");
 eq(isOfferedHqCity(" פתח תקווה"), false, "nor an option with a stray space");
 eq(isOfferedHqCity("אזור מרכז"), false, "nor a region");

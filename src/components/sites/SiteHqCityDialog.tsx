@@ -90,19 +90,22 @@ export function SiteHqCityDialog({
               handleSave();
             }
           }}
-          placeholder="תל אביב"
+          placeholder="תל אביב-יפו"
           maxLength={MAX_CITY_LENGTH}
           autoFocus
           disabled={isSaving}
         />
 
         <p className="text-xs" style={{ color: "#71717a" }}>
-          {/* The server canonicalises and gates, so "תל אביב" is stored as the
-              city.csv spelling "תל אביב-יפו" — which is what keeps hand-typed
-              and scraped values in one bucket in the city filter. */}
-          Must be a city in <code>CSV files/city.csv</code>; common spellings are accepted and
-          stored in their canonical form. A region such as{" "}
-          <span dir="rtl">אזור מרכז</span> is refused — a company is at an address.
+          {/* The server accepts exactly a city.csv entry, or a listed
+              abbreviation stored as its full entry (resolveHqCity, owner
+              2026-10-07) — so hand-typed and scraped values share one bucket
+              in the city filter, and a near miss is refused, not guessed. */}
+          Must be exactly a city in <code>CSV files/city.csv</code>, e.g.{" "}
+          <span dir="rtl">תל אביב-יפו</span>; the abbreviations{" "}
+          <span dir="rtl">ת&quot;א, פ&quot;ת, ראשל&quot;צ, ב&quot;ש, כ&quot;ס, ר&quot;ג</span> are
+          accepted. A region such as <span dir="rtl">אזור מרכז</span> is refused — a company is
+          at an address.
         </p>
 
         <DialogFooter className="sm:justify-between">

@@ -17,6 +17,7 @@ import {
   normalizeLocations,
   isCanonicalLocation,
   isRegionLocation,
+  CITY_ABBREVIATIONS,
 } from "../../worker/lib/locationNormalize";
 
 // isRegionLocation is re-exported for the company-HQ write path, which accepts a
@@ -82,38 +83,61 @@ export function resolveLocationInput(raw: string): ResolvedLocation {
   return { primary: list[0], list };
 }
 
+// Built from code points: a literal escape here would be decoded by the editor
+// into the raw character (CLAUDE.md, "Every path that writes a file...").
+// gershayim, right and left double quotation marks
+const HQ_QUOTES = new RegExp(`[${String.fromCharCode(0x05f4, 0x201d, 0x201c)}]`, "g");
+// geresh, right and left single quotation marks
+const HQ_APOSTROPHES = new RegExp(`[${String.fromCharCode(0x05f3, 0x2019, 0x2018)}]`, "g");
+// left-to-right mark, right-to-left mark, no-break space
+const HQ_INVISIBLE = new RegExp(`[${String.fromCharCode(0x200e, 0x200f, 0x00a0)}]`, "g");
+
 /**
- * The company HQ-city gate: a value a human typed becomes the canonical
- * city.csv entry, or is refused. null (or blank) clears. Used by
- * saveCompanyHqCity(), the one write path where a person types a city; lifted
- * here (o) so its refusals can be tested without a database.
+ * The company HQ-city gate: the one write path where a person types a city
+ * (saveCompanyHqCity, and the dashboard form through it). null (or blank)
+ * clears.
+ *
+ * EXACT, owner 2026-10-07. A value is accepted only when it is an entry of
+ * "CSV files/city.csv" or one of the CITY_ABBREVIATIONS keys (stored as its
+ * full entry). Before 2026-10-07 this ran normalizeLocations(), the scraper's
+ * alias, English and fuzzy matcher, which stored a typed "תקווה" as תקומה — a
+ * different town. That matcher is right for scraped job text and is not
+ * touched; it is simply not used here.
+ *
+ * The one thing normalised before the comparison is how quote marks are typed:
+ * gershayim and curly quotes become ", geresh and curly apostrophes become ',
+ * two apostrophes count as a quote mark, and invisible direction marks and
+ * no-break spaces go. So ביל״ו is the entry ביל"ו and פ''ת is פ"ת. No letter,
+ * dash or space inside the name changes, so it cannot turn one place into
+ * another — and an entry like "בית אריה - עופרים" stays exactly itself, which
+ * squash() would not leave it.
  */
 export function resolveHqCity(city: string | null): string | null {
   const raw = city?.trim() || null;
   if (raw === null) return null;
 
-  // Canonicalise BEFORE gating. A bare membership test would reject the
-  // spellings an operator actually types — ת"א, תל אביב — and would also
-  // reject ביל״ו typed with a real gershayim (U+05F4) even though ביל"ו is a
-  // legal entry, because only squash() unifies those characters.
-  const resolved = normalizeLocations(raw);
+  const typed = raw
+    .replace(HQ_QUOTES, '"')
+    .replace(HQ_APOSTROPHES, "'")
+    .replace(/''/g, '"')
+    .replace(HQ_INVISIBLE, "")
+    .trim();
+  const entry = Object.prototype.hasOwnProperty.call(CITY_ABBREVIATIONS, typed)
+    ? CITY_ABBREVIATIONS[typed]
+    : typed;
 
-  // An HQ is one place. normalizeLocations returns several for a comma list
-  // and passes an unresolved string through verbatim, so the result is
-  // re-checked rather than trusted.
-  if (resolved.length !== 1 || !isCanonicalLocation(resolved[0])) {
+  if (!isCanonicalLocation(entry)) {
     throw new ValidationError(
-      `Not a known city: "${raw}". A company HQ city must be a single entry ` +
-        `in "CSV files/city.csv" — check the spelling.`,
+      `Not a known city: "${raw}". A company HQ city must be exactly an entry ` +
+        `of "CSV files/city.csv" (or a listed abbreviation such as ת"א) — ` +
+        `pick the city from the list.`,
     );
   }
-  if (isRegionLocation(resolved[0])) {
+  if (isRegionLocation(entry)) {
     throw new ValidationError(
-      `"${resolved[0]}" is a region, not a place. A job may be in a region; a ` +
+      `"${entry}" is a region, not a place. A job may be in a region; a ` +
         `company headquarters is at an address.`,
     );
   }
-  // The canonical spelling, so a hand-typed "תל אביב" groups with every
-  // scraped "תל אביב-יפו" instead of splitting the dashboard's city filter.
-  return resolved[0];
+  return entry;
 }
