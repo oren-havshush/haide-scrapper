@@ -4080,6 +4080,22 @@
 - **Generalizes to:** any board that marks closure on the detail page only. Read every detail
   page's apply area, not just one.
 
+## LRN-WRK-23 — a field selector that names the item itself as an ancestor matches nothing
+
+- **Date / site:** 2026-10-07, aig.co.il `/jobs/` (Next.js + MUI, `cmuxsw43r005n01nxk07dete3`).
+- **Signal:** `itemSelector: [class*="jobs-links_job-link"]` and title
+  `[class*="jobs-links_job-link"] > span`. The scrape ended `COMPLETED` with `jobCount: 0` and
+  no warning; every row had an empty title and was dropped.
+- **Cause:** the worker reads item fields with Playwright `itemHandle.$(selector)`, which matches
+  only inside the item's subtree, and a compound selector there cannot use the item itself as
+  its ancestor. Measured on the live card: `[class*="jobs-links_job-link"] > span` → null,
+  `:scope > span` → the title, `span` → the title. Browser `el.querySelector` does let the item
+  be the ancestor, so a dry run that reads fields with `document`/`querySelector` passes.
+- **Fix:** write item fields relative to the item (`span`, `:scope > span`, or a class inside
+  it), never starting with the item selector. Test field selectors with `elementHandle.$` from
+  the item, as the worker does.
+- **Generalizes to:** every config where a field selector repeats the item selector.
+
 ## LRN-FORM-11
 - **Date / site:** 2026-09-29, 4chef.co.il `/pages/דרושים-ב-4chef` (Shopify page, 6 jobs in one accordion).
 - **Signal:** the apply popup is a normal Shopify contact form (`form#contact_form`,
