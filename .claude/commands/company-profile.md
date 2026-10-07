@@ -185,8 +185,9 @@ curl.exe -X POST "$BASE/api/sites/$SITE_ID/company-logo" -H "$AUTH" \
 The server validates magic bytes and size. **The upload does not recompute
 `companyProfileStatus`** — with homepage, about and logo now present, set it yourself:
 `PUT /api/sites/$SITE_ID/company-profile?force=1` with `{"companyProfileStatus":"COMPLETE"}`
-(presence-based: no other column is touched). A later forced re-capture will not find the
-logo again and recomputes PARTIAL; re-set it after one. Cite: `LRN-LOGO-2`.
+(presence-based: no other column is touched). A later forced re-capture keeps this stored
+logo (the logo step is skipped unless `--replace-logo` is given), so it still counts toward
+the status. Cite: `LRN-LOGO-2`.
 
 While looking at the logo, compare it with `companyName`: the logo carries the company's
 own spelling, the page `<title>` often does not (`addsite2.md` §4).
