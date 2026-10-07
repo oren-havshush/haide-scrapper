@@ -56,7 +56,7 @@ several listing pages back into one and stops publishing the rest.
 | PwC Israel | ACTIVE | 8 | 5141 | 1 | `pwc-careersite-hunterhrms--zpei34` |
 | RISCO | ACTIVE | 7 | 5806 | 2 | `riscogroup--7fzhg0` |
 | Rad | ACTIVE | 5 | 878 | 1 | `rad--ncqy5u` |
-| Rapyd | ACTIVE | 9 | — | 1 | `rapyd--udr6ty` |
+| Rapyd | ACTIVE | 11 | 2802 | 1 | `rapyd--6zork4` |
 | TADIRAN GROUP | ACTIVE | 7 | 2620 | 1 | `topmatch--1z5jpw` |
 | TCMCAREER | ACTIVE | 7 | 3387 | 1 | `tcmcareer--7zncwp` |
 | Tender Loving Care | ACTIVE | 4 | 1240 | 1 | `tl-care--cylsu8` |
