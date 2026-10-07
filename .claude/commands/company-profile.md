@@ -70,6 +70,7 @@ Flags worth knowing:
 | `--dry-run` | scrape and print, **write nothing** — safe to run any time |
 | `--no-llm` | deterministic only, never call OpenAI (free, and what CI uses) |
 | `--force` | overwrite an existing profile — only for a deliberate re-capture |
+| `--replace-logo` | a stored logo is **kept** (the logo step is skipped) unless this is given; `--force` alone never replaces it |
 | `--probe <url>` | scrape an arbitrary URL, no DB and no token, to debug extraction |
 | `--out <path>` | append one JSON result per site, for inspection |
 

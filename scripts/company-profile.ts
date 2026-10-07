@@ -13,6 +13,10 @@
  *   --concurrency <N> Sites in flight at once. Default: 3.
  *   --dry-run         Scrape and print, write nothing. Safe to run any time.
  *   --force           Overwrite a profile already captured. See the guard below.
+ *                     Does NOT replace a stored logo; that takes --replace-logo.
+ *   --replace-logo    Run the logo step even though the site already has a
+ *                     logo. Without it a stored logo is kept and the step is
+ *                     skipped (scripts/lib/logo-keep.ts, owner 2026-10-07).
  *   --no-llm          Deterministic extraction only, never call OpenAI.
  *   --out <path>      Append one JSON result per site to this file.
  *   --write-empty     Record a capture that found nothing. Off by default: an
@@ -93,6 +97,7 @@ import {
   type CityList,
 } from "./lib/city-csv";
 import { rasteriseSvgImgLogos } from "./lib/svg-img-logos";
+import { keepStoredLogo } from "./lib/logo-keep";
 import { fetchImage, ImageRejected, type FetchedImage } from "./lib/fetch-image";
 import { inspectImage } from "../src/lib/image-validate";
 
@@ -190,6 +195,12 @@ interface SiteRow {
    */
   companyHqCity?: string | null;
   companyHqCitySource?: string | null;
+  /**
+   * The logo already stored, from either path (both carry every company
+   * column). A stored logo is kept unless --replace-logo: see logo-keep.ts.
+   */
+  companyLogoPath?: string | null;
+  companyLogoSourceUrl?: string | null;
 }
 
 interface SiteConfigResponse {
@@ -1161,6 +1172,8 @@ interface LogoOutcome {
   /** Contrast measurement of the winning logo; null when unmeasurable. */
   visibility: LogoVisibility | null;
   attempts: { url: string; source: string; result: string }[];
+  /** True when the stored logo was kept and the step skipped (logo-keep.ts). */
+  kept?: boolean;
 }
 
 /**
@@ -1245,6 +1258,8 @@ async function captureLogo(
 interface CaptureResult {
   /** Non-fatal notes an operator should see — see LIGHT_LOGO_RATIO. */
   warnings?: string[];
+  /** What the run deliberately did not do, e.g. kept a stored logo. */
+  notes?: string[];
   siteId: string;
   siteUrl: string;
   companyName: string | null;
@@ -1263,11 +1278,30 @@ interface CaptureResult {
   error?: string;
 }
 
+/**
+ * A stored logo was kept (logo-keep.ts): say so in the run log, which prints
+ * notes in the dry run and the real run alike, and return the provenance.
+ */
+function keptLogoNote(result: CaptureResult, logoPath: string, sourceUrl: string | null): string {
+  (result.notes ??= []).push(
+    `kept the stored logo ${logoPath}${sourceUrl ? ` (from ${sourceUrl})` : ""}; ` +
+      "pass --replace-logo to replace it",
+  );
+  return `kept stored logo (${sourceUrl ?? logoPath})`;
+}
+
 async function captureSite(
   browser: Browser,
   site: SiteRow,
   cities: CityList,
-  opts: { dryRun: boolean; force: boolean; useLlm: boolean; patient?: boolean; writeEmpty?: boolean },
+  opts: {
+    dryRun: boolean;
+    force: boolean;
+    useLlm: boolean;
+    replaceLogo: boolean;
+    patient?: boolean;
+    writeEmpty?: boolean;
+  },
 ): Promise<CaptureResult> {
   const result: CaptureResult = {
     siteId: site.id,
@@ -1401,19 +1435,21 @@ async function captureSite(
       // gate validates independently, which is what makes it safe to accept
       // here when nothing else is.
       const boardLogo = careers
-        ? await captureLogo(
+        ? await keepStoredLogo(site, opts.replaceLogo, () => captureLogo(
             page,
             site.id,
             collectLogoCandidates(careers, null, { careersBoard: true }),
             careers.url,
             opts.dryRun,
-          )
+          ))
         : null;
 
       if (boardLogo?.logoPath) {
         result.fields.companyLogoPath = boardLogo.logoPath;
         result.logoAttempts = boardLogo.attempts;
-        result.provenance.logo = `careers board (${boardLogo.sourceUrl || careers?.url})`;
+        result.provenance.logo = boardLogo.kept
+          ? keptLogoNote(result, boardLogo.logoPath, boardLogo.sourceUrl)
+          : `careers board (${boardLogo.sourceUrl || careers?.url})`;
         result.status = classifyProfileStatus(result.fields);
         (result.warnings ??= []).push(
           "no company homepage found — only the logo was captured, from the careers board",
@@ -1630,10 +1666,15 @@ async function captureSite(
     // A careers page already loaded for the homepage hunt is free to reuse.
     if (careers) candidates.push(...collectLogoCandidates(careers, null));
 
-    const logo = await captureLogo(page, site.id, candidates, homepage.url, opts.dryRun);
+    // A stored logo is kept and this step skipped, unless --replace-logo.
+    const logo = await keepStoredLogo(site, opts.replaceLogo, () =>
+      captureLogo(page, site.id, candidates, homepage.url, opts.dryRun),
+    );
     result.fields.companyLogoPath = logo.logoPath;
     result.logoAttempts = logo.attempts;
-    if (logo.logoPath) {
+    if (logo.kept && logo.logoPath) {
+      result.provenance.logo = keptLogoNote(result, logo.logoPath, logo.sourceUrl);
+    } else if (logo.logoPath) {
       result.provenance.logo = logo.sourceUrl || "inline <svg>, rasterised";
 
       // A light-on-dark logo is a valid image that passes every byte check and
@@ -1844,6 +1885,9 @@ async function main() {
   // whole point is that it touches nothing.
   const dryRun = flag("dry-run") || arg("probe") !== undefined;
   const force = flag("force");
+  // Separate from --force on purpose: re-capturing a profile must not swap a
+  // logo someone set by hand (logo-keep.ts).
+  const replaceLogo = flag("replace-logo");
   const useLlm = !flag("no-llm");
   const concurrency = intArg("concurrency", 3);
   const outFile = arg("out");
@@ -1882,6 +1926,7 @@ async function main() {
             dryRun,
             force,
             useLlm,
+            replaceLogo,
             writeEmpty,
           });
 
@@ -1897,6 +1942,7 @@ async function main() {
               dryRun,
               force,
               useLlm,
+              replaceLogo,
               writeEmpty,
               patient: true,
             });
@@ -1954,6 +2000,9 @@ function logResult(r: CaptureResult): void {
 
   for (const warning of r.warnings ?? []) {
     console.log(`[company-profile]   WARN ${warning}`);
+  }
+  for (const note of r.notes ?? []) {
+    console.log(`[company-profile]   NOTE ${note}`);
   }
 
   // Only worth printing when it failed — a successful upload is self-evident.
