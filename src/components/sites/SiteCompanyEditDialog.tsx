@@ -210,7 +210,7 @@ export function SiteCompanyEditDialog({
             onClear={(clear) => set("address", { clear })}
           >
             <Input
-              dir="rtl"
+              dir="auto"
               value={draft.address.value}
               maxLength={MAX_ADDRESS}
               disabled={isSaving || draft.address.clear}
@@ -226,7 +226,7 @@ export function SiteCompanyEditDialog({
             onClear={(clear) => set("about", { clear })}
           >
             <textarea
-              dir="rtl"
+              dir="auto"
               rows={7}
               value={draft.about.value}
               maxLength={MAX_ABOUT}
