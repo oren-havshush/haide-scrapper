@@ -365,6 +365,21 @@ export const updateSiteConfigSchema = z.object({
       }
     })
     .optional(),
+  // Owner-accepted activation gates (src/lib/acceptedGates.ts): the nightly
+  // reports such a site apart, with its fill, instead of under Needs
+  // attention. Keyed by gate; `fill` is the level it was accepted at, and the
+  // note says why. Not a scrape setting: an acceptedGates-only write keeps the
+  // site's status. Stored under fieldMappings._meta.acceptedGates.
+  acceptedGates: z
+    .object({
+      description_fill: z.object({
+        fill: z.number().min(0).max(1),
+        note: z.string().trim().min(1).max(500),
+      }).strict(),
+    })
+    .partial()
+    .strict()
+    .optional(),
 });
 
 // ---------------------------------------------------------------------------

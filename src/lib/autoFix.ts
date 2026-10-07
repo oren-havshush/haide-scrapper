@@ -81,8 +81,11 @@ const MAPPED_FIELD: Readonly<Record<string, FixFieldValue>> = {
   detailUrl: "COVERAGE",
 };
 
-/** _meta keys that carry no behaviour: a change in them alone is no change. */
-const INERT_META = new Set(["savedAt", "originalMappings"]);
+/**
+ * _meta keys that carry no behaviour: a change in them alone is no change.
+ * acceptedGates is a report setting (src/lib/acceptedGates.ts), not a fix.
+ */
+const INERT_META = new Set(["savedAt", "originalMappings", "acceptedGates"]);
 
 /**
  * JSON with object keys sorted, so jsonb's key reordering is not a change, and

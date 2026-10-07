@@ -7,6 +7,7 @@ import {
   ValidationError,
 } from "@/lib/errors";
 import { resolveHqCity } from "@/lib/locations";
+import { onlyAcceptedGatesChanged, type AcceptedGates } from "@/lib/acceptedGates";
 import { buildScrapeJobRow } from "@/lib/scrapeJobRow";
 import { findListingRunsBySiteIds } from "@/lib/listingRun";
 import { markFirstActive } from "@/lib/firstDates";
@@ -414,6 +415,7 @@ export async function saveSiteConfig(
     minPublishDays?: number;
     locationFallback?: string;
     listingUrls?: string[];
+    acceptedGates?: AcceptedGates;
   }
 ) {
   const site = await prisma.site.findUnique({ where: { id: siteId } });
@@ -442,11 +444,26 @@ export async function saveSiteConfig(
       minPublishDays:
         typeof config.minPublishDays === "number" ? config.minPublishDays : null,
       locationFallback: config.locationFallback || null,
+      acceptedGates: config.acceptedGates || null,
       savedAt: new Date().toISOString(),
     },
   };
 
-  const transitionToReview = site.status === "ACTIVE";
+  // An acceptedGates-only write (src/lib/acceptedGates.ts) is a report
+  // setting, not a scrape change: the site keeps its status, and the stored
+  // savedAt, so incremental runs keep carrying under the same config.
+  const reportOnly = onlyAcceptedGatesChanged(
+    { fieldMappings: site.fieldMappings, pageFlow: site.pageFlow },
+    { fieldMappings: fieldMappingsWithMeta, pageFlow: config.pageFlow },
+  );
+  if (reportOnly) {
+    const storedMeta = (site.fieldMappings as Record<string, unknown> | null)?._meta as Record<string, unknown> | undefined;
+    if (typeof storedMeta?.savedAt === "string") {
+      (fieldMappingsWithMeta._meta as Record<string, unknown>).savedAt = storedMeta.savedAt;
+    }
+  }
+
+  const transitionToReview = site.status === "ACTIVE" && !reportOnly;
 
   // Build update data for config save.
   // When editing an ACTIVE site, send it back to REVIEW until re-approved.

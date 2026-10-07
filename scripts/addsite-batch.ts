@@ -67,6 +67,7 @@ import { scriptIdRules } from "./lib/verifyJobIds";
 import { compareSetupScript } from "./lib/verifyConfig";
 import { flattenStoredConfig, mergeConfigPatch, type StoredConfig } from "../src/lib/configPatch";
 import { FIX_FIELDS } from "../src/lib/fixFields";
+import { onlyAcceptedGatesChanged } from "../src/lib/acceptedGates";
 
 // Ensure Playwright resolves its browsers from the project-local node_modules
 // installation (PLAYWRIGHT_BROWSERS_PATH=0), matching how the worker runs.
@@ -1988,12 +1989,20 @@ async function cmdFix(argv: string[]): Promise<void> {
 
   // 2. Write, then read back.
   await apiPatch(`/api/sites/${siteId}/config`, patch, headers);
-  const after = flattenStoredConfig(((await apiGet(`/api/sites/${siteId}/config`, headers)) as { data: StoredConfig }).data);
+  const afterStored = ((await apiGet(`/api/sites/${siteId}/config`, headers)) as { data: StoredConfig }).data;
+  const after = flattenStoredConfig(afterStored);
   const drift = renderConfigDiff(merged, after);
   if (drift.length > 0) {
     console.error("[fix] the stored config is not what was written:");
     for (const line of drift) console.error(`  ${line}`);
     process.exit(2);
+  }
+  // acceptedGates alone (src/lib/acceptedGates.ts) is a report setting: the
+  // server kept the site's status, nothing the scrape reads changed, so there
+  // is no guarded run to make and nothing to promote.
+  if (onlyAcceptedGatesChanged(stored, afterStored)) {
+    console.log("[fix] written and read back: acceptedGates only, not a scrape change; status kept, no guarded run.");
+    return;
   }
   console.log("[fix] written and read back; the site is now REVIEW.");
 

@@ -14,6 +14,7 @@
 import { DEFAULT_DROP_THRESHOLDS, FIELD_FILL_THRESHOLD, isSuspiciousDrop, type DropThresholds } from "./scheduledRun";
 import { LISTING_SOFT_CATEGORIES } from "./listingTargets";
 import { FIELD_FILL_DROP } from "./sweepSelection";
+import { acceptedBelowGate, type AcceptedGates } from "../../src/lib/acceptedGates";
 
 /**
  * A multi-page site that refused to publish a partial set. Soft, like drift,
@@ -78,6 +79,12 @@ export type ReportItem = {
    * sweep item row has no column for it; the stored report carries it.
    */
   gateReason?: string | null;
+  /**
+   * The site's owner-accepted gates (src/lib/acceptedGates.ts). In memory only,
+   * like gateReason: a withheld demotion they cover is listed under "Accepted
+   * below gate", not under Needs attention.
+   */
+  acceptedGates?: AcceptedGates | null;
   /** Policy phase only: the site's scrapingPolicyStatus before and after tonight. */
   policyStatusBefore?: string | null;
   policyStatusAfter?: string | null;
@@ -416,7 +423,11 @@ export function needsAttention(
 
   for (const i of items) {
     if (i.wouldPromoteTo) add(i, `would have promoted to ${i.wouldPromoteTo}${gateSuffix(i)} — a human promotes`);
-    if (i.wouldDemoteTo) add(i, `would have demoted to ${i.wouldDemoteTo}${gateSuffix(i)}`);
+    // A demotion the owner accepted is listed under "Accepted below gate"
+    // instead (src/lib/acceptedGates.ts), until the fill falls 20 points further.
+    if (i.wouldDemoteTo && !acceptedBelowGate(i, i.acceptedGates)) {
+      add(i, `would have demoted to ${i.wouldDemoteTo}${gateSuffix(i)}`);
+    }
     if (i.outcome === WITHHELD_SKIP_OUTCOME) add(i, "would have been SKIPPED (login-gated apply)");
     // A refused drop and a listing refusal protected their listings too, but
     // each has its own line below with both counts; the generic one beside it
@@ -615,6 +626,22 @@ export function renderSweepReport(
     for (const a of attention) lines.push(`  ${a.siteUrl}\n      ${a.why}`);
   }
   lines.push("");
+
+  // --- Accepted below gate ------------------------------------------------
+  // Sites the owner set ACTIVE below a gate (src/lib/acceptedGates.ts): one
+  // count line and the current fill, not a nightly Needs-attention line.
+  // Printed only when there is one, so a night without any reads as before.
+  const accepted = items
+    .map((i) => ({ i, a: acceptedBelowGate(i, i.acceptedGates) }))
+    .filter((x): x is { i: ReportItem; a: { fill: number; acceptedFill: number } } => x.a !== null);
+  if (accepted.length > 0) {
+    const pct = (f: number) => `${Math.round(f * 100)}%`;
+    lines.push(`Accepted below gate (${accepted.length})`);
+    for (const { i, a } of accepted) {
+      lines.push(`  ${i.siteUrl} — description fill ${pct(a.fill)} (accepted at ${pct(a.acceptedFill)})`);
+    }
+    lines.push("");
+  }
 
   // --- Categories --------------------------------------------------------
   // Silent drift gets its own bucket rather than sitting under "failures": a

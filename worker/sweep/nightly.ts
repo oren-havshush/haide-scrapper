@@ -56,6 +56,7 @@ import {
   SOFT_FAILURE_ALERT_RATIO,
 } from "../lib/sweepBreaker";
 import { sweepDate, type ReportItem, type SkippedSite } from "../lib/sweepReport";
+import { readAcceptedGates, type AcceptedGates } from "../../src/lib/acceptedGates";
 import { sendSweepMail } from "../lib/sweepMail";
 import {
   cancelPendingJobById,
@@ -145,6 +146,8 @@ type SiteResult = {
   wouldPromoteTo: string | null;
   /** The activation gate's reason for a withheld promotion or demotion. */
   gateReason?: string | null;
+  /** The site's owner-accepted gates (src/lib/acceptedGates.ts), read after the run. */
+  acceptedGates?: AcceptedGates | null;
   wouldSkip: string | null;
   /**
    * The ScrapeRun's raw terminal status.
@@ -254,7 +257,7 @@ async function waitForRun(
 
 async function siteSnapshot(siteId: string) {
   const [site, count, newest] = await Promise.all([
-    prisma.site.findUnique({ where: { id: siteId }, select: { status: true, siteUrl: true } }),
+    prisma.site.findUnique({ where: { id: siteId }, select: { status: true, siteUrl: true, fieldMappings: true } }),
     prisma.job.count({ where: { siteId } }),
     prisma.job.findFirst({
       where: { siteId },
@@ -267,6 +270,8 @@ async function siteSnapshot(siteId: string) {
     siteUrl: site?.siteUrl ?? "",
     jobCount: count,
     newestJobAt: newest?.createdAt ?? null,
+    // Owner-accepted gates, for the report's "Accepted below gate" (src/lib/acceptedGates.ts).
+    acceptedGates: readAcceptedGates(site?.fieldMappings ?? null),
   };
 }
 
@@ -500,6 +505,7 @@ async function runOneSite(
     wouldDemoteTo: typeof withheld.wouldDemoteTo === "string" ? withheld.wouldDemoteTo : null,
     wouldPromoteTo: typeof withheld.wouldPromoteTo === "string" ? withheld.wouldPromoteTo : null,
     gateReason: typeof withheld.gateReason === "string" ? withheld.gateReason : null,
+    acceptedGates: after.acceptedGates,
     wouldSkip,
     runStatus: waited.status,
     finishedAt: new Date(),
@@ -527,6 +533,7 @@ function toScrapeReportItem(r: SiteResult): ReportItem {
     wouldDemoteTo: r.wouldDemoteTo,
     wouldPromoteTo: r.wouldPromoteTo,
     gateReason: r.gateReason ?? null,
+    acceptedGates: r.acceptedGates ?? null,
     policyStatusBefore: null,
     policyStatusAfter: null,
     // In-memory only. The dashboard re-reads items from the database, which has
