@@ -122,8 +122,9 @@ export function toScoreItem(a: ApiItem): ScoreItem {
  * run: a code with no date is never scored (src/lib/fixScore.ts).
  */
 export const CHECK_CODE_LIVE_FROM: Readonly<Record<string, string | null>> = {
-  // owner, 2026-10-08 (LRN-APPLY-13); the date is recorded after its deploy.
-  apply_endpoint_mismatch: null,
+  // owner, 2026-10-08 (LRN-APPLY-13): the worker start of
+  // deploy-20261008-131113-406b14a, which shipped it.
+  apply_endpoint_mismatch: "2026-10-08T10:20:27Z",
 };
 
 /** Each queue code's live-from: the twelve from CHECK_CODES_LIVE_FROM, later ones from their own. */

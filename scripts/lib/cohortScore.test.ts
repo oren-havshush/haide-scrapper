@@ -119,7 +119,7 @@ const NOW = new Date("2026-10-05T12:00:00.000Z");
   const a = r.score.sites.find((x) => x.siteId === "a");
   eq([a?.cohort, a?.items, a?.fields, a?.minutes], ["control", 3, 2, 42], "site a: 3 items, 2 fields, 12 typed + 30 estimated once that day");
   eq(r.score.checkCodeSites.region_over_city, { control: 0, test: 1 }, "per site: no control window opened after 10-04 13:42Z, the test window (10-06) did");
-  eq(Object.keys(r.score.checkCodeSites).length, 12, "every queue code is accounted for");
+  eq(Object.keys(r.score.checkCodeSites).length, Object.keys(checkCodeLiveFrom()).length, "every queue code with a live date is accounted for");
   eq(a?.checkItems, 0, "so a's region_over_city item is not scored");
   eq(r.allCheckItems.get("a"), 1, "but is listed for information");
   eq(r.score.sites.filter((x) => x.cohort === "control").length, 11, "eleven control sites (incl. never-active)");
