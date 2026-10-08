@@ -9,6 +9,7 @@
 
 import type { SiteScore } from "../../src/lib/fixScore";
 import { VALUE_CHECK_QUEUE_CODES } from "../../worker/lib/valueChecks";
+import * as cohortScoreModule from "./cohortScore";
 import {
   CHECK_CODES_LIVE_FROM,
   buildCohortReport,
@@ -80,11 +81,21 @@ const NOW = new Date("2026-10-05T12:00:00.000Z");
   eq([i.siteId, i.field, i.source, i.code, i.openedAt.toISOString(), i.minutes, i.minutesEstimated], ["a", "LOCATION", "CHECK", "auto:config", "2026-10-03T09:00:00.000Z", 30, true], "item fields kept, estimate flag carried");
 }
 
-// ---- checkCodeLiveFrom: the twelve queue codes, from the 2b deploy -------
+// ---- checkCodeLiveFrom: the twelve queue codes from the 2b deploy; a later code from its own ----
 {
   const m = checkCodeLiveFrom();
-  eq(Object.keys(m).sort(), [...VALUE_CHECK_QUEUE_CODES].sort(), "exactly the twelve queue codes");
-  assert(Object.values(m).every((d) => d.toISOString() === new Date(CHECK_CODES_LIVE_FROM).toISOString()), "each live from 2026-10-04T13:42:25Z");
+  const later = (cohortScoreModule as Record<string, unknown>).CHECK_CODE_LIVE_FROM as Record<string, string | null> | undefined;
+  assert(later !== undefined && "apply_endpoint_mismatch" in later, "a per-code live-from map names apply_endpoint_mismatch (owner, 2026-10-08)");
+  const twelve = [...VALUE_CHECK_QUEUE_CODES].filter((c) => !(later && c in later));
+  eq(twelve.length, 12, "twelve queue codes go live with the 2b deploy");
+  for (const c of twelve) {
+    assert(m[c]?.toISOString() === new Date(CHECK_CODES_LIVE_FROM).toISOString(), `${c} is live from 2026-10-04T13:42:25Z`);
+  }
+  // A later code is scored only from its own deploy's worker start; until that
+  // date is recorded it is not scored at all (fixScore never scores a code with none).
+  const own = later?.apply_endpoint_mismatch ?? null;
+  if (own === null) assert(!("apply_endpoint_mismatch" in m), "apply_endpoint_mismatch has no live date yet, so it is not scored");
+  else assert(m.apply_endpoint_mismatch?.toISOString() === new Date(own).toISOString(), `apply_endpoint_mismatch is live from ${own}`);
   assert(!("apply_replay_token" in m), "apply_replay_token is a warning, not a queue code");
 }
 

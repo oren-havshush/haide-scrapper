@@ -1,0 +1,103 @@
+{
+  "actionUrl": "https://www.lighting.co.il/forms/index/index/",
+  "actionAttribute": "https://www.lighting.co.il/forms/index/index/",
+  "pageUrl": "https://www.lighting.co.il/jobs/jobs/1/",
+  "method": "POST",
+  "submitMechanism": "ajax",
+  "submitEndpoint": "https://www.lighting.co.il/wp-admin/admin-ajax.php",
+  "submitAction": "elementor_pro_forms_send_form",
+  "fields": [
+    {
+      "name": "form_id",
+      "label": "form id",
+      "fieldType": "hidden",
+      "required": false,
+      "tagName": "input",
+      "value": "jobs_form"
+    },
+    {
+      "name": "type",
+      "label": "type",
+      "fieldType": "hidden",
+      "required": false,
+      "tagName": "input",
+      "value": "job_forms"
+    },
+    {
+      "name": "title",
+      "label": "title",
+      "fieldType": "hidden",
+      "required": false,
+      "tagName": "input",
+      "value": ""
+    },
+    {
+      "name": "first_name",
+      "label": "* שם פרטי",
+      "fieldType": "text",
+      "required": false,
+      "tagName": "input"
+    },
+    {
+      "name": "last_name",
+      "label": "* שם משפחה",
+      "fieldType": "text",
+      "required": false,
+      "tagName": "input"
+    },
+    {
+      "name": "tel",
+      "label": "* מס טלפון",
+      "fieldType": "tel",
+      "required": false,
+      "tagName": "input"
+    },
+    {
+      "name": "address",
+      "label": "* עיר מגורים",
+      "fieldType": "text",
+      "required": false,
+      "tagName": "input"
+    },
+    {
+      "name": "file",
+      "label": "קורות חיים",
+      "fieldType": "file",
+      "required": false,
+      "tagName": "input"
+    },
+    {
+      "name": "email",
+      "label": "* דוא״ל",
+      "fieldType": "email",
+      "required": false,
+      "tagName": "input"
+    },
+    {
+      "name": "note",
+      "label": "שם המשרה",
+      "fieldType": "textarea",
+      "required": false,
+      "tagName": "textarea"
+    },
+    {
+      "name": "note",
+      "label": "שם המשרה",
+      "fieldType": "textarea",
+      "required": false,
+      "tagName": "textarea"
+    },
+    {
+      "name": "job",
+      "label": "job",
+      "fieldType": "hidden",
+      "required": false,
+      "tagName": "input",
+      "value": "יועץ/ת תאורה"
+    }
+  ],
+  "shapeHash": "608f9caca99d81980b24d5d8f5beda9ff4e117ec",
+  "capturedAt": "2026-10-07T13:57:56.119Z",
+  "captureSource": "live",
+  "extractorVersion": 3
+}

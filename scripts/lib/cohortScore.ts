@@ -115,9 +115,29 @@ export function toScoreItem(a: ApiItem): ScoreItem {
   };
 }
 
-/** Each of the twelve queue codes, live from CHECK_CODES_LIVE_FROM. */
+/**
+ * Queue codes added after step 2b, each live from the worker start of the
+ * deploy that shipped it, so a site whose window opened earlier is not
+ * compared on a code it could not have received. null until that deploy has
+ * run: a code with no date is never scored (src/lib/fixScore.ts).
+ */
+export const CHECK_CODE_LIVE_FROM: Readonly<Record<string, string | null>> = {
+  // owner, 2026-10-08 (LRN-APPLY-13); the date is recorded after its deploy.
+  apply_endpoint_mismatch: null,
+};
+
+/** Each queue code's live-from: the twelve from CHECK_CODES_LIVE_FROM, later ones from their own. */
 export function checkCodeLiveFrom(): Record<string, Date> {
-  return Object.fromEntries([...VALUE_CHECK_QUEUE_CODES].map((c) => [c, new Date(CHECK_CODES_LIVE_FROM)]));
+  const out: Record<string, Date> = {};
+  for (const c of VALUE_CHECK_QUEUE_CODES) {
+    if (Object.prototype.hasOwnProperty.call(CHECK_CODE_LIVE_FROM, c)) {
+      const own = CHECK_CODE_LIVE_FROM[c];
+      if (own) out[c] = new Date(own);
+    } else {
+      out[c] = new Date(CHECK_CODES_LIVE_FROM);
+    }
+  }
+  return out;
 }
 
 function median(xs: number[]): number {

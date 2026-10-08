@@ -129,6 +129,8 @@ export const VALUE_CHECK_QUEUE_CODES: ReadonlySet<string> = new Set([
   "region_over_city",
   "listing_vs_saved_gap",
   "description_fill_low",
+  // Live from its own deploy, not 2026-10-04 (scripts/lib/cohortScore.ts CHECK_CODE_LIVE_FROM).
+  "apply_endpoint_mismatch",
 ]);
 
 /** Warn when this share of a site's jobs end up with no usable location. */
@@ -148,7 +150,7 @@ export function jobKeyOf(j: { externalJobId: string | null; detailUrl: string | 
 }
 
 type BlobField = { name: string; label?: string; fieldType?: string };
-type ParsedBlob = { actionUrl?: string; actionAttribute?: string; submitEndpoint?: string; fields?: BlobField[] };
+type ParsedBlob = { actionUrl?: string; actionAttribute?: string; pageUrl?: string; submitEndpoint?: string; fields?: BlobField[] };
 
 function parseBlob(raw: string | null | undefined): ParsedBlob | null {
   if (!raw) return null;
@@ -222,6 +224,51 @@ export function applyTemplateActionUrl(blobs: FormBlobForChecks[]): CheckResult 
   if (keys.length === 0) return null;
   const detail = `${keys.length} job(s) post to a URL with an unfilled placeholder (${[...examples].slice(0, 2).join(", ")})`;
   return { warning: `apply_template_action_url: ${detail}`, finding: finding("apply_template_action_url", "APPLY", detail, keys.length, keys) };
+}
+
+const urlOf = (u: string | undefined): URL | null => {
+  if (!u) return null;
+  try {
+    return new URL(u);
+  } catch {
+    return null;
+  }
+};
+
+/**
+ * A stored form that posts somewhere its page does not (owner, 2026-10-08):
+ * the submitEndpoint's host differs from the page's, or the endpoint is
+ * admin-ajax.php while the form's own action attribute names another path on
+ * the same host. lighting.co.il's Magento form (action /forms/index/index/)
+ * was stored posting to admin-ajax.php with Elementor's action, and no gate
+ * read submitEndpoint (LRN-APPLY-13).
+ */
+export function applyEndpointMismatch(blobs: FormBlobForChecks[]): CheckResult | null {
+  const keys: string[] = [];
+  const examples = new Set<string>();
+  for (const b of blobs) {
+    const p = parseBlob(b.formData);
+    const endpoint = urlOf(p?.submitEndpoint);
+    const page = urlOf(p?.pageUrl) ?? urlOf(p?.actionUrl);
+    if (!p || !endpoint || !page) continue;
+    const action = urlOf(p.actionAttribute);
+    const otherHost = endpoint.host !== page.host;
+    const ajaxOverAction =
+      endpoint.pathname === "/wp-admin/admin-ajax.php" &&
+      !!action &&
+      action.host === endpoint.host &&
+      action.pathname !== endpoint.pathname;
+    if (!otherHost && !ajaxOverAction) continue;
+    keys.push(b.key);
+    examples.add(
+      otherHost
+        ? `${endpoint.toString()} from a page on ${page.host}`
+        : `${endpoint.toString()} while the form's action is ${action!.toString()}`,
+    );
+  }
+  if (keys.length === 0) return null;
+  const detail = `${keys.length} job(s) post to an endpoint the form does not name: ${[...examples].slice(0, 2).join("; ")}`;
+  return { warning: `apply_endpoint_mismatch: ${detail}`, finding: finding("apply_endpoint_mismatch", "APPLY", detail, keys.length, keys) };
 }
 
 export function applyHoneypotField(blobs: FormBlobForChecks[]): CheckResult | null {
@@ -488,6 +535,7 @@ export function runValueChecks(input: ValueCheckInput): { warnings: string[]; fi
     applyNoIdentityField(input.formBlobs),
     applyTemplateActionUrl(input.formBlobs),
     applyHoneypotField(input.formBlobs),
+    applyEndpointMismatch(input.formBlobs),
     externalJobIdChurn(input.saved, input.previous),
     listingVsSavedGap(input.listingItemsSeen, input.savedCount, input.deadDetailPages ?? 0),
     synthesisedIdCollision(input.idSeeds),

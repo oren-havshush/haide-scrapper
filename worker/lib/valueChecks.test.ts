@@ -479,6 +479,37 @@ console.log("# the queue: these checks open and close only their own items");
   eq(fresh.open[0]?.jobIds, ["a"], "a new finding opens with its jobs");
 }
 
+console.log("# apply_endpoint_mismatch — a stored form that posts somewhere its page does not (owner, 2026-10-08)");
+{
+  // lighting.co.il's stored applicationInfo before the fix, verbatim: the
+  // Magento form's action is /forms/index/index/ but the blob posts to
+  // admin-ajax.php with Elementor's action.
+  const lightingBlob = readFileSync(join(__dirname, "fixtures", "forms", "lighting-stored-applicationinfo.json"), "utf8");
+  const blobs = (formData: string) => [{ key: "lighting-1", formData }];
+  const hit = runValueChecks({ ...base, formBlobs: blobs(lightingBlob) });
+  const m = hit.findings.find((x) => x.code === "apply_endpoint_mismatch");
+  eq(m?.field, "APPLY", "lighting's stored blob: apply_endpoint_mismatch opens, an APPLY item");
+  eq(m?.jobIds, ["lighting-1"], "naming the job");
+  eq(/admin-ajax\.php/.test(m?.detail ?? "") && /forms\/index\/index/.test(m?.detail ?? ""), true, `the detail names both URLs (${m?.detail})`);
+  eq(VALUE_CHECK_QUEUE_CODES.has("apply_endpoint_mismatch"), true, "it is a queue code");
+
+  // The same blob as the fixed worker writes it: posting to its own action.
+  const fixed = JSON.parse(lightingBlob);
+  fixed.submitEndpoint = "https://www.lighting.co.il/forms/index/index/";
+  delete fixed.submitAction;
+  eq(codes(runValueChecks({ ...base, formBlobs: blobs(JSON.stringify(fixed)) })).includes("apply_endpoint_mismatch"), false, "posting to its own action: no item");
+
+  // An endpoint on another host than the page.
+  const other = { ...fixed, submitEndpoint: "https://forms.vendor.example/submit" };
+  eq(codes(runValueChecks({ ...base, formBlobs: blobs(JSON.stringify(other)) })).includes("apply_endpoint_mismatch"), true, "an endpoint on another host: item");
+
+  // A genuine Elementor form (no action attribute) posting to admin-ajax: fine.
+  const kahane = { actionUrl: "https://www.kahane.co.il/jobs", actionAttribute: "", pageUrl: "https://www.kahane.co.il/jobs", submitMechanism: "ajax", submitEndpoint: "https://www.kahane.co.il/wp-admin/admin-ajax.php", submitAction: "elementor_pro_forms_send_form", fields: [] };
+  eq(codes(runValueChecks({ ...base, formBlobs: blobs(JSON.stringify(kahane)) })).includes("apply_endpoint_mismatch"), false, "Elementor with no action attribute, to admin-ajax on its host: no item");
+  const noEndpoint = { ...kahane, submitMechanism: "native_form", submitEndpoint: undefined };
+  eq(codes(runValueChecks({ ...base, formBlobs: blobs(JSON.stringify(noEndpoint)) })).includes("apply_endpoint_mismatch"), false, "no submitEndpoint: nothing to judge");
+}
+
 console.log("# listing_vs_saved_gap — a card whose detail page was dead or unavailable is accounted for (owner, 2026-10-08)");
 {
   // civi HTRAMH7PYM, 2026-10-08: 5 cards, 3 saved, 2 detail pages declared
