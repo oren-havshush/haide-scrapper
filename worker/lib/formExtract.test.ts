@@ -80,7 +80,11 @@ type Blob = {
   extractorVersion: number;
 };
 
-function checkBlob(b: Blob | null, who: string, source: string) {
+// The template stamps its own version: it still applies the version 3 rules
+// (no data-validate required, no label fallback), so it does not claim 4.
+const TEMPLATE_EXTRACTOR_VERSION = 3;
+
+function checkBlob(b: Blob | null, who: string, source: string, version: number) {
   assert(!!b, `${who}: returned a form`);
   if (!b) return;
   const by = new Map(b.fields.map((f) => [f.name, f]));
@@ -99,7 +103,7 @@ function checkBlob(b: Blob | null, who: string, source: string) {
   eq(b.enctype, "multipart/form-data", `${who}: the form's enctype`);
   eq(b.method, "POST", `${who}: the method`);
   assert(/\/wp-admin\/admin-ajax\.php$/.test(b.actionUrl), `${who}: the action (${b.actionUrl})`);
-  eq([b.captureSource, b.extractorVersion], [source, FORM_EXTRACTOR_VERSION], `${who}: stamped ${source}, version ${FORM_EXTRACTOR_VERSION}`);
+  eq([b.captureSource, b.extractorVersion], [source, version], `${who}: stamped ${source}, version ${version}`);
   assert(!Number.isNaN(Date.parse(b.capturedAt)), `${who}: with an ISO capturedAt (${b.capturedAt})`);
   eq(b.actionAttribute, "https://medulla.test/wp-admin/admin-ajax.php", `${who}: actionAttribute, resolved absolute`);
   eq(b.pageUrl, "https://medulla.test/jobs/lab-technician/", `${who}: pageUrl, the page it was read from`);
@@ -130,7 +134,8 @@ async function serveFixture(page: Page, file: string): Promise<string> {
     // --- the worker's live extractor ----------------------------------------------
     const live = await extractLiveFormData(page, { formSelector: "form.elementor-form" }, new Date("2026-10-01T09:30:00Z"));
     const liveBlob = live ? (JSON.parse(live) as Blob) : null;
-    checkBlob(liveBlob, "live extractor", "live");
+    checkBlob(liveBlob, "live extractor", "live", FORM_EXTRACTOR_VERSION);
+    eq(liveBlob?.extractorVersion, 4, "live extractor: version 4, the required and label rules of 8ada1a1");
     eq(liveBlob?.capturedAt ?? null, "2026-10-01T09:30:00.000Z", "live extractor: capturedAt is the scrape's time");
     eq(
       [liveBlob?.submitMechanism, liveBlob?.submitEndpoint, liveBlob?.submitAction],
@@ -144,7 +149,7 @@ async function serveFixture(page: Page, file: string): Promise<string> {
     const template = readFileSync(join(__dirname, "..", "..", "sites", "_shared", "form-capture-template.js"), "utf8").split("__ITEMSEL__").join(".job");
     await page.evaluate(template);
     const span = await page.evaluate(() => document.querySelector("[data-extracted-form]")?.textContent ?? null);
-    checkBlob(span ? (JSON.parse(span) as Blob) : null, "capture template", "script");
+    checkBlob(span ? (JSON.parse(span) as Blob) : null, "capture template", "script", TEMPLATE_EXTRACTOR_VERSION);
     // The template's blob reaches the row as an explicit applicationInfo, which the
     // normalizer stamps; the same form must then hash the same as the live read.
     const scripted = span ? (JSON.parse(stampScriptFormBlob(span, { pageUrl: "https://medulla.test/elsewhere/", at: new Date() })) as Blob) : null;

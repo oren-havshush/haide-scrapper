@@ -15,11 +15,13 @@
 import { completeFormBlob } from "./formShape";
 
 /**
- * 3 = this shape, with actionAttribute, pageUrl, submitMechanism and shapeHash
- * (worker/lib/formShape.ts). 2 = step 2a without them. 1 = the shape before
- * step 2a (no values, no stamps).
+ * 4 = this shape, with required read from the attribute, aria-required or
+ * data-validate, and the label fallback for shared ids and reused labels
+ * (8ada1a1). 3 = the same shape before those rules, with actionAttribute,
+ * pageUrl, submitMechanism and shapeHash (worker/lib/formShape.ts). 2 = step
+ * 2a without them. 1 = the shape before step 2a (no values, no stamps).
  */
-export const FORM_EXTRACTOR_VERSION = 3;
+export const FORM_EXTRACTOR_VERSION = 4;
 
 /** The honeypot name rule, identical to the capture template's. */
 export const HONEYPOT_NAME = /\b(hp[_-]|honeypot|maspik|nickname)/i;
