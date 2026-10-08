@@ -4341,3 +4341,27 @@ is added that the citing text does not say. Their status rows are in
 - **Rule:** locate the description by rendering a detail page and printing its full
   `innerText`, then finding the prose container. Never guess selectors and give up;
   a field is "not on the page" only after the dump shows it is not.
+
+## LRN-APPLY-13 — one hidden form_id or post_id is not an Elementor form, and a div form posts by script
+
+- **Date / site:** reported 2026-10-07 by the developer (`~/.claude/plans/machsanei-teura-form-bug.md`),
+  found onboarding lighting.co.il (`cmuy68jsz001u01n1lgjwjodq`); the same fault on lilit.co.il
+  (`cmqy8ys7u000j01nzd3jrzaf3`) and naamat.org.il (`cmqiakw6s000u01t1kc3s0g1d`). Fixed 2026-10-08.
+- **Signal:** a stored `applicationInfo` with `submitEndpoint` `/wp-admin/admin-ajax.php` and
+  `submitAction` `elementor_pro_forms_send_form` on a site that is not Elementor: lighting and lilit are a
+  Magento forms module (`div.idus_forms…` with `action="/forms/index/index/"` and a hidden `form_id`),
+  naamat a WordPress jobs plugin (hidden `action=jobslisting_apply_now` and `post_id`). Every gate passed;
+  none reads `submitEndpoint`. On lighting every field was also stored `required: false` and the second
+  of two textareas (sharing `id="jobs_form.note"`) carried the first one's label.
+- **Cause:** `worker/lib/formShape.ts` treated any hidden `post_id`, `form_id` or `queried_id` as Elementor;
+  `completeParsed()` recomputes the mechanism for every blob, so no site config could correct it.
+  `worker/lib/formExtract.ts` read only the HTML `required` attribute (Magento marks
+  `data-validate="{required:true}"`) and always took the first `label[for=id]`.
+- **Fix (worker):** Elementor only on positive evidence (class `elementor-form`, a `form_fields[...]` name,
+  or hidden `post_id` with hidden `form_id`); never admin-ajax when the form's own action names another
+  path on the host; a WordPress hidden `action` with a hidden `post_id` gives that `submitAction`; a
+  container that is not a `<form>` posts by script to its own action. Required is the attribute,
+  `aria-required="true"` or a `data-validate` with `required:true`; an id shared by two elements, or a
+  label already used, falls back to the field's own placeholder or aria-label.
+- **Generalizes to:** any apply form whose field names resemble a framework's. Check a stored job's
+  `submitEndpoint` against the page's own form action before ACTIVE.
