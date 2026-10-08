@@ -17,6 +17,8 @@ type PageForm = {
   actionAttribute: string;
   pageUrl: string;
   formClass: string;
+  /** The container's tag, lower-case: "form", or "div" for a Magento idus_forms container. */
+  formTag: string;
   method: string;
   enctype: string | null;
   descriptors: RawFieldDescriptor[];
@@ -55,7 +57,11 @@ export async function extractLiveFormData(
     }
     const actionUrl = actionAttribute || pageUrl;
     const formClass = form.getAttribute("class") || "";
+    const formTag = form.tagName.toLowerCase();
     const method = (form.getAttribute("method") || "GET").toUpperCase();
+    // Labels already given to an earlier field, so a second field cannot
+    // inherit them (lighting's two textareas share one id and two labels).
+    const usedLabels: Element[] = [];
     const enctype = form.getAttribute("enctype");
 
     const descriptors: Array<{
@@ -79,11 +85,22 @@ export async function extractLiveFormData(
       const name = el.getAttribute("name") || "";
       const htmlEl = el as HTMLElement;
 
-      // The label, as the extractor has always inferred it.
+      // The label, as the extractor has always inferred it — except that a
+      // label[for] lookup is ambiguous when more than one element shares the
+      // id, or when the label it finds was already used by an earlier field:
+      // then the element's own placeholder or aria-label is read first
+      // (lighting's two textareas, id jobs_form.note, owner 2026-10-08).
       let label = "";
       if (htmlEl.id) {
-        const labelEl = document.querySelector(`label[for="${CSS.escape(htmlEl.id)}"]`);
-        if (labelEl?.textContent) label = labelEl.textContent.trim().slice(0, 100);
+        const idSel = CSS.escape(htmlEl.id);
+        const labelEl = document.querySelector(`label[for="${idSel}"]`);
+        const sharedId = document.querySelectorAll(`[id="${idSel}"]`).length > 1;
+        const reused = !!labelEl && usedLabels.includes(labelEl);
+        if (sharedId || reused) {
+          label = (el.getAttribute("placeholder") || el.getAttribute("aria-label") || "").trim().slice(0, 100);
+        }
+        if (!label && !reused && labelEl?.textContent) label = labelEl.textContent.trim().slice(0, 100);
+        if (labelEl && !usedLabels.includes(labelEl)) usedLabels.push(labelEl);
       }
       if (!label) {
         const parentLabel = htmlEl.closest("label");
@@ -112,7 +129,12 @@ export async function extractLiveFormData(
         type,
         name,
         label,
-        required: el.hasAttribute("required"),
+        // Required the HTML way, the ARIA way, or the Magento way
+        // (data-validate="{required:true}"; lighting, owner 2026-10-08).
+        required:
+          el.hasAttribute("required") ||
+          (el.getAttribute("aria-required") || "").trim().toLowerCase() === "true" ||
+          /(^|[{,\s'"])required['"]?\s*:\s*true\b/.test(el.getAttribute("data-validate") || ""),
         // The value as the page holds it NOW — a script may have set it.
         ...(type === "hidden" || type === "radio" ? { value: (el as HTMLInputElement).value } : {}),
         ...(type === "file"
@@ -131,7 +153,7 @@ export async function extractLiveFormData(
         groupLabel,
       });
     }
-    return { actionUrl, actionAttribute, pageUrl, formClass, method, enctype, descriptors };
+    return { actionUrl, actionAttribute, pageUrl, formClass, formTag, method, enctype, descriptors };
   }, cfg);
 
   if (!found) return null;

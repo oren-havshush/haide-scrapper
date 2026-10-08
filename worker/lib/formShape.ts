@@ -26,6 +26,12 @@ export type FormMarkup = {
   pageUrl: string;
   /** The form element's class attribute; absent for saved and script blobs. */
   formClass?: string;
+  /**
+   * The form container's tag, lower-case ("form", or "div" for a Magento
+   * idus_forms container); absent for saved and script blobs. A container that
+   * is not a <form> cannot submit natively.
+   */
+  formTag?: string;
   fields: ShapeField[];
 };
 export type Submission = { submitMechanism: SubmitMechanism; submitEndpoint?: string; submitAction?: string };
@@ -68,7 +74,38 @@ function ajaxTo(pageUrl: string, path: string, action?: string): Submission {
 }
 
 const ADMIN_AJAX = "/wp-admin/admin-ajax.php";
-const ELEMENTOR_HIDDEN = new Set(["post_id", "form_id", "queried_id"]);
+
+/**
+ * Elementor Pro on positive evidence only (owner, 2026-10-08; the developer's
+ * report of 2026-10-07): class elementor-form, a field named form_fields[...],
+ * or hidden post_id together with hidden form_id. One hidden form_id, post_id
+ * or queried_id is not evidence: lighting's and lilit's Magento forms carry a
+ * hidden form_id, naamat's WordPress jobs plugin a hidden post_id.
+ */
+function isElementor(m: FormMarkup): boolean {
+  const hidden = (name: string) => m.fields.some((f) => f.fieldType === "hidden" && f.name === name);
+  return (
+    hasClass(m.formClass, "elementor-form") ||
+    m.fields.some((f) => f.name.startsWith("form_fields[")) ||
+    (hidden("post_id") && hidden("form_id"))
+  );
+}
+
+/**
+ * The action attribute names a path on the page's own host other than
+ * admin-ajax.php. Then the form does not post to admin-ajax, whatever its
+ * fields suggest: lighting's action is /forms/index/index/.
+ */
+function actionNamesOtherPath(m: FormMarkup): boolean {
+  if (!m.actionAttribute) return false;
+  try {
+    const action = new URL(m.actionAttribute);
+    const page = new URL(m.pageUrl);
+    return action.host === page.host && action.pathname !== ADMIN_AJAX;
+  } catch {
+    return false;
+  }
+}
 
 /**
  * How the form submits, read from its markup only. The frameworks are checked
@@ -112,12 +149,35 @@ export function detectSubmitMechanism(m: FormMarkup): Submission {
     return ajaxTo(m.pageUrl, ADMIN_AJAX, "nf_ajax_submit");
   }
 
-  // Elementor Pro forms: hidden post_id, form_id or queried_id, or class elementor-form.
-  if (m.fields.some((f) => f.fieldType === "hidden" && ELEMENTOR_HIDDEN.has(f.name)) || hasClass(m.formClass, "elementor-form")) {
+  // Never admin-ajax when the form's own action names another path on the host:
+  // the action rules below decide (lighting's Magento form, 2026-10-07).
+  const otherPath = actionNamesOtherPath(m);
+
+  // Elementor Pro forms, on positive evidence only (isElementor).
+  if (isElementor(m) && !otherPath) {
     return ajaxTo(m.pageUrl, ADMIN_AJAX, "elementor_pro_forms_send_form");
   }
 
-  return m.actionAttribute ? { submitMechanism: "native_form" } : { submitMechanism: "unknown" };
+  // A WordPress form posting through admin-ajax.php by its own hidden "action"
+  // (naamat's jobs plugin: action=jobslisting_apply_now, with a hidden
+  // post_id). The submitAction is that value. A hidden action without the
+  // WordPress post_id stays unknown (medulla's noo send-email form).
+  const hiddenAction = m.fields.find((f) => f.fieldType === "hidden" && f.name === "action")?.value?.trim() ?? "";
+  const wpPostId = m.fields.some((f) => f.fieldType === "hidden" && f.name === "post_id");
+  if (hiddenAction && wpPostId && !otherPath) {
+    return ajaxTo(m.pageUrl, ADMIN_AJAX, hiddenAction);
+  }
+
+  // The action attribute rules. A container that is not a <form> (lighting's
+  // div.idus_forms_jobs_form with action="/forms/index/index/") cannot submit
+  // natively: its script posts to that action.
+  if (m.actionAttribute) {
+    if (m.formTag !== undefined && m.formTag !== "form") {
+      return { submitMechanism: "ajax", submitEndpoint: m.actionAttribute };
+    }
+    return { submitMechanism: "native_form" };
+  }
+  return { submitMechanism: "unknown" };
 }
 
 /**
@@ -154,12 +214,12 @@ function parseFormBlob(raw: string): Record<string, unknown> | null {
 
 function completeParsed(
   o: Record<string, unknown>,
-  ctx: { pageUrl: string; actionAttribute?: string; formClass?: string },
+  ctx: { pageUrl: string; actionAttribute?: string; formClass?: string; formTag?: string },
 ): Record<string, unknown> {
   const fields = o.fields as ShapeField[];
   const actionAttribute = typeof o.actionAttribute === "string" ? o.actionAttribute : (ctx.actionAttribute ?? "");
   const pageUrl = typeof o.pageUrl === "string" && o.pageUrl ? o.pageUrl : ctx.pageUrl;
-  const submission = detectSubmitMechanism({ actionAttribute, pageUrl, formClass: ctx.formClass, fields });
+  const submission = detectSubmitMechanism({ actionAttribute, pageUrl, formClass: ctx.formClass, formTag: ctx.formTag, fields });
   // Rebuilt in a fixed key order; every key the blob had is kept.
   const { actionUrl, method, enctype, fields: _f, capturedAt, captureSource, extractorVersion, ...rest } = o;
   void _f;
@@ -187,7 +247,10 @@ function completeParsed(
  * actionAttribute and pageUrl win over ctx; the mechanism and hash are always
  * computed here. Anything that is not a form blob is returned as it came.
  */
-export function completeFormBlob(raw: string, ctx: { pageUrl: string; actionAttribute?: string; formClass?: string }): string {
+export function completeFormBlob(
+  raw: string,
+  ctx: { pageUrl: string; actionAttribute?: string; formClass?: string; formTag?: string },
+): string {
   const o = parseFormBlob(raw);
   return o ? JSON.stringify(completeParsed(o, ctx)) : raw;
 }

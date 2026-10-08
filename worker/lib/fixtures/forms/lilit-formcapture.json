@@ -1,0 +1,63 @@
+{
+  "fields": [
+    {
+      "name": "form_id",
+      "label": "form_id",
+      "tagName": "INPUT",
+      "required": false,
+      "fieldType": "hidden"
+    },
+    {
+      "name": "type",
+      "label": "type",
+      "tagName": "INPUT",
+      "required": false,
+      "fieldType": "hidden"
+    },
+    {
+      "name": "firstname",
+      "label": "שם פרטי",
+      "tagName": "INPUT",
+      "required": true,
+      "fieldType": "text"
+    },
+    {
+      "name": "lastname",
+      "label": "שם משפחה",
+      "tagName": "INPUT",
+      "required": true,
+      "fieldType": "text"
+    },
+    {
+      "name": "phone",
+      "label": "טלפון",
+      "tagName": "INPUT",
+      "required": true,
+      "fieldType": "tel"
+    },
+    {
+      "name": "email",
+      "label": "אימייל",
+      "tagName": "INPUT",
+      "required": false,
+      "fieldType": "email"
+    },
+    {
+      "name": "notes",
+      "label": "הערות",
+      "tagName": "TEXTAREA",
+      "required": false,
+      "fieldType": "textarea"
+    },
+    {
+      "name": "cv",
+      "label": "קורות חיים",
+      "tagName": "INPUT",
+      "required": false,
+      "fieldType": "file"
+    }
+  ],
+  "method": "POST",
+  "actionUrl": "https://www.lilit.co.il/forms/index/index/",
+  "formSelector": "form.idus_forms_jobs"
+}

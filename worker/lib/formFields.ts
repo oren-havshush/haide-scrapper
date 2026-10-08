@@ -112,6 +112,7 @@ export function liveFormBlob(
     actionAttribute?: string;
     pageUrl?: string;
     formClass?: string;
+    formTag?: string;
   },
   fields: FormField[],
   now: Date,
@@ -129,6 +130,7 @@ export function liveFormBlob(
     pageUrl: form.pageUrl ?? "",
     actionAttribute: form.actionAttribute ?? "",
     formClass: form.formClass,
+    formTag: form.formTag,
   });
 }
 

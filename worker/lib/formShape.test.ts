@@ -138,6 +138,91 @@ eq([medulla.captureSource, medulla.capturedAt], ["static", "2026-09-28T09:56:58.
 assert(/^[0-9a-f]{40}$/.test(medulla.shapeHash ?? ""), `medulla: a sha1 shapeHash (${medulla.shapeHash})`);
 eq(medulla.fields.length, medullaCapture.fields.length, "medulla: the fields are unchanged");
 
+// --- Elementor needs positive evidence (owner, 2026-10-08; the developer's report of 2026-10-07) ---
+// One hidden form_id, post_id or queried_id is not Elementor: lighting.co.il and
+// lilit.co.il (a Magento forms module, hidden form_id) and naamat.org.il (a
+// WordPress jobs plugin, hidden post_id) were all stored as Elementor, posting
+// to /wp-admin/admin-ajax.php with elementor_pro_forms_send_form.
+
+/** The fields of a fixture's markup, read the way the live extractor reports them. */
+function fixtureFields(file: string): ShapeField[] {
+  const src = readFileSync(join(__dirname, "fixtures", "forms", file), "utf8");
+  const attr = (tag: string, a: string) => new RegExp(`\\s${a}="([^"]*)"`).exec(tag)?.[1];
+  const out: ShapeField[] = [];
+  for (const m of src.matchAll(/<(input|textarea|select)\b[^>]*>/g)) {
+    const tag = m[0];
+    const tagName = m[1];
+    const name = attr(tag, "name") ?? "";
+    if (!name || name.includes("{")) continue; // a template row ({id}), not a field
+    const fieldType = tagName === "input" ? (attr(tag, "type") ?? "text") : tagName;
+    out.push({ name, fieldType, tagName, ...(fieldType === "hidden" ? { value: attr(tag, "value") ?? "" } : {}) });
+  }
+  return out;
+}
+
+// lighting.co.il: a div.idus_forms_jobs_form carrying action="/forms/index/index/",
+// hidden form_id=jobs_form. A div cannot submit natively: ajax, to its own action.
+const LIGHTING_PAGE = "https://www.lighting.co.il/jobs/jobs/1/";
+const LIGHTING_ACTION = "https://www.lighting.co.il/forms/index/index/";
+const lightingFields = fixtureFields("lighting-magento.html");
+eq(lightingFields.find((x) => x.name === "form_id")?.value, "jobs_form", "lighting fixture: hidden form_id=jobs_form, as served");
+eq(
+  detectSubmitMechanism({ actionAttribute: LIGHTING_ACTION, pageUrl: LIGHTING_PAGE, formClass: "form idus_forms idus_forms_jobs_form", formTag: "div", fields: lightingFields } as Parameters<typeof detectSubmitMechanism>[0]),
+  { submitMechanism: "ajax", submitEndpoint: LIGHTING_ACTION },
+  "lighting (Magento div with an action, hidden form_id): ajax to its own action, never admin-ajax",
+);
+eq(
+  detectSubmitMechanism({ actionAttribute: LIGHTING_ACTION, pageUrl: LIGHTING_PAGE, formClass: "form idus_forms idus_forms_jobs_form", formTag: "form", fields: lightingFields } as Parameters<typeof detectSubmitMechanism>[0]),
+  { submitMechanism: "native_form" },
+  "the same fields in a real <form> with that action: native_form",
+);
+
+// lilit.co.il: the stored static capture (the same Magento module, hidden form_id
+// and type). A saved form's action attribute is not known: no endpoint is invented.
+const lilitCapture = JSON.parse(readFileSync(join(__dirname, "fixtures", "forms", "lilit-formcapture.json"), "utf8"));
+const lilit = JSON.parse(
+  completeFormBlob(
+    JSON.stringify({ actionUrl: lilitCapture.actionUrl, method: lilitCapture.method, fields: lilitCapture.fields, capturedAt: "2026-10-07T23:00:00.000Z", captureSource: "static", extractorVersion: FORM_EXTRACTOR_VERSION }),
+    { pageUrl: "https://www.lilit.co.il/jobs", actionAttribute: "" },
+  ),
+);
+eq(
+  [lilit.submitMechanism, lilit.submitEndpoint, lilit.submitAction],
+  ["unknown", undefined, undefined],
+  "lilit's static capture (hidden form_id + type): not Elementor, no admin-ajax endpoint, no Elementor action",
+);
+eq(lilit.actionUrl, "https://www.lilit.co.il/forms/index/index/", "lilit: actionUrl keeps the recorded action");
+
+// naamat.org.il: a WordPress jobs plugin, no action attribute, hidden
+// action=jobslisting_apply_now and post_id. ajax to admin-ajax.php with ITS action.
+const naamatFields = fixtureFields("naamat-jobs-modal.html");
+eq(naamatFields.find((x) => x.name === "action")?.value, "jobslisting_apply_now", "naamat fixture: hidden action=jobslisting_apply_now, as served");
+eq(
+  detectSubmitMechanism({ actionAttribute: "", pageUrl: "https://naamat.org.il/job/x/", formClass: "", formTag: "form", fields: naamatFields } as Parameters<typeof detectSubmitMechanism>[0]),
+  { submitMechanism: "ajax", submitEndpoint: "https://naamat.org.il/wp-admin/admin-ajax.php", submitAction: "jobslisting_apply_now" },
+  "naamat (WordPress, hidden action + post_id): ajax to admin-ajax.php, submitAction jobslisting_apply_now — not Elementor's",
+);
+
+// One generic hidden name alone is not Elementor; positive evidence is.
+const H = (name: string, value = "1") => f(name, "hidden", value);
+const elementor = { submitMechanism: "ajax", submitEndpoint: "https://www.example.co.il/wp-admin/admin-ajax.php", submitAction: "elementor_pro_forms_send_form" };
+eq(detectSubmitMechanism({ actionAttribute: "", pageUrl: PAGE, fields: [H("form_id"), f("email")] }), { submitMechanism: "unknown" }, "a hidden form_id alone: not Elementor");
+eq(detectSubmitMechanism({ actionAttribute: "", pageUrl: PAGE, fields: [H("post_id"), f("email")] }), { submitMechanism: "unknown" }, "a hidden post_id alone: not Elementor");
+eq(detectSubmitMechanism({ actionAttribute: "", pageUrl: PAGE, fields: [H("queried_id"), f("email")] }), { submitMechanism: "unknown" }, "a hidden queried_id alone: not Elementor");
+eq(detectSubmitMechanism({ actionAttribute: "", pageUrl: PAGE, fields: [H("post_id"), H("form_id"), f("email")] }), elementor, "hidden post_id together with hidden form_id: Elementor");
+eq(detectSubmitMechanism({ actionAttribute: "", pageUrl: PAGE, fields: [f("form_fields[email]", "email")] }), elementor, "a form_fields[...] name: Elementor");
+eq(detectSubmitMechanism({ actionAttribute: "", pageUrl: PAGE, formClass: "elementor-form", fields: [f("email")] }), elementor, "class elementor-form: Elementor");
+eq(
+  detectSubmitMechanism({ actionAttribute: "https://www.example.co.il/send/", pageUrl: PAGE, formClass: "elementor-form", fields: [f("form_fields[email]", "email")] }),
+  { submitMechanism: "native_form" },
+  "Elementor markers but an action naming another path on the host: never admin-ajax; the action rules",
+);
+eq(
+  detectSubmitMechanism({ actionAttribute: "https://www.example.co.il/wp-admin/admin-ajax.php", pageUrl: PAGE, formClass: "elementor-form", fields: [f("form_fields[email]", "email")] }),
+  elementor,
+  "an Elementor form whose action is admin-ajax itself stays Elementor",
+);
+
 // --- shapeHash -------------------------------------------------------------------------
 const base: ShapeField[] = [f("post_id", "hidden", "9653"), f("form_fields[email]", "email"), f("form_fields[cv][]", "file")];
 const h0 = formShapeHash(base, "", "ajax");

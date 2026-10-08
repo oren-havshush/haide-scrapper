@@ -183,6 +183,53 @@ async function serveFixture(page: Page, file: string): Promise<string> {
       "rad (Gravity Forms, iframe submission): a real form post to its action",
     );
     eq(rad?.pageUrl, radUrl, "rad: pageUrl");
+
+    // --- lighting.co.il (owner, 2026-10-08; the developer's report of 2026-10-07) ----------
+    // The Magento idus_forms container, as served (no script ran): a div with
+    // action="/forms/index/index/", five fields required the Magento way
+    // (data-validate="{required:true}"), and two textareas sharing one id with
+    // two labels — the site's own markup error.
+    await serveFixture(page, "lighting-magento.html");
+    const lighting = JSON.parse((await extractLiveFormData(page, { formSelector: "div.idus_forms_jobs_form" }, new Date())) ?? "null") as {
+      submitMechanism?: string;
+      submitEndpoint?: string;
+      submitAction?: string;
+      fields: Array<{ name: string; label: string; required: boolean; fieldType: string }>;
+    } | null;
+    eq(
+      [lighting?.submitMechanism, lighting?.submitEndpoint, lighting?.submitAction],
+      ["ajax", "https://www.lighting.co.il/forms/index/index/", undefined],
+      "lighting: ajax to its own action (/forms/index/index/), never admin-ajax or Elementor's action",
+    );
+    eq(
+      (lighting?.fields ?? []).filter((x) => x.required).map((x) => x.name).sort(),
+      ["address", "email", "first_name", "last_name", "tel"],
+      "lighting: the five data-validate {required:true} fields are required",
+    );
+    eq(
+      (lighting?.fields ?? []).filter((x) => x.fieldType === "textarea").map((x) => x.label),
+      ["שם המשרה", "הערות"],
+      "lighting: the two textareas sharing an id keep their own labels (placeholder fallback)",
+    );
+    // aria-required="true" (the page's own script adds it live) counts too.
+    await page.evaluate(() => {
+      const el = document.querySelector('[name="first_name"]');
+      el?.removeAttribute("data-validate");
+      el?.setAttribute("aria-required", "true");
+    });
+    const aria = JSON.parse((await extractLiveFormData(page, { formSelector: "div.idus_forms_jobs_form" }, new Date())) ?? "null") as
+      | { fields: Array<{ name: string; required: boolean }> }
+      | null;
+    eq(aria?.fields.find((x) => x.name === "first_name")?.required, true, "lighting: aria-required=\"true\" alone is required");
+
+    // naamat.org.il: the WordPress jobs plugin, hidden action=jobslisting_apply_now.
+    await serveFixture(page, "naamat-jobs-modal.html");
+    const naamat = JSON.parse((await extractLiveFormData(page, { formSelector: "#jobs-modal-form" }, new Date())) ?? "null") as Blob | null;
+    eq(
+      [naamat?.submitMechanism, naamat?.submitEndpoint, naamat?.submitAction],
+      ["ajax", "https://naamat.org.il/wp-admin/admin-ajax.php", "jobslisting_apply_now"],
+      "naamat: ajax to admin-ajax.php with its own hidden action, not Elementor's",
+    );
   } finally {
     await browser.close();
   }
