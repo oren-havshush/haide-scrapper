@@ -41,6 +41,36 @@ export function isChallengeTitle(title: string | null | undefined): boolean {
   return typeof title === "string" && /^\s*just a moment/i.test(title);
 }
 
+/**
+ * A host's bot challenge served instead of the page (owner, 2026-10-08).
+ * SiteGround answered eso-group, gazit and sinaistore with HTTP 202, the
+ * response header `sg-captcha: challenge`, and a meta refresh to
+ * /.well-known/sgcaptcha/. The page then reloads itself, so the run ends as a
+ * zero match, a null document.body, or a destroyed execution context —
+ * none of which is a site change. Read from the main frame's navigation
+ * responses; nothing tries to pass the challenge.
+ */
+export function detectChallengeResponse(url: string, headers: Record<string, string | undefined>): string | null {
+  const sg = Object.entries(headers).find(([k]) => k.toLowerCase() === "sg-captcha")?.[1];
+  if (typeof sg === "string" && /challenge/i.test(sg)) return "SiteGround challenge (sg-captcha: challenge)";
+  try {
+    if (new URL(url).pathname.startsWith("/.well-known/sgcaptcha/")) return "SiteGround challenge (/.well-known/sgcaptcha/)";
+  } catch {
+    // not a URL: no verdict
+  }
+  return null;
+}
+
+/** Remember the run's first challenge response on its guard. */
+export function noteChallengeResponse(
+  guard: ExtractGuard | null,
+  url: string,
+  headers: Record<string, string | undefined>,
+): void {
+  if (!guard || guard.challenge) return;
+  guard.challenge = detectChallengeResponse(url, headers);
+}
+
 /** Per run. `zeroMatch` records the selector that matched nothing, when refused. */
 export type ExtractGuard = {
   noAutoDetect: boolean;
@@ -49,12 +79,14 @@ export type ExtractGuard = {
   zeroMatch: string | null;
   /** The page title at that zero match, when it could be read. */
   zeroMatchTitle: string | null;
+  /** A host challenge seen on a main-frame navigation this run (detectChallengeResponse). */
+  challenge: string | null;
   /** One warning per selector a scheduled run declined to swap for auto-detect. */
   scopeSuspects: Map<string, string>;
 };
 
 export function newExtractGuard(scheduled: boolean): ExtractGuard {
-  return { noAutoDetect: true, scheduled, zeroMatch: null, zeroMatchTitle: null, scopeSuspects: new Map() };
+  return { noAutoDetect: true, scheduled, zeroMatch: null, zeroMatchTitle: null, challenge: null, scopeSuspects: new Map() };
 }
 
 /**
@@ -118,6 +150,16 @@ export function zeroMatchRefusal(
         `item selector matched nothing: ${guard.zeroMatch} — the page was a Cloudflare challenge ("${title}"), ` +
         "not the listing; previous listings kept",
       warnings: [`${ZERO_MATCH_WARNING}: ${guard.zeroMatch}`, `${BLOCKED_WARNING}: ${title}`],
+    };
+  }
+  if (guard.challenge) {
+    return {
+      failureCategory: BLOCKED,
+      runStatus: guard.scheduled ? "COMPLETED" : "FAILED",
+      error:
+        `item selector matched nothing: ${guard.zeroMatch} — the page was a ${guard.challenge}, ` +
+        "not the listing; previous listings kept",
+      warnings: [`${ZERO_MATCH_WARNING}: ${guard.zeroMatch}`, `${BLOCKED_WARNING}: ${guard.challenge}`],
     };
   }
   return {

@@ -394,7 +394,7 @@ check("a Cloudflare challenge is blocked, with its own line, and is not silent d
   const c = computeCounters(sweep(), [blocked, ...ok(2)]);
   assert(c.silentDrift === 0, `not silent drift (got ${c.silentDrift})`);
   const text = renderSweepReport(sweep({ selectedCount: 3 }), [blocked, ...ok(2)], { timeZone: TZ });
-  assert(/\n\s+1 {2}blocked \(Cloudflare challenge\)/.test(text), `the Outcomes block counts it\n${text}`);
+  assert(/\n\s+1 {2}blocked \(a host's bot challenge: Cloudflare or SiteGround\)/.test(text), `the Outcomes block counts it\n${text}`);
   assert(classifyOutcome({ status: "COMPLETED", failureCategory: "blocked" }) === "soft_failure", "a blocked run is a soft failure, like a refusal");
 });
 

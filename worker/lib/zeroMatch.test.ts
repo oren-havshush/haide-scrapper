@@ -25,6 +25,7 @@ import {
   scopeSuspectWarnings,
   zeroMatchRefusal,
 } from "./zeroMatch";
+import * as zeroMatchModule from "./zeroMatch";
 
 let failures = 0;
 function assert(cond: boolean, msg: string) {
@@ -259,6 +260,64 @@ check("a Cloudflare challenge page is blocked, not structure_changed", () => {
   );
   assert(!/challenge.*(click|solve|bypass)/i.test(src.slice(src.indexOf("async function pageTitle"), src.indexOf("async function pageTitle") + 600)), "and only reads it");
 });
+
+// --- SiteGround's challenge is blocked too (owner, 2026-10-08) ------------------------------
+// eso-group, gazit and sinaistore are hosted on SiteGround, which on 2026-10-08
+// answered the box with its bot challenge. eso-group's response, as captured
+// from the box: HTTP 202, 208 bytes, a meta refresh to /.well-known/sgcaptcha/.
+{
+  const zm = zeroMatchModule as Record<string, unknown>;
+  const detect = zm.detectChallengeResponse as ((url: string, headers: Record<string, string>) => string | null) | undefined;
+  const note = zm.noteChallengeResponse as ((g: unknown, url: string, headers: Record<string, string>) => void) | undefined;
+  assert(typeof detect === "function" && typeof note === "function", "detectChallengeResponse and noteChallengeResponse exist");
+
+  const ESO_URL = "https://eso-group.co.il/%d7%a7%d7%a8%d7%99%d7%99%d7%a8%d7%94/";
+  const ESO_HEADERS = {
+    server: "nginx",
+    "content-type": "text/html",
+    "content-length": "208",
+    "sg-captcha": "challenge",
+    "x-robots-tag": "noindex",
+    "cache-control": "no-store,no-cache,max-age=0",
+    "host-header": "8441280b0c35cbc1147f8ba998a563a7",
+  };
+  if (detect && note) {
+    assert(/SiteGround/.test(detect(ESO_URL, ESO_HEADERS) ?? ""), "eso-group's 202 with sg-captcha: challenge is a SiteGround challenge");
+    assert(
+      /SiteGround/.test(detect("https://eso-group.co.il/.well-known/sgcaptcha/?r=%2F&y=ipr:1.2.3.4:1", { "content-type": "text/html" }) ?? ""),
+      "so is the page it refreshes to, under /.well-known/sgcaptcha/",
+    );
+    assert(detect(ESO_URL, { server: "nginx", "host-header": "8441280b0c35cbc1147f8ba998a563a7" }) === null, "the real page from the same host is not");
+    assert(detect("https://x.test/.well-known/other", {}) === null, "nor another .well-known path");
+
+    // The zero-match route (eso-group, last night): blocked, not structure_changed.
+    const g = newExtractGuard(true);
+    note(g, ESO_URL, ESO_HEADERS);
+    onExplicitZeroMatch(g, "body article.ecs-post-loop", "");
+    const r = zeroMatchRefusal(g, 0);
+    assert(r?.failureCategory === BLOCKED, `eso-group's zero match behind the challenge is labelled blocked (got ${r?.failureCategory})`);
+    assert(r?.runStatus === "COMPLETED", "a scheduled refusal still closes COMPLETED, listings kept");
+    assert((r?.warnings ?? []).some((w) => w.startsWith(`${BLOCKED_WARNING}: `) && /SiteGround/.test(w)), "with a blocked_challenge warning naming SiteGround");
+    assert(/SiteGround/.test(r?.error ?? "") && /previous listings kept/.test(r?.error ?? ""), "and an error that says so");
+    const manual = newExtractGuard(false);
+    note(manual, ESO_URL, ESO_HEADERS);
+    onExplicitZeroMatch(manual, "body article.ecs-post-loop", "");
+    assert(zeroMatchRefusal(manual, 0)?.failureCategory === BLOCKED, "the manual path labels it blocked too");
+
+    // Without the challenge, the same zero match is structure_changed, as before.
+    const plain = newExtractGuard(true);
+    onExplicitZeroMatch(plain, "body article.ecs-post-loop", "");
+    assert(zeroMatchRefusal(plain, 0)?.failureCategory === "structure_changed", "no challenge: structure_changed, unchanged");
+  }
+
+  // The crash route (gazit, sinaistore): categorizeError reads the run's guard.
+  const scrape = readFileSync(join(__dirname, "..", "jobs", "scrape.ts"), "utf8");
+  const cat = scrape.slice(scrape.indexOf("function categorizeError("), scrape.indexOf("function categorizeError(") + 900);
+  assert(/guard\?\.challenge/.test(cat) && cat.indexOf("guard?.challenge") < cat.indexOf('"timeout"'), "categorizeError labels a run that met a challenge blocked, before anything else");
+  assert(/categorizeError\([\s\S]{0,200}runMode\.extract,?\s*\)/.test(scrape), "and the failure path passes it the run's guard");
+  const exec = scrape.slice(scrape.indexOf("async function executeScrape("), scrape.indexOf("async function executeScrape(") + 3000);
+  assert(/page\.on\("response"[\s\S]{0,400}noteChallengeResponse\(runMode\.extract/.test(exec), "executeScrape notes challenge responses on the main frame's navigations");
+}
 
 if (failures > 0) {
   console.error(`\n${failures} assertion(s) failed`);

@@ -675,7 +675,7 @@ export function renderSweepReport(
   // Counted from the items, not a SweepCounters key (no column for it).
   const blockedCount = items.filter(isBlocked).length;
   if (blockedCount > 0) {
-    lines.push(`  ${String(blockedCount).padStart(4)}  blocked (Cloudflare challenge)`);
+    lines.push(`  ${String(blockedCount).padStart(4)}  blocked (a host's bot challenge: Cloudflare or SiteGround)`);
   }
   lines.push("");
 

@@ -18,7 +18,9 @@ import { Prisma } from "../../src/generated/prisma/client";
 import { launchBrowser, createPage, closeBrowser, type BrowserOverrides } from "../lib/playwright";
 import { beforeClickLoad, createPacer, pacePage, readRequestDelayMs } from "../lib/requestDelay";
 import {
+  BLOCKED,
   newExtractGuard,
+  noteChallengeResponse,
   onExplicitZeroMatch,
   onLikelyWrongScope,
   scopeSuspectWarnings,
@@ -433,7 +435,15 @@ async function clickLoadMoreUntilStable(
 function categorizeError(
   error: Error,
   context: ScrapeContext,
+  guard: ExtractGuard | null = null,
 ): string {
+  // A host challenge was served instead of the page (worker/lib/zeroMatch.ts
+  // detectChallengeResponse): whatever broke afterwards — a null body, a
+  // context destroyed by the challenge's own reload — is a block, not a site
+  // change. The same label as Cloudflare's "Just a moment".
+  if (guard?.challenge) {
+    return BLOCKED;
+  }
   if (error.message.includes("timeout") || error.message.includes("Timeout")) {
     return "timeout";
   }
@@ -3140,6 +3150,7 @@ export async function handleScrapeJob(
     const failureCategory = categorizeError(
       error instanceof Error ? error : new Error(errorMessage),
       context,
+      runMode.extract,
     );
 
     // The transaction is the sole authority on a scheduled run's outcome (N3,
@@ -3654,6 +3665,18 @@ async function executeScrape(
   const { page } = await createPage(browser, browserOverrides ?? undefined);
   // Before every page load for this site: worker/lib/requestDelay.ts.
   if (browserOverrides?.requestDelayMs) pacePage(page, createPacer(browserOverrides.requestDelayMs));
+  // A host's bot challenge on any main-frame navigation (SiteGround's
+  // sg-captcha, worker/lib/zeroMatch.ts): remembered on the run's guard, so a
+  // refusal or a crash after it is labelled blocked, not structure_changed.
+  page.on("response", (r) => {
+    try {
+      if (r.frame() === page.mainFrame() && r.request().isNavigationRequest()) {
+        noteChallengeResponse(runMode.extract, r.url(), r.headers());
+      }
+    } catch {
+      // A response with no frame (a service worker's): not a navigation.
+    }
+  });
 
   // Inject __name shim so tsx-transpiled function decorators don't crash
   // inside page.evaluate calls that run in the browser context.
