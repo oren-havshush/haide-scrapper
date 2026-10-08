@@ -204,6 +204,13 @@ export const updateSiteConfigSchema = z.object({
     method: z.string(),
     // Step 2a (owner, 2026-10-01): the form's enctype, when it declares one.
     enctype: z.string().max(100).optional(),
+    // Stored by hand after reading the page by GET (owner, 2026-10-08, lilit):
+    // the form's real action as an absolute URL, and its container's tag name.
+    // The worker uses the action only on the page's own host
+    // (worker/lib/formFields.ts staticCompletion). Optional: absent, nothing
+    // changes.
+    verifiedAction: z.string().max(500).regex(/^https?:\/\/[^\s/]+\//, "verifiedAction must be an absolute http(s) URL").optional(),
+    formTag: z.string().max(40).regex(/^[a-z][a-z0-9-]*$/, "formTag must be a lower-case tag name").optional(),
     fields: z.array(z.object({
       name: z.string(),
       label: z.string(),

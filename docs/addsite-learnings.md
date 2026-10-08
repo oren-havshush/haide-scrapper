@@ -406,6 +406,14 @@
 - **Generalizes to:** any listing-only site (no `pageFlow`) whose listing page
   contains a decoy `<form>` matching your `formSelector`, while the real apply form
   lives on detail pages. **Home:** Step 5b / `recipes/form-capture.md` §7.
+- **Verified action (owner, 2026-10-08, lilit):** under this rule the static blob
+  wins, and a saved form's action attribute is unknown, so it completes to
+  `unknown` with no endpoint. A verified action may be stored by hand after reading
+  the page by GET: `formCapture.verifiedAction` (an absolute URL on the site's own
+  host) with `formTag` (the container's tag name). The static blob's completion
+  then uses them (`worker/lib/formFields.ts` `staticCompletion`, tested in
+  `worker/lib/formShape.test.ts`); an action on another host is ignored. The
+  static-first rule itself is unchanged.
 
 ### LRN-APPLY-8 — Wix lightbox apply form (button opens a popup, form not in listing DOM)
 - **Date / site:** 2026-06-29 · campkimama.org (`cmqynnjle004901nz99j7vrhl`) 9/9

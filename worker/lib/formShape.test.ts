@@ -21,7 +21,7 @@ import {
   stampScriptFormData,
   type ShapeField,
 } from "./formShape";
-import { FORM_EXTRACTOR_VERSION } from "./formFields";
+import { FORM_EXTRACTOR_VERSION, staticCompletion, staticFormBlob } from "./formFields";
 import { normalizeJobRecord } from "./normalizer";
 
 let failures = 0;
@@ -193,6 +193,45 @@ eq(
 );
 eq(lilit.actionUrl, "https://www.lilit.co.il/forms/index/index/", "lilit: actionUrl keeps the recorded action");
 
+// A verified action stored by hand (owner, 2026-10-08): formCapture.verifiedAction
+// (an absolute URL on the page's own host, read from the page by GET) and
+// formTag (the container's tag) reach the completion of the static blob.
+// Without them the context is exactly today's.
+{
+  const LILIT_PAGE = "https://www.lilit.co.il/jobs";
+  const LILIT_ACTION = "https://www.lilit.co.il/forms/index/index/";
+  const SAVED_AT = "2026-10-08T15:46:38.499Z";
+  const complete = (fc: Record<string, unknown>) =>
+    JSON.parse(completeFormBlob(staticFormBlob(fc, SAVED_AT) ?? "null", staticCompletion(fc, LILIT_PAGE)));
+
+  const verified = complete({ ...lilitCapture, verifiedAction: LILIT_ACTION, formTag: "div" });
+  eq(
+    [verified.captureSource, verified.submitMechanism, verified.submitEndpoint, verified.actionAttribute, verified.extractorVersion],
+    ["static", "ajax", LILIT_ACTION, LILIT_ACTION, 4],
+    "lilit with verifiedAction and formTag div: static, ajax to that endpoint, version 4",
+  );
+  const plain = complete(lilitCapture);
+  eq([plain.submitMechanism, plain.submitEndpoint, plain.actionAttribute], ["unknown", undefined, ""], "the same capture without the keys: unknown, no endpoint");
+  eq(staticCompletion(lilitCapture, LILIT_PAGE), { pageUrl: LILIT_PAGE, actionAttribute: "" }, "and the completion context is exactly today's");
+  const foreign = complete({ ...lilitCapture, verifiedAction: "https://forms.example.com/forms/index/index/", formTag: "div" });
+  eq([foreign.submitMechanism, foreign.submitEndpoint, foreign.actionAttribute], ["unknown", undefined, ""], "a verifiedAction on another host is ignored: unknown");
+  const relative = complete({ ...lilitCapture, verifiedAction: "/forms/index/index/", formTag: "div" });
+  eq([relative.submitMechanism, relative.actionAttribute], ["unknown", ""], "a relative verifiedAction is ignored: unknown");
+  const inForm = complete({ ...lilitCapture, verifiedAction: LILIT_ACTION, formTag: "form" });
+  eq([inForm.submitMechanism, inForm.submitEndpoint], ["native_form", undefined], "verifiedAction with formTag form: native_form");
+  assert(!("verifiedAction" in verified) && !("formTag" in verified), "the keys are not copied into the blob");
+}
+
+// The wiring: the static blob's completion in scrape.ts takes its context from
+// staticCompletion, with the saved formCapture, not an empty actionAttribute.
+{
+  const scrape = readFileSync(join(__dirname, "..", "jobs", "scrape.ts"), "utf8");
+  const at = scrape.indexOf("async function extractFormDataOrFallback(");
+  const body = at > 0 ? scrape.slice(at, scrape.indexOf("\n}\n", at)) : "";
+  assert(/completeFormBlob\(cfg\.staticBlob, staticCompletion\(cfg\.formCapture, page\.url\(\)\)\)/.test(body), "extractFormDataOrFallback completes the static blob with staticCompletion");
+  assert(!/actionAttribute: ""/.test(body), "and no longer with an empty actionAttribute");
+}
+
 // naamat.org.il: a WordPress jobs plugin, no action attribute, hidden
 // action=jobslisting_apply_now and post_id. ajax to admin-ajax.php with ITS action.
 const naamatFields = fixtureFields("naamat-jobs-modal.html");
@@ -257,7 +296,9 @@ const AT = new Date("2026-10-01T23:10:00Z");
 // The shape every existing setupScript's copy of the capture template emits today.
 const legacyScript = JSON.stringify({ actionUrl: "", method: "POST", fields: [f("post_id", "hidden"), f("form_fields[name]")] });
 const s1 = JSON.parse(stampScriptFormBlob(legacyScript, { pageUrl: PAGE, at: AT }));
-eq([s1.captureSource, s1.extractorVersion, s1.capturedAt], ["script", 1, "2026-10-01T23:10:00.000Z"], "an old script blob: script, version 1, the scrape's time");
+eq([s1.captureSource, s1.extractorVersion, s1.capturedAt], ["script", 0, "2026-10-01T23:10:00.000Z"], "an old script blob: script, version 0 (the site's own script), the scrape's time");
+const s1v = JSON.parse(stampScriptFormBlob(JSON.stringify({ ...JSON.parse(legacyScript), extractorVersion: 3 }), { pageUrl: PAGE, at: AT }));
+eq(s1v.extractorVersion, 3, "a script blob that carries its own version (the template's 3) keeps it");
 eq([s1.pageUrl, s1.actionAttribute, s1.submitMechanism], [PAGE, "", "ajax"], "an old script blob gains pageUrl, an empty actionAttribute and its mechanism");
 assert(/^[0-9a-f]{40}$/.test(s1.shapeHash ?? ""), "an old script blob gains a shapeHash");
 // What the updated template emits: its own stamps, pageUrl and actionAttribute.

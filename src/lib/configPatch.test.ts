@@ -139,6 +139,20 @@ const STORED = {
   assert(!put.includes("mergeConfigPatch("), "PUT stays replace");
 }
 
+// --- formCapture's verified action (owner, 2026-10-08, lilit) -----------------------
+// Two optional keys, stored by hand after reading the page by GET: the schema
+// keeps them (a plain zod object would strip them silently, and the fix
+// command's read-back would then fail), and refuses a malformed value.
+{
+  const verified = { ...FORM, verifiedAction: "https://www.kahane.co.il/forms/index/index/", formTag: "div" };
+  const merged = mergeConfigPatch(STORED, { formCapture: verified });
+  const kept = merged.formCapture as Record<string, unknown> | null;
+  eq([kept?.verifiedAction, kept?.formTag, kept?.fields], [verified.verifiedAction, verified.formTag, FORM.fields], "formCapture keeps verifiedAction and formTag");
+  eq(mergeConfigPatch(STORED, { setupScript: "x;" }).formCapture, FORM, "a capture without them is unchanged");
+  assert(threw(() => mergeConfigPatch(STORED, { formCapture: { ...FORM, verifiedAction: "/forms/index/index/" } })) !== null, "a relative verifiedAction is refused");
+  assert(threw(() => mergeConfigPatch(STORED, { formCapture: { ...FORM, formTag: "<div>" } })) !== null, "a formTag that is not a tag name is refused");
+}
+
 if (failures > 0) {
   console.error(`\n${failures} assertion(s) failed`);
   process.exit(1);

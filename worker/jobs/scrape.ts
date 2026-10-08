@@ -3,7 +3,7 @@ import { markFirstActive, markFirstScraped } from "../../src/lib/firstDates";
 import { firstSeenFor } from "../lib/firstSeen";
 import { jobContentHash } from "../lib/contentHash";
 import { extractLiveFormData } from "../lib/formExtract";
-import { stampFormData, staticFormBlob } from "../lib/formFields";
+import { stampFormData, staticCompletion, staticFormBlob } from "../lib/formFields";
 import { completeFormBlob } from "../lib/formShape";
 import { navigateWithRetry } from "../lib/navRetry";
 import {
@@ -2600,6 +2600,10 @@ interface FormCaptureConfig {
   // fields[] array in _meta.formCapture. null when no static fields were
   // recorded (extension-captured forms typically rely on live re-extract).
   staticBlob: string | null;
+  // The saved formCapture itself, for the static blob's completion: its
+  // verifiedAction and formTag, when stored (worker/lib/formFields.ts
+  // staticCompletion).
+  formCapture: Record<string, unknown>;
 }
 
 function getFormCaptureConfig(
@@ -2626,7 +2630,7 @@ function getFormCaptureConfig(
   // Nothing usable in this saved formCapture entry — skip.
   if (!formSelector && !staticBlob) return null;
 
-  return { formSelector, actionUrl, method, staticBlob };
+  return { formSelector, actionUrl, method, staticBlob, formCapture };
 }
 
 // ---------------------------------------------------------------------------
@@ -2766,8 +2770,9 @@ async function extractFormDataOrFallback(
   // The saved form gains pageUrl (the page it is attached from), its mechanism
   // and shapeHash. Its actionAttribute is not known — the recorder stores the
   // page URL when a form has no action — so it is empty, never a guess
-  // (worker/lib/formShape.ts).
-  const staticBlob = () => (cfg.staticBlob ? completeFormBlob(cfg.staticBlob, { pageUrl: page.url(), actionAttribute: "" }) : null);
+  // (worker/lib/formShape.ts), unless the capture carries a verifiedAction on
+  // this page's host, stored by hand after a GET read (staticCompletion).
+  const staticBlob = () => (cfg.staticBlob ? completeFormBlob(cfg.staticBlob, staticCompletion(cfg.formCapture, page.url())) : null);
   if (preferStatic && staticBlobFieldCount(cfg) >= 2) {
     return staticBlob();
   }

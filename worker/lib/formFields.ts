@@ -159,6 +159,35 @@ export function staticFormBlob(formCapture: unknown, savedAt: string | null): st
 }
 
 /**
+ * The completion context for the static blob on `pageUrl`. A saved form's action
+ * attribute is not known (the recorder stores the page URL when a form has
+ * none), so it is "" — unless the capture carries a verifiedAction, stored by
+ * hand after reading the page by GET: an absolute http(s) URL on the page's
+ * own host, passed with the container's formTag. Any other verifiedAction is
+ * ignored. Without one, the context is exactly { pageUrl, actionAttribute: "" }.
+ */
+export function staticCompletion(
+  formCapture: unknown,
+  pageUrl: string,
+): { pageUrl: string; actionAttribute: string; formTag?: string } {
+  const fc = formCapture && typeof formCapture === "object" ? (formCapture as Record<string, unknown>) : {};
+  const action = typeof fc.verifiedAction === "string" ? fc.verifiedAction.trim() : "";
+  if (!action || !onHost(action, pageUrl)) return { pageUrl, actionAttribute: "" };
+  const formTag = typeof fc.formTag === "string" && /^[a-z][a-z0-9-]*$/.test(fc.formTag) ? fc.formTag : undefined;
+  return formTag ? { pageUrl, actionAttribute: action, formTag } : { pageUrl, actionAttribute: action };
+}
+
+/** True when `url` is an absolute http(s) URL on `pageUrl`'s host. */
+function onHost(url: string, pageUrl: string): boolean {
+  try {
+    const u = new URL(url);
+    return (u.protocol === "https:" || u.protocol === "http:") && u.hostname === new URL(pageUrl).hostname;
+  } catch {
+    return false;
+  }
+}
+
+/**
  * A _formData from anywhere else — an older setupScript's capture template, a
  * row carried from before this change — gains the three keys as version 1 and
  * "live" (it was read from the page at scrape time). A stamped blob, and

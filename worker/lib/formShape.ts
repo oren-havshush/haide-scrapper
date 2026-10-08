@@ -258,9 +258,10 @@ export function completeFormBlob(
 /**
  * A blob a site's setup script injected as applicationInfo: stamped
  * captureSource "script" (whatever it called itself), keeping its own
- * capturedAt, pageUrl and extractorVersion when it has them — an existing
- * setupScript's copy of the template has none, and is version 1 — and
- * completed like every other blob. Text and non-form JSON are untouched.
+ * capturedAt, pageUrl and extractorVersion when it has them — a blob with no
+ * version is version 0: produced by the site's own script, the extractor's
+ * rules do not apply — and completed like every other blob. Text and non-form
+ * JSON are untouched.
  */
 export function stampScriptFormBlob(raw: string, ctx: { pageUrl: string; at: Date }): string {
   const o = parseFormBlob(raw);
@@ -269,7 +270,7 @@ export function stampScriptFormBlob(raw: string, ctx: { pageUrl: string; at: Dat
     ...o,
     capturedAt: typeof o.capturedAt === "string" && o.capturedAt ? o.capturedAt : ctx.at.toISOString(),
     captureSource: "script",
-    extractorVersion: typeof o.extractorVersion === "number" ? o.extractorVersion : 1,
+    extractorVersion: typeof o.extractorVersion === "number" ? o.extractorVersion : 0,
   };
   return JSON.stringify(completeParsed(stamped, { pageUrl: ctx.pageUrl }));
 }

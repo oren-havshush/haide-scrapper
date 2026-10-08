@@ -253,7 +253,9 @@ async function serveFixture(page: Page, file: string): Promise<string> {
   const checksSrc = readFileSync(join(__dirname, "valueChecks.ts"), "utf8");
   assert(/formBlobs: rows\.map\(/.test(scrape) && /\["_formData"\]/.test(scrape), "scrape.ts hands the run's forms to the value checks");
   assert(/applyReplayTokenFinding\(input\.formBlobs/.test(checksSrc), "the replay check runs over the run's forms");
-  assert(/completeFormBlob\(cfg\.staticBlob, \{ pageUrl: page\.url\(\), actionAttribute: "" \}\)/.test(scrape), "a static blob gains pageUrl, an empty actionAttribute, mechanism and hash where it is attached");
+  // The context is { pageUrl, actionAttribute: "" } unless the capture carries a
+  // verifiedAction on the page's host (formShape.test.ts, staticCompletion).
+  assert(/completeFormBlob\(cfg\.staticBlob, staticCompletion\(cfg\.formCapture, page\.url\(\)\)\)/.test(scrape), "a static blob gains pageUrl, its actionAttribute (empty unless verified), mechanism and hash where it is attached");
   assert(/normalizeJobRecord\(rawFields, \{ at: /.test(scrape), "the normalizer gets the scrape's time for the script stamp");
   assert(/formClass/.test(evaluated) && /getAttribute\("action"\)/.test(evaluated), "the page code reports the form's class and raw action attribute");
 
