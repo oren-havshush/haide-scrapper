@@ -258,6 +258,10 @@ model Job {
   /// row with the same identity (worker/lib/firstSeen.ts). Nullable and
   /// additive: the public site reads this table directly.
   firstSeenAt      DateTime?
+  /// SHA-256 hex (lowercase, 64) of the title trimmed, a newline and the
+  /// description trimmed (worker/lib/contentHash.ts). The public site compares
+  /// it with the value it stored last time. NULL until the row's next scrape.
+  contentHash      String?
 
   @@index([siteId])
   @@index([scrapeRunId])

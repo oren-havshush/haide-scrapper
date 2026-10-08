@@ -1,6 +1,7 @@
 import { prisma } from "../../src/lib/prisma";
 import { markFirstActive, markFirstScraped } from "../../src/lib/firstDates";
 import { firstSeenFor } from "../lib/firstSeen";
+import { jobContentHash } from "../lib/contentHash";
 import { extractLiveFormData } from "../lib/formExtract";
 import { stampFormData, staticFormBlob } from "../lib/formFields";
 import { completeFormBlob } from "../lib/formShape";
@@ -2923,10 +2924,14 @@ function buildJobRows(args: {
     if (resolved.offListOverride && jobKey) {
       args.overrideWarnings.push(overrideOffListWarning(args.siteId, jobKey, resolved.offListOverride));
     }
+    // The two values written below, so contentHash covers exactly what the
+    // row holds (worker/lib/contentHash.ts).
+    const title = normalized.title || "Untitled";
+    const description = normalized.description || null;
 
     return {
-      title: normalized.title || "Untitled",
-      description: normalized.description || null,
+      title,
+      description,
       requirements: normalized.requirements || null,
       location: resolved.location,
       locations: resolved.locations,
@@ -2950,6 +2955,8 @@ function buildJobRows(args: {
       // Carried from the previous row with the same identity (the `previous`
       // lookup above); now only for a job never seen before.
       firstSeenAt: firstSeenFor(previous, args.seenAt),
+      // For the public site: moves only when the title or description does.
+      contentHash: jobContentHash(title, description),
     };
   });
 }
