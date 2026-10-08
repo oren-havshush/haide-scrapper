@@ -21,7 +21,7 @@ import "dotenv/config";
 import { PrismaClient } from "../src/generated/prisma/client";
 import { PrismaPg } from "@prisma/adapter-pg";
 import pg from "pg";
-import { isBlob, structureDescription } from "../worker/lib/descriptionStructure";
+import { planDescriptionRepair } from "./lib/descriptionRepair";
 
 const pool = new pg.Pool({ connectionString: process.env.DATABASE_URL });
 const adapter = new PrismaPg(pool);
@@ -61,7 +61,7 @@ async function main() {
   for (;;) {
     const page = await prisma.job.findMany({
       where: SITE ? { siteId: SITE } : undefined,
-      select: { id: true, siteId: true, description: true, requirements: true },
+      select: { id: true, siteId: true, title: true, description: true, requirements: true },
       orderBy: { id: "asc" },
       take: BATCH,
       ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
@@ -73,37 +73,26 @@ async function main() {
     for (const job of page) {
       if (updated >= LIMIT) break;
 
-      const data: { description?: string; requirements?: string } = {};
+      // A rewritten description carries the contentHash of its new text
+      // (scripts/lib/descriptionRepair.ts).
+      const data = planDescriptionRepair(job);
+      if (!data) continue;
 
-      const d = job.description ?? "";
-      if (isBlob(d)) {
-        const fixed = structureDescription(d);
-        if (fixed !== d) {
-          data.description = fixed;
-          descFixed++;
-          if (shown < SAMPLES) {
-            shown++;
-            console.log(
-              `\n--- sample ${shown} (job ${job.id})\nBEFORE: ${d.slice(0, 180)}\nAFTER:\n${fixed
-                .split("\n")
-                .slice(0, 8)
-                .map((l) => "  | " + l.slice(0, 90))
-                .join("\n")}`,
-            );
-          }
+      if (data.description !== undefined) {
+        descFixed++;
+        if (shown < SAMPLES) {
+          shown++;
+          console.log(
+            `\n--- sample ${shown} (job ${job.id})\nBEFORE: ${(job.description ?? "").slice(0, 180)}\nAFTER:\n${data.description
+              .split("\n")
+              .slice(0, 8)
+              .map((l) => "  | " + l.slice(0, 90))
+              .join("\n")}`,
+          );
         }
       }
+      if (data.requirements !== undefined) reqFixed++;
 
-      const r = job.requirements ?? "";
-      if (isBlob(r)) {
-        const fixed = structureDescription(r);
-        if (fixed !== r) {
-          data.requirements = fixed;
-          reqFixed++;
-        }
-      }
-
-      if (Object.keys(data).length === 0) continue;
       updated++;
       perSite.set(job.siteId, (perSite.get(job.siteId) ?? 0) + 1);
       if (APPLY) await prisma.job.update({ where: { id: job.id }, data });
