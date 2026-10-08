@@ -479,6 +479,38 @@ console.log("# the queue: these checks open and close only their own items");
   eq(fresh.open[0]?.jobIds, ["a"], "a new finding opens with its jobs");
 }
 
+console.log("# listing_vs_saved_gap — a card whose detail page was dead or unavailable is accounted for (owner, 2026-10-08)");
+{
+  // civi HTRAMH7PYM, 2026-10-08: 5 cards, 3 saved, 2 detail pages declared
+  // themselves unavailable. Those two are accounted for: no item.
+  const civi = runValueChecks({ ...base, listingItemsSeen: 5, savedCount: 3, deadDetailPages: 2 } as ValueCheckInput);
+  eq(codes(civi), [], "civi: 5 cards, 3 saved, 2 unavailable — no item");
+  eq(civi.warnings.filter((w) => w.startsWith("listing_vs_saved_gap")), [], "and no warning");
+
+  // The same counts with no dead page: the gap is real and the item opens.
+  const real = runValueChecks({ ...base, listingItemsSeen: 5, savedCount: 3, deadDetailPages: 0 } as ValueCheckInput);
+  const r = real.findings.find((x) => x.code === "listing_vs_saved_gap");
+  eq(r?.count, 2, "5 cards, 3 saved, 0 unavailable — the item opens, 2 unaccounted");
+  eq(/\(2 unaccounted\)/.test(r?.detail ?? ""), true, `and says so (${r?.detail})`);
+
+  // Partly accounted: the detail names both numbers.
+  const part = runValueChecks({ ...base, listingItemsSeen: 6, savedCount: 3, deadDetailPages: 2 } as ValueCheckInput);
+  const p = part.findings.find((x) => x.code === "listing_vs_saved_gap");
+  eq(p?.count, 1, "6 cards, 3 saved, 2 unavailable — 1 unaccounted");
+  eq(/2 unavailable/.test(p?.detail ?? "") && /1 unaccounted/.test(p?.detail ?? ""), true, `naming "2 unavailable" and "1 unaccounted" (${p?.detail})`);
+
+  // The open item closes itself on a run where the check no longer fires.
+  const close = planValueCheckItems(civi.findings, [
+    { id: "cmuz9omog00031lr3t66n2w8f", source: "CHECK", code: "listing_vs_saved_gap", field: "COVERAGE" },
+  ]);
+  eq(close.close, [{ id: "cmuz9omog00031lr3t66n2w8f", resolvedBy: "CHECK" }], "civi's open gap item is closed, resolvedBy CHECK, on a run with nothing unaccounted");
+
+  // scrape.ts passes the run's dead detail pages to the checks.
+  const scrape = readFileSync(join(__dirname, "..", "jobs", "scrape.ts"), "utf8");
+  const call = scrape.slice(scrape.indexOf("const checks = runValueChecks({"), scrape.indexOf("const checks = runValueChecks({") + 1200);
+  eq(/deadDetailPages:\s*countDeadDetailPages\(rawFieldsList\)/.test(call), true, "scrape.ts passes countDeadDetailPages(rawFieldsList) to runValueChecks");
+}
+
 if (failures > 0) {
   console.error(`\n${failures} assertion(s) failed`);
   process.exit(1);

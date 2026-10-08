@@ -102,6 +102,8 @@ export type ValueCheckInput = {
   idSeeds: IdSeed[];
   listingItemsSeen: number | null;
   savedCount: number;
+  /** Detail pages this run found dead or unavailable (listing_vs_saved_gap counts them as accounted for). */
+  deadDetailPages?: number;
 };
 
 /** A finding that opens a fix-queue item. */
@@ -450,11 +452,24 @@ export function regionOverCity(saved: SavedJobForChecks[]): CheckResult | null {
  * on its own (true duplicates, dead detail pages, rejects, the maxJobs cap),
  * but the only in-run signal for a dedup collapse. Logic unchanged.
  */
-export function listingVsSavedGap(listingItemsSeen: number | null, savedCount: number): CheckResult | null {
+/**
+ * Cards on the listing that did not become saved jobs. A card whose detail
+ * page was dead or declared itself unavailable in the same run is accounted
+ * for (owner, 2026-10-08: civi's two not-yet-opened promo pages), so the dead
+ * detail pages are subtracted before the gap is judged, and named.
+ */
+export function listingVsSavedGap(
+  listingItemsSeen: number | null,
+  savedCount: number,
+  deadDetailPages = 0,
+): CheckResult | null {
   if (listingItemsSeen == null || listingItemsSeen <= savedCount || savedCount <= 0) return null;
-  const lost = listingItemsSeen - savedCount;
+  const dead = Math.max(0, deadDetailPages);
+  const lost = listingItemsSeen - savedCount - dead;
+  if (lost <= 0) return null;
   const detail =
-    `${listingItemsSeen} card(s) on the listing but ${savedCount} job(s) saved (${lost} unaccounted) — ` +
+    `${listingItemsSeen} card(s) on the listing but ${savedCount} job(s) saved ` +
+    `(${dead > 0 ? `${dead} unavailable, ` : ""}${lost} unaccounted) — ` +
     "check for duplicate ids, cards with no detail URL, or rejected records";
   return { warning: `listing_vs_saved_gap: ${detail}`, finding: finding("listing_vs_saved_gap", "COVERAGE", detail, lost, []) };
 }
@@ -474,7 +489,7 @@ export function runValueChecks(input: ValueCheckInput): { warnings: string[]; fi
     applyTemplateActionUrl(input.formBlobs),
     applyHoneypotField(input.formBlobs),
     externalJobIdChurn(input.saved, input.previous),
-    listingVsSavedGap(input.listingItemsSeen, input.savedCount),
+    listingVsSavedGap(input.listingItemsSeen, input.savedCount, input.deadDetailPages ?? 0),
     synthesisedIdCollision(input.idSeeds),
     synthesisedExternalJobId(input.idSeeds),
   ];

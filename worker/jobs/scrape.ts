@@ -4642,6 +4642,8 @@ async function executeScrape(
       })),
       listingItemsSeen: context.listingItemsSeen ?? null,
       savedCount,
+      // A card whose detail page was dead or unavailable is accounted for.
+      deadDetailPages: countDeadDetailPages(rawFieldsList),
     });
     scrapeWarnings.push(...checks.warnings);
     // Stored location overrides not on city.csv, skipped by the gate (worker/lib/jobLocation.ts).
