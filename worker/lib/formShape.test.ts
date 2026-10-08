@@ -292,6 +292,7 @@ const liveBlob = completeFormBlob(
 );
 const n3 = normalizeJobRecord({ title: "Driver", _formData: liveBlob }, { at: AT });
 eq(n3.applicationInfo, liveBlob, "with no explicit field, applicationInfo is the worker's _formData exactly");
+eq(JSON.parse(n3.applicationInfo).extractorVersion, 4, "a live capture through the normalizer keeps version 4");
 
 // --- a _formData a setup script wrote (owner, 2026-10-02) -------------------------------
 // advice.co.il maps _formData to an element its setup script injects; the blob
@@ -324,7 +325,7 @@ eq(n3.applicationInfo, liveBlob, "with no explicit field, applicationInfo is the
   // a carried row's is left for the carry to keep.
   const n = normalizeJobRecord({ title: "Sales", _formData: advice, _listingUrl: ADVICE_PAGE }, { at: AT });
   const nf = JSON.parse(n.rawFields._formData);
-  eq([nf.captureSource, nf.extractorVersion, nf.pageUrl], ["script", FORM_EXTRACTOR_VERSION, ADVICE_PAGE], "normalizeJobRecord completes a fresh row's script _formData");
+  eq([nf.captureSource, nf.extractorVersion, nf.pageUrl], ["script", 0, ADVICE_PAGE], "normalizeJobRecord completes a fresh row's script _formData, version 0 (the site's own script; the extractor's rules do not apply)");
   eq(n.applicationInfo, n.rawFields._formData, "and applicationInfo is that same completed blob");
   const c = normalizeJobRecord({ title: "Sales", _formData: advice, _detailCarried: "1" }, { at: AT });
   eq(c.rawFields._formData, advice, "a carried row's _formData is untouched");

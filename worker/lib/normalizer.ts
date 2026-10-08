@@ -14,8 +14,14 @@ import {
   NATIONWIDE_LOCATION,
 } from "./locationNormalize";
 import { structureDescription } from "./descriptionStructure";
-import { FORM_EXTRACTOR_VERSION } from "./formFields";
 import { stampScriptFormBlob, stampScriptFormData } from "./formShape";
+
+/**
+ * The extractorVersion of a form blob a setup script wrote without one. 0 means
+ * "produced by the site's own script, the extractor's rules do not apply"; it
+ * is never FORM_EXTRACTOR_VERSION, which only the worker's own captures carry.
+ */
+const SCRIPT_FORM_EXTRACTOR_VERSION = 0;
 
 /** Standard job schema fields that map directly to Job model columns */
 const STANDARD_FIELDS = new Set([
@@ -901,7 +907,7 @@ export function normalizeJobRecord(
     rawOut["_formData"] = stampScriptFormData(rawFields["_formData"], {
       pageUrl: jobPageUrl,
       at: opts.at ?? new Date(),
-      extractorVersion: FORM_EXTRACTOR_VERSION,
+      extractorVersion: SCRIPT_FORM_EXTRACTOR_VERSION,
     });
   }
   const explicitAppInfo = normalizeField(rawFields["applicationInfo"]);

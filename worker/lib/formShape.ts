@@ -280,7 +280,8 @@ export function stampScriptFormBlob(raw: string, ctx: { pageUrl: string; at: Dat
  * reading an element the script injected; advice.co.il today). The worker's own
  * blobs always arrive stamped, so an unstamped form blob on a freshly read row
  * is the script's (owner, 2026-10-02). Stamped script, at the scrape's time and
- * the current version, and completed like every other blob. actionAttribute is
+ * the caller's version (the normalizer passes 0: the extractor's rules do not
+ * apply), and completed like every other blob. actionAttribute is
  * the blob's own when it has one, else its actionUrl resolved — unless that is
  * the page itself, which is a substitute, not an action. A blob already
  * carrying an extractorVersion, and anything that is not a form blob, is
