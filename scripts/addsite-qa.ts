@@ -44,6 +44,7 @@
  */
 import * as fs from "fs";
 import * as path from "path";
+import { fileURLToPath } from "url";
 
 const BASE = "https://scrapper.haide-jobs.co.il";
 const UA_DEFAULT =
@@ -695,7 +696,18 @@ async function main() {
   process.exit(qa.tierAComplete ? 0 : 2);
 }
 
-main().catch((e) => {
+/**
+ * True when this file is the program's entry point, not a module imported for
+ * runQa or its checks (owner, 2026-10-09). Windows paths compare without case.
+ */
+function isEntryPoint(): boolean {
+  const entry = process.argv[1];
+  if (!entry) return false;
+  const norm = (p: string) => (process.platform === "win32" ? p.toLowerCase() : p);
+  return norm(path.resolve(entry)) === norm(fileURLToPath(import.meta.url));
+}
+
+if (isEntryPoint()) main().catch((e) => {
   console.error(`[qa] ERROR: ${(e as Error).message}`);
   process.exit(1);
 });
