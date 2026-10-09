@@ -398,6 +398,31 @@ check("a Cloudflare challenge is blocked, with its own line, and is not silent d
   assert(classifyOutcome({ status: "COMPLETED", failureCategory: "blocked" }) === "soft_failure", "a blocked run is a soft failure, like a refusal");
 });
 
+// The blocked line names the vendor the detector found (owner, 2026-10-09): the
+// night of 2026-10-09 printed "a Cloudflare challenge" over SiteGround's own
+// detail, and over tl-care, whose run recorded no detail at all.
+check("the blocked line names the vendor the detector found, or says a bot challenge", () => {
+  const why = (warnings: string[]) =>
+    needsAttention(sweep(), [
+      item({ siteId: "b", siteUrl: "https://b.test", outcome: "soft_failure", failureCategory: "blocked", jobsBefore: 2, jobsAfter: 2, warnings }),
+      ...ok(2),
+    ])[0]?.why ?? "";
+  const sg = why(["item_selector_zero_match: body .w-tabs-section", "blocked_challenge: SiteGround challenge (sg-captcha: challenge)"]);
+  assert(
+    sg === "blocked: the listing was a SiteGround challenge (\"SiteGround challenge (sg-captcha: challenge)\"), not the site — nothing written, 2 listing(s) kept; nothing tried to pass it",
+    `SiteGround's detail is labelled SiteGround (got "${sg}")`,
+  );
+  assert(!/Cloudflare/.test(sg), "and never Cloudflare");
+  const none = why([]);
+  assert(
+    none === "blocked: the listing was a bot challenge, not the site — nothing written, 2 listing(s) kept; nothing tried to pass it",
+    `no recorded detail: "a bot challenge", nothing quoted (got "${none}")`,
+  );
+  assert(!/Cloudflare|Just a moment/.test(none), "no vendor and no title are invented");
+  const other = why(["blocked_challenge: Access denied"]);
+  assert(/^blocked: the listing was a bot challenge \("Access denied"\)/.test(other), `a detail naming no known vendor: a bot challenge, quoted (got "${other}")`);
+});
+
 check("a refused drop is named with both counts", () => {
   const refused = item({
     siteId: "m",

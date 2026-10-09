@@ -42,6 +42,19 @@ export function isChallengeTitle(title: string | null | undefined): boolean {
 }
 
 /**
+ * The challenge as the report names it, from the detail a run recorded in its
+ * blocked_challenge warning (owner, 2026-10-09): SiteGround for SiteGround's
+ * header or path, Cloudflare for its interstitial title or a detail naming
+ * Cloudflare, and otherwise — or with nothing recorded — "a bot challenge".
+ * Never a guessed vendor.
+ */
+export function challengeVendor(detail: string): string {
+  if (/SiteGround/i.test(detail)) return "a SiteGround challenge";
+  if (isChallengeTitle(detail) || /cloudflare|cf-mitigated/i.test(detail)) return "a Cloudflare challenge";
+  return "a bot challenge";
+}
+
+/**
  * A host's bot challenge served instead of the page (owner, 2026-10-08).
  * SiteGround answered eso-group, gazit and sinaistore with HTTP 202, the
  * response header `sg-captcha: challenge`, and a meta refresh to

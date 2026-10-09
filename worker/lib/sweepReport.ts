@@ -15,6 +15,7 @@ import { DEFAULT_DROP_THRESHOLDS, FIELD_FILL_THRESHOLD, isSuspiciousDrop, type D
 import { LISTING_SOFT_CATEGORIES } from "./listingTargets";
 import { FIELD_FILL_DROP } from "./sweepSelection";
 import { acceptedBelowGate, type AcceptedGates } from "../../src/lib/acceptedGates";
+import { challengeVendor } from "./zeroMatch";
 
 /**
  * A multi-page site that refused to publish a partial set. Soft, like drift,
@@ -22,7 +23,7 @@ import { acceptedBelowGate, type AcceptedGates } from "../../src/lib/acceptedGat
  * nothing, this is the worker declining to shrink what it publishes — and the
  * run already named the pages, so the queue quotes them instead of guessing.
  */
-/** A Cloudflare challenge instead of the listing (worker/lib/zeroMatch.ts): not drift. */
+/** A host's bot challenge instead of the listing (worker/lib/zeroMatch.ts): not drift. */
 function isBlocked(i: { outcome: string; failureCategory: string | null }): boolean {
   return i.outcome === "soft_failure" && i.failureCategory === "blocked";
 }
@@ -451,12 +452,16 @@ export function needsAttention(
     // refused, rows kept, and named as what it is rather than as generic drift.
     const zeroMatch = (i.warnings ?? []).map(String).find((w) => w.startsWith("item_selector_zero_match:"));
     if (i.outcome === "soft_failure" && i.failureCategory === "blocked") {
-      // The page was Cloudflare's challenge, not the listing: not a site change.
+      // A host's bot challenge, not the listing: not a site change. The line
+      // names the vendor the detector recorded (zeroMatch.ts challengeVendor)
+      // and quotes what it recorded; with nothing recorded it says "a bot
+      // challenge" and quotes nothing.
       const seen = (i.warnings ?? []).map(String).find((w) => w.startsWith("blocked_challenge:"));
-      const title = seen ? seen.slice(seen.indexOf(":") + 1).trim() : "Just a moment...";
+      const detail = seen ? seen.slice(seen.indexOf(":") + 1).trim() : "";
+      const quoted = detail ? ` ("${detail}")` : "";
       add(
         i,
-        `blocked: the listing was a Cloudflare challenge ("${title}"), not the site — ` +
+        `blocked: the listing was ${challengeVendor(detail)}${quoted}, not the site — ` +
           `nothing written, ${i.jobsAfter} listing(s) kept; nothing tried to pass it`,
       );
     } else if (i.outcome === "soft_failure" && zeroMatch) {
