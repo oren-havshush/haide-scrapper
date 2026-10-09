@@ -37,13 +37,24 @@ export interface CompanyProfileFields {
   companyHqCity: string | null;
   companyProfileStatus: string | null;
   companyProfileAt: string | null;
+  /** Columns the operator set by hand in the edit dialog; a recapture keeps them. */
+  companyOperatorFields?: string[];
 }
 
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
+function Field({ label, children, handSet }: { label: string; children: React.ReactNode; handSet?: boolean }) {
   return (
     <div className="grid grid-cols-[110px_1fr] gap-3 py-1.5 items-start">
       <span className="text-xs pt-0.5" style={{ color: "#71717a" }}>
         {label}
+        {handSet ? (
+          <span
+            className="block text-[10px] mt-0.5"
+            style={{ color: "#a1a1aa" }}
+            title="Set by hand in the edit dialog; a recapture keeps it (--replace-field overrides)"
+          >
+            set by hand
+          </span>
+        ) : null}
       </span>
       <div className="text-sm min-w-0" style={{ color: "#e4e4e7" }}>
         {children}
@@ -70,6 +81,7 @@ export function SiteCompanyProfileDialog({
   if (!site) return null;
 
   const captured = site.companyProfileAt != null;
+  const handSet = (column: string) => (site.companyOperatorFields ?? []).includes(column);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -91,7 +103,7 @@ export function SiteCompanyProfileDialog({
           </p>
         ) : (
           <div className="divide-y" style={{ borderColor: "#27272a" }}>
-            <Field label="Homepage">
+            <Field label="Homepage" handSet={handSet("companyHomepageUrl")}>
               {site.companyHomepageUrl ? (
                 <a
                   href={site.companyHomepageUrl}
@@ -115,7 +127,9 @@ export function SiteCompanyProfileDialog({
               )}
             </Field>
 
-            <Field label="Address">{site.companyHqAddress ?? <Empty />}</Field>
+            <Field label="Address" handSet={handSet("companyHqAddress")}>
+              {site.companyHqAddress ?? <Empty />}
+            </Field>
 
             <Field label="Logo">
               {site.companyLogoPath ? (
@@ -139,7 +153,7 @@ export function SiteCompanyProfileDialog({
               )}
             </Field>
 
-            <Field label="About">
+            <Field label="About" handSet={handSet("companyAbout")}>
               {site.companyAbout ? (
                 <p
                   className="whitespace-pre-wrap leading-relaxed max-h-52 overflow-y-auto pr-1"

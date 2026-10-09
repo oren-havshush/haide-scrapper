@@ -8,6 +8,7 @@ import {
 } from "@/lib/errors";
 import { resolveHqCity } from "@/lib/locations";
 import { onlyAcceptedGatesChanged, type AcceptedGates } from "@/lib/acceptedGates";
+import { nextOperatorFields } from "@/lib/operatorFields";
 import { buildScrapeJobRow } from "@/lib/scrapeJobRow";
 import { findListingRunsBySiteIds } from "@/lib/listingRun";
 import { markFirstActive } from "@/lib/firstDates";
@@ -673,6 +674,7 @@ export const COMPANY_PROFILE_SELECT = {
   companyHqAddress: true,
   companyHqCity: true,
   companyHqCitySource: true,
+  companyOperatorFields: true,
   companyProfileStatus: true,
   companyProfileAt: true,
 } as const;
@@ -826,6 +828,22 @@ export async function saveCompanyHomepage(siteId: string, homepageUrl: string | 
     data: { companyHomepageUrl: homepageUrl?.trim() || null },
     select: COMPANY_PROFILE_SELECT,
   });
+}
+
+/**
+ * After the dashboard's own write to a company column, keep
+ * companyOperatorFields: a non-null value adds the column's name, a clear
+ * removes it (src/lib/operatorFields.ts). `written` holds only the keys the
+ * write sent. Called by the company-profile and company-homepage routes for the
+ * dashboard's token only, so a capture's write through the same route never
+ * marks a field as set by hand.
+ */
+export async function recordOperatorFields(siteId: string, written: Record<string, unknown>) {
+  const site = await prisma.site.findUnique({ where: { id: siteId }, select: { companyOperatorFields: true } });
+  if (!site) throw new NotFoundError("Site", siteId);
+  const next = nextOperatorFields(site.companyOperatorFields, written);
+  if (next.join("\n") === site.companyOperatorFields.join("\n")) return;
+  await prisma.site.update({ where: { id: siteId }, data: { companyOperatorFields: next } });
 }
 
 export type HqCityEvidence = {

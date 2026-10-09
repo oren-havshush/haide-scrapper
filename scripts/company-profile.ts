@@ -17,6 +17,13 @@
  *   --replace-logo    Run the logo step even though the site already has a
  *                     logo. Without it a stored logo is kept and the step is
  *                     skipped (scripts/lib/logo-keep.ts, owner 2026-10-07).
+ *   --replace-field <name>
+ *                     Repeatable. Overwrite a profile field the operator set by
+ *                     hand in the dashboard (companyAbout, companyHqAddress,
+ *                     companyHomepageUrl). Without it, every field listed in
+ *                     Site.companyOperatorFields is left out of the write and
+ *                     keeps its value, with --force too (src/lib/operatorFields.ts,
+ *                     owner 2026-10-09). The run prints which fields it kept.
  *   --no-llm          Deterministic extraction only, never call OpenAI.
  *   --out <path>      Append one JSON result per site to this file.
  *   --write-empty     Record a capture that found nothing. Off by default: an
@@ -98,6 +105,7 @@ import {
 } from "./lib/city-csv";
 import { rasteriseSvgImgLogos } from "./lib/svg-img-logos";
 import { keepStoredLogo } from "./lib/logo-keep";
+import { keepOperatorFields, parseReplaceFields } from "../src/lib/operatorFields";
 import { fetchImage, ImageRejected, type FetchedImage } from "./lib/fetch-image";
 import { inspectImage } from "../src/lib/image-validate";
 
@@ -1299,6 +1307,8 @@ async function captureSite(
     force: boolean;
     useLlm: boolean;
     replaceLogo: boolean;
+    /** --replace-field names: hand-set fields this run may overwrite. */
+    replaceFields: string[];
     patient?: boolean;
     writeEmpty?: boolean;
   },
@@ -1459,7 +1469,7 @@ async function captureSite(
           result.outcome = "DRY_RUN";
           return result;
         }
-        await writeProfile(site.id, result, opts.force);
+        await writeProfile(site.id, result, opts.force, opts.replaceFields);
         result.outcome = "WRITTEN";
         return result;
       }
@@ -1472,7 +1482,7 @@ async function captureSite(
       result.error = "no reachable company homepage";
       result.logoAttempts = boardLogo?.attempts ?? [];
       if (!opts.dryRun && opts.writeEmpty) {
-        await writeProfile(site.id, result, opts.force);
+        await writeProfile(site.id, result, opts.force, opts.replaceFields);
         result.outcome = "WRITTEN";
       }
       return result;
@@ -1732,7 +1742,7 @@ async function captureSite(
       return result;
     }
 
-    await writeProfile(site.id, result, opts.force);
+    await writeProfile(site.id, result, opts.force, opts.replaceFields);
     result.outcome = "WRITTEN";
     return result;
   } catch (error) {
@@ -1750,10 +1760,21 @@ async function captureSite(
  * it server-side, and the profile schema refuses it so no client can point the
  * public site at an arbitrary path.
  */
-async function writeProfile(siteId: string, result: CaptureResult, force: boolean): Promise<void> {
-  await api(
-    "PUT",
-    `/api/sites/${siteId}/company-profile${force ? "?force=1" : ""}`,
+async function writeProfile(
+  siteId: string,
+  result: CaptureResult,
+  force: boolean,
+  replaceFields: string[],
+): Promise<void> {
+  // Fields the operator set by hand in the dashboard are kept: their keys are
+  // left out of the payload, never sent as null (src/lib/operatorFields.ts).
+  // Read fresh here, whichever way the site was resolved; --replace-field
+  // lets a named one through.
+  const stored = await api<{ data: { companyOperatorFields?: string[] } }>(
+    "GET",
+    `/api/sites/${siteId}/company-profile`,
+  );
+  const { payload, kept } = keepOperatorFields(
     {
       companyHomepageUrl: result.fields.companyHomepageUrl,
       companyAbout: result.fields.companyAbout,
@@ -1771,7 +1792,15 @@ async function writeProfile(siteId: string, result: CaptureResult, force: boolea
         : {}),
       companyProfileStatus: result.status ?? "FAILED",
     },
+    stored.data.companyOperatorFields ?? [],
+    replaceFields,
   );
+  if (kept.length > 0) {
+    const note = `kept the hand-set ${kept.join(", ")}; pass --replace-field <name> to overwrite one`;
+    (result.notes ??= []).push(note);
+    console.log(`[company-profile] ${siteId}: ${note}`);
+  }
+  await api("PUT", `/api/sites/${siteId}/company-profile${force ? "?force=1" : ""}`, payload);
 }
 
 /**
@@ -1888,6 +1917,10 @@ async function main() {
   // Separate from --force on purpose: re-capturing a profile must not swap a
   // logo someone set by hand (logo-keep.ts).
   const replaceLogo = flag("replace-logo");
+  // Likewise for the profile fields the operator set by hand in the dashboard
+  // (src/lib/operatorFields.ts): kept, unless named here. Checked before
+  // anything runs, so a misspelt name stops the run.
+  const replaceFields = parseReplaceFields(process.argv);
   const useLlm = !flag("no-llm");
   const concurrency = intArg("concurrency", 3);
   const outFile = arg("out");
@@ -1927,6 +1960,7 @@ async function main() {
             force,
             useLlm,
             replaceLogo,
+            replaceFields,
             writeEmpty,
           });
 
@@ -1943,6 +1977,7 @@ async function main() {
               force,
               useLlm,
               replaceLogo,
+              replaceFields,
               writeEmpty,
               patient: true,
             });

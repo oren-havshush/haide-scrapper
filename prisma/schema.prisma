@@ -132,6 +132,12 @@ model Site {
   /// companyProfileStatus is TEXT.
   companyHqCitySource String?
 
+  /// The profile columns the operator set by hand in the dashboard's edit
+  /// dialog: companyAbout, companyHqAddress, companyHomepageUrl (owner,
+  /// 2026-10-09). A recapture omits them (src/lib/operatorFields.ts); the HQ
+  /// city has its own provenance column above and is never listed.
+  companyOperatorFields String[] @default([])
+
   /// Lifecycle marker. TEXT, not an enum, so an unrecognised value can never
   /// throw in a consumer's Prisma client and so values stay removable.
   /// NULL (never attempted) | "COMPLETE" | "PARTIAL" | "FAILED".

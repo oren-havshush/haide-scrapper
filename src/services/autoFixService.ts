@@ -44,6 +44,14 @@ function fromDashboard(request: Request): boolean {
 }
 
 /**
+ * The same test, for the company routes: only the dashboard's own write marks
+ * a company field as set by hand (siteService.ts recordOperatorFields).
+ */
+export function isDashboardRequest(request: Request): boolean {
+  return fromDashboard(request);
+}
+
+/**
  * Record an API call on a site, for the minutes estimate. Only a token's FIRST
  * call on the site each day is kept — the estimate runs from it to the latest
  * write — so a dashboard polling a site adds one row a day, not thousands.

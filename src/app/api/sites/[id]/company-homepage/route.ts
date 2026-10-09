@@ -2,9 +2,9 @@ import { NextRequest } from "next/server";
 import { successResponse } from "@/lib/api-utils";
 import { formatErrorResponse, ValidationError } from "@/lib/errors";
 import { updateSiteCompanyHomepageSchema } from "@/lib/validators";
-import { saveCompanyHomepage } from "@/services/siteService";
+import { recordOperatorFields, saveCompanyHomepage } from "@/services/siteService";
 import { homepageOrigin } from "@/lib/companyHomepage";
-import { applyAutoFix, companySnapshotOf, siteStatusOf } from "@/services/autoFixService";
+import { applyAutoFix, companySnapshotOf, isDashboardRequest, siteStatusOf } from "@/services/autoFixService";
 
 // Operator-supplied company homepage, for a site whose jobs live on a
 // careers-board vendor. There the careers URL says nothing about the employer's
@@ -39,6 +39,9 @@ export async function PUT(
     // The origin, as the capture stores it (m): a path here was rewritten at
     // capture and read as a change (diplomat's /he/).
     const site = await saveCompanyHomepage(id, homepageOrigin(parsed.data.companyHomepageUrl));
+    // The dashboard's edit dialog marks the homepage as set by hand (or unmarks
+    // it on a clear), so a recapture keeps it (src/lib/operatorFields.ts).
+    if (isDashboardRequest(request)) await recordOperatorFields(id, { companyHomepageUrl: site.companyHomepageUrl });
     await applyAutoFix({
       request,
       siteId: id,

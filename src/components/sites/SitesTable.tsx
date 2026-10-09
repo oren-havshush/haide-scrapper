@@ -80,6 +80,8 @@ interface Site {
   companyHqCity: string | null;
   /** Who authored companyHqCity — NULL means the capture derived it. */
   companyHqCitySource: string | null;
+  /** Profile columns set by hand in the edit dialog (src/lib/operatorFields.ts). */
+  companyOperatorFields?: string[];
   companyProfileStatus: string | null;
   companyProfileAt: string | null;
 }

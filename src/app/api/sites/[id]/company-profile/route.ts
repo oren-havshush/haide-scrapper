@@ -2,8 +2,8 @@ import { NextRequest } from "next/server";
 import { successResponse } from "@/lib/api-utils";
 import { formatErrorResponse, ValidationError } from "@/lib/errors";
 import { updateSiteCompanyProfileSchema } from "@/lib/validators";
-import { getCompanyProfile, saveCompanyProfile } from "@/services/siteService";
-import { applyAutoFix, companySnapshotOf, recordSiteCall, siteStatusOf } from "@/services/autoFixService";
+import { getCompanyProfile, recordOperatorFields, saveCompanyProfile } from "@/services/siteService";
+import { applyAutoFix, companySnapshotOf, isDashboardRequest, recordSiteCall, siteStatusOf } from "@/services/autoFixService";
 
 // Company profile — a dedicated sub-resource, deliberately NOT a fourth branch
 // of PATCH /api/sites/:id. That route honors exactly one of
@@ -50,6 +50,9 @@ export async function PUT(
     // leaves its column untouched while an explicit null clears it.
     const force = request.nextUrl.searchParams.get("force") === "1";
     const site = await saveCompanyProfile(id, parsed.data, { force });
+    // The dashboard's edit dialog marks what it set by hand, so a recapture
+    // keeps it (src/lib/operatorFields.ts). A capture's write is not marked.
+    if (isDashboardRequest(request)) await recordOperatorFields(id, parsed.data);
     await applyAutoFix({
       request,
       siteId: id,
