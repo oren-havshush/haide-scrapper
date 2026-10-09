@@ -84,8 +84,14 @@ const DEFAULT_MAX_URLS = 50;
 // Types
 // ---------------------------------------------------------------------------
 
+// REVIEW and REQUEUE (owner, 2026-10-09) are the QA verdicts of the same names
+// (scripts/addsite-qa.ts): an onboarded site a human must arbitrate, and one
+// whose scrape sampled nothing yet. Neither is a scraped ACTIVE, a SKIPPED or
+// an ERROR; the summary counts each on its own line.
 type Outcome =
   | "ACTIVE"
+  | "REVIEW"
+  | "REQUEUE"
   | "SKIPPED"
   | "ALREADY_ACTIVE"
   | "SKIP_PRIOR"
@@ -710,18 +716,19 @@ async function cmdLog(argv: string[]): Promise<void> {
   if (!url) throw new Error("--url is required");
   if (!outcome) throw new Error("--outcome is required");
 
-  const validOutcomes: Outcome[] = ["ACTIVE", "SKIPPED", "ALREADY_ACTIVE", "SKIP_PRIOR", "DUPLICATE_IN_BATCH", "INVALID_URL", "ERROR"];
+  const validOutcomes: Outcome[] = ["ACTIVE", "REVIEW", "REQUEUE", "SKIPPED", "ALREADY_ACTIVE", "SKIP_PRIOR", "DUPLICATE_IN_BATCH", "INVALID_URL", "ERROR"];
   if (!validOutcomes.includes(outcome)) {
     throw new Error(`--outcome must be one of: ${validOutcomes.join(", ")}`);
   }
 
   fs.mkdirSync(batchDir, { recursive: true });
 
-  // For successful onboards, write the company name onto the live site so the
+  // For onboarded sites, write the company name onto the live site so the
   // dashboard shows it. POST /api/sites only accepts { siteUrl }, so the name
-  // has to be applied as a follow-up PATCH (mirrors the SKIPPED path). Best
-  // effort: a failure here must never break the batch log.
-  if (outcome === "ACTIVE" && company && siteId) {
+  // has to be applied as a follow-up PATCH (mirrors the SKIPPED path). A site
+  // left in REVIEW or REQUEUE was onboarded too and is named the same way.
+  // Best effort: a failure here must never break the batch log.
+  if ((outcome === "ACTIVE" || outcome === "REVIEW" || outcome === "REQUEUE") && company && siteId) {
     try {
       const headers = authHeaders(readToken());
       await apiPatch(`/api/sites/${siteId}`, { companyName: company }, headers);
@@ -791,6 +798,8 @@ async function cmdSummary(argv: string[]): Promise<void> {
   let scrapeCount = 0;
   for (const r of results) {
     tally[r.outcome] = (tally[r.outcome] ?? 0) + 1;
+    // Only a scraped ACTIVE counts as a scrape the batch triggered; REVIEW and
+    // REQUEUE are counted on their own tally lines above.
     if (r.outcome === "ACTIVE") scrapeCount++;
   }
 
@@ -845,6 +854,8 @@ async function cmdSummary(argv: string[]): Promise<void> {
     const sid = (r.siteId ?? "").slice(0, idW).padEnd(idW);
     const form = formLabel(r).slice(0, formW).padEnd(formW);
     const gaps = gapsLabel(r).slice(0, gapW).padEnd(gapW);
+    // A scraped ACTIVE shows its job count; every other row, REVIEW and
+    // REQUEUE included, shows why it ended there.
     const reasonPart =
       r.outcome === "ACTIVE" && r.jobCount !== undefined
         ? `${r.jobCount} jobs scraped`
