@@ -18,6 +18,7 @@ import {
   BLOCKED_WARNING,
   WRONG_SCOPE_WARNING,
   ZERO_MATCH_WARNING,
+  challengeVendor,
   isChallengeTitle,
   newExtractGuard,
   onExplicitZeroMatch,
@@ -308,6 +309,60 @@ check("a Cloudflare challenge page is blocked, not structure_changed", () => {
     const plain = newExtractGuard(true);
     onExplicitZeroMatch(plain, "body article.ecs-post-loop", "");
     assert(zeroMatchRefusal(plain, 0)?.failureCategory === "structure_changed", "no challenge: structure_changed, unchanged");
+  }
+
+  // --- Cloudflare's challenge, in any language (owner, 2026-10-09) ---------------------------
+  // one1.co.il, the night of 2026-10-09: the worker browses in he-IL, so
+  // Cloudflare's interstitial came back titled in Hebrew, and its navigation
+  // response was 403 with cf-mitigated: challenge. Neither was recognised, so
+  // the run read as structure_changed. The response as captured from the box.
+  const ONE1_URL = "https://www.one1.co.il/careers/";
+  const ONE1_HEADERS = {
+    server: "cloudflare",
+    "content-type": "text/html; charset=UTF-8",
+    "cf-mitigated": "challenge",
+    "cf-ray": "a47cdb940b0a3d7c-TLV",
+  };
+  // "Just a moment..." in Hebrew, built from its code points.
+  const HE_TITLE = String.fromCharCode(0x5e8, 0x5e7, 0x20, 0x5e8, 0x5d2, 0x5e2) + "...";
+  if (detect && note) {
+    assert(/Cloudflare/.test(detect(ONE1_URL, ONE1_HEADERS) ?? ""), "a response with cf-mitigated: challenge is a Cloudflare challenge");
+    assert(
+      detect(ONE1_URL, { server: "cloudflare", "content-type": "text/html; charset=UTF-8", "cf-ray": "a47cdb940b0a3d7c-TLV" }) === null,
+      "a plain 403 from Cloudflare without the header is not a challenge",
+    );
+    assert(isChallengeTitle(HE_TITLE), "Cloudflare's Hebrew title is a challenge");
+    assert(isChallengeTitle("Just a moment..."), "and the English one still is");
+    assert(!isChallengeTitle("One Technologies | " + String.fromCharCode(0x5d5, 0x5d5, 0x5d0, 0x5df)), "one1's own title is not");
+
+    // one1-shaped: the header and the Hebrew title together.
+    const g = newExtractGuard(true);
+    note(g, ONE1_URL, ONE1_HEADERS);
+    onExplicitZeroMatch(g, "body #haide-jobs-root [data-haide-job]", HE_TITLE);
+    const r = zeroMatchRefusal(g, 0);
+    assert(r?.failureCategory === BLOCKED, `one1's zero match behind the challenge is blocked, not structure_changed (got ${r?.failureCategory})`);
+    assert(r?.runStatus === "COMPLETED", "a scheduled refusal closes COMPLETED, listings kept");
+    const detail = (r?.warnings ?? []).find((w) => w.startsWith(`${BLOCKED_WARNING}: `))?.slice(BLOCKED_WARNING.length + 2) ?? "";
+    assert(challengeVendor(detail) === "a Cloudflare challenge", `and the report names Cloudflare (detail "${detail}")`);
+
+    // Either signal alone is enough.
+    const byTitle = newExtractGuard(true);
+    onExplicitZeroMatch(byTitle, "body .x", HE_TITLE);
+    assert(zeroMatchRefusal(byTitle, 0)?.failureCategory === BLOCKED, "the Hebrew title alone: blocked");
+    const byHeader = newExtractGuard(true);
+    note(byHeader, ONE1_URL, ONE1_HEADERS);
+    onExplicitZeroMatch(byHeader, "body .x", "");
+    const rh = zeroMatchRefusal(byHeader, 0);
+    assert(rh?.failureCategory === BLOCKED, "the header alone: blocked");
+    const hd = (rh?.warnings ?? []).find((w) => w.startsWith(`${BLOCKED_WARNING}: `))?.slice(BLOCKED_WARNING.length + 2) ?? "";
+    assert(challengeVendor(hd) === "a Cloudflare challenge", `named Cloudflare from the header's verdict (detail "${hd}")`);
+    const english = newExtractGuard(true);
+    onExplicitZeroMatch(english, "body .x", "Just a moment...");
+    assert(zeroMatchRefusal(english, 0)?.failureCategory === BLOCKED, "the English title: still blocked");
+    const plain403 = newExtractGuard(true);
+    note(plain403, ONE1_URL, { server: "cloudflare", "content-type": "text/html" });
+    onExplicitZeroMatch(plain403, "body .x", "Forbidden");
+    assert(zeroMatchRefusal(plain403, 0)?.failureCategory === "structure_changed", "a plain 403 page, no header, no challenge title: not a challenge");
   }
 
   // The crash route (gazit, sinaistore): categorizeError reads the run's guard.

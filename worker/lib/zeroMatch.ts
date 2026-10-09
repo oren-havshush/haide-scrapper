@@ -36,9 +36,17 @@ export const WRONG_SCOPE_WARNING = "item_scope_suspect";
 export const BLOCKED = "blocked";
 export const BLOCKED_WARNING = "blocked_challenge";
 
-/** Cloudflare's interstitial title. */
+/**
+ * Cloudflare's interstitial title in Hebrew, "Just a moment" (owner,
+ * 2026-10-09): the worker browses in he-IL (worker/lib/playwright.ts), so
+ * Cloudflare localises it (one1.co.il). Built from its code points.
+ */
+const CLOUDFLARE_TITLE_HE = String.fromCharCode(0x5e8, 0x5e7, 0x20, 0x5e8, 0x5d2, 0x5e2);
+
+/** Cloudflare's interstitial title, in English or Hebrew. */
 export function isChallengeTitle(title: string | null | undefined): boolean {
-  return typeof title === "string" && /^\s*just a moment/i.test(title);
+  if (typeof title !== "string") return false;
+  return /^\s*just a moment/i.test(title) || title.trim().startsWith(CLOUDFLARE_TITLE_HE);
 }
 
 /**
@@ -64,8 +72,14 @@ export function challengeVendor(detail: string): string {
  * responses; nothing tries to pass the challenge.
  */
 export function detectChallengeResponse(url: string, headers: Record<string, string | undefined>): string | null {
-  const sg = Object.entries(headers).find(([k]) => k.toLowerCase() === "sg-captcha")?.[1];
+  const header = (name: string) => Object.entries(headers).find(([k]) => k.toLowerCase() === name)?.[1];
+  const sg = header("sg-captcha");
   if (typeof sg === "string" && /challenge/i.test(sg)) return "SiteGround challenge (sg-captcha: challenge)";
+  // Cloudflare marks its challenge response with cf-mitigated: challenge,
+  // whatever language the page is in (one1.co.il, 2026-10-09). A plain 403
+  // without the header is not taken as a challenge.
+  const cf = header("cf-mitigated");
+  if (typeof cf === "string" && /challenge/i.test(cf)) return "Cloudflare challenge (cf-mitigated: challenge)";
   try {
     if (new URL(url).pathname.startsWith("/.well-known/sgcaptcha/")) return "SiteGround challenge (/.well-known/sgcaptcha/)";
   } catch {
