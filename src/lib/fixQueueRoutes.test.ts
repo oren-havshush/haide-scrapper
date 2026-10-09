@@ -56,8 +56,10 @@ assert(/resolvedBy: "MANUAL"/.test(svc), "an operator's resolve is recorded as r
 const update = svc.slice(svc.indexOf("export async function updateFixItem("));
 const updateBody = update.slice(0, update.indexOf("\n}\n"));
 assert(updateBody.length > 0, "updateFixItem exists");
+// Since 2026-10-09 the data is built in src/lib/fixItemUpdate.ts (tested there).
+assert(/data: fixItemUpdateData\(patch, new Date\(\)\)/.test(updateBody), "updateFixItem writes fixItemUpdateData");
 assert(
-  /patch\.resolved === true \? \{ resolvedAt: new Date\(\), resolvedBy: patch\.resolvedBy \?\? "MANUAL" \}/.test(updateBody),
+  /patch\.resolved === true \? \{ resolvedAt: now, resolvedBy: patch\.resolvedBy \?\? "MANUAL" \}/.test(read("lib/fixItemUpdate.ts")),
   "updateFixItem resolves as patch.resolvedBy, MANUAL by default",
 );
 

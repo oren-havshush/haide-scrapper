@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { NotFoundError } from "@/lib/errors";
 import { cohortOf, scoreSite, type CohortBounds, type Cohort, type ScoreItem } from "@/lib/fixScore";
+import { fixItemUpdateData } from "@/lib/fixItemUpdate";
 import type { z } from "zod";
 import type { fixItemCreateSchema, fixItemPatchSchema } from "@/lib/validators";
 
@@ -100,14 +101,9 @@ export async function createFixItem(input: z.infer<typeof fixItemCreateSchema>) 
 export async function updateFixItem(id: string, patch: z.infer<typeof fixItemPatchSchema>) {
   const existing = await prisma.fixItem.findUnique({ where: { id }, select: { id: true } });
   if (!existing) throw new NotFoundError("FixItem", id);
+  // Minutes set by hand clear minutesEstimated (src/lib/fixItemUpdate.ts).
   return prisma.fixItem.update({
     where: { id },
-    data: {
-      ...(patch.minutes !== undefined ? { minutes: patch.minutes } : {}),
-      ...(patch.note !== undefined ? { note: patch.note } : {}),
-      ...(patch.operator !== undefined ? { operator: patch.operator } : {}),
-      ...(patch.resolved === true ? { resolvedAt: new Date(), resolvedBy: patch.resolvedBy ?? "MANUAL" } : {}),
-      ...(patch.resolved === false ? { resolvedAt: null, resolvedBy: null } : {}),
-    },
+    data: fixItemUpdateData(patch, new Date()),
   });
 }
