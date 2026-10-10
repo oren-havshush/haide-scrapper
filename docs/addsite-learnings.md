@@ -4403,10 +4403,12 @@ is added that the citing text does not say. Their status rows are in
   comes back 200. The worker's extraction raced the chain: tl-care scraped 6 of 16, gazit came back
   empty_results with no challenge named; eso-group and sinaistore threw and the report could not
   name the vendor.
-- **Rule (worker/lib/challengeWait.ts):** on a listing navigation the worker waits for the ipc chain
-  to settle on the listing URL, capped at 20 s, ipc only; `ipr`, SiteGround's interactive captcha
-  (`/.well-known/captcha/`) and the cap running out stay blocked. Nothing is clicked or answered.
-  Every wait is recorded on the run (`challenge_wait: …`).
+- **Rule (worker/lib/challengeWait.ts):** on a listing navigation the worker waits for SiteGround's
+  automatic chain to settle on the listing URL, capped at 20 s, for an `ipc` or an `ipr` verdict
+  alike (ipr from 2026-10-10 19:25Z: gazit's ipr chain settled by itself in 1.7 s). SiteGround's
+  interactive captcha (`/.well-known/captcha/`) and the cap running out stay blocked. Nothing is
+  clicked or answered; Cloudflare is not waited for. Every wait is recorded on the run, naming the
+  verdict (`challenge_wait: SiteGround ipr settled on the listing in 1.7 s`).
 - **Labels:** an empty result or a drop in a run that saw a challenge response is `blocked`, with
   `blocked_challenge: <detail>`; the crash path saves that detail too, so the report names the vendor.
 - **Generalizes to:** any host challenge a browser passes by itself; a challenge that needs a human

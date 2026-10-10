@@ -35,6 +35,7 @@ import {
   challengeWarnings,
   judgeChallengeChain,
   navRecordOf,
+  sgVerdictOf,
   type ChainVerdict,
   type NavRecord,
 } from "../lib/challengeWait";
@@ -279,11 +280,12 @@ async function gotoForgiving(
 }
 
 /**
- * Wait for SiteGround's automatic ipc chain to settle on the listing URL,
- * capped at IPC_WAIT_CAP_MS (worker/lib/challengeWait.ts). ipr, the interactive
- * captcha and the cap stop the wait and leave the run's challenge in place, so
- * it is labelled blocked as before. A settled chain clears it: the page is the
- * real listing now. Every wait is recorded on the run's guard.
+ * Wait for SiteGround's automatic chain (an ipc or ipr verdict) to settle on
+ * the listing URL, capped at IPC_WAIT_CAP_MS (worker/lib/challengeWait.ts). The
+ * interactive captcha and the cap stop the wait and leave the run's challenge
+ * in place, so it is labelled blocked as before. A settled chain clears it: the
+ * page is the real listing now. Every wait is recorded on the run's guard,
+ * naming the verdict the IP got.
  */
 async function settleSiteGroundIpc(
   page: Page,
@@ -301,7 +303,7 @@ async function settleSiteGroundIpc(
   const ms = Date.now() - t0;
   // The loop leaves only a stopping verdict, or "waiting" when the cap ran out.
   const outcome = verdict === "waiting" ? "timeout" : (verdict as Exclude<ChainVerdict, "not_challenged" | "waiting">);
-  const record = challengeWaitRecord(outcome, ms);
+  const record = challengeWaitRecord(outcome, ms, sgVerdictOf(navs));
   console.info(`[scrape] ${record}`);
   if (guard) {
     guard.challengeWaits.push(record);
