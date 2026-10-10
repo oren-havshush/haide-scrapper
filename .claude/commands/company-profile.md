@@ -71,6 +71,7 @@ Flags worth knowing:
 | `--no-llm` | deterministic only, never call OpenAI (free, and what CI uses) |
 | `--force` | overwrite an existing profile — only for a deliberate re-capture |
 | `--replace-logo` | a stored logo is **kept** (the logo step is skipped) unless this is given; `--force` alone never replaces it |
+| `--replace-field <name>` | repeatable; overwrite a profile field the operator set by hand in the dashboard (`companyAbout`, `companyHqAddress`, `companyHomepageUrl`). Without it, every field listed in `Site.companyOperatorFields` is left out of the write and keeps its value, with `--force` too; the run prints which fields it kept |
 | `--probe <url>` | scrape an arbitrary URL, no DB and no token, to debug extraction |
 | `--out <path>` | append one JSON result per site, for inspection |
 
@@ -187,7 +188,9 @@ The server validates magic bytes and size. **The upload does not recompute
 `PUT /api/sites/$SITE_ID/company-profile?force=1` with `{"companyProfileStatus":"COMPLETE"}`
 (presence-based: no other column is touched). A later forced re-capture keeps this stored
 logo (the logo step is skipped unless `--replace-logo` is given), so it still counts toward
-the status. Cite: `LRN-LOGO-2`.
+the status. Cite: `LRN-LOGO-2`. In the same way, a recapture keeps every profile field the
+operator set by hand in the dashboard (listed in `Site.companyOperatorFields`) unless
+`--replace-field <name>` names it.
 
 While looking at the logo, compare it with `companyName`: the logo carries the company's
 own spelling, the page `<title>` often does not (`addsite2.md` §4).
