@@ -180,7 +180,9 @@ function countOf(haystack: string, needle: string): number {
   const count = scheduledBranch.indexOf("prisma.job.count({ where: { siteId: site.id } })");
   const plan = scheduledBranch.indexOf("planScheduledPersist(rows.length, previousCount");
   const refusal = scheduledBranch.indexOf('plan.mode === "suspicious_drop"');
-  const refusalFail = scheduledBranch.indexOf('failureCategory: "suspicious_drop"', refusal);
+  // Since 2026-10-10 the category is suspicious_drop unless the run met a host
+  // challenge, then blocked (worker/lib/challengeWait.ts challengeLabel).
+  const refusalFail = scheduledBranch.indexOf('failureCategory: challengeLabel("suspicious_drop"', refusal);
   const txDelete = scheduledBranch.indexOf("tx.job.deleteMany(");
 
   assert(count >= 0, "the scheduled branch reads the site's current listing count");
@@ -250,7 +252,7 @@ assert(
   const commit = src.indexOf("beginCommit(runMode.abort");
   assert(refuse > call && refuse < commit, "field_fill_drop is refused before the commit window opens");
   const branch = refuse >= 0 ? src.slice(refuse, src.indexOf("\n    }\n", refuse)) : "";
-  assert(branch.includes('failureCategory: "field_fill_drop"'), "under its own category");
+  assert(branch.includes('failureCategory: challengeLabel("field_fill_drop"'), "under its own category (blocked only after a host challenge)");
   assert(branch.includes("failScrapeRun("), "through failScrapeRun, which keeps a scheduled run's listings");
   assert(/warnings:\s*\[/.test(branch), "with a warning carrying both fills, for the report");
   assert(GATED.failScrapeRun.includes("warnings"), "and failScrapeRun writes that warning to the run");

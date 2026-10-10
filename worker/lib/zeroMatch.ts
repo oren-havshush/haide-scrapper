@@ -110,10 +110,12 @@ export type ExtractGuard = {
   challenge: string | null;
   /** One warning per selector a scheduled run declined to swap for auto-detect. */
   scopeSuspects: Map<string, string>;
+  /** Each wait for SiteGround's ipc chain, as recorded on the run (worker/lib/challengeWait.ts). */
+  challengeWaits: string[];
 };
 
 export function newExtractGuard(scheduled: boolean): ExtractGuard {
-  return { noAutoDetect: true, scheduled, zeroMatch: null, zeroMatchTitle: null, challenge: null, scopeSuspects: new Map() };
+  return { noAutoDetect: true, scheduled, zeroMatch: null, zeroMatchTitle: null, challenge: null, scopeSuspects: new Map(), challengeWaits: [] };
 }
 
 /**

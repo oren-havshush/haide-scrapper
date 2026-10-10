@@ -29,6 +29,16 @@ import {
   type ExtractGuard,
 } from "../lib/zeroMatch";
 import {
+  IPC_WAIT_CAP_MS,
+  challengeLabel,
+  challengeWaitRecord,
+  challengeWarnings,
+  judgeChallengeChain,
+  navRecordOf,
+  type ChainVerdict,
+  type NavRecord,
+} from "../lib/challengeWait";
+import {
   normalizeJobRecord,
   resolveMetaMinPublishDate,
   computeAgeBucket,
@@ -228,18 +238,81 @@ async function gotoForgiving(
   page: Page,
   url: string,
   navTimeoutMs: number = NAVIGATION_TIMEOUT_MS,
-  opts: { listingRetry?: boolean } = {},
+  opts: { listingRetry?: boolean; guard?: ExtractGuard | null } = {},
 ): Promise<import("playwright").Response | null> {
   const go = (timeout: number) => page.goto(url, { waitUntil: "domcontentloaded", timeout });
-  const response = opts.listingRetry
-    ? await navigateWithRetry(go, { firstTimeoutMs: navTimeoutMs, sleep: sleepMs, log: (m) => console.warn(m) })
-    : await go(navTimeoutMs);
-  await page
-    .waitForLoadState("networkidle", { timeout: NETWORKIDLE_GRACE_MS })
-    .catch(() => {
-      /* ignore */
+  // A listing navigation logs its main-frame responses, so SiteGround's
+  // automatic ipc chain can be waited out (worker/lib/challengeWait.ts).
+  const navs: NavRecord[] = [];
+  const onResponse = (r: import("playwright").Response) => {
+    try {
+      if (r.frame() === page.mainFrame() && r.request().isNavigationRequest()) navs.push(navRecordOf(r.url(), r.status(), r.headers()));
+    } catch {
+      // A response with no frame: not a navigation.
+    }
+  };
+  if (opts.listingRetry) page.on("response", onResponse);
+  try {
+    let response: import("playwright").Response | null = null;
+    try {
+      response = opts.listingRetry
+        ? await navigateWithRetry(go, { firstTimeoutMs: navTimeoutMs, sleep: sleepMs, log: (m) => console.warn(m) })
+        : await go(navTimeoutMs);
+    } catch (error) {
+      // The challenge page's own refresh can interrupt the navigation; settle
+      // first, and fail only if it does not.
+      if (!opts.listingRetry || judgeChallengeChain(navs, url) === "not_challenged") throw error;
+    }
+    if (opts.listingRetry) {
+      const verdict = await settleSiteGroundIpc(page, url, navs, opts.guard ?? null);
+      if (response === null && verdict !== "settled") throw new Error(`navigation to ${url} ended on a SiteGround challenge (${verdict})`);
+    }
+    await page
+      .waitForLoadState("networkidle", { timeout: NETWORKIDLE_GRACE_MS })
+      .catch(() => {
+        /* ignore */
+      });
+    return response;
+  } finally {
+    if (opts.listingRetry) page.off("response", onResponse);
+  }
+}
+
+/**
+ * Wait for SiteGround's automatic ipc chain to settle on the listing URL,
+ * capped at IPC_WAIT_CAP_MS (worker/lib/challengeWait.ts). ipr, the interactive
+ * captcha and the cap stop the wait and leave the run's challenge in place, so
+ * it is labelled blocked as before. A settled chain clears it: the page is the
+ * real listing now. Every wait is recorded on the run's guard.
+ */
+async function settleSiteGroundIpc(
+  page: Page,
+  url: string,
+  navs: NavRecord[],
+  guard: ExtractGuard | null,
+): Promise<ChainVerdict | "timeout"> {
+  let verdict = judgeChallengeChain(navs, url);
+  if (verdict === "not_challenged") return verdict;
+  const t0 = Date.now();
+  while (verdict === "waiting" && Date.now() - t0 < IPC_WAIT_CAP_MS) {
+    await sleepMs(500);
+    verdict = judgeChallengeChain(navs, url);
+  }
+  const ms = Date.now() - t0;
+  // The loop leaves only a stopping verdict, or "waiting" when the cap ran out.
+  const outcome = verdict === "waiting" ? "timeout" : (verdict as Exclude<ChainVerdict, "not_challenged" | "waiting">);
+  const record = challengeWaitRecord(outcome, ms);
+  console.info(`[scrape] ${record}`);
+  if (guard) {
+    guard.challengeWaits.push(record);
+    if (outcome === "settled") guard.challenge = null;
+  }
+  if (outcome === "settled") {
+    await page.waitForLoadState("domcontentloaded", { timeout: NAVIGATION_TIMEOUT_MS }).catch(() => {
+      /* the networkidle grace follows */
     });
-  return response;
+  }
+  return outcome;
 }
 
 function sleepMs(ms: number): Promise<void> {
@@ -1605,7 +1678,7 @@ async function extractRawFieldsWithPageFlow(
 ): Promise<Record<string, string>[]> {
   // Navigate to the first page flow URL (listing page)
   const listingStep = pageFlow[0];
-  await gotoForgiving(page, listingUrlOverride ?? listingStep.url, NAVIGATION_TIMEOUT_MS, { listingRetry: true });
+  await gotoForgiving(page, listingUrlOverride ?? listingStep.url, NAVIGATION_TIMEOUT_MS, { listingRetry: true, guard: guard });
 
   // Wait for the listing page's waitFor selector if specified
   if (listingStep.waitFor) {
@@ -3258,10 +3331,13 @@ export async function handleScrapeJob(
       failureCategory,
     });
 
+    // The challenge detail the run already holds, and any wait, so the report
+    // can name the vendor (eso-group, sinaistore, 2026-10-10).
     const result = await failScrapeRun(scrapeRunId, site.id, {
       error: errorMessage,
       failureCategory,
       scheduled,
+      warnings: challengeWarnings(runMode.extract),
     });
 
     return { ...result };
@@ -3801,7 +3877,7 @@ async function executeScrape(
       page.on("response", onResponse);
 
       // Navigate to the site URL -- domcontentloaded + best-effort networkidle
-      const navResponse = await gotoForgiving(page, targetUrl, NAVIGATION_TIMEOUT_MS, { listingRetry: true });
+      const navResponse = await gotoForgiving(page, targetUrl, NAVIGATION_TIMEOUT_MS, { listingRetry: true, guard: runMode.extract });
       context.pageLoaded = true;
 
       // Many Israeli sites sit behind Reblaze (kramericaindustries.ac_v2.lib.js
@@ -4186,6 +4262,10 @@ async function executeScrape(
 
   // Handle empty results (AC #5)
   if (rawFieldsList.length === 0) {
+    // After a host's challenge the empty page is the challenge's, not the
+    // site's (worker/lib/challengeWait.ts): labelled blocked, with its detail.
+    const emptyCategory = challengeLabel("empty_results", runMode.extract?.challenge ?? null);
+    const emptyWarnings = challengeWarnings(runMode.extract);
     const result: ScrapeResult = {
       success: true,
       scrapeRunId,
@@ -4193,7 +4273,7 @@ async function executeScrape(
       totalJobs: 0,
       validJobs: 0,
       invalidJobs: 0,
-      failureCategory: "empty_results",
+      failureCategory: emptyCategory,
     };
 
     await prisma.scrapeRun.update({
@@ -4204,12 +4284,13 @@ async function executeScrape(
         totalJobs: 0,
         validJobs: 0,
         invalidJobs: 0,
-        failureCategory: "empty_results",
+        failureCategory: emptyCategory,
         completedAt: new Date(),
+        ...(emptyWarnings.length > 0 ? { warnings: emptyWarnings } : {}),
       },
     });
 
-    console.info("[scrape] Scrape completed with zero results (empty_results)");
+    console.info(`[scrape] Scrape completed with zero results (${emptyCategory})`);
     return result;
   }
 
@@ -4474,12 +4555,15 @@ async function executeScrape(
               `below ${Math.round(plan.thresholds.keepRatio * 100)}% of the previous count, ` +
               `previous listings left untouched`;
       console.error(`[scrape] ${message}`);
+      // After a host's challenge the drop is the challenge's (tl-care, 6 of
+      // 16): labelled blocked, with its detail (worker/lib/challengeWait.ts).
+      const dropWarnings = [...(gap !== null ? [`listing_gap_drop: ${gap}`] : []), ...challengeWarnings(runMode.extract)];
       return await failScrapeRun(scrapeRunId, site.id, {
         error: message,
-        failureCategory: "suspicious_drop",
+        failureCategory: challengeLabel("suspicious_drop", runMode.extract?.challenge ?? null),
         scheduled,
         counts: { totalJobs: validatedRecords.length, validJobs: plan.rowCount, invalidJobs: invalidCount },
-        ...(gap !== null ? { warnings: [`listing_gap_drop: ${gap}`] } : {}),
+        ...(dropWarnings.length > 0 ? { warnings: dropWarnings } : {}),
       });
     }
 
@@ -4504,10 +4588,10 @@ async function executeScrape(
       console.error(`[scrape] ${message}`);
       return await failScrapeRun(scrapeRunId, site.id, {
         error: message,
-        failureCategory: "field_fill_drop",
+        failureCategory: challengeLabel("field_fill_drop", runMode.extract?.challenge ?? null),
         scheduled,
         counts: { totalJobs: validatedRecords.length, validJobs: plan.rowCount, invalidJobs: invalidCount },
-        warnings: [`field_fill_drop: ${fills}`],
+        warnings: [`field_fill_drop: ${fills}`, ...challengeWarnings(runMode.extract)],
       });
     }
 
@@ -4704,6 +4788,8 @@ async function executeScrape(
       deadDetailPages: countDeadDetailPages(rawFieldsList),
     });
     scrapeWarnings.push(...checks.warnings);
+    // A SiteGround ipc wait on a written run, recorded on it (worker/lib/challengeWait.ts).
+    scrapeWarnings.push(...challengeWarnings(runMode.extract));
     // Stored location overrides not on city.csv, skipped by the gate (worker/lib/jobLocation.ts).
     scrapeWarnings.push(...overrideWarnings);
     // What each listing page contributed, saved/seen. Only present on a site

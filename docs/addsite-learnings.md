@@ -4393,3 +4393,21 @@ is added that the citing text does not say. Their status rows are in
   and civi 10-08, rule B' tnuva 10-10 and avivim-hr 10-06; nothing ordinary.
 - **Generalizes to:** any partial extraction that keeps the count above half and the fill above
   60%: the count and crossing guards alone do not see it.
+
+## LRN-WRK-25 — SiteGround's automatic ipc check is waited out; a run after any challenge is labelled blocked
+
+- **Date / site:** 2026-10-10, gazit.co.il and tl-care.co.il (also eso-group, sinaistore).
+- **Signal:** from the box SiteGround's verdict changed from `ipr:` (IP reputation, escalating to
+  an interactive captcha) to `ipc:`: the listing answers 202 with `sg-captcha: challenge`, refreshes
+  to `/.well-known/sgcaptcha/?…&y=ipc:<ip>`, the page's own script answers (`&sol=…`) and the listing
+  comes back 200. The worker's extraction raced the chain: tl-care scraped 6 of 16, gazit came back
+  empty_results with no challenge named; eso-group and sinaistore threw and the report could not
+  name the vendor.
+- **Rule (worker/lib/challengeWait.ts):** on a listing navigation the worker waits for the ipc chain
+  to settle on the listing URL, capped at 20 s, ipc only; `ipr`, SiteGround's interactive captcha
+  (`/.well-known/captcha/`) and the cap running out stay blocked. Nothing is clicked or answered.
+  Every wait is recorded on the run (`challenge_wait: …`).
+- **Labels:** an empty result or a drop in a run that saw a challenge response is `blocked`, with
+  `blocked_challenge: <detail>`; the crash path saves that detail too, so the report names the vendor.
+- **Generalizes to:** any host challenge a browser passes by itself; a challenge that needs a human
+  stays blocked.

@@ -106,10 +106,12 @@ function harness(outcomes: Array<"ok" | "timeout" | "dns">) {
   // --- the wiring: the listing loads retry; detail pages and pagination do not ---------
   {
     const src = readFileSync(join(__dirname, "../jobs/scrape.ts"), "utf8");
-    const listingCalls = src.match(/gotoForgiving\([^;]*\{ listingRetry: true \}\)/g) ?? [];
+    // Since 2026-10-10 the two listing loads also pass the run's guard, for the
+    // SiteGround ipc wait (worker/lib/challengeWait.ts).
+    const listingCalls = src.match(/gotoForgiving\([^;]*\{ listingRetry: true, guard: [^}]*\}\)/g) ?? [];
     assert(listingCalls.length === 2, `the two listing loads opt in (got ${listingCalls.length})`);
-    assert(/gotoForgiving\(page, targetUrl, NAVIGATION_TIMEOUT_MS, \{ listingRetry: true \}\)/.test(src), "the run's first navigation (executeScrape)");
-    assert(/gotoForgiving\(page, listingUrlOverride \?\? listingStep\.url, NAVIGATION_TIMEOUT_MS, \{ listingRetry: true \}\)/.test(src), "and the page-flow listing step");
+    assert(/gotoForgiving\(page, targetUrl, NAVIGATION_TIMEOUT_MS, \{ listingRetry: true, guard: runMode\.extract \}\)/.test(src), "the run's first navigation (executeScrape)");
+    assert(/gotoForgiving\(page, listingUrlOverride \?\? listingStep\.url, NAVIGATION_TIMEOUT_MS, \{ listingRetry: true, guard: guard \}\)/.test(src), "and the page-flow listing step");
     assert(/gotoForgiving\(page, detailUrl, DETAIL_PAGE_TIMEOUT_MS\);/.test(src), "a detail page is unchanged");
     assert(/gotoForgiving\(page, target, NAVIGATION_TIMEOUT_MS\);/.test(src), "pagination is unchanged");
     const fn = src.slice(src.indexOf("async function gotoForgiving("), src.indexOf("function sleepMs("));
