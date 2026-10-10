@@ -130,6 +130,23 @@ export function isFieldFillDrop(
   return previous.filled / previous.total >= threshold && next.filled / next.total < threshold;
 }
 
+/**
+ * Rule A of the guard gap (owner, 2026-10-10): a scheduled write is refused when
+ * description fill falls by 25 points or more against the stored rows, crossing
+ * 60% or not. isFieldFillDrop judges only the crossing, so civi's 2026-10-08
+ * night (3 stored at 100% -> 5 written at 60%) and tnuva's 2026-10-10 (100% ->
+ * 67%) both committed. Replayed over the seven nights 2026-10-04..10, this
+ * refuses those two and no ordinary night.
+ */
+export const FILL_FALL_POINTS = 0.25;
+
+/** Description fill fell by at least FILL_FALL_POINTS. Nothing stored, or nothing new, is no verdict. */
+export function isFieldFillFall(previous: FillCount, next: FillCount, points: number = FILL_FALL_POINTS): boolean {
+  if (previous.total <= 0 || next.total <= 0) return false;
+  // A small tolerance so 100% -> 75% counts as the 25 points it is.
+  return previous.filled / previous.total - next.filled / next.total >= points - 1e-9;
+}
+
 /** One row's identity and description, stored or about to be written. */
 export type DescribedRow = { externalJobId: string | null; description: string | null };
 
@@ -192,6 +209,12 @@ export type PersistPlan =
   | {
       mode: "field_fill_drop";
       field: "description";
+      /**
+       * Which rule refused it, the first that holds: the fill crossed 60%
+       * (isFieldFillDrop), fell 25 points or more (isFieldFillFall), or stored
+       * described jobs would be written bare (isDescribedJobsLoss).
+       */
+      rule: "crossed_threshold" | "fell_points" | "described_lost";
       /** Fill as a fraction, 0..1. */
       previousFill: number;
       newFill: number;
@@ -213,8 +236,11 @@ export type PersistPlan =
  *   listings would be deleted, and 2026-09-24's 57 -> 30 cleared the ratio. A
  *   site with nothing stored loses nothing, so it still commits.
  * @param fill           description fill of the stored rows and of the rows this
- *   run would write (isFieldFillDrop). Judged after the count refusals, so a
- *   433 -> 8 is reported as the drop it is. Omitted, nothing is judged.
+ *   run would write. Refused when it crosses 60% (isFieldFillDrop), falls 25
+ *   points or more crossing or not (isFieldFillFall), or stored described jobs
+ *   would be written bare (isDescribedJobsLoss). Judged after the count
+ *   refusals, so a 433 -> 8 is reported as the drop it is. Omitted, nothing is
+ *   judged.
  */
 export function planScheduledPersist(
   rowCount: number,
@@ -231,15 +257,21 @@ export function planScheduledPersist(
   if (isSuspiciousDrop(previousCount, rowCount, thresholds)) {
     return { mode: "suspicious_drop", reason: "ratio", rowCount, previousCount, thresholds };
   }
-  if (
-    fill &&
-    (isFieldFillDrop(fill.description.previous, fill.description.next) ||
-      (fill.description.lost !== undefined && isDescribedJobsLoss(fill.description.lost)))
-  ) {
+  const fillRule = !fill
+    ? null
+    : isFieldFillDrop(fill.description.previous, fill.description.next)
+      ? "crossed_threshold"
+      : isFieldFillFall(fill.description.previous, fill.description.next)
+        ? "fell_points"
+        : fill.description.lost !== undefined && isDescribedJobsLoss(fill.description.lost)
+          ? "described_lost"
+          : null;
+  if (fill && fillRule) {
     const { previous, next, lost } = fill.description;
     return {
       mode: "field_fill_drop",
       field: "description",
+      rule: fillRule,
       previousFill: previous.total > 0 ? previous.filled / previous.total : 0,
       newFill: next.total > 0 ? next.filled / next.total : 0,
       previous,

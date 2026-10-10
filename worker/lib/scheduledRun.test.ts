@@ -399,8 +399,13 @@ check("field_fill_drop", () => {
 
   assert(plan(10, 10, fill(6, 10, 5, 10)).mode === "field_fill_drop", "60% -> 50% crosses the bar and is refused");
   assert(plan(10, 10, fill(6, 10, 6, 10)).mode === "commit", "60% -> 60% stays on it and commits");
-  assert(plan(10, 10, fill(10, 10, 6, 10)).mode === "commit", "100% -> 60% is a fall, but not below the bar");
-  assert(plan(10, 10, fill(5, 10, 0, 10)).mode === "commit", "a site already below 60% never met the bar: commits");
+  // Since rule A (owner, 2026-10-10) a fall of 25 points or more is refused
+  // whether or not it crosses the bar (worker/lib/fillFallGuard.test.ts); a
+  // smaller fall that does not cross it still commits.
+  assert(plan(10, 10, fill(10, 10, 6, 10)).mode === "field_fill_drop", "100% -> 60% does not cross the bar, but falls 40 points: refused");
+  assert(plan(10, 10, fill(10, 10, 8, 10)).mode === "commit", "100% -> 80% (20 points, above the bar) commits");
+  assert(plan(10, 10, fill(5, 10, 0, 10)).mode === "field_fill_drop", "a site already below 60% that falls 50 points is refused");
+  assert(plan(10, 10, fill(5, 10, 3, 10)).mode === "commit", "a site already below 60% that falls 20 points commits");
   assert(plan(5, 0, fill(0, 0, 0, 5)).mode === "commit", "nothing stored, nothing to protect: commits");
   assert(plan(12, 12).mode === "commit", "no fill given (the manual shape) commits as before");
   assert(plan(12, 12, fill(12, 12, 0, 0)).mode === "commit", "no new rows to measure is not a fill verdict");

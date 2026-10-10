@@ -4373,3 +4373,20 @@ is added that the citing text does not say. Their status rows are in
   label already used, falls back to the field's own placeholder or aria-label.
 - **Generalizes to:** any apply form whose field names resemble a framework's. Check a stored job's
   `submitEndpoint` against the page's own form action before ACTIVE.
+
+## LRN-WRK-24 — three scheduled-write guards passed a run that lost 70 of 110 described jobs
+
+- **Date / site:** 2026-10-10, tnuva.co.il `/jobs/` (`cmqyh9j7k002n01nzpb7145ri`); found again by
+  replay in avivim-hr.co.il (2026-10-06) and civi (2026-10-08).
+- **Signal:** tnuva went 110 -> 60 and was written: 40 rows with native ids and descriptions, 20
+  hashed and bare, "100 card(s) on the listing but 60 job(s) saved". The count guard (-45% is above
+  the 50% line), the fill guard (100% -> 67% never crossed 60%) and the per-job guard (the lost jobs
+  were gone or re-keyed, not written bare) all passed it. The 07:01 pull published the 60.
+- **Cause:** the setupScript's scroll loop stopped after three flat 800 ms ticks on a slow night;
+  the site was unchanged (110 jobs, all with ids).
+- **Rule A (fill):** a scheduled write is refused when description fill falls by 25 points or
+  more against the stored rows, crossing 60% or not (`isFieldFillFall`, worker/lib/scheduledRun.ts).
+- **Replay:** over the seven nights 2026-10-04..10 (1,264 written runs) rule A refuses tnuva 10-10
+  and civi 10-08 and nothing ordinary.
+- **Generalizes to:** any partial extraction that keeps the count above half and the fill above
+  60%: the count and crossing guards alone do not see it.

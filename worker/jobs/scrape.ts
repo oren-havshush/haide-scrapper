@@ -429,6 +429,13 @@ async function clickLoadMoreUntilStable(
   }
 }
 
+/** The fill rule a field_fill_drop refusal names (worker/lib/scheduledRun.ts). */
+const FILL_RULE_TEXT: Record<"crossed_threshold" | "fell_points" | "described_lost", string> = {
+  crossed_threshold: "crossed 60%",
+  fell_points: "fell 25 points or more",
+  described_lost: "stored described jobs written bare",
+};
+
 // ---------------------------------------------------------------------------
 // Helper: error categorization
 // ---------------------------------------------------------------------------
@@ -4471,7 +4478,7 @@ async function executeScrape(
       const lost = plan.lost ?? [];
       const fills =
         `${plan.field} fill ${plan.newFill < plan.previousFill ? "fell" : "went"} ` +
-        `${pct(plan.previousFill)} -> ${pct(plan.newFill)} ` +
+        `${pct(plan.previousFill)} -> ${pct(plan.newFill)} [${FILL_RULE_TEXT[plan.rule]}] ` +
         `(${plan.next.filled} of ${plan.next.total} scraped, ${plan.previous.filled} of ${plan.previous.total} stored)` +
         (lost.length > 0
           ? `; ${lost.length} stored job(s) would lose it (lost ids: ` +

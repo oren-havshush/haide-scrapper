@@ -175,3 +175,4 @@ LRN-FORM-8	CODE	worker/lib/formFields.test.ts		radio groups as one field with op
 LRN-COV-11	RECIPE	addsite3.md:1123		carried 2026-10-07 at the switch: section 16 signal row; the learning (hye.co.il, 2026-10-06) had no row
 LRN-WRK-23	RECIPE	addsite3.md:438		carried 2026-10-07 at the switch: itemSelector rules bullet; the learning (aig.co.il, 2026-10-07) had no row
 LRN-APPLY-13	CODE	worker/lib/formShape.test.ts		added 2026-10-08 (the developer's report of 2026-10-07): formShape.test.ts pins Elementor-on-evidence with the lighting, lilit and naamat fixtures; formExtract.test.ts pins required (data-validate, aria-required) and the shared-id label fallback on lighting's markup
+LRN-WRK-24	CODE	worker/lib/fillFallGuard.test.ts		added 2026-10-10 (tnuva, the guard gap): fillFallGuard.test.ts pins rule A, description fill falling 25 points or more refused crossing 60% or not (civi-shaped refused, iec- and dreamjobs-shaped written)
