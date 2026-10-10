@@ -147,6 +147,37 @@ export function isFieldFillFall(previous: FillCount, next: FillCount, points: nu
   return previous.filled / previous.total - next.filled / next.total >= points - 1e-9;
 }
 
+/**
+ * Rule B' of the guard gap (owner, 2026-10-10): a scheduled write is refused
+ * when the listing_vs_saved_gap exceeds 25% of the cards, the stored count is at
+ * least 10, and the run saved fewer than 90% of the stored count. The listing
+ * showed the jobs and the run lost them: tnuva 2026-10-10 (110 stored, 100
+ * cards, 60 saved) and avivim-hr 2026-10-06 (27 stored, 27 cards, 15 saved)
+ * both committed under the 50% count line. The saved-share condition keeps a
+ * standing gap with nothing lost (dreamjobs: ~540 cards, ~365 saved and
+ * stored) from being refused. The gap is counted as the gap warning counts it,
+ * dead detail pages accounted for (valueChecks.ts listingVsSavedGap).
+ */
+export const LISTING_GAP_RATIO = 0.25;
+export const LISTING_GAP_MIN_STORED = 10;
+export const LISTING_GAP_SAVED_RATIO = 0.9;
+
+/** The listing's card count for the run, and its dead detail pages. */
+export type ListingSeen = { cardsSeen: number | null; deadDetailPages: number };
+
+/** The unaccounted cards, as listing_vs_saved_gap counts them; 0 when there is no gap. */
+export function unaccountedCards(listing: ListingSeen, rowCount: number): number {
+  if (listing.cardsSeen == null || listing.cardsSeen <= rowCount || rowCount <= 0) return 0;
+  return Math.max(0, listing.cardsSeen - rowCount - Math.max(0, listing.deadDetailPages));
+}
+
+export function isListingGapDrop(listing: ListingSeen, rowCount: number, previousCount: number): boolean {
+  if (listing.cardsSeen == null || listing.cardsSeen <= 0) return false;
+  if (previousCount < LISTING_GAP_MIN_STORED) return false;
+  const unaccounted = unaccountedCards(listing, rowCount);
+  return unaccounted / listing.cardsSeen > LISTING_GAP_RATIO && rowCount < LISTING_GAP_SAVED_RATIO * previousCount;
+}
+
 /** One row's identity and description, stored or about to be written. */
 export type DescribedRow = { externalJobId: string | null; description: string | null };
 
@@ -202,6 +233,16 @@ export type PersistPlan =
       previousCount: number;
       thresholds: DropThresholds;
     }
+  /** The listing showed the jobs and the run lost them (isListingGapDrop). */
+  | {
+      mode: "suspicious_drop";
+      reason: "listing_gap";
+      rowCount: number;
+      previousCount: number;
+      thresholds: DropThresholds;
+      cardsSeen: number;
+      unaccounted: number;
+    }
   /**
    * The count held but a field's fill fell through FIELD_FILL_THRESHOLD
    * (isFieldFillDrop). Nothing is deleted and nothing written.
@@ -241,6 +282,11 @@ export type PersistPlan =
  *   would be written bare (isDescribedJobsLoss). Judged after the count
  *   refusals, so a 433 -> 8 is reported as the drop it is. Omitted, nothing is
  *   judged.
+ * @param listing        the listing's card count and dead detail pages. Refused
+ *   as a suspicious_drop (listing_gap) when the gap exceeds 25% of the cards,
+ *   the stored count is at least 10 and the run saved under 90% of it
+ *   (isListingGapDrop). Judged after the ratio, before the fill. Omitted, or
+ *   with no card count, nothing is judged.
  */
 export function planScheduledPersist(
   rowCount: number,
@@ -248,6 +294,7 @@ export function planScheduledPersist(
   thresholds: DropThresholds = DEFAULT_DROP_THRESHOLDS,
   walk: { paginationTruncated: boolean } = { paginationTruncated: false },
   fill?: { description: { previous: FillCount; next: FillCount; lost?: DescribedLoss } },
+  listing?: ListingSeen,
 ): PersistPlan {
   if (rowCount <= 0) return { mode: "empty" };
   if (rowCount > MAX_ROWS) return { mode: "oversize", rowCount, limit: MAX_ROWS };
@@ -256,6 +303,17 @@ export function planScheduledPersist(
   }
   if (isSuspiciousDrop(previousCount, rowCount, thresholds)) {
     return { mode: "suspicious_drop", reason: "ratio", rowCount, previousCount, thresholds };
+  }
+  if (listing && isListingGapDrop(listing, rowCount, previousCount)) {
+    return {
+      mode: "suspicious_drop",
+      reason: "listing_gap",
+      rowCount,
+      previousCount,
+      thresholds,
+      cardsSeen: listing.cardsSeen as number,
+      unaccounted: unaccountedCards(listing, rowCount),
+    };
   }
   const fillRule = !fill
     ? null

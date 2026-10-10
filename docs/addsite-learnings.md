@@ -4386,7 +4386,10 @@ is added that the citing text does not say. Their status rows are in
   the site was unchanged (110 jobs, all with ids).
 - **Rule A (fill):** a scheduled write is refused when description fill falls by 25 points or
   more against the stored rows, crossing 60% or not (`isFieldFillFall`, worker/lib/scheduledRun.ts).
+- **Rule B' (listing gap):** refused when listing_vs_saved_gap exceeds 25% of the cards, the stored
+  count is at least 10, and the run saved fewer than 90% of the stored count (`isListingGapDrop`).
+  The saved-share condition keeps a standing gap with nothing lost (dreamjobs) out.
 - **Replay:** over the seven nights 2026-10-04..10 (1,264 written runs) rule A refuses tnuva 10-10
-  and civi 10-08 and nothing ordinary.
+  and civi 10-08, rule B' tnuva 10-10 and avivim-hr 10-06; nothing ordinary.
 - **Generalizes to:** any partial extraction that keeps the count above half and the fill above
   60%: the count and crossing guards alone do not see it.

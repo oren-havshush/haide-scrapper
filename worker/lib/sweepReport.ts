@@ -501,6 +501,14 @@ export function needsAttention(
         ? w.slice(w.indexOf(":") + 1).trim()
         : `description fill fell below ${Math.round(FIELD_FILL_THRESHOLD * 100)}%`;
       add(i, `${what} — nothing written, ${i.jobsAfter} listing(s) kept`);
+    } else if (
+      i.outcome === "suspicious_drop" &&
+      (i.warnings ?? []).map(String).some((x) => x.startsWith("listing_gap_drop:"))
+    ) {
+      // The listing showed the jobs and the run lost them (scheduledRun.ts
+      // isListingGapDrop): the warning carries cards, saved and stored.
+      const w = (i.warnings ?? []).map(String).find((x) => x.startsWith("listing_gap_drop:")) as string;
+      add(i, `listing gap refused: ${w.slice(w.indexOf(":") + 1).trim()} — nothing written, ${i.jobsAfter} listing(s) kept`);
     } else if (i.outcome === "suspicious_drop") {
       add(
         i,

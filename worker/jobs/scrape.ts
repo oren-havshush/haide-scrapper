@@ -4421,6 +4421,11 @@ async function executeScrape(
           rows.map((r) => ({ externalJobId: r.externalJobId ?? null, description: r.description ?? null })),
         ),
       },
+    }, {
+      // The listing gap (isListingGapDrop): the cards the listing showed, and
+      // the dead detail pages that account for some of them.
+      cardsSeen: context.listingItemsSeen ?? null,
+      deadDetailPages: countDeadDetailPages(rawFieldsList),
     });
 
     if (plan.mode === "oversize") {
@@ -4450,20 +4455,31 @@ async function executeScrape(
       // Or (worker/lib/paginationGuard.ts): the listing walk stalled on a full
       // page the site offered a successor to, so the unread pages' listings
       // would be deleted however the counts compare.
+      // Or (isListingGapDrop): the listing showed the jobs and the run lost
+      // them (tnuva, 2026-10-10). The warning carries the rule's numbers.
+      const gap =
+        plan.reason === "listing_gap"
+          ? `${plan.cardsSeen} card(s) on the listing, ${plan.rowCount} saved, ${plan.previousCount} stored ` +
+            `(${plan.unaccounted} unaccounted, ${Math.round((plan.unaccounted / plan.cardsSeen) * 100)}% of the cards)`
+          : null;
       const message =
         plan.reason === "pagination_truncated"
           ? `Refusing to replace ${plan.previousCount} listings with ${plan.rowCount} — ` +
             `pagination stalled before the listing's last page (a next page was offered and never arrived), ` +
             `previous listings left untouched`
-          : `Refusing to replace ${plan.previousCount} listings with ${plan.rowCount} — ` +
-            `below ${Math.round(plan.thresholds.keepRatio * 100)}% of the previous count, ` +
-            `previous listings left untouched`;
+          : gap !== null
+            ? `Refusing to replace ${plan.previousCount} listings with ${plan.rowCount} — ` +
+              `the listing showed more: ${gap}, previous listings left untouched`
+            : `Refusing to replace ${plan.previousCount} listings with ${plan.rowCount} — ` +
+              `below ${Math.round(plan.thresholds.keepRatio * 100)}% of the previous count, ` +
+              `previous listings left untouched`;
       console.error(`[scrape] ${message}`);
       return await failScrapeRun(scrapeRunId, site.id, {
         error: message,
         failureCategory: "suspicious_drop",
         scheduled,
         counts: { totalJobs: validatedRecords.length, validJobs: plan.rowCount, invalidJobs: invalidCount },
+        ...(gap !== null ? { warnings: [`listing_gap_drop: ${gap}`] } : {}),
       });
     }
 
