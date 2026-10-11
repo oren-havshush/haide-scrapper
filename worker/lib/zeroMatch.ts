@@ -35,6 +35,10 @@ export const WRONG_SCOPE_WARNING = "item_scope_suspect";
 // own category. The title is only read; nothing tries to pass the challenge.
 export const BLOCKED = "blocked";
 export const BLOCKED_WARNING = "blocked_challenge";
+// A challenge the page's own script passed, on a run that then wrote rows
+// (owner, 2026-10-11): fritz, 307 then 403 cf-mitigated, then 9 real rows. Not
+// blocked, so it is never worded as blocked (worker/lib/challengeWait.ts).
+export const CHALLENGE_PASSED_WARNING = "challenge_passed";
 
 /**
  * Cloudflare's interstitial title in Hebrew, "Just a moment" (owner,

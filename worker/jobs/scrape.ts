@@ -4790,8 +4790,9 @@ async function executeScrape(
       deadDetailPages: countDeadDetailPages(rawFieldsList),
     });
     scrapeWarnings.push(...checks.warnings);
-    // A SiteGround ipc wait on a written run, recorded on it (worker/lib/challengeWait.ts).
-    scrapeWarnings.push(...challengeWarnings(runMode.extract));
+    // A SiteGround wait on a written run, and a challenge it passed, recorded
+    // on it as challenge_passed — never blocked (worker/lib/challengeWait.ts).
+    scrapeWarnings.push(...challengeWarnings(runMode.extract, true));
     // Stored location overrides not on city.csv, skipped by the gate (worker/lib/jobLocation.ts).
     scrapeWarnings.push(...overrideWarnings);
     // What each listing page contributed, saved/seen. Only present on a site

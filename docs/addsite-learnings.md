@@ -4413,3 +4413,15 @@ is added that the citing text does not say. Their status rows are in
   `blocked_challenge: <detail>`; the crash path saves that detail too, so the report names the vendor.
 - **Generalizes to:** any host challenge a browser passes by itself; a challenge that needs a human
   stays blocked.
+
+## LRN-WRK-26 — a challenge passed on a written run is recorded as passed, not blocked
+
+- **Date / site:** 2026-10-11, fritz.co.il.
+- **Signal:** the listing answered 307, then 403 from Cloudflare with `cf-mitigated: challenge`
+  ("Just a moment..."); the page's own script passed it, the listing loaded and 9 real rows were
+  written. The run still recorded `blocked_challenge: Cloudflare challenge (…)`, so the item and the
+  report's warnings tally read as blocked on a night it was not.
+- **Rule (worker/lib/challengeWait.ts `challengeWarnings`):** a run that saw a challenge response
+  and then wrote rows records `challenge_passed: <detail>`. Every run that did not write (the
+  refusals, the empty path, the crash path) keeps `blocked_challenge: <detail>`.
+- **Generalizes to:** a warning's wording follows what the run did, not only what it saw.

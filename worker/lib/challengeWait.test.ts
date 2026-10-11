@@ -137,7 +137,7 @@ assert(challengeLabel("timeout", SGD) === "timeout", "other categories are left 
   assert(/challengeLabel\("field_fill_drop", runMode\.extract\?\.challenge \?\? null\)/.test(scrape), "the fill refusal reads it");
   const crash = scrape.slice(scrape.indexOf('console.error("[scrape] Scrape failed:"'), scrape.indexOf('console.error("[scrape] Scrape failed:"') + 600);
   assert(/warnings: challengeWarnings\(runMode\.extract\)/.test(crash), "the crash path saves the challenge detail");
-  assert(/challengeWarnings\(runMode\.extract\)/.test(scrape.slice(scrape.indexOf("scrapeWarnings.push(...checks.warnings)") - 2000, scrape.indexOf("scrapeWarnings.push(...checks.warnings)") + 2000)), "a written run records its wait too");
+  assert(/challengeWarnings\(runMode\.extract, true\)/.test(scrape.slice(scrape.indexOf("scrapeWarnings.push(...checks.warnings)") - 2000, scrape.indexOf("scrapeWarnings.push(...checks.warnings)") + 2000)), "a written run records its wait too");
 }
 
 if (failures > 0) {

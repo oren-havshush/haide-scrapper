@@ -14,9 +14,11 @@
 // (/.well-known/captcha/) and the cap running out; both stay blocked. Nothing
 // is clicked or answered; the page's own script does what it does in any
 // browser. Cloudflare is not waited for. Every wait is recorded on the run,
-// naming the verdict the IP got (ipc or ipr).
+// naming the verdict the IP got (ipc or ipr). A run that saw a challenge and
+// then wrote rows records challenge_passed: <detail>; a run that wrote nothing
+// records blocked_challenge: <detail> (owner, 2026-10-11, LRN-WRK-26).
 
-import { BLOCKED, BLOCKED_WARNING, type ExtractGuard } from "./zeroMatch";
+import { BLOCKED, BLOCKED_WARNING, CHALLENGE_PASSED_WARNING, type ExtractGuard } from "./zeroMatch";
 
 /** The longest the worker waits for the ipc chain to settle. */
 export const IPC_WAIT_CAP_MS = 20_000;
@@ -111,8 +113,14 @@ export function challengeLabel(category: string, challenge: string | null): stri
  * report reads it (blocked_challenge: <detail>), and every wait. The crash path
  * (eso-group, sinaistore, 2026-10-10) saved neither, so the line could not name
  * the vendor.
+ *
+ * `wrote`: the run wrote rows, so the page's own script passed the challenge
+ * (owner, 2026-10-11; fritz, 307 then 403 cf-mitigated, then 9 rows). It is
+ * recorded as challenge_passed: <detail>. Every run that did not write — the
+ * refusals, the empty path, the crash — keeps blocked_challenge.
  */
-export function challengeWarnings(guard: ExtractGuard | null): string[] {
+export function challengeWarnings(guard: ExtractGuard | null, wrote = false): string[] {
   if (!guard) return [];
-  return [...(guard.challenge ? [`${BLOCKED_WARNING}: ${guard.challenge}`] : []), ...guard.challengeWaits];
+  const kind = wrote ? CHALLENGE_PASSED_WARNING : BLOCKED_WARNING;
+  return [...(guard.challenge ? [`${kind}: ${guard.challenge}`] : []), ...guard.challengeWaits];
 }
