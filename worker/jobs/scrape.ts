@@ -5,7 +5,7 @@ import { jobContentHash } from "../lib/contentHash";
 import { extractLiveFormData } from "../lib/formExtract";
 import { stampFormData, staticCompletion, staticFormBlob } from "../lib/formFields";
 import { completeFormBlob } from "../lib/formShape";
-import { navigateWithRetry } from "../lib/navRetry";
+import { navigateWithRetry, serverErrorRetry } from "../lib/navRetry";
 import {
   jobKeyOf,
   planValueCheckItems,
@@ -20,6 +20,9 @@ import { launchBrowser, createPage, closeBrowser, type BrowserOverrides } from "
 import { beforeClickLoad, createPacer, pacePage, readRequestDelayMs } from "../lib/requestDelay";
 import {
   BLOCKED,
+  hostErrorLabel,
+  hostErrorOf,
+  hostErrorWarnings,
   newExtractGuard,
   noteChallengeResponse,
   onExplicitZeroMatch,
@@ -257,8 +260,19 @@ async function gotoForgiving(
     let response: import("playwright").Response | null = null;
     try {
       response = opts.listingRetry
-        ? await navigateWithRetry(go, { firstTimeoutMs: navTimeoutMs, sleep: sleepMs, log: (m) => console.warn(m) })
+        ? await navigateWithRetry(go, {
+            firstTimeoutMs: navTimeoutMs,
+            sleep: sleepMs,
+            log: (m) => console.warn(m),
+            retryResult: serverErrorRetry,
+          })
         : await go(navTimeoutMs);
+      // A listing that still answers 5xx after its retry is the host's error,
+      // not a site change (worker/lib/zeroMatch.ts hostErrorOf). The first one
+      // seen on the run is kept.
+      if (opts.listingRetry && opts.guard && !opts.guard.hostError && response) {
+        opts.guard.hostError = hostErrorOf(response.status(), response.statusText());
+      }
     } catch (error) {
       // The challenge page's own refresh can interrupt the navigation; settle
       // first, and fail only if it does not.
@@ -4266,8 +4280,12 @@ async function executeScrape(
   if (rawFieldsList.length === 0) {
     // After a host's challenge the empty page is the challenge's, not the
     // site's (worker/lib/challengeWait.ts): labelled blocked, with its detail.
-    const emptyCategory = challengeLabel("empty_results", runMode.extract?.challenge ?? null);
-    const emptyWarnings = challengeWarnings(runMode.extract);
+    // After a 5xx listing that stayed 5xx, it is the host's: host_error, with
+    // the status (worker/lib/zeroMatch.ts). A challenge outranks it.
+    const emptyCategory = runMode.extract?.challenge
+      ? challengeLabel("empty_results", runMode.extract?.challenge ?? null)
+      : hostErrorLabel("empty_results", runMode.extract);
+    const emptyWarnings = [...challengeWarnings(runMode.extract), ...hostErrorWarnings(runMode.extract)];
     const result: ScrapeResult = {
       success: true,
       scrapeRunId,

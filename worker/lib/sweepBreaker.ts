@@ -24,6 +24,7 @@
 //   cancelled            the sweep itself stopped the job
 //   empty_results        the site published nothing, or its selectors died
 //   structure_changed    nothing survived validation
+//   host_error           the listing answered 5xx after its one retry
 //   suspicious_drop      the run extracted a fraction of the site's listings
 //                        and the undersize guard refused to write them
 //   listing_url_failed   one of the site's listing pages errored

@@ -29,6 +29,9 @@ const FAILURE_LABELS: Record<string, string> = {
   // A Cloudflare challenge was shown instead of the listing; rows kept. Not a
   // site change, so a later retry is the action (worker/lib/zeroMatch.ts).
   blocked: "Blocked (Cloudflare challenge)",
+  // The listing answered 5xx after its retry; rows kept. The host was down, so
+  // a later retry is the action (worker/lib/zeroMatch.ts).
+  host_error: "Host Error (5xx)",
 };
 
 function getFailureLabel(category: string | null): string {

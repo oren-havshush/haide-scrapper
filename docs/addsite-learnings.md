@@ -4425,3 +4425,20 @@ is added that the citing text does not say. Their status rows are in
   and then wrote rows records `challenge_passed: <detail>`. Every run that did not write (the
   refusals, the empty path, the crash path) keeps `blocked_challenge: <detail>`.
 - **Generalizes to:** a warning's wording follows what the run did, not only what it saw.
+
+## LRN-WRK-27 — a 5xx listing is a host error, retried once, not a structure change
+
+- **Date / site:** 2026-10-11, razel.co.il.
+- **Signal:** at 00:26Z the listing answered HTTP 503 from `Microsoft-HTTPAPI/2.0` ("Service
+  Unavailable", IIS with its application pool down); `.productDiv` matched nothing and the run was
+  labelled `structure_changed`, reported as silent drift. A GET at 09:29Z answered 200 with all 34
+  cards, the config unchanged and correct. The listing retry did not fire: it retried timeouts only.
+- **Rule (worker/lib/navRetry.ts `serverErrorRetry`, worker/lib/zeroMatch.ts `HOST_ERROR`):** a
+  listing load that answers 5xx gets the single retry a timeout gets (~15 s wait, 60 s limit). If it
+  still answers 5xx and matches nothing, the run is `host_error`, with
+  `host_error: HTTP <status> (<reason>)`: nothing written, rows kept, and the report reads
+  "listing answered HTTP 503 (Service Unavailable) — nothing written, N listing(s) kept". A 5xx that
+  is a host's bot challenge is not retried and stays `blocked`; a 200 that matches nothing stays
+  `structure_changed`; a 5xx that recovers on the retry is written normally.
+- **Generalizes to:** label a failure by what the host answered before reading the page as a site
+  change.

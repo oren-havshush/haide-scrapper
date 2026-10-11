@@ -40,6 +40,33 @@ export const BLOCKED_WARNING = "blocked_challenge";
 // blocked, so it is never worded as blocked (worker/lib/challengeWait.ts).
 export const CHALLENGE_PASSED_WARNING = "challenge_passed";
 
+// The host error (owner, 2026-10-11). razel.co.il's listing answered HTTP 503
+// from Microsoft-HTTPAPI/2.0 ("Service Unavailable": IIS with its application
+// pool down) and the item selector matched nothing; it was labelled
+// structure_changed and reported as silent drift, and the same URL answered 200
+// with every card that morning. A listing whose main response stayed 5xx after
+// its one retry (worker/lib/navRetry.ts) and that matched nothing is a host
+// error: the same refusal, rows kept, under its own category, naming the status.
+export const HOST_ERROR = "host_error";
+export const HOST_ERROR_WARNING = "host_error";
+
+/** "HTTP 503 (Service Unavailable)" for a 5xx answer, "HTTP 500" with no reason text; null otherwise. */
+export function hostErrorOf(status: number, statusText: string | null | undefined): string | null {
+  if (!(status >= 500 && status <= 599)) return null;
+  const reason = (statusText ?? "").trim();
+  return reason ? `HTTP ${status} (${reason})` : `HTTP ${status}`;
+}
+
+/** An empty result after a 5xx listing is the host's, not the site's: host_error. Any other category is left as it is. */
+export function hostErrorLabel(category: string, guard: ExtractGuard | null): string {
+  return guard?.hostError && category === "empty_results" ? HOST_ERROR : category;
+}
+
+/** The run's host error as a warning, for the paths that write nothing. */
+export function hostErrorWarnings(guard: ExtractGuard | null): string[] {
+  return guard?.hostError ? [`${HOST_ERROR_WARNING}: ${guard.hostError}`] : [];
+}
+
 /**
  * Cloudflare's interstitial title in Hebrew, "Just a moment" (owner,
  * 2026-10-09): the worker browses in he-IL (worker/lib/playwright.ts), so
@@ -116,10 +143,12 @@ export type ExtractGuard = {
   scopeSuspects: Map<string, string>;
   /** Each wait for SiteGround's ipc chain, as recorded on the run (worker/lib/challengeWait.ts). */
   challengeWaits: string[];
+  /** The listing's main response stayed 5xx after its retry: "HTTP 503 (Service Unavailable)" (hostErrorOf). */
+  hostError: string | null;
 };
 
 export function newExtractGuard(scheduled: boolean): ExtractGuard {
-  return { noAutoDetect: true, scheduled, zeroMatch: null, zeroMatchTitle: null, challenge: null, scopeSuspects: new Map(), challengeWaits: [] };
+  return { noAutoDetect: true, scheduled, zeroMatch: null, zeroMatchTitle: null, challenge: null, scopeSuspects: new Map(), challengeWaits: [], hostError: null };
 }
 
 /**
@@ -172,7 +201,7 @@ export function onExplicitZeroMatch(
 export function zeroMatchRefusal(
   guard: ExtractGuard | null,
   rowCount: number,
-): { failureCategory: "structure_changed" | "blocked"; runStatus: "COMPLETED" | "FAILED"; error: string; warnings: string[] } | null {
+): { failureCategory: "structure_changed" | "blocked" | "host_error"; runStatus: "COMPLETED" | "FAILED"; error: string; warnings: string[] } | null {
   if (!guard || !guard.noAutoDetect || !guard.zeroMatch || rowCount > 0) return null;
   if (isChallengeTitle(guard.zeroMatchTitle)) {
     const title = guard.zeroMatchTitle!.trim();
@@ -193,6 +222,16 @@ export function zeroMatchRefusal(
         `item selector matched nothing: ${guard.zeroMatch} — the page was a ${guard.challenge}, ` +
         "not the listing; previous listings kept",
       warnings: [`${ZERO_MATCH_WARNING}: ${guard.zeroMatch}`, `${BLOCKED_WARNING}: ${guard.challenge}`],
+    };
+  }
+  if (guard.hostError) {
+    return {
+      failureCategory: HOST_ERROR,
+      runStatus: guard.scheduled ? "COMPLETED" : "FAILED",
+      error:
+        `listing answered ${guard.hostError} — item selector matched nothing: ${guard.zeroMatch}; ` +
+        "previous listings kept",
+      warnings: [`${ZERO_MATCH_WARNING}: ${guard.zeroMatch}`, `${HOST_ERROR_WARNING}: ${guard.hostError}`],
     };
   }
   return {

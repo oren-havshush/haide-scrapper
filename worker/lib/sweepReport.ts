@@ -28,6 +28,11 @@ function isBlocked(i: { outcome: string; failureCategory: string | null }): bool
   return i.outcome === "soft_failure" && i.failureCategory === "blocked";
 }
 
+/** The listing answered 5xx after its retry (worker/lib/zeroMatch.ts HOST_ERROR): the host was down, not drift. */
+function isHostError(i: { outcome: string; failureCategory: string | null }): boolean {
+  return i.outcome === "soft_failure" && i.failureCategory === "host_error";
+}
+
 function isListingRefusal(category: string | null): boolean {
   return category != null && (LISTING_SOFT_CATEGORIES as readonly string[]).includes(category);
 }
@@ -291,7 +296,7 @@ export function computeCounters(sweep: ReportSweep, items: ReportItem[]): SweepC
     selectedCount: sweep.selectedCount,
     ok: items.filter((i) => i.outcome === "success").length,
     failed: items.filter((i) => i.outcome === "hard_failure").length,
-    silentDrift: soft.filter((i) => !isListingRefusal(i.failureCategory) && !isNoJobs(i) && !isBlocked(i)).length,
+    silentDrift: soft.filter((i) => !isListingRefusal(i.failureCategory) && !isNoJobs(i) && !isBlocked(i) && !isHostError(i)).length,
     listingRefusals: soft.filter((i) => isListingRefusal(i.failureCategory)).length,
     noJobs: soft.filter(isNoJobs).length,
     skippedConflict: items.filter((i) => i.outcome === "skipped_conflict").length,
@@ -464,6 +469,12 @@ export function needsAttention(
         `blocked: the listing was ${challengeVendor(detail)}${quoted}, not the site — ` +
           `nothing written, ${i.jobsAfter} listing(s) kept; nothing tried to pass it`,
       );
+    } else if (isHostError(i)) {
+      // The host answered 5xx, after one retry: not a site change. The line
+      // quotes the status the run recorded (zeroMatch.ts hostErrorOf).
+      const seen = (i.warnings ?? []).map(String).find((w) => w.startsWith("host_error:"));
+      const status = seen ? seen.slice(seen.indexOf(":") + 1).trim() : "an HTTP 5xx error";
+      add(i, `listing answered ${status} — nothing written, ${i.jobsAfter} listing(s) kept`);
     } else if (i.outcome === "soft_failure" && zeroMatch) {
       const sel = zeroMatch.slice(zeroMatch.indexOf(":") + 1).trim();
       add(i, `item selector matched nothing (${sel}) — nothing written, ${i.jobsAfter} listing(s) kept, no auto-detect`);
@@ -689,6 +700,10 @@ export function renderSweepReport(
   const blockedCount = items.filter(isBlocked).length;
   if (blockedCount > 0) {
     lines.push(`  ${String(blockedCount).padStart(4)}  blocked (a host's bot challenge: Cloudflare or SiteGround)`);
+  }
+  const hostErrorCount = items.filter(isHostError).length;
+  if (hostErrorCount > 0) {
+    lines.push(`  ${String(hostErrorCount).padStart(4)}  host error (the listing answered 5xx)`);
   }
   lines.push("");
 

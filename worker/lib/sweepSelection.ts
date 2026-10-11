@@ -37,7 +37,7 @@ export function isSuccessfulRun(
  * launch, a database that is gone. Three in a row halt the sweep.
  *
  * `empty_results` and `structure_changed` are per-site config death and never
- * halt; `apply_requires_login` and `oversize` are decisions, not faults; the
+ * halt; nor does `host_error`, one host answering 5xx; `apply_requires_login` and `oversize` are decisions, not faults; the
  * `listing_*` refusals are one site's pages, not the infrastructure.
  */
 export const HARD_FAILURE_CATEGORIES = ["timeout", "other"] as const;
@@ -77,6 +77,8 @@ export function classifyOutcome(run: {
     run.failureCategory === "structure_changed" ||
     // A Cloudflare challenge instead of the listing (worker/lib/zeroMatch.ts).
     run.failureCategory === "blocked" ||
+    // The listing answered 5xx after its retry (worker/lib/zeroMatch.ts HOST_ERROR).
+    run.failureCategory === "host_error" ||
     (run.failureCategory != null &&
       (LISTING_SOFT_CATEGORIES as readonly string[]).includes(run.failureCategory))
   ) {
