@@ -1,0 +1,287 @@
+{
+  "_exportedAt": "2026-10-11T10:42:46.123Z",
+  "_note": "Mirror of the live config. The DB is authoritative; the worker never reads this file. setupScript lives alongside in <slug>.setup.js.",
+  "id": "cmv3ndcxb000r01pmgby5ezy5",
+  "siteUrl": "https://hr.technion.ac.il/positions/",
+  "companyName": "הטכניון – מכון טכנולוגי לישראל",
+  "status": "ACTIVE",
+  "setupScriptFile": "technion--y5ezy5.setup.js",
+  "pageFlow": [],
+  "fieldMappings": {
+    "_meta": {
+      "savedAt": "2026-10-11T09:56:04.388Z",
+      "pagination": null,
+      "formCapture": {
+        "fields": [
+          {
+            "name": "input_4",
+            "label": "שם מלא",
+            "tagName": "input",
+            "required": true,
+            "fieldType": "text"
+          },
+          {
+            "name": "input_3",
+            "label": "אימייל",
+            "tagName": "input",
+            "required": true,
+            "fieldType": "email"
+          },
+          {
+            "name": "input_5",
+            "label": "טלפון",
+            "tagName": "input",
+            "required": true,
+            "fieldType": "text"
+          },
+          {
+            "name": "input_6",
+            "label": "כתובת",
+            "tagName": "input",
+            "required": true,
+            "fieldType": "text"
+          },
+          {
+            "name": "input_1",
+            "label": "קובץ קורות חיים",
+            "accept": "pdf, docx, doc, txt",
+            "tagName": "input",
+            "required": true,
+            "fieldType": "file"
+          },
+          {
+            "name": "input_7",
+            "label": "האם יש לך קרובי משפחה שמועסקים בטכניון?",
+            "options": [
+              {
+                "label": "כן",
+                "value": "כן"
+              },
+              {
+                "label": "לא",
+                "value": "לא"
+              }
+            ],
+            "tagName": "input",
+            "required": true,
+            "fieldType": "radio"
+          },
+          {
+            "name": "input_8",
+            "label": "שם קרוב המשפחה",
+            "tagName": "input",
+            "required": false,
+            "fieldType": "text"
+          },
+          {
+            "name": "input_20.1",
+            "label": "אני מאשר/ת כי קראתי והבנתי את הודעת פרטיות למועמדים בטכניון וכי אני מסכים/ה לה.",
+            "tagName": "input",
+            "required": true,
+            "fieldType": "checkbox"
+          },
+          {
+            "name": "input_2",
+            "label": "input_2",
+            "tagName": "input",
+            "required": false,
+            "fieldType": "hidden"
+          },
+          {
+            "name": "MAX_FILE_SIZE",
+            "label": "MAX_FILE_SIZE",
+            "tagName": "input",
+            "required": false,
+            "fieldType": "hidden"
+          },
+          {
+            "name": "input_11",
+            "label": "input_11 (position name, per job)",
+            "tagName": "input",
+            "required": false,
+            "fieldType": "hidden"
+          },
+          {
+            "name": "input_12",
+            "label": "input_12 (form destination)",
+            "tagName": "input",
+            "required": false,
+            "fieldType": "hidden"
+          },
+          {
+            "name": "input_13",
+            "label": "input_13 (mail address)",
+            "tagName": "input",
+            "required": false,
+            "fieldType": "hidden"
+          },
+          {
+            "name": "input_17",
+            "label": "input_17 (position JB number, per job)",
+            "tagName": "input",
+            "required": false,
+            "fieldType": "hidden"
+          },
+          {
+            "name": "input_20.2",
+            "label": "input_20.2",
+            "tagName": "input",
+            "required": false,
+            "fieldType": "hidden"
+          },
+          {
+            "name": "input_20.3",
+            "label": "input_20.3",
+            "tagName": "input",
+            "required": false,
+            "fieldType": "hidden"
+          },
+          {
+            "name": "gform_ajax",
+            "label": "gform_ajax",
+            "tagName": "input",
+            "required": false,
+            "fieldType": "hidden"
+          },
+          {
+            "name": "gform_submission_method",
+            "label": "gform_submission_method",
+            "tagName": "input",
+            "required": false,
+            "fieldType": "hidden"
+          },
+          {
+            "name": "gform_theme",
+            "label": "gform_theme",
+            "tagName": "input",
+            "required": false,
+            "fieldType": "hidden"
+          },
+          {
+            "name": "gform_style_settings",
+            "label": "gform_style_settings",
+            "tagName": "input",
+            "required": false,
+            "fieldType": "hidden"
+          },
+          {
+            "name": "is_submit_14",
+            "label": "is_submit_14",
+            "tagName": "input",
+            "required": false,
+            "fieldType": "hidden"
+          },
+          {
+            "name": "gform_submit",
+            "label": "gform_submit",
+            "tagName": "input",
+            "required": false,
+            "fieldType": "hidden"
+          },
+          {
+            "name": "gform_currency",
+            "label": "gform_currency",
+            "tagName": "input",
+            "required": false,
+            "fieldType": "hidden"
+          },
+          {
+            "name": "gform_unique_id",
+            "label": "gform_unique_id",
+            "tagName": "input",
+            "required": false,
+            "fieldType": "hidden"
+          },
+          {
+            "name": "state_14",
+            "label": "state_14",
+            "tagName": "input",
+            "required": false,
+            "fieldType": "hidden"
+          },
+          {
+            "name": "gform_target_page_number_14",
+            "label": "gform_target_page_number_14",
+            "tagName": "input",
+            "required": false,
+            "fieldType": "hidden"
+          },
+          {
+            "name": "gform_source_page_number_14",
+            "label": "gform_source_page_number_14",
+            "tagName": "input",
+            "required": false,
+            "fieldType": "hidden"
+          },
+          {
+            "name": "gform_field_values",
+            "label": "gform_field_values",
+            "tagName": "input",
+            "required": false,
+            "fieldType": "hidden"
+          }
+        ],
+        "method": "POST",
+        "enctype": "multipart/form-data",
+        "actionUrl": "https://hr.technion.ac.il/positions/#gf_14",
+        "formSelector": "#gform_14"
+      },
+      "listingUrls": null,
+      "itemSelector": ".wrapper-job",
+      "acceptedGates": null,
+      "minPublishDate": null,
+      "minPublishDays": null,
+      "revealSelector": null,
+      "listingSelector": ".all-jobs",
+      "applyLoginReason": null,
+      "browserOverrides": null,
+      "loadMoreSelector": null,
+      "locationFallback": null,
+      "originalMappings": null,
+      "applyRequiresLogin": false
+    },
+    "title": {
+      "source": "MANUAL",
+      "selector": ".__ai-title",
+      "confidence": 0.95,
+      "capturedOnUrl": "https://hr.technion.ac.il/positions/"
+    },
+    "location": {
+      "source": "MANUAL",
+      "selector": ".__ai-location",
+      "confidence": 0.95,
+      "capturedOnUrl": "https://hr.technion.ac.il/positions/"
+    },
+    "detailUrl": {
+      "source": "MANUAL",
+      "selector": ".wrap-btn a",
+      "confidence": 0.95,
+      "extractAttr": "href",
+      "capturedOnUrl": "https://hr.technion.ac.il/positions/"
+    },
+    "department": {
+      "source": "MANUAL",
+      "selector": ".__ai-department",
+      "confidence": 0.95,
+      "capturedOnUrl": "https://hr.technion.ac.il/positions/"
+    },
+    "description": {
+      "source": "MANUAL",
+      "selector": ".__ai-description",
+      "confidence": 0.95,
+      "capturedOnUrl": "https://hr.technion.ac.il/positions/"
+    },
+    "requirements": {
+      "source": "MANUAL",
+      "selector": ".__ai-requirements",
+      "confidence": 0.95,
+      "capturedOnUrl": "https://hr.technion.ac.il/positions/"
+    },
+    "externalJobId": {
+      "source": "MANUAL",
+      "selector": ".__ai-id",
+      "confidence": 0.95,
+      "capturedOnUrl": "https://hr.technion.ac.il/positions/"
+    }
+  }
+}

@@ -1,20 +1,16 @@
 {
-  "_exportedAt": "2026-09-22T14:36:46.398Z",
+  "_exportedAt": "2026-10-11T10:42:45.983Z",
   "_note": "Mirror of the live config. The DB is authoritative; the worker never reads this file. setupScript lives alongside in <slug>.setup.js.",
-  "id": "cmoq6j2kw000001o84coeqo46",
+  "id": "cmv3niank000x01pmjizjricu",
   "siteUrl": "https://www.strauss-group.co.il/career/jobs/?user_page=1&freeText=",
   "companyName": "שטראוס",
   "status": "ACTIVE",
-  "setupScriptFile": null,
-  "pageFlow": [
-    {
-      "url": "https://www.strauss-group.co.il/career/jobs/?user_page=1&freeText=",
-      "action": "navigate"
-    }
-  ],
+  "setupScriptFile": "strauss-group--zjricu.setup.js",
+  "pageFlow": [],
   "fieldMappings": {
     "_meta": {
-      "savedAt": "2026-05-07T12:54:15.466Z",
+      "savedAt": "2026-10-11T10:01:27.501Z",
+      "pagination": null,
       "formCapture": {
         "fields": [
           {
@@ -64,7 +60,7 @@
             "label": "order name",
             "tagName": "textarea",
             "required": false,
-            "fieldType": "text"
+            "fieldType": "hidden"
           },
           {
             "name": "first_name-self",
@@ -89,7 +85,7 @@
           },
           {
             "name": "accept",
-            "label": "אני מסכים/ה כי ייעשה שימוש במידע שלי תחת תנאי מדיניות המועמדים לעבודה של שטראוס גרופ",
+            "label": "המידע שמסרת ישמש אותנו לבחינת מועמדותך (מדיניות פרטיות מועמדים גרופ)",
             "tagName": "input",
             "required": true,
             "fieldType": "checkbox"
@@ -104,80 +100,65 @@
           {
             "name": "attachment",
             "label": "צירוף קורות חיים",
+            "accept": "application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/pdf",
             "tagName": "input",
             "required": true,
             "fieldType": "file"
           }
         ],
         "method": "GET",
+        "enctype": "multipart/form-data",
         "actionUrl": "https://www.strauss-group.co.il/career/jobs/?user_page=1&freeText=",
-        "formSelector": "div.form_jobs_warp > div.container.jobs_inner_container_before_form > form.job_form.simple_form"
+        "formSelector": ".jobs_list_order_wrap form.job_form.simple_form"
       },
-      "itemSelector": "div.warp_jobs_list_order.row",
-      "revealSelector": ".jobs_open_btn",
-      "listingSelector": "#scroll_to_here",
-      "originalMappings": {
-        "title": {
-          "source": "AI",
-          "selector": "h2",
-          "confidence": 0
-        },
-        "location": {
-          "source": "AI",
-          "selector": "div.details_item.location > span.det_item",
-          "confidence": 0
-        },
-        "department": {
-          "source": "AI",
-          "selector": "div.details_item.business_unit > span.det_item",
-          "confidence": 100
-        },
-        "description": {
-          "source": "AI",
-          "selector": "div.jobs_list_order_wrap > div.jobs_list_order_content.jobs_toggle_content:nth-child(2) > div.jobs_list_order_desc",
-          "confidence": 100
-        },
-        "publishDate": {
-          "source": "AI",
-          "selector": "div.d-flex.flex-column-reverse > div:nth-of-type(1) > div.details_item.date_published:nth-of-type(2) > span.det_item",
-          "confidence": 100
-        },
-        "externalJobId": {
-          "source": "AI",
-          "selector": "div.d-flex.flex-column-reverse > div:nth-of-type(1) > div.details_item.date_published:nth-of-type(1) > span.det_item",
-          "confidence": 100
-        }
-      }
+      "listingUrls": null,
+      "itemSelector": "div.jobs_list_order_wrap",
+      "acceptedGates": null,
+      "minPublishDate": null,
+      "minPublishDays": null,
+      "revealSelector": null,
+      "listingSelector": null,
+      "applyLoginReason": null,
+      "browserOverrides": null,
+      "loadMoreSelector": null,
+      "locationFallback": null,
+      "originalMappings": null,
+      "applyRequiresLogin": false
     },
     "title": {
-      "source": "AI",
-      "selector": "h2",
-      "confidence": 0
+      "source": "MANUAL",
+      "selector": ".__ai-title",
+      "confidence": 0.95
     },
     "location": {
-      "source": "AI",
-      "selector": "div.details_item.location > span.det_item",
-      "confidence": 0
+      "source": "MANUAL",
+      "selector": ".__ai-location",
+      "confidence": 0.9
     },
     "department": {
-      "source": "AI",
-      "selector": "div.details_item.business_unit > span.det_item",
-      "confidence": 100
+      "source": "MANUAL",
+      "selector": ".warp_jobs_list_order .business_unit .det_item",
+      "confidence": 0.9
     },
     "description": {
-      "source": "AI",
-      "selector": "div.jobs_list_order_wrap > div.jobs_list_order_content.jobs_toggle_content:nth-child(2) > div.jobs_list_order_desc",
-      "confidence": 100
+      "source": "MANUAL",
+      "selector": ".__ai-description",
+      "confidence": 0.9
     },
     "publishDate": {
-      "source": "AI",
-      "selector": "div.d-flex.flex-column-reverse > div:nth-of-type(1) > div.details_item.date_published:nth-of-type(2) > span.det_item",
-      "confidence": 100
+      "source": "MANUAL",
+      "selector": ".__ai-date",
+      "confidence": 0.9
+    },
+    "requirements": {
+      "source": "MANUAL",
+      "selector": ".__ai-requirements",
+      "confidence": 0.9
     },
     "externalJobId": {
-      "source": "AI",
-      "selector": "div.d-flex.flex-column-reverse > div:nth-of-type(1) > div.details_item.date_published:nth-of-type(1) > span.det_item",
-      "confidence": 100
+      "source": "MANUAL",
+      "selector": ".__ai-id",
+      "confidence": 0.95
     }
   }
 }

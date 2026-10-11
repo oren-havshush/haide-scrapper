@@ -74,7 +74,6 @@ several listing pages back into one and stops publishing the rest.
 | Waterfall Security | ACTIVE | 8 | 5161 | 1 | `waterfall-security--jam3c9` |
 | Webbing | ACTIVE | 7 | 3874 | 1 | `webbingsolutions--hwp2jb` |
 | YKM | ACTIVE | 8 | 4431 | 1 | `ykm--gxcmnf` |
-| bank mizrahi tefahot | ACTIVE | 10 | — | 1 | `mizrahi-tefahot--a0zkf2` |
 | go mobile | ACTIVE | 6 | 1081 | 1 | `gomobile--zpvjhq` |
 | inManage | ACTIVE | 4 | 4219 | 1 | `inmanage--zjbxnf` |
 | safelog | ACTIVE | 5 | 2570 | 1 | `safelog--bd8461` |
@@ -101,10 +100,11 @@ several listing pages back into one and stops publishing the rest.
 | באדג'ט | ACTIVE | 6 | 5566 | 1 | `budget--yutag5` |
 | בון תור | ACTIVE | 6 | 6241 | 1 | `bontour--f5yzqh` |
 | בינ"ה | ACTIVE | 8 | 7390 | 1 | `bina--ki7nq2` |
-| בית אקשטיין | ACTIVE | 4 | — | 1 | `b-e--kmx6nt` |
+| בית אקשטיין | ACTIVE | 5 | 7523 | 1 | `b-e--m6tkek` |
 | בית חולים אורטופדי אליון | ACTIVE | 4 | 1576 | 1 | `alyn--el7arg` |
 | בן & ג’ריס | ACTIVE | 5 | 1215 | 1 | `benjerry--12brnw` |
 | בנק הפועלים | ACTIVE | 6 | 4172 | 1 | `bankhapoalim--39tiof` |
+| בנק מזרחי טפחות | ACTIVE | 8 | 7119 | 1 | `mizrahi-tefahot--868pbk` |
 | גולדברג פרושן ושות' רואי חשבון | ACTIVE | 5 | 4236 | 1 | `goldpro--1pf5j6` |
 | גזית | ACTIVE | 7 | 7944 | 1 | `gazit--gejiix` |
 | גילאר בע"מ | ACTIVE | 7 | 2518 | 1 | `gilar--cw5j32` |
@@ -120,6 +120,7 @@ several listing pages back into one and stops publishing the rest.
 | החברה לאמנות ותרבות | ACTIVE | 5 | 1559 | 1 | `tarbut-herzliya--zvh6d2` |
 | החברה לשירותי איכות הסביבה | ACTIVE | 8 | 6846 | 1 | `enviro-services--4z2yxo` |
 | החברה לתרבות ופנאי נס ציונה | ACTIVE | 8 | 6119 | 1 | `tarbut-nz--0dv9x3` |
+| הטכניון – מכון טכנולוגי לישראל | ACTIVE | 7 | 4414 | 1 | `technion--y5ezy5` |
 | המרכז האקדמי לוינסקי־וינגייט | ACTIVE | 6 | 4210 | 1 | `l-w--qajne1` |
 | המרכז הרפואי מעיני הישועה | ACTIVE | 8 | 4838 | 1 | `mymc--gqg49g` |
 | הספארי | ACTIVE | 5 | 1599 | 1 | `safari--6r81oc` |
@@ -133,7 +134,6 @@ several listing pages back into one and stops publishing the rest.
 | חיותא | ACTIVE | 6 | 4532 | 1 | `chayuta--wve8pb` |
 | חלילית | ACTIVE | 6 | 4757 | 1 | `halilit--0vwgee` |
 | חמת | ACTIVE | 7 | 3390 | 1 | `hamat-group--4ris60` |
-| טכניון | ACTIVE | 10 | — | 1 | `technion--8nqtph` |
 | טלכלל | ACTIVE | 6 | 4062 | 1 | `teleclalcc--n6k1yl` |
 | טמבור | ACTIVE | 5 | 2580 | 1 | `tambour--2nwjvz` |
 | יזמקו | ACTIVE | 7 | 6661 | 1 | `yazamco--vwexjk` |
@@ -151,7 +151,7 @@ several listing pages back into one and stops publishing the rest.
 | כפר המכביה | ACTIVE | 7 | 5238 | 1 | `app-civi--fdmziu` |
 | לדיקו בע"מ | ACTIVE | 8 | 5918 | 1 | `ledico--6op8qs` |
 | לילית קוסמטיקה | ACTIVE | 4 | 1091 | 1 | `lilit--jrzaf3` |
-| לין ביכלר ראשי | ACTIVE | 6 | — | 1 | `l-b--ksvcq8` |
+| לין ביכלר משאבי אנוש | ACTIVE | 7 | 7909 | 1 | `l-b--w90lqh` |
 | מגדל חברה לביטוח | ACTIVE | 6 | 3094 | 1 | `my-migdal--6mdmh5` |
 | מגדל שוקי הון | ACTIVE | 4 | 3372 | 1 | `msh--fdohdt` |
 | מדנס סוכנות לביטוח | ACTIVE | 7 | 4379 | 1 | `madanes--1wzqn7` |
@@ -220,7 +220,7 @@ several listing pages back into one and stops publishing the rest.
 | רשות שדות התעופה | ACTIVE | 5 | 761 | 1 | `iaa--676m0e` |
 | ש.ב שמירה וביטחון | ACTIVE | 3 | — | 1 | `sbisrael--u0j3bu` |
 | ש.ל.ה שירותי רפואה | ACTIVE | 6 | 2199 | 1 | `clalitsmile--xsxv25` |
-| שטראוס | ACTIVE | 6 | — | 1 | `strauss-group--oeqo46` |
+| שטראוס | ACTIVE | 7 | 7935 | 1 | `strauss-group--zjricu` |
 | שמעוני מיכאל מפעלי מתכת בע"מ | ACTIVE | 6 | 4075 | 1 | `m-work--6gsmp3` |
 | שמרד אלקטרוניקה | ACTIVE | 4 | 1536 | 1 | `shamrad--dv1p94` |
 | תיגבור כח אדם | ACTIVE | 9 | 8000 | 1 | `tigbur--iobe0d` |
