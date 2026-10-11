@@ -215,7 +215,7 @@ several listing pages back into one and stops publishing the rest.
 | קשת טעמים | ACTIVE | 7 | 7722 | 1 | `app-civi--tvlqmp` |
 | רותם תעשיות | ACTIVE | 10 | 5038 | 1 | `rotem-career--sl0akw` |
 | רזאל מערכות | ACTIVE | 5 | 1337 | 1 | `razel--i12d2f` |
-| רכבת ישראל | ACTIVE | 6 | — | 1 | `railcareer-adamtotal--52najw` |
+| רכבת ישראל | ACTIVE | 9 | 7981 | 1 | `railcareer-adamtotal--gjrpqx` |
 | רנואר | ACTIVE | 7 | 7879 | 3 | `renuar--vjy3cn` |
 | רשות שדות התעופה | ACTIVE | 5 | 761 | 1 | `iaa--676m0e` |
 | ש.ב שמירה וביטחון | ACTIVE | 3 | — | 1 | `sbisrael--u0j3bu` |
