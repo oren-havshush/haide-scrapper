@@ -55,10 +55,12 @@ several listing pages back into one and stops publishing the rest.
 | Ness-Tech | ACTIVE | 12 | 2989 | 1 | `ness-tech--w43uor` |
 | Nextcom Group | ACTIVE | 8 | 4808 | 1 | `nextcomgroup--nvjcxb` |
 | Novilis Software Systems | ACTIVE | 4 | 905 | 1 | `novilis--1u1jp3` |
+| ORS משאבי אנוש | ACTIVE | 8 | 7844 | 1 | `ors--1qkvyu` |
 | On Line | ACTIVE | 4 | 857 | 1 | `oneline--dqdxkb` |
 | One Technologies | ACTIVE | 4 | 2733 | 1 | `one1--m39rer` |
 | Personetics | ACTIVE | 5 | 1426 | 1 | `personetics--ovj4kr` |
 | Pharma Job | ACTIVE | 8 | 7523 | 1 | `pharma-job--z4r8el` |
+| Priority Software | ACTIVE | 9 | 7666 | 1 | `priority-software--bpaxla` |
 | PwC Israel | ACTIVE | 8 | 5141 | 1 | `pwc-careersite-hunterhrms--zpei34` |
 | RISCO | ACTIVE | 7 | 5806 | 2 | `riscogroup--7fzhg0` |
 | Rad | ACTIVE | 5 | 878 | 1 | `rad--ncqy5u` |
@@ -70,6 +72,7 @@ several listing pages back into one and stops publishing the rest.
 | Top Match | ACTIVE | 6 | 759 | 1 | `topmatch--f67z41` |
 | Top Sky Line | ACTIVE | 5 | 3497 | 1 | `topskyline--wp6an1` |
 | Tri-Logical Technologies | ACTIVE | 6 | 5563 | 1 | `trilogical--9qx1ei` |
+| UCL | ACTIVE | 6 | 4482 | 7 | `ucl-group--zflbp2` |
 | Unitask | ACTIVE | 6 | 6543 | 1 | `unitask-inc--wsxup8` |
 | Waterfall Security | ACTIVE | 8 | 5161 | 1 | `waterfall-security--jam3c9` |
 | Webbing | ACTIVE | 7 | 3874 | 1 | `webbingsolutions--hwp2jb` |
@@ -93,6 +96,7 @@ several listing pages back into one and stops publishing the rest.
 | אליקטרוניקס בע''מ | ACTIVE | 4 | 722 | 1 | `eliktronics--erhzvq` |
 | אלקטרה | ACTIVE | 7 | 1823 | 1 | `electra--cgkf66` |
 | אמביאנס קוסמטיקה רפואית | ACTIVE | 3 | 505 | 1 | `yafa-maximov--v1max5` |
+| אמי טכנולוגיות | ACTIVE | 7 | 7247 | 1 | `ami--8kp6tf` |
 | אמנת ניהול ומערכות בע"מ | ACTIVE | 8 | 4952 | 1 | `amanet--zknvec` |
 | אנשים ומחשבים | ACTIVE | 5 | 2645 | 1 | `pc--51eg8t` |
 | אפטר סקול | ACTIVE | 5 | 5946 | 1 | `etgarim2000--zsyc2z` |
@@ -121,6 +125,7 @@ several listing pages back into one and stops publishing the rest.
 | החברה לשירותי איכות הסביבה | ACTIVE | 8 | 6846 | 1 | `enviro-services--4z2yxo` |
 | החברה לתרבות ופנאי נס ציונה | ACTIVE | 8 | 6119 | 1 | `tarbut-nz--0dv9x3` |
 | הטכניון – מכון טכנולוגי לישראל | ACTIVE | 7 | 4414 | 1 | `technion--y5ezy5` |
+| המכללה האקדמית להנדסה בראודה בכרמיאל | ACTIVE | 5 | 7262 | 1 | `w3-braude--odcb80` |
 | המרכז האקדמי לוינסקי־וינגייט | ACTIVE | 6 | 4210 | 1 | `l-w--qajne1` |
 | המרכז הרפואי מעיני הישועה | ACTIVE | 8 | 4838 | 1 | `mymc--gqg49g` |
 | הספארי | ACTIVE | 5 | 1599 | 1 | `safari--6r81oc` |
@@ -158,6 +163,7 @@ several listing pages back into one and stops publishing the rest.
 | מוזיאון ישראל | ACTIVE | 6 | 3801 | 1 | `imj--442rnv` |
 | מולטילוק | ACTIVE | 7 | 5510 | 1 | `mul-t-lock--mjq2wv` |
 | מחסני השוק | ACTIVE | 7 | 3928 | 1 | `m-shuk--8md4qa` |
+| מטריקס | ACTIVE | 6 | 7938 | 1 | `matrix--fl3y1q` |
 | מי אביבים | ACTIVE | 9 | 7970 | 1 | `mei-avivim--5afgkc` |
 | מי עדן | ACTIVE | 5 | 4162 | 1 | `campaigns-meyeden--6u5xb3` |
 | מי שבע | ACTIVE | 5 | 1645 | 1 | `mey7--scshwy` |
@@ -180,6 +186,7 @@ several listing pages back into one and stops publishing the rest.
 | נטלי | ACTIVE | 7 | 7964 | 1 | `app-civi--ai732i` |
 | נטפים | ACTIVE | 8 | 6573 | 1 | `comeet--4q2aga` |
 | נירלט | ACTIVE | 7 | 6577 | 1 | `nirlat--xluh8r` |
+| נישה | ACTIVE | 9 | 7778 | 1 | `nisha--oyz9o2` |
 | נעמת | ACTIVE | 6 | 6028 | 1 | `naamat--3s0g1d` |
 | סופרגז POWER | ACTIVE | 6 | 3196 | 1 | `supergas-power--qfnmmb` |
 | סימפלי קלאב בע"מ | ACTIVE | 8 | 4066 | 1 | `simplyclub--27xg35` |
@@ -191,6 +198,7 @@ several listing pages back into one and stops publishing the rest.
 | עמיתים | ACTIVE | 9 | 6461 | 1 | `amitim--cjmqz5` |
 | ענבי ציון | ACTIVE | 7 | 4070 | 1 | `anvei-zion--o0cjxq` |
 | פוליכד | ACTIVE | 3 | 315 | 1 | `polycad--is4jw2` |
+| פלאפון | ACTIVE | 9 | 7981 | 1 | `adamtotal--4fg0y7` |
 | פליינג קרגו | ACTIVE | 9 | 7325 | 1 | `flying-cargo--pyuhhh` |
 | פרופורציה | ACTIVE | 7 | 3530 | 1 | `proportsia--msnicc` |
 | פתרונות עדיפים-ביטוח | ACTIVE | 6 | 4489 | 1 | `adifim--26vavw` |

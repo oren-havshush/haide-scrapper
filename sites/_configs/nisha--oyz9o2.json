@@ -1,0 +1,85 @@
+{
+  "_exportedAt": "2026-10-11T15:08:33.003Z",
+  "_note": "Mirror of the live config. The DB is authoritative; the worker never reads this file. setupScript lives alongside in <slug>.setup.js.",
+  "id": "cmv3vv502000501n343oyz9o2",
+  "siteUrl": "https://www.nisha.co.il/?search=&s=&positions=",
+  "companyName": "נישה",
+  "status": "ACTIVE",
+  "setupScriptFile": "nisha--oyz9o2.setup.js",
+  "pageFlow": [],
+  "fieldMappings": {
+    "_meta": {
+      "savedAt": "2026-10-11T15:03:10.654Z",
+      "pagination": null,
+      "formCapture": null,
+      "listingUrls": null,
+      "itemSelector": ".item-job",
+      "acceptedGates": null,
+      "minPublishDate": null,
+      "minPublishDays": null,
+      "revealSelector": null,
+      "listingSelector": null,
+      "applyLoginReason": null,
+      "browserOverrides": null,
+      "loadMoreSelector": null,
+      "locationFallback": null,
+      "originalMappings": null,
+      "applyRequiresLogin": false
+    },
+    "title": {
+      "source": "MANUAL",
+      "selector": ".__ai-title",
+      "confidence": 0.95,
+      "capturedOnUrl": "https://www.nisha.co.il/?search=&s=&positions="
+    },
+    "location": {
+      "source": "MANUAL",
+      "selector": ".__ai-location",
+      "confidence": 0.9,
+      "capturedOnUrl": "https://www.nisha.co.il/?search=&s=&positions="
+    },
+    "_formData": {
+      "source": "MANUAL",
+      "selector": ".__ai-form",
+      "confidence": 0.9,
+      "capturedOnUrl": "https://www.nisha.co.il/?search=&s=&positions="
+    },
+    "detailUrl": {
+      "source": "MANUAL",
+      "selector": "h3.job-title a",
+      "confidence": 0.95,
+      "extractAttr": "href",
+      "capturedOnUrl": "https://www.nisha.co.il/?search=&s=&positions="
+    },
+    "description": {
+      "source": "MANUAL",
+      "selector": ".__ai-description",
+      "confidence": 0.9,
+      "capturedOnUrl": "https://www.nisha.co.il/?search=&s=&positions="
+    },
+    "publishDate": {
+      "source": "MANUAL",
+      "selector": ".__ai-date",
+      "confidence": 0.9,
+      "capturedOnUrl": "https://www.nisha.co.il/?search=&s=&positions="
+    },
+    "requirements": {
+      "source": "MANUAL",
+      "selector": ".__ai-requirements",
+      "confidence": 0.85,
+      "capturedOnUrl": "https://www.nisha.co.il/?search=&s=&positions="
+    },
+    "externalJobId": {
+      "source": "MANUAL",
+      "selector": ".__ai-id",
+      "confidence": 0.95,
+      "capturedOnUrl": "https://www.nisha.co.il/?search=&s=&positions="
+    },
+    "applicationInfo": {
+      "source": "MANUAL",
+      "selector": ".__ai-form",
+      "confidence": 0.9,
+      "capturedOnUrl": "https://www.nisha.co.il/?search=&s=&positions="
+    }
+  }
+}

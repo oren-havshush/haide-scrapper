@@ -1,0 +1,79 @@
+{
+  "_exportedAt": "2026-10-11T15:08:33.142Z",
+  "_note": "Mirror of the live config. The DB is authoritative; the worker never reads this file. setupScript lives alongside in <slug>.setup.js.",
+  "id": "cmv3v1sxp000001n34g1qkvyu",
+  "siteUrl": "https://www.ors.co.il/search/",
+  "companyName": "ORS משאבי אנוש",
+  "status": "ACTIVE",
+  "setupScriptFile": "ors--1qkvyu.setup.js",
+  "pageFlow": [],
+  "fieldMappings": {
+    "_meta": {
+      "savedAt": "2026-10-11T14:04:01.804Z",
+      "pagination": null,
+      "formCapture": null,
+      "listingUrls": null,
+      "itemSelector": "div.swiper_hot_jobs",
+      "acceptedGates": null,
+      "minPublishDate": null,
+      "minPublishDays": null,
+      "revealSelector": null,
+      "listingSelector": null,
+      "applyLoginReason": null,
+      "browserOverrides": null,
+      "loadMoreSelector": null,
+      "locationFallback": null,
+      "originalMappings": null,
+      "applyRequiresLogin": false
+    },
+    "title": {
+      "source": "MANUAL",
+      "selector": ".__ai-title",
+      "confidence": 0.95,
+      "capturedOnUrl": "https://www.ors.co.il/search/"
+    },
+    "location": {
+      "source": "MANUAL",
+      "selector": ".__ai-location",
+      "confidence": 0.9,
+      "capturedOnUrl": "https://www.ors.co.il/search/"
+    },
+    "detailUrl": {
+      "source": "MANUAL",
+      "selector": "a.more-details",
+      "confidence": 0.95,
+      "extractAttr": "href",
+      "capturedOnUrl": "https://www.ors.co.il/search/"
+    },
+    "description": {
+      "source": "MANUAL",
+      "selector": ".__ai-description",
+      "confidence": 0.9,
+      "capturedOnUrl": "https://www.ors.co.il/search/"
+    },
+    "requirements": {
+      "source": "MANUAL",
+      "selector": ".__ai-requirements",
+      "confidence": 0.85,
+      "capturedOnUrl": "https://www.ors.co.il/search/"
+    },
+    "externalJobId": {
+      "source": "MANUAL",
+      "selector": ".__ai-id",
+      "confidence": 0.95,
+      "capturedOnUrl": "https://www.ors.co.il/search/"
+    },
+    "employmentType": {
+      "source": "MANUAL",
+      "selector": ".hot_jobs_slide_middle_percent_text",
+      "confidence": 0.8,
+      "capturedOnUrl": "https://www.ors.co.il/search/"
+    },
+    "applicationInfo": {
+      "source": "MANUAL",
+      "selector": ".__ai-apply",
+      "confidence": 0.9,
+      "capturedOnUrl": "https://www.ors.co.il/search/"
+    }
+  }
+}

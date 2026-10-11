@@ -1,0 +1,246 @@
+{
+  "_exportedAt": "2026-10-11T15:08:32.722Z",
+  "_note": "Mirror of the live config. The DB is authoritative; the worker never reads this file. setupScript lives alongside in <slug>.setup.js.",
+  "id": "cmv3wim4t000k01n31bfl3y1q",
+  "siteUrl": "https://www.matrix.co.il/jobs/",
+  "companyName": "מטריקס",
+  "status": "ACTIVE",
+  "setupScriptFile": "matrix--fl3y1q.setup.js",
+  "pageFlow": [],
+  "fieldMappings": {
+    "_meta": {
+      "savedAt": "2026-10-11T14:13:43.629Z",
+      "pagination": null,
+      "formCapture": {
+        "fields": [
+          {
+            "name": "item_meta[142]",
+            "label": "כתובת דוא\"ל",
+            "tagName": "input",
+            "required": true,
+            "fieldType": "email"
+          },
+          {
+            "name": "item_meta[143]",
+            "label": "קובץ קו\"ח",
+            "accept": "application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/pdf,.doc,.docx,.pdf",
+            "tagName": "input",
+            "required": true,
+            "fieldType": "file"
+          },
+          {
+            "name": "item_meta[149]",
+            "label": "קישור לפרופיל LinkedIn או תיק עבודות",
+            "tagName": "input",
+            "required": false,
+            "fieldType": "text"
+          },
+          {
+            "name": "item_meta[157]",
+            "label": "מס' משרה",
+            "tagName": "input",
+            "required": false,
+            "fieldType": "text"
+          },
+          {
+            "name": "frm_action",
+            "label": "",
+            "value": "create",
+            "tagName": "input",
+            "required": false,
+            "fieldType": "hidden"
+          },
+          {
+            "name": "form_id",
+            "label": "",
+            "value": "15",
+            "tagName": "input",
+            "required": false,
+            "fieldType": "hidden"
+          },
+          {
+            "name": "frm_hide_fields_15",
+            "label": "",
+            "value": "",
+            "tagName": "input",
+            "required": false,
+            "fieldType": "hidden"
+          },
+          {
+            "name": "form_key",
+            "label": "",
+            "value": "cv_form5",
+            "tagName": "input",
+            "required": false,
+            "fieldType": "hidden"
+          },
+          {
+            "name": "item_meta[0]",
+            "label": "",
+            "value": "",
+            "tagName": "input",
+            "required": false,
+            "fieldType": "hidden"
+          },
+          {
+            "name": "frm_submit_entry_15",
+            "label": "",
+            "tagName": "input",
+            "required": false,
+            "fieldType": "hidden"
+          },
+          {
+            "name": "_wp_http_referer",
+            "label": "",
+            "tagName": "input",
+            "required": false,
+            "fieldType": "hidden"
+          },
+          {
+            "name": "item_meta[144]",
+            "label": "",
+            "tagName": "input",
+            "required": false,
+            "fieldType": "hidden"
+          },
+          {
+            "name": "item_meta[145]",
+            "label": "",
+            "value": "",
+            "tagName": "input",
+            "required": false,
+            "fieldType": "hidden"
+          },
+          {
+            "name": "item_meta[146]",
+            "label": "",
+            "value": "",
+            "tagName": "input",
+            "required": false,
+            "fieldType": "hidden"
+          },
+          {
+            "name": "item_meta[147]",
+            "label": "",
+            "value": "",
+            "tagName": "input",
+            "required": false,
+            "fieldType": "hidden"
+          },
+          {
+            "name": "item_meta[148]",
+            "label": "",
+            "value": "",
+            "tagName": "input",
+            "required": false,
+            "fieldType": "hidden"
+          },
+          {
+            "name": "item_meta[151]",
+            "label": "",
+            "value": "",
+            "tagName": "input",
+            "required": false,
+            "fieldType": "hidden"
+          },
+          {
+            "name": "item_meta[154]",
+            "label": "",
+            "value": "",
+            "tagName": "input",
+            "required": false,
+            "fieldType": "hidden"
+          },
+          {
+            "name": "item_key",
+            "label": "",
+            "value": "",
+            "tagName": "input",
+            "required": false,
+            "fieldType": "hidden"
+          },
+          {
+            "name": "frm_state",
+            "label": "",
+            "tagName": "input",
+            "required": false,
+            "fieldType": "hidden"
+          },
+          {
+            "name": "g-recaptcha-response",
+            "label": "Captcha",
+            "tagName": "textarea",
+            "required": true,
+            "fieldType": "textarea"
+          },
+          {
+            "name": "item_meta[160]",
+            "label": "If you are human, leave this field blank.",
+            "tagName": "input",
+            "required": false,
+            "fieldType": "text"
+          }
+        ],
+        "method": "POST",
+        "enctype": "multipart/form-data",
+        "actionUrl": "https://www.matrix.co.il/jobs/wp-admin/admin-ajax.php",
+        "formSelector": "form#form_cv_form5:has(input[name=\"__nomatch__\"])"
+      },
+      "listingUrls": null,
+      "itemSelector": "div.job-item",
+      "acceptedGates": null,
+      "minPublishDate": null,
+      "minPublishDays": null,
+      "revealSelector": null,
+      "listingSelector": null,
+      "applyLoginReason": null,
+      "browserOverrides": {
+        "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+        "extraHeaders": {
+          "accept-language": "he-IL,he;q=0.9,en-US;q=0.8,en;q=0.7"
+        }
+      },
+      "loadMoreSelector": null,
+      "locationFallback": null,
+      "originalMappings": null,
+      "applyRequiresLogin": false
+    },
+    "title": {
+      "source": "MANUAL",
+      "selector": ".__ai-title",
+      "confidence": 0.95,
+      "capturedOnUrl": "https://www.matrix.co.il/jobs/"
+    },
+    "location": {
+      "source": "MANUAL",
+      "selector": ".__ai-location",
+      "confidence": 0.9,
+      "capturedOnUrl": "https://www.matrix.co.il/jobs/"
+    },
+    "detailUrl": {
+      "source": "MANUAL",
+      "selector": ".job-title a",
+      "confidence": 0.95,
+      "extractAttr": "href",
+      "capturedOnUrl": "https://www.matrix.co.il/jobs/"
+    },
+    "description": {
+      "source": "MANUAL",
+      "selector": ".__ai-description",
+      "confidence": 0.9,
+      "capturedOnUrl": "https://www.matrix.co.il/jobs/"
+    },
+    "requirements": {
+      "source": "MANUAL",
+      "selector": ".__ai-requirements",
+      "confidence": 0.85,
+      "capturedOnUrl": "https://www.matrix.co.il/jobs/"
+    },
+    "externalJobId": {
+      "source": "MANUAL",
+      "selector": ".__ai-id",
+      "confidence": 0.95,
+      "capturedOnUrl": "https://www.matrix.co.il/jobs/"
+    }
+  }
+}
