@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { ConflictError, NotFoundError } from "@/lib/errors";
 import { planGuardedRunRequest } from "@/lib/guardedRun";
+import { BIG_LANE_SWEEP_KIND, bigLaneStopAt } from "../../worker/lib/bigLane";
 
 /**
  * Guarded single-site runs requested through the API (addsite2 phase two,
@@ -17,7 +18,10 @@ export async function requestGuardedRun(a: { siteId: string; operator: string | 
     const site = await tx.site.findUnique({ where: { id: a.siteId }, select: { status: true } });
     const pending = (await tx.guardedRunRequest.count({ where: { siteId: a.siteId, status: { in: OPEN_STATUSES } } })) > 0;
     const activeSweep = (await tx.scrapeSweep.count({ where: { status: "RUNNING" } })) > 0;
-    const gate = planGuardedRunRequest(site, activeSweep, pending, a.now);
+    // A running big lane is named with its end (01:45 Jerusalem, worker/lib/bigLane.ts).
+    const big = await tx.scrapeSweep.findFirst({ where: { status: "RUNNING", kind: BIG_LANE_SWEEP_KIND }, select: { startedAt: true } });
+    const bigLane = big ? { until: bigLaneStopAt(big.startedAt) } : null;
+    const gate = planGuardedRunRequest(site, activeSweep, pending, a.now, bigLane);
     if (!gate.ok) {
       if (gate.code === "SITE_NOT_FOUND") throw new NotFoundError("Site", a.siteId);
       throw new ConflictError(`${gate.code}: ${gate.reason}`);

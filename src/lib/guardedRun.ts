@@ -9,7 +9,13 @@
 
 export type GuardedRunGate =
   | { ok: true }
-  | { ok: false; code: "SITE_NOT_FOUND" | "NOT_REVIEW" | "ALREADY_PENDING" | "SWEEP_RUNNING" | "QUIET_WINDOW"; reason: string };
+  | { ok: false; code: "SITE_NOT_FOUND" | "NOT_REVIEW" | "ALREADY_PENDING" | "BIG_LANE_RUNNING" | "SWEEP_RUNNING" | "QUIET_WINDOW"; reason: string };
+
+/**
+ * A big-lane sweep (worker/lib/bigLane.ts) RUNNING, and when it will have
+ * stopped: its 01:45 Asia/Jerusalem. Null when none runs.
+ */
+export type BigLaneRunning = { until: Date } | null;
 
 /** 01:30 to 07:05 Asia/Jerusalem: the nightly sweep and the public site's 07:01 read. */
 const QUIET_START_MIN = 1 * 60 + 30;
@@ -41,15 +47,31 @@ const sweepRunning: GuardedRunGate = {
   reason: "a sweep is running; ask again when it has finished",
 };
 
+/** HH:MM in Jerusalem, whatever the host clock says. */
+function jerusalemClock(at: Date): string {
+  return new Intl.DateTimeFormat("en-GB", { timeZone: TIME_ZONE, hour: "2-digit", minute: "2-digit", hourCycle: "h23" }).format(at);
+}
+
+/** The big lane is itself a RUNNING sweep; this names when it ends. */
+function bigLaneRunning(until: Date): GuardedRunGate {
+  return {
+    ok: false,
+    code: "BIG_LANE_RUNNING",
+    reason: `the big lane is running until about ${jerusalemClock(until)} Asia/Jerusalem; ask again after`,
+  };
+}
+
 /**
  * The route's gate, in addition to the token. `pending` is a request for this
- * site still PENDING or RUNNING; `activeSweep` is any ScrapeSweep RUNNING.
+ * site still PENDING or RUNNING; `activeSweep` is any ScrapeSweep RUNNING;
+ * `bigLane` is a RUNNING big-lane sweep with its end, named in the refusal.
  */
 export function planGuardedRunRequest(
   site: { status: string } | null,
   activeSweep: boolean,
   pending: boolean,
   now: Date,
+  bigLane: BigLaneRunning = null,
 ): GuardedRunGate {
   if (!site) return { ok: false, code: "SITE_NOT_FOUND", reason: "no such site" };
   if (site.status !== "REVIEW") {
@@ -60,13 +82,15 @@ export function planGuardedRunRequest(
     };
   }
   if (pending) return { ok: false, code: "ALREADY_PENDING", reason: "a guarded run for this site is already pending or running" };
+  if (bigLane) return bigLaneRunning(bigLane.until);
   if (activeSweep) return sweepRunning;
   if (inGuardedRunQuietWindow(now)) return quiet;
   return { ok: true };
 }
 
 /** The claim re-checks what can change while a request waits; a refused claim leaves the row PENDING. */
-export function planGuardedRunClaim(activeSweep: boolean, now: Date): GuardedRunGate {
+export function planGuardedRunClaim(activeSweep: boolean, now: Date, bigLane: BigLaneRunning = null): GuardedRunGate {
+  if (bigLane) return bigLaneRunning(bigLane.until);
   if (activeSweep) return sweepRunning;
   if (inGuardedRunQuietWindow(now)) return quiet;
   return { ok: true };

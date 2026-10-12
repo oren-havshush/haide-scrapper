@@ -1081,7 +1081,10 @@ async function testEmail(): Promise<number> {
  */
 async function claimRequest(trigger: string): Promise<number> {
   const activeSweep = (await prisma.scrapeSweep.count({ where: { status: "RUNNING" } })) > 0;
-  const gate = planGuardedRunClaim(activeSweep, new Date());
+  // A running big lane is named with its end (01:45 Jerusalem, worker/lib/bigLane.ts).
+  const big = await prisma.scrapeSweep.findFirst({ where: { status: "RUNNING", kind: BIG_LANE_SWEEP_KIND }, select: { startedAt: true } });
+  const bigLane = big ? { until: bigLaneStopAt(big.startedAt) } : null;
+  const gate = planGuardedRunClaim(activeSweep, new Date(), bigLane);
   if (!gate.ok) {
     log(`[claim] not now: ${gate.reason}`);
     return 0;
