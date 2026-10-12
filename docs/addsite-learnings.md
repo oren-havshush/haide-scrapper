@@ -4494,3 +4494,20 @@ is added that the citing text does not say. Their status rows are in
   171 stored company HQ addresses resolve as before (מיקוד, פיתוח and פארק are stop words for that).
 - **Generalizes to:** an approximate match is only safe for the variations that cannot name a
   different place; a name found inside a longer name is not that place.
+
+## LRN-SETUP-23 — the script cap is about reviewability; the 90-second limit was never enforced
+
+- **Date / site:** 2026-10-12; Matrix, ORS and Pelephone (the developer's report).
+- **Signal:** `validators.ts` capped a setupScript at 8,000 characters from the day the hook was a
+  5-line SPA fix (2026-05-11). Matrix, ORS and Pelephone sat at 7,981 to 7,996, and a per-job form
+  needs about 9,040. Separately, `setupScriptRun.ts` set `page.setDefaultTimeout(90_000)`, which
+  bounds Playwright's own waits and not `page.evaluate`: a script that never returned held the run
+  until its 15-minute per-site cap.
+- **Rule:** the cap is 16,000 characters, and the comment beside it says why: reviewability, not size
+  (all 456 sites' configs are about 1.5 MB together). The script's running time is enforced by racing
+  `page.evaluate` against 90 s; past it the run records
+  `setup_script_timeout: the setupScript on <page> ran past 90 s; the run went on without it` and
+  goes on as if the script had returned nothing. The warning reaches the run on every path (written,
+  empty, refused, crashed).
+- **Generalizes to:** a limit set by a default timeout only binds the calls that read that default;
+  check which call actually runs the work.

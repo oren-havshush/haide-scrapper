@@ -122,5 +122,5 @@ export function challengeLabel(category: string, challenge: string | null): stri
 export function challengeWarnings(guard: ExtractGuard | null, wrote = false): string[] {
   if (!guard) return [];
   const kind = wrote ? CHALLENGE_PASSED_WARNING : BLOCKED_WARNING;
-  return [...(guard.challenge ? [`${kind}: ${guard.challenge}`] : []), ...guard.challengeWaits];
+  return [...(guard.challenge ? [`${kind}: ${guard.challenge}`] : []), ...guard.challengeWaits, ...guard.scriptTimeouts];
 }

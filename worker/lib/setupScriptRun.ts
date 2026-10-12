@@ -9,9 +9,14 @@
 
 import type { ConsoleMessage, Page } from "playwright";
 import { paceFetchIn, pacerFor } from "./requestDelay";
+import type { ExtractGuard } from "./zeroMatch";
 
-/** Long-running scripts (load-more loops with sleeps) need more than the 30s default. */
-const SETUP_SCRIPT_TIMEOUT_MS = 90_000;
+/**
+ * Long-running scripts (load-more loops with sleeps) need more than the 30s
+ * default. Also the script's own limit: runSetupScript races page.evaluate
+ * against it (LRN-SETUP-23).
+ */
+export const SETUP_SCRIPT_TIMEOUT_MS = 90_000;
 const DEFAULT_TIMEOUT_MS = 30_000;
 
 /**
@@ -26,7 +31,13 @@ export const SETUP_CONSOLE_LIMIT = 20;
 /** The levels worth an operator's attention. `log` and `info` are the site's own chatter. */
 const NOISY_LEVELS = new Set(["warning", "error"]);
 
-export async function runSetupScript(page: Page, script: string): Promise<void> {
+export async function runSetupScript(
+  page: Page,
+  script: string,
+  opts: { guard?: ExtractGuard | null; timeoutMs?: number } = {},
+): Promise<"ran" | "error" | "timeout"> {
+  const timeoutMs = opts.timeoutMs ?? SETUP_SCRIPT_TIMEOUT_MS;
+  let outcome: "ran" | "error" | "timeout" = "ran";
   // What the page says WHILE the script runs. Captured unconditionally: the
   // failure this exists for (LRN-SETUP-19) looked like a completely successful
   // run, so a diagnostic that only fires on a bad-looking run cannot see it.
@@ -55,7 +66,7 @@ export async function runSetupScript(page: Page, script: string): Promise<void> 
       // pagination click's data request) are not slowed. The shim ships by
       // source because it runs in the page. See worker/lib/requestDelay.ts.
       const delayMs = pacerFor(page)?.delayMs ?? 0;
-      await page.evaluate(
+      const evaluation = page.evaluate(
         async (a: { src: string; delayMs: number; pace: string }) => {
           const AsyncFunction = Object.getPrototypeOf(
             async function () {},
@@ -73,6 +84,24 @@ export async function runSetupScript(page: Page, script: string): Promise<void> 
         },
         { src: script, delayMs, pace: paceFetchIn.toString() },
       );
+      // The 90-second limit (owner, 2026-10-12, LRN-SETUP-23). setDefaultTimeout
+      // bounds Playwright's own waits, not page.evaluate, so a script that never
+      // returns used to hold the run until its 15-minute cap. The evaluate is
+      // raced; past the limit the run records it and goes on as if the script
+      // had returned nothing. The script may still be running in the page, so
+      // its eventual rejection is swallowed here, never left unhandled.
+      evaluation.catch(() => {});
+      let timer: ReturnType<typeof setTimeout> | undefined;
+      const limit = new Promise<"timeout">((resolve) => {
+        timer = setTimeout(() => resolve("timeout"), timeoutMs);
+      });
+      const finished = await Promise.race([evaluation.then(() => "ran" as const), limit]).finally(() => clearTimeout(timer));
+      if (finished === "timeout") {
+        const warning = `setup_script_timeout: the setupScript on ${page.url()} ran past ${Math.round(timeoutMs / 1000)} s; the run went on without it`;
+        console.warn(`[scrape] ${warning}`);
+        opts.guard?.scriptTimeouts.push(warning);
+        outcome = "timeout";
+      }
     } finally {
       // Restore even when the script throws. A site whose jobs span several
       // listing pages runs this once per page, and a raised default left behind
@@ -80,10 +109,12 @@ export async function runSetupScript(page: Page, script: string): Promise<void> 
       // the run's own 15-minute cap.
       page.setDefaultTimeout(DEFAULT_TIMEOUT_MS);
     }
+    if (outcome === "timeout") return outcome;
     await page.waitForTimeout(1_500);
     console.info(`[scrape] setupScript executed (${script.length} chars)`);
   } catch (e) {
     console.warn(`[scrape] setupScript error — ${(e as Error).message}`);
+    outcome = "error";
   } finally {
     // Detached here, not at the end of the scrape: a site with several listing
     // pages runs this once per page, and a listener left attached would report
@@ -98,4 +129,5 @@ export async function runSetupScript(page: Page, script: string): Promise<void> 
       );
     }
   }
+  return outcome;
 }

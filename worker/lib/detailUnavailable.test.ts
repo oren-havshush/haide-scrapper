@@ -40,7 +40,7 @@ assert(!("_cardFingerprint" in stamped), "an unavailable visit is not stamped fo
 // --- scrape.ts wiring -------------------------------------------------------------
 const src = readFileSync(join(__dirname, "..", "jobs", "scrape.ts"), "utf8");
 const loop = src.slice(src.indexOf("// Visit each detail page sequentially"), src.indexOf("function countDeadDetailPages"));
-const setup = loop.indexOf("await runSetupScript(page, setupScript);");
+const setup = loop.indexOf("await runSetupScript(page, setupScript, { guard });");
 const check = loop.indexOf("page.$(DETAIL_UNAVAILABLE_SELECTOR)");
 const fields = loop.indexOf("for (const [fieldName, mapping] of Object.entries(fieldsToRunOnDetail))");
 assert(setup >= 0 && check > setup, "the marker is checked after the detail page's setupScript runs");

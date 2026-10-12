@@ -1715,7 +1715,7 @@ async function extractRawFieldsWithPageFlow(
   // listing-scope injections (hidden data-* spans, expanded content, API
   // hydration) are present before we collect detail URLs and listing fields.
   if (setupScript) {
-    await runSetupScript(page, setupScript);
+    await runSetupScript(page, setupScript, { guard });
   }
 
   // Expand append-style "Load more" listings BEFORE collecting detail URLs, so
@@ -1728,7 +1728,7 @@ async function extractRawFieldsWithPageFlow(
   // are idempotent by convention (guard with `if (!el.querySelector(...))`), so
   // a second pass only touches the items that arrived after load-more.
   if (setupScript && loadMoreSelector) {
-    await runSetupScript(page, setupScript);
+    await runSetupScript(page, setupScript, { guard });
   }
 
   // If there's only one step in pageFlow, extract directly from listing page
@@ -2039,6 +2039,8 @@ async function visitDetailPages(
   pageFlow: PageFlowStep[],
   formCaptureConfig: FormCaptureConfig | null,
   setupScript: string | null,
+  /** The run's guard, so a setup script cut off at its limit is recorded on the run. */
+  guard: ExtractGuard | null = null,
 ): Promise<Record<string, string>[]> {
   const { detailFields } = classifyFieldsByPage(fieldMappings, pageFlow);
   const detailStep = pageFlow[1]!;
@@ -2102,7 +2104,7 @@ async function visitDetailPages(
       // on the listing page. Idempotent by convention — scripts guard with
       // `if (!el.querySelector(...))` so re-running is safe.
       if (setupScript) {
-        await runSetupScript(page, setupScript);
+        await runSetupScript(page, setupScript, { guard });
       }
 
       // The page declared itself unavailable (detailPlan.ts
@@ -3931,7 +3933,7 @@ async function executeScrape(
         }
       }
       if (setupScript) {
-        await runSetupScript(page, setupScript);
+        await runSetupScript(page, setupScript, { guard: runMode.extract });
       }
 
       await autoScrollUntilStable(page, itemSelector);
@@ -3943,7 +3945,7 @@ async function executeScrape(
       // `if (!el.querySelector(injected))` so a second pass only touches the
       // items that arrived after the first run.
       if (setupScript && loadMoreSelector) {
-        await runSetupScript(page, setupScript);
+        await runSetupScript(page, setupScript, { guard: runMode.extract });
       }
 
       // Log the main navigation response so we can see status / redirect / size
@@ -4224,6 +4226,7 @@ async function executeScrape(
       pageFlow,
       formCaptureConfig,
       setupScript,
+      runMode.extract,
     );
     const visitedByUrl = new Map(visited.map((r) => [r._detailUrl ?? "", r]));
 

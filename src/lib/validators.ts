@@ -287,9 +287,17 @@ export const updateSiteConfigSchema = z.object({
   // and before extraction. Lets SPAs that hide most content behind app state
   // (Angular scope flags, React store slices) render the full listing so the
   // extractor sees everything. Body is executed verbatim via page.evaluate.
+  //
+  // The cap is 16,000 characters (owner, 2026-10-12, LRN-SETUP-23). It is
+  // about reviewability, not size: every site's config together is ~1.5 MB,
+  // but a script past this length is no longer read in full by whoever
+  // reviews it, and the escape class LRN-SETUP-19 guards against grows with
+  // length. It was 8,000 from the day the hook was a 5-line SPA fix
+  // (2026-05-11); per-job forms (Matrix, ~9,040) outgrew it. The script's
+  // running time has its own limit, 90 s (worker/lib/setupScriptRun.ts).
   setupScript: z
     .string()
-    .max(8_000)
+    .max(16_000)
     .refine((s) => !hasControlCharacter(s), {
       message:
         "setupScript contains a raw control character (0x0-0x1f other than tab/newline/CR). " +
