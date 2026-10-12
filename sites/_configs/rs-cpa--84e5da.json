@@ -1,0 +1,50 @@
+{
+  "_exportedAt": "2026-10-12T10:38:41.295Z",
+  "_note": "Mirror of the live config. The DB is authoritative; the worker never reads this file. setupScript lives alongside in <slug>.setup.js.",
+  "id": "cmv53vzlb003g01n3kr84e5da",
+  "siteUrl": "https://www.rs-cpa.co.il/%D7%A7%D7%A8%D7%99%D7%99%D7%A8%D7%94/",
+  "companyName": "רפאל-שיטרוק",
+  "status": "ACTIVE",
+  "setupScriptFile": "rs-cpa--84e5da.setup.js",
+  "pageFlow": [],
+  "fieldMappings": {
+    "_meta": {
+      "savedAt": "2026-10-12T10:25:51.592Z",
+      "pagination": null,
+      "formCapture": null,
+      "listingUrls": null,
+      "itemSelector": "div.__ai-job",
+      "acceptedGates": null,
+      "minPublishDate": null,
+      "minPublishDays": null,
+      "revealSelector": null,
+      "listingSelector": null,
+      "applyLoginReason": null,
+      "browserOverrides": null,
+      "loadMoreSelector": null,
+      "locationFallback": null,
+      "originalMappings": null,
+      "applyRequiresLogin": false
+    },
+    "title": {
+      "source": "MANUAL",
+      "selector": ".__ai-title",
+      "confidence": 0.95
+    },
+    "location": {
+      "source": "MANUAL",
+      "selector": ".__ai-location",
+      "confidence": 0.9
+    },
+    "description": {
+      "source": "MANUAL",
+      "selector": ".__ai-description",
+      "confidence": 0.9
+    },
+    "applicationInfo": {
+      "source": "MANUAL",
+      "selector": ".__ai-apply",
+      "confidence": 0.95
+    }
+  }
+}

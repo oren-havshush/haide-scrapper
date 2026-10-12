@@ -1,0 +1,66 @@
+{
+  "_exportedAt": "2026-10-12T10:38:41.002Z",
+  "_note": "Mirror of the live config. The DB is authoritative; the worker never reads this file. setupScript lives alongside in <slug>.setup.js.",
+  "id": "cmv5481sm003r01n3it6bvt3n",
+  "siteUrl": "https://kashtan.co.il/%D7%A7%D7%A8%D7%99%D7%99%D7%A8%D7%94/#vacancies",
+  "companyName": "קשטן",
+  "status": "ACTIVE",
+  "setupScriptFile": "kashtan--6bvt3n.setup.js",
+  "pageFlow": [],
+  "fieldMappings": {
+    "_meta": {
+      "savedAt": "2026-10-12T10:35:16.159Z",
+      "pagination": null,
+      "formCapture": null,
+      "listingUrls": null,
+      "itemSelector": ".vacancies__collapse",
+      "acceptedGates": null,
+      "minPublishDate": null,
+      "minPublishDays": null,
+      "revealSelector": null,
+      "listingSelector": null,
+      "applyLoginReason": null,
+      "browserOverrides": null,
+      "loadMoreSelector": null,
+      "locationFallback": null,
+      "originalMappings": null,
+      "applyRequiresLogin": false
+    },
+    "title": {
+      "source": "MANUAL",
+      "selector": ".job_title p",
+      "confidence": 0.95,
+      "capturedOnUrl": "https://kashtan.co.il/%D7%A7%D7%A8%D7%99%D7%99%D7%A8%D7%94/#vacancies"
+    },
+    "location": {
+      "source": "MANUAL",
+      "selector": ".__ai-location",
+      "confidence": 0.9,
+      "capturedOnUrl": "https://kashtan.co.il/%D7%A7%D7%A8%D7%99%D7%99%D7%A8%D7%94/#vacancies"
+    },
+    "_formData": {
+      "source": "MANUAL",
+      "selector": ".__ai-formData",
+      "confidence": 0.9,
+      "capturedOnUrl": "https://kashtan.co.il/%D7%A7%D7%A8%D7%99%D7%99%D7%A8%D7%94/#vacancies"
+    },
+    "description": {
+      "source": "MANUAL",
+      "selector": ".__ai-description",
+      "confidence": 0.9,
+      "capturedOnUrl": "https://kashtan.co.il/%D7%A7%D7%A8%D7%99%D7%99%D7%A8%D7%94/#vacancies"
+    },
+    "requirements": {
+      "source": "MANUAL",
+      "selector": ".__ai-requirements",
+      "confidence": 0.9,
+      "capturedOnUrl": "https://kashtan.co.il/%D7%A7%D7%A8%D7%99%D7%99%D7%A8%D7%94/#vacancies"
+    },
+    "applicationInfo": {
+      "source": "MANUAL",
+      "selector": ".__ai-applicationInfo",
+      "confidence": 0.9,
+      "capturedOnUrl": "https://kashtan.co.il/%D7%A7%D7%A8%D7%99%D7%99%D7%A8%D7%94/#vacancies"
+    }
+  }
+}

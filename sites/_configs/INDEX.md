@@ -31,6 +31,7 @@ several listing pages back into one and stops publishing the rest.
 | CALANIT by one | ACTIVE | 8 | 7364 | 1 | `calanit--4tq06k` |
 | CallBiz | ACTIVE | 3 | 2040 | 1 | `callbiz--sf48jf` |
 | Ceragon | ACTIVE | 8 | 7483 | 1 | `comeet--ty14e5` |
+| CodeOasis | ACTIVE | 5 | 5082 | 2 | `codeoasis--yb2y8w` |
 | DHL Express | ACTIVE | 7 | 3442 | 1 | `dhl--mwqiig` |
 | ERN | ACTIVE | 6 | 7423 | 1 | `ern--tcdrkt` |
 | ESO Group | ACTIVE | 4 | 577 | 1 | `eso-group--mgz38v` |
@@ -67,6 +68,8 @@ several listing pages back into one and stops publishing the rest.
 | Rapyd | ACTIVE | 11 | 2802 | 1 | `rapyd--6zork4` |
 | TADIRAN GROUP | ACTIVE | 7 | 2620 | 1 | `topmatch--1z5jpw` |
 | TCMCAREER | ACTIVE | 7 | 3387 | 1 | `tcmcareer--7zncwp` |
+| TECH | ACTIVE | 9 | 6772 | 1 | `tech--mwc4v8` |
+| TOP BIT | ACTIVE | 9 | 5438 | 1 | `topbit--4nqve0` |
 | Tender Loving Care | ACTIVE | 4 | 1240 | 1 | `tl-care--cylsu8` |
 | ToTali | ACTIVE | 6 | 3739 | 1 | `totali--duk823` |
 | Top Match | ACTIVE | 6 | 759 | 1 | `topmatch--f67z41` |
@@ -155,6 +158,7 @@ several listing pages back into one and stops publishing the rest.
 | כפיר מעליות | ACTIVE | 7 | 1979 | 1 | `app-civi--buhdfj` |
 | כפר המכביה | ACTIVE | 7 | 5238 | 1 | `app-civi--fdmziu` |
 | לדיקו בע"מ | ACTIVE | 8 | 5918 | 1 | `ledico--6op8qs` |
+| לב אביר הנדסת חשמל | ACTIVE | 4 | 2357 | 1 | `levabir--rhd1zy` |
 | לילית קוסמטיקה | ACTIVE | 4 | 1091 | 1 | `lilit--jrzaf3` |
 | לין ביכלר משאבי אנוש | ACTIVE | 7 | 7909 | 1 | `l-b--w90lqh` |
 | מגדל חברה לביטוח | ACTIVE | 6 | 3094 | 1 | `my-migdal--6mdmh5` |
@@ -190,6 +194,7 @@ several listing pages back into one and stops publishing the rest.
 | נעמת | ACTIVE | 6 | 6028 | 1 | `naamat--3s0g1d` |
 | סופרגז POWER | ACTIVE | 6 | 3196 | 1 | `supergas-power--qfnmmb` |
 | סימפלי קלאב בע"מ | ACTIVE | 8 | 4066 | 1 | `simplyclub--27xg35` |
+| סינופיה | ACTIVE | 5 | 5032 | 1 | `sinopia--pw5yyh` |
 | סיני סטור | ACTIVE | 3 | 1002 | 1 | `sinaistore--uxgr3o` |
 | סלקום | ACTIVE | 6 | 2255 | 1 | `cellcom--ugxfm3` |
 | סמלת | ACTIVE | 8 | 4203 | 1 | `samelet--16q1rd` |
@@ -215,22 +220,26 @@ several listing pages back into one and stops publishing the rest.
 | קבוצת שגריר שרותי רכב בעמ | ACTIVE | 6 | 2367 | 1 | `shagrir--i3nkhe` |
 | קבוצת שפיר | ACTIVE | 6 | 7952 | 1 | `shapir--fp8081` |
 | קדמי ביטוח | ACTIVE | 5 | 1209 | 1 | `kedmi770--e2pnpm` |
+| קולמקס ישראל | ACTIVE | 10 | 7948 | 1 | `comeet--9r8npm` |
 | קופת חולים מכבי | ACTIVE | 6 | 2407 | 1 | `maccabi4u--eazu8j` |
 | קורטק פתרונות קירור | ACTIVE | 5 | 4258 | 1 | `kortec--pdfonl` |
 | קידום | ACTIVE | 8 | 6139 | 1 | `kidum--wb3q8e` |
 | קימאמה | ACTIVE | 6 | 2719 | 1 | `campkimama--lz6kls` |
 | קישורית | ACTIVE | 3 | 370 | 1 | `kishurit--gjuja3` |
+| קשטן | ACTIVE | 6 | 4781 | 1 | `kashtan--6bvt3n` |
 | קשת טעמים | ACTIVE | 7 | 7722 | 1 | `app-civi--tvlqmp` |
 | רותם תעשיות | ACTIVE | 10 | 5038 | 1 | `rotem-career--sl0akw` |
 | רזאל מערכות | ACTIVE | 5 | 1337 | 1 | `razel--i12d2f` |
 | רכבת ישראל | ACTIVE | 9 | 7981 | 1 | `railcareer-adamtotal--gjrpqx` |
 | רנואר | ACTIVE | 7 | 7879 | 3 | `renuar--vjy3cn` |
+| רפאל-שיטרוק | ACTIVE | 4 | 3932 | 1 | `rs-cpa--84e5da` |
 | רשות שדות התעופה | ACTIVE | 5 | 761 | 1 | `iaa--676m0e` |
 | ש.ב שמירה וביטחון | ACTIVE | 3 | — | 1 | `sbisrael--u0j3bu` |
 | ש.ל.ה שירותי רפואה | ACTIVE | 6 | 2199 | 1 | `clalitsmile--xsxv25` |
 | שטראוס | ACTIVE | 7 | 7935 | 1 | `strauss-group--zjricu` |
 | שמעוני מיכאל מפעלי מתכת בע"מ | ACTIVE | 6 | 4075 | 1 | `m-work--6gsmp3` |
 | שמרד אלקטרוניקה | ACTIVE | 4 | 1536 | 1 | `shamrad--dv1p94` |
+| תחבורה לירושלים | ACTIVE | 8 | 7310 | 1 | `j-t--lcp0q6` |
 | תיגבור כח אדם | ACTIVE | 9 | 8000 | 1 | `tigbur--iobe0d` |
 | תייקום תקשורת | ACTIVE | 5 | 1351 | 1 | `tiecom--uy0ibi` |
 | תכלית ייעוץ עסקי | ACTIVE | 7 | 4851 | 1 | `tachlit-biz--zervox` |

@@ -1,0 +1,79 @@
+{
+  "_exportedAt": "2026-10-12T10:38:41.897Z",
+  "_note": "Mirror of the live config. The DB is authoritative; the worker never reads this file. setupScript lives alongside in <slug>.setup.js.",
+  "id": "cmv538gfd002u01n3vglcp0q6",
+  "siteUrl": "https://j-t.org.il/#/careers",
+  "companyName": "תחבורה לירושלים",
+  "status": "ACTIVE",
+  "setupScriptFile": "j-t--lcp0q6.setup.js",
+  "pageFlow": [],
+  "fieldMappings": {
+    "_meta": {
+      "savedAt": "2026-10-12T10:07:39.356Z",
+      "pagination": null,
+      "formCapture": null,
+      "listingUrls": null,
+      "itemSelector": "li.careers-list__item",
+      "acceptedGates": null,
+      "minPublishDate": null,
+      "minPublishDays": null,
+      "revealSelector": null,
+      "listingSelector": null,
+      "applyLoginReason": null,
+      "browserOverrides": null,
+      "loadMoreSelector": null,
+      "locationFallback": null,
+      "originalMappings": null,
+      "applyRequiresLogin": false
+    },
+    "title": {
+      "source": "MANUAL",
+      "selector": ".__ai-title",
+      "confidence": 0.95,
+      "capturedOnUrl": "https://j-t.org.il/#/careers"
+    },
+    "location": {
+      "source": "MANUAL",
+      "selector": ".__ai-location",
+      "confidence": 0.9,
+      "capturedOnUrl": "https://j-t.org.il/#/careers"
+    },
+    "_formData": {
+      "source": "MANUAL",
+      "selector": ".__ai-formData",
+      "confidence": 0.9,
+      "capturedOnUrl": "https://j-t.org.il/#/careers"
+    },
+    "detailUrl": {
+      "source": "MANUAL",
+      "selector": "a.__ai-detailUrl",
+      "confidence": 0.9,
+      "extractAttr": "href",
+      "capturedOnUrl": "https://j-t.org.il/#/careers"
+    },
+    "description": {
+      "source": "MANUAL",
+      "selector": ".__ai-description",
+      "confidence": 0.9,
+      "capturedOnUrl": "https://j-t.org.il/#/careers"
+    },
+    "requirements": {
+      "source": "MANUAL",
+      "selector": ".__ai-requirements",
+      "confidence": 0.9,
+      "capturedOnUrl": "https://j-t.org.il/#/careers"
+    },
+    "externalJobId": {
+      "source": "MANUAL",
+      "selector": ".__ai-jobid",
+      "confidence": 0.95,
+      "capturedOnUrl": "https://j-t.org.il/#/careers"
+    },
+    "applicationInfo": {
+      "source": "MANUAL",
+      "selector": ".__ai-applicationInfo",
+      "confidence": 0.9,
+      "capturedOnUrl": "https://j-t.org.il/#/careers"
+    }
+  }
+}

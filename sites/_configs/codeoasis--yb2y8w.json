@@ -1,0 +1,63 @@
+{
+  "_exportedAt": "2026-10-12T10:38:42.181Z",
+  "_note": "Mirror of the live config. The DB is authoritative; the worker never reads this file. setupScript lives alongside in <slug>.setup.js.",
+  "id": "cmv52w36o002i01n30ryb2y8w",
+  "siteUrl": "https://www.codeoasis.com/%D7%A7%D7%A8%D7%99%D7%99%D7%A8%D7%94/",
+  "companyName": "CodeOasis",
+  "status": "ACTIVE",
+  "setupScriptFile": "codeoasis--yb2y8w.setup.js",
+  "pageFlow": [],
+  "fieldMappings": {
+    "_meta": {
+      "savedAt": "2026-10-12T09:59:09.612Z",
+      "pagination": null,
+      "formCapture": null,
+      "listingUrls": [
+        "https://www.codeoasis.com/%D7%A7%D7%A8%D7%99%D7%99%D7%A8%D7%94/",
+        "https://www.codeoasis.com/en/careers/"
+      ],
+      "itemSelector": ".co-faq .faq-details",
+      "acceptedGates": null,
+      "minPublishDate": null,
+      "minPublishDays": null,
+      "revealSelector": null,
+      "listingSelector": null,
+      "applyLoginReason": null,
+      "browserOverrides": null,
+      "loadMoreSelector": null,
+      "locationFallback": null,
+      "originalMappings": null,
+      "applyRequiresLogin": false
+    },
+    "title": {
+      "source": "MANUAL",
+      "selector": ".__ai-title",
+      "confidence": 0.95,
+      "capturedOnUrl": "https://www.codeoasis.com/%D7%A7%D7%A8%D7%99%D7%99%D7%A8%D7%94/"
+    },
+    "location": {
+      "source": "MANUAL",
+      "selector": ".__ai-location",
+      "confidence": 0.9,
+      "capturedOnUrl": "https://www.codeoasis.com/%D7%A7%D7%A8%D7%99%D7%99%D7%A8%D7%94/"
+    },
+    "description": {
+      "source": "MANUAL",
+      "selector": ".__ai-description",
+      "confidence": 0.9,
+      "capturedOnUrl": "https://www.codeoasis.com/%D7%A7%D7%A8%D7%99%D7%99%D7%A8%D7%94/"
+    },
+    "requirements": {
+      "source": "MANUAL",
+      "selector": ".__ai-requirements",
+      "confidence": 0.9,
+      "capturedOnUrl": "https://www.codeoasis.com/%D7%A7%D7%A8%D7%99%D7%99%D7%A8%D7%94/"
+    },
+    "applicationInfo": {
+      "source": "MANUAL",
+      "selector": ".__ai-apply",
+      "confidence": 0.9,
+      "capturedOnUrl": "https://www.codeoasis.com/%D7%A7%D7%A8%D7%99%D7%99%D7%A8%D7%94/"
+    }
+  }
+}
