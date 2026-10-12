@@ -161,6 +161,11 @@ export function runDeadline(startMs: number, timeoutMs: number, stopAt: Date | n
   return left < timeoutMs ? { ms: left, cutOff: true } : { ms: timeoutMs, cutOff: false };
 }
 
+/** The run's warning when the window's end cut it off: how long it had run, for the report's line. */
+export function cutOffWarning(ranMinutes: number): string {
+  return `${CUT_OFF}: after ${Math.round(ranMinutes)} min`;
+}
+
 /** The run's error when the window's end cut it off. */
 export function cutOffMessage(ranMinutes: number): string {
   return `cut off at ${BIG_LANE_STOP_LABEL} after ${Math.round(ranMinutes)} min — nothing written, previous listings kept`;

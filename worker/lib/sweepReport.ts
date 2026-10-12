@@ -16,6 +16,7 @@ import { LISTING_SOFT_CATEGORIES } from "./listingTargets";
 import { FIELD_FILL_DROP, ITEM_CAP } from "./sweepSelection";
 import { acceptedBelowGate, type AcceptedGates } from "../../src/lib/acceptedGates";
 import { challengeVendor } from "./zeroMatch";
+import { BIG_LANE_STOP_LABEL, CUT_OFF } from "./bigLane";
 
 /**
  * A multi-page site that refused to publish a partial set. Soft, like drift,
@@ -171,6 +172,13 @@ export type ReportOptions = {
    * Absent or empty prints no Fix queue block.
    */
   fixQueue?: readonly FixQueueEntry[];
+  /**
+   * The big lane's block in the nightly's morning report (worker/lib/bigLane.ts):
+   * the latest SCRAPE_BIG sweep's own stored report from the last 12 hours, or
+   * null when none ran ("no big-lane run last night"). Absent prints no block:
+   * a policy, single-site or big-lane report never carries one.
+   */
+  bigLane?: { logText: string } | null;
 };
 
 /** One open fix item, as the report needs it. */
@@ -458,7 +466,8 @@ export function needsAttention(
     if (
       protectedListings(i) &&
       i.outcome !== "suspicious_drop" &&
-      !isListingRefusal(i.failureCategory)
+      !isListingRefusal(i.failureCategory) &&
+      i.failureCategory !== CUT_OFF
     ) {
       add(i, `${i.jobsBefore} listing(s) kept that a manual run would have deleted`);
     }
@@ -466,6 +475,13 @@ export function needsAttention(
       add(i, "reported success but its rows predate this sweep — the run never persisted");
     }
     if (zeroedOut(i)) add(i, `returned 0 listings, had ${i.jobsBefore}`);
+    // The big lane's end cut the run off (worker/lib/bigLane.ts): a decision,
+    // nothing written. The run's warning carries how long it had run.
+    if (i.failureCategory === CUT_OFF) {
+      const w = (i.warnings ?? []).map(String).find((x) => x.startsWith(`${CUT_OFF}:`));
+      const ran = w ? ` ${w.slice(w.indexOf(":") + 1).trim()}` : "";
+      add(i, `cut off at ${BIG_LANE_STOP_LABEL}${ran} — nothing written, ${i.jobsAfter} listing(s) kept`);
+    }
     if (i.failureCategory === "oversize") add(i, "oversize: refused an implausible row count");
     if (i.outcome === "hard_failure") add(i, `failed (${i.failureCategory ?? "unknown"})`);
 
@@ -770,6 +786,19 @@ export function renderSweepReport(
         const pair = `${i.detailsFetched ?? 0} / ${i.detailsCarried ?? 0}`;
         lines.push(`    ${pair.padStart(9)}  ${i.siteUrl}`);
       }
+    }
+  }
+
+  // --- Big lane --------------------------------------------------------------
+  // One morning email (worker/lib/bigLane.ts): the 22:00-01:45 lane's own
+  // report, indented under its heading, beside the nightly's.
+  if (opts.bigLane !== undefined) {
+    lines.push("");
+    lines.push("Big lane (22:00-01:45)");
+    if (opts.bigLane === null) {
+      lines.push("  no big-lane run last night");
+    } else {
+      for (const l of opts.bigLane.logText.split("\n")) lines.push(l ? `  ${l}` : "");
     }
   }
 

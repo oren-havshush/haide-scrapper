@@ -133,6 +133,19 @@ async function loadSelectableSites(opts: { fullPass: boolean } = { fullPass: fal
 }
 
 /**
+ * The big lane's stored report for the morning email (worker/lib/bigLane.ts):
+ * the latest SCRAPE_BIG sweep that finished in the last 12 hours, or null.
+ */
+async function latestBigLaneReport(now: Date): Promise<{ logText: string } | null> {
+  const big = await prisma.scrapeSweep.findFirst({
+    where: { kind: BIG_LANE_SWEEP_KIND, finishedAt: { gte: new Date(now.getTime() - 12 * 3_600_000) }, logText: { not: null } },
+    orderBy: { finishedAt: "desc" },
+    select: { logText: true },
+  });
+  return big?.logText ? { logText: big.logText } : null;
+}
+
+/**
  * Minutes each of the site's last three successful runs took, newest first:
  * what the big lane's fit check expects of tonight (worker/lib/bigLane.ts).
  */
@@ -712,6 +725,9 @@ async function realRun(mode: Mode, trigger: string, hooks: { onSweep?: (sweepId:
   log(`[sweep] sweep row ${sweep.id}`);
   hooks.onSweep?.(sweep.id);
 
+  // The big lane's block, for the nightly fleet's morning report only.
+  const bigLaneReport = lane === "nightly" && !single ? await latestBigLaneReport(now) : undefined;
+
   // --- what to run -----------------------------------------------------
   let queue: SelectableSite[];
   /** Selection exclusions, for the report. Undefined in single-site mode: there was no selection. */
@@ -724,6 +740,7 @@ async function realRun(mode: Mode, trigger: string, hooks: { onSweep?: (sweepId:
         kind: sweepKind,
         detailMode,
         email: emailReport,
+        bigLane: bigLaneReport,
         sweepId: sweep.id,
         trigger: sweep.trigger,
         startedAt: sweep.startedAt,
@@ -849,6 +866,7 @@ async function realRun(mode: Mode, trigger: string, hooks: { onSweep?: (sweepId:
         kind: sweepKind,
         detailMode,
         email: emailReport,
+        bigLane: bigLaneReport,
         sweepId: sweep.id,
         trigger: sweep.trigger,
         startedAt: sweep.startedAt,
@@ -900,6 +918,7 @@ async function realRun(mode: Mode, trigger: string, hooks: { onSweep?: (sweepId:
         kind: sweepKind,
         detailMode,
         email: emailReport,
+        bigLane: bigLaneReport,
         sweepId: sweep.id,
         trigger: sweep.trigger,
         startedAt: sweep.startedAt,
@@ -924,6 +943,7 @@ async function realRun(mode: Mode, trigger: string, hooks: { onSweep?: (sweepId:
     kind: sweepKind,
     detailMode,
     email: emailReport,
+    bigLane: bigLaneReport,
     sweepId: sweep.id,
     trigger: sweep.trigger,
     startedAt: sweep.startedAt,

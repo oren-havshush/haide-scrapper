@@ -8,7 +8,7 @@ import { completeFormBlob } from "../lib/formShape";
 import { navigateWithRetry, serverErrorRetry } from "../lib/navRetry";
 import { capItems, MAX_EXTRACTED_ITEMS } from "../lib/itemCap";
 import { FLEET_LIMITS, pageCap, readSiteLimits, resolveLimits, type ResolvedLimits } from "../lib/siteLimits";
-import { CUT_OFF, cutOffMessage, readStopAt, runDeadline } from "../lib/bigLane";
+import { CUT_OFF, cutOffMessage, cutOffWarning, readStopAt, runDeadline } from "../lib/bigLane";
 import { fillRowFormTemplate, formTemplateWarnings } from "../lib/formTemplate";
 import { ITEM_CAP } from "../lib/sweepSelection";
 import {
@@ -5064,6 +5064,8 @@ function createTimeoutPromise(
             error: deadlineError(),
             failureCategory: deadline.cutOff ? CUT_OFF : "timeout",
             scheduled,
+            // How long it ran, for the report's cut-off line (sweepReport.ts).
+            ...(deadline.cutOff ? { warnings: [cutOffWarning((Date.now() - startedMs) / 60_000)] } : {}),
           });
         }
       } catch (updateError) {
