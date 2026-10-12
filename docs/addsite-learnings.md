@@ -4454,3 +4454,17 @@ is added that the citing text does not say. Their status rows are in
   challenge, host_error, structure_changed) append the run's `challenge_wait` records.
 - **Generalizes to:** a path that builds its own warnings must carry everything the shared helper
   carries; check every refusal, not only the common one.
+
+## LRN-WRK-29 — the blocked line says what the wait saw, or that none ran and why
+
+- **Date / site:** 2026-10-12, tl-care.co.il and one1.co.il.
+- **Signal:** the morning report ended every blocked line with "nothing tried to pass it". Once the
+  SiteGround wait existed (LRN-WRK-25) that was untrue for SiteGround sites.
+- **Rule (worker/lib/sweepReport.ts `waitClause`):** the blocked line ends with
+  `; the wait saw <what>`, taken from the run's `challenge_wait` record without its prefix and
+  "— blocked" suffix (a failed wait first, else the last one). With no wait it ends
+  `; no wait ran (Cloudflare is not waited for)`,
+  `; no wait ran (no SiteGround chain was recorded on the listing navigation)`, or, for an unnamed
+  vendor, `; no wait ran (only SiteGround's automatic check is waited for)`.
+- **Generalizes to:** report wording is a claim; when the code changes what happens, the wording has
+  to change with it.

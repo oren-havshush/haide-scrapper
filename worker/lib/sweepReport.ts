@@ -28,6 +28,23 @@ function isBlocked(i: { outcome: string; failureCategory: string | null }): bool
   return i.outcome === "soft_failure" && i.failureCategory === "blocked";
 }
 
+/**
+ * How the blocked line ends (owner, 2026-10-12): what the SiteGround wait saw,
+ * from the run's challenge_wait record without its prefix and "— blocked"
+ * suffix (a failed wait first, else the last one); or that no wait ran, and
+ * why. "nothing tried to pass it" stopped being true when the wait existed
+ * (worker/lib/challengeWait.ts).
+ */
+export function waitClause(warnings: readonly unknown[] | null | undefined, vendor: string): string {
+  const waits = (warnings ?? []).map(String).filter((w) => w.startsWith("challenge_wait:"));
+  const failed = waits.filter((w) => / — blocked$/.test(w));
+  const pick = failed[failed.length - 1] ?? waits[waits.length - 1];
+  if (pick) return `the wait saw ${pick.slice("challenge_wait:".length).trim().replace(/ — blocked$/, "")}`;
+  if (/Cloudflare/.test(vendor)) return "no wait ran (Cloudflare is not waited for)";
+  if (/SiteGround/.test(vendor)) return "no wait ran (no SiteGround chain was recorded on the listing navigation)";
+  return "no wait ran (only SiteGround's automatic check is waited for)";
+}
+
 /** The listing answered 5xx after its retry (worker/lib/zeroMatch.ts HOST_ERROR): the host was down, not drift. */
 function isHostError(i: { outcome: string; failureCategory: string | null }): boolean {
   return i.outcome === "soft_failure" && i.failureCategory === "host_error";
@@ -464,10 +481,11 @@ export function needsAttention(
       const seen = (i.warnings ?? []).map(String).find((w) => w.startsWith("blocked_challenge:"));
       const detail = seen ? seen.slice(seen.indexOf(":") + 1).trim() : "";
       const quoted = detail ? ` ("${detail}")` : "";
+      const vendor = challengeVendor(detail);
       add(
         i,
-        `blocked: the listing was ${challengeVendor(detail)}${quoted}, not the site — ` +
-          `nothing written, ${i.jobsAfter} listing(s) kept; nothing tried to pass it`,
+        `blocked: the listing was ${vendor}${quoted}, not the site — ` +
+          `nothing written, ${i.jobsAfter} listing(s) kept; ${waitClause(i.warnings, vendor)}`,
       );
     } else if (isHostError(i)) {
       // The host answered 5xx, after one retry: not a site change. The line

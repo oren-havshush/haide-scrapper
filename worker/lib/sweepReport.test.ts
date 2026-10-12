@@ -388,7 +388,7 @@ check("a Cloudflare challenge is blocked, with its own line, and is not silent d
   assert(lines.length === 1, `blocked needs attention (got ${lines.length})`);
   assert(
     lines[0]?.why ===
-      "blocked: the listing was a Cloudflare challenge (\"Just a moment...\"), not the site — nothing written, 9 listing(s) kept; nothing tried to pass it",
+      "blocked: the listing was a Cloudflare challenge (\"Just a moment...\"), not the site — nothing written, 9 listing(s) kept; no wait ran (Cloudflare is not waited for)",
     `its own wording (got "${lines[0]?.why}")`,
   );
   const c = computeCounters(sweep(), [blocked, ...ok(2)]);
@@ -409,13 +409,13 @@ check("the blocked line names the vendor the detector found, or says a bot chall
     ])[0]?.why ?? "";
   const sg = why(["item_selector_zero_match: body .w-tabs-section", "blocked_challenge: SiteGround challenge (sg-captcha: challenge)"]);
   assert(
-    sg === "blocked: the listing was a SiteGround challenge (\"SiteGround challenge (sg-captcha: challenge)\"), not the site — nothing written, 2 listing(s) kept; nothing tried to pass it",
+    sg === "blocked: the listing was a SiteGround challenge (\"SiteGround challenge (sg-captcha: challenge)\"), not the site — nothing written, 2 listing(s) kept; no wait ran (no SiteGround chain was recorded on the listing navigation)",
     `SiteGround's detail is labelled SiteGround (got "${sg}")`,
   );
   assert(!/Cloudflare/.test(sg), "and never Cloudflare");
   const none = why([]);
   assert(
-    none === "blocked: the listing was a bot challenge, not the site — nothing written, 2 listing(s) kept; nothing tried to pass it",
+    none === "blocked: the listing was a bot challenge, not the site — nothing written, 2 listing(s) kept; no wait ran (only SiteGround's automatic check is waited for)",
     `no recorded detail: "a bot challenge", nothing quoted (got "${none}")`,
   );
   assert(!/Cloudflare|Just a moment/.test(none), "no vendor and no title are invented");
