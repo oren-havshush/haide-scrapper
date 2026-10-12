@@ -158,7 +158,7 @@ several listing pages back into one and stops publishing the rest.
 | כפיר מעליות | ACTIVE | 7 | 1979 | 1 | `app-civi--buhdfj` |
 | כפר המכביה | ACTIVE | 7 | 5238 | 1 | `app-civi--fdmziu` |
 | לדיקו בע"מ | ACTIVE | 8 | 5918 | 1 | `ledico--6op8qs` |
-| לב אביר הנדסת חשמל | ACTIVE | 4 | 2357 | 1 | `levabir--rhd1zy` |
+| לב אביר הנדסת חשמל | ACTIVE | 4 | 3001 | 1 | `levabir--rhd1zy` |
 | לילית קוסמטיקה | ACTIVE | 4 | 1091 | 1 | `lilit--jrzaf3` |
 | לין ביכלר משאבי אנוש | ACTIVE | 7 | 7909 | 1 | `l-b--w90lqh` |
 | מגדל חברה לביטוח | ACTIVE | 6 | 3094 | 1 | `my-migdal--6mdmh5` |

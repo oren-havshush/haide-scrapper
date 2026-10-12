@@ -8,11 +8,17 @@
    Apply: email; applicationInfo = mailto:<the posting's own mailto address>. The page
    says only where to send the CV, nothing about naming the job.
    Description: the posting's paragraph without its apply lines (the "קורות חיים..."
-   line and the address). No requirements section. Location: no posting says where the
-   work is, so Unknown (the gazetteer never scans; the Holon office address in the
-   footer is not a job location). */
+   line and the address). No requirements section.
+   Location: site rule (owner 2026-10-12, LRN-LOC-20 single-address rule): the company
+   prints one address (הלהב 6, איזור תעשיה חולון), so a posting whose title and text name
+   no place and no field work gets חולון; a field-work cue (במבנה ציבורי, באתרי החברה,
+   בשטח, אצל לקוחות...) or another-place cue leaves it Unknown. The shared intro's
+   "בפרויקטים" is not a cue (it is on every posting). Keyed on text, never on the id. */
 var EMAIL = /[\w.+-]+@[\w-]+(\.[\w-]+)+/;
 var APPLY = /^קורות חיים/;
+var HQ = 'חולון'; /* verbatim, CSV files/city.csv */
+var FIELD = /עבודת שטח|בשטח|אצל (ה)?לקוח|באתרי |באתר (ה)?(לקוח|בנייה|בניה|עבודה)|במבנ(ה|י) |ברחבי הארץ|פריסה ארצית|נסיעות|ניידות|רכב צמוד/;
+var OTHER = /ממוקמ|מיקום|באזור|באיזור|עבודה מהבית|עבודה היברידית|מודל היברידי|סניף/;
 function add(item, cls, text) {
   var s = document.createElement('span');
   s.className = cls;
@@ -36,6 +42,7 @@ document.querySelectorAll('#main .entry-content .pojo-image-text').forEach(funct
   if (!addr) ls.forEach(function (l) { var m = EMAIL.exec(l); if (m && !addr) addr = m[0]; });
   add(item, '__ai-title', title);
   add(item, '__ai-description', desc.join('\n'));
-  add(item, '__ai-location', 'Unknown');
+  var all = title + '\n' + desc.join('\n');
+  add(item, '__ai-location', FIELD.test(all) || OTHER.test(all) ? 'Unknown' : HQ);
   if (addr) add(item, '__ai-apply', 'mailto:' + addr.toLowerCase());
 });

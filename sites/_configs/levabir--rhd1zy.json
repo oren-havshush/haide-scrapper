@@ -1,5 +1,5 @@
 {
-  "_exportedAt": "2026-10-12T10:38:42.036Z",
+  "_exportedAt": "2026-10-12T11:02:10.984Z",
   "_note": "Mirror of the live config. The DB is authoritative; the worker never reads this file. setupScript lives alongside in <slug>.setup.js.",
   "id": "cmv5327jf002o01n3xdrhd1zy",
   "siteUrl": "https://www.levabir.co.il/%D7%93%D7%A8%D7%95%D7%A9%D7%99%D7%9D/",
@@ -9,7 +9,7 @@
   "pageFlow": [],
   "fieldMappings": {
     "_meta": {
-      "savedAt": "2026-10-12T10:03:05.437Z",
+      "savedAt": "2026-10-12T10:58:15.020Z",
       "pagination": null,
       "formCapture": null,
       "listingUrls": null,
