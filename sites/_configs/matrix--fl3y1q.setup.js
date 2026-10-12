@@ -40,7 +40,7 @@ i=s.indexOf(v[0],i+1);}});
 return out;};
 var PIN=String.fromCodePoint(0x1F4CD),NB=new RegExp(String.fromCharCode(160),'g');
 var CUE=/^((ה|ב|ל)?משרה|מיקום|מקום העבודה|(ה)?עבודה (מלאה |היברידית )?ב)/;
-// owner 10-11: company-location line counts unless field work/branches
+// owner 10-11/12: company-location or "לארגון/לחברה" line counts unless field work
 var CO=/הממוקמ|היושב|ממוקמ|מטה (ה?חברה|מטריקס)|משרדי (ה?חברה|מטה)/,FW=/שטח|בכל הארץ|פריסה ארצית|סניפים|נסיעות/;
 var REQH=/^(ה?דרישות|דרישת|ה?כישורים|תנאי סף|יתרון|יתרונות|השכלה|ניסיון (נדרש|וידע|מקצועי|חובה)|ידע מקצועי|רקע תעסוקתי|מאפייני אישיות|דגשים אישיותיים|מה (אנחנו |אנו )?מחפשים|מה חשוב לנו|חובה|requirements|qualifications|advantages|experience and education|other requirements|key requirements)/i;
 var DESH=/^(תיאור|תאור|ה?תפקיד כולל|במסגרת התפקיד|תחומי אחריות|אחריות מרכזית|מה (כולל|כוללת) ה?(תפקיד|משרה)|מה ה?תפקיד כולל|מה בתפקיד|מה (תעשו|עושים)|מהות התפקיד|על התפקיד|מה מחכה|מה (אנחנו |אנו )?מציעים|מה מציעים|השירות כולל|responsibilities|role overview|key responsibilities|you will be responsible|about the role|job description)/i;
@@ -89,7 +89,7 @@ var tags='',locs=[];
 var cue=find(title,[],1),ld=lines.filter(String)[0];
 if(ld)find(ld.replace(/\([^)]*\)/g,' '),cue,1);
 var al=lines.concat(more),fw=FW.test(title+al.join(' '));
-al.forEach(l=>{if(CUE.test(key(l))||l.indexOf(PIN)===0||(!fw&&CO.test(l)))find(l.replace(/\([^)]*\)/g,' '),cue);});
+al.forEach(l=>{var o=!fw&&/^ל(ארגון|חברה)/.test(key(l));if(o||CUE.test(key(l))||l.indexOf(PIN)===0||(!fw&&CO.test(l)))find(l.replace(/\([^)]*\)/g,' '),cue,o);});
 if(cue.length&&(!tags||cue.some(c=>c[1].split('').some(g=>tags.indexOf(g)>=0))))locs=cue.map(c=>c[0]);
 put(it,'__ai-location',locs.length?locs.join(', '):'Unknown');
 }catch(err){}}

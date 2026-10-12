@@ -1,5 +1,5 @@
 {
-  "_exportedAt": "2026-10-11T15:08:33.142Z",
+  "_exportedAt": "2026-10-12T07:56:12.957Z",
   "_note": "Mirror of the live config. The DB is authoritative; the worker never reads this file. setupScript lives alongside in <slug>.setup.js.",
   "id": "cmv3v1sxp000001n34g1qkvyu",
   "siteUrl": "https://www.ors.co.il/search/",
@@ -9,7 +9,7 @@
   "pageFlow": [],
   "fieldMappings": {
     "_meta": {
-      "savedAt": "2026-10-11T14:04:01.804Z",
+      "savedAt": "2026-10-12T07:45:11.722Z",
       "pagination": null,
       "formCapture": null,
       "listingUrls": null,

@@ -1,5 +1,5 @@
 {
-  "_exportedAt": "2026-09-22T14:36:16.584Z",
+  "_exportedAt": "2026-10-12T07:56:23.589Z",
   "_note": "Mirror of the live config. The DB is authoritative; the worker never reads this file. setupScript lives alongside in <slug>.setup.js.",
   "id": "cmu5mleu7000c01p950bo7eqx",
   "siteUrl": "https://www.tikshoov.co.il/come-work-with-us/careers-list",
@@ -9,58 +9,12 @@
   "pageFlow": [],
   "fieldMappings": {
     "_meta": {
-      "savedAt": "2026-09-22T09:05:07.964Z",
+      "savedAt": "2026-10-12T07:45:13.493Z",
       "pagination": null,
-      "formCapture": {
-        "fields": [
-          {
-            "name": "field_2",
-            "label": "שם מלא",
-            "tagName": "INPUT",
-            "required": true,
-            "fieldType": "text"
-          },
-          {
-            "name": "field_3",
-            "label": "טלפון",
-            "tagName": "INPUT",
-            "required": true,
-            "fieldType": "text"
-          },
-          {
-            "name": "field_4",
-            "label": "אימייל",
-            "tagName": "INPUT",
-            "required": false,
-            "fieldType": "text"
-          },
-          {
-            "name": "field_5",
-            "label": "אזור גיאוגרפי",
-            "tagName": "INPUT",
-            "required": true,
-            "fieldType": "text"
-          },
-          {
-            "name": "field_6",
-            "label": "referid",
-            "tagName": "INPUT",
-            "required": true,
-            "fieldType": "number"
-          },
-          {
-            "name": "field_7",
-            "label": "קראתי ואני מאשר את מדיניות הפרטיות",
-            "tagName": "INPUT",
-            "required": true,
-            "fieldType": "checkbox"
-          }
-        ],
-        "method": "POST",
-        "actionUrl": "https://www.tikshoov.co.il/come-work-with-us/careers-list/?jobID=5104&jobType=",
-        "formSelector": "form[data-formid=\"2177\"]"
-      },
+      "formCapture": null,
+      "listingUrls": null,
       "itemSelector": "div.jobBox",
+      "acceptedGates": null,
       "minPublishDate": null,
       "minPublishDays": null,
       "revealSelector": null,
@@ -82,6 +36,12 @@
       "selector": ".__ai-location",
       "confidence": 0.9
     },
+    "_formData": {
+      "source": "MANUAL",
+      "selector": ".__ai-form",
+      "confidence": 0.9,
+      "capturedOnUrl": "https://www.tikshoov.co.il/come-work-with-us/careers-list"
+    },
     "detailUrl": {
       "source": "auto",
       "selector": "a[href*=\"jobID=\"]",
@@ -102,6 +62,12 @@
       "source": "auto",
       "selector": ".__ai-externalJobId",
       "confidence": 0.95
+    },
+    "applicationInfo": {
+      "source": "MANUAL",
+      "selector": ".__ai-form",
+      "confidence": 0.9,
+      "capturedOnUrl": "https://www.tikshoov.co.il/come-work-with-us/careers-list"
     }
   }
 }

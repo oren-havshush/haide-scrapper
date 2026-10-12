@@ -93,6 +93,27 @@ var enrich = async function (box) {
     mk(box, '__ai-description', x.d);
     mk(box, '__ai-requirements', x.r);
     mk(box, '__ai-location', loc(titleEl ? titleEl.textContent.trim() : '', areaEl ? areaEl.textContent.trim() : '', body));
+    // Per-job form (owner 2026-10-12, LRN-FORM-13): each job page carries its own form 2177 with no action,
+    // so it posts to that page (?jobID=<n>) and names the job in formUrl. Kept: hidden values, plus what the
+    // page's own script fills and hides: field_5 = the job's area text, field_6 (referid) = 400 for a visit
+    // with no referral tag. A job whose page has no form gets none.
+    var fm = doc.querySelector('form[data-formid]');
+    if (fm) {
+      var fs = [];
+      Array.prototype.forEach.call(fm.querySelectorAll('input, select, textarea'), function (e) {
+        var t = (e.getAttribute('type') || e.tagName).toLowerCase();
+        if (!e.name || /^(submit|button|reset|image)$/.test(t)) return;
+        var lb = (e.id && fm.querySelector('label[for="' + e.id + '"]')) || e.closest('label');
+        var f = { name: e.name, label: ((lb && lb.textContent) || e.getAttribute('placeholder') || '').replace(/\s+/g, ' ').trim(),
+          fieldType: t, required: e.required || e.getAttribute('aria-required') === 'true', tagName: e.tagName };
+        if (t === 'hidden') f.value = e.getAttribute('value') || '';
+        if (e.name === 'field_5') f.value = areaEl ? areaEl.textContent.trim() : '';
+        if (e.name === 'field_6') f.value = '400';
+        fs.push(f);
+      });
+      mk(box, '__ai-form', JSON.stringify({ formSelector: 'form[data-formid="' + fm.getAttribute('data-formid') + '"]',
+        actionUrl: a.href, pageUrl: a.href, method: 'POST', enctype: fm.getAttribute('enctype') || undefined, fields: fs }));
+    }
   } catch (e) { /* leave this job without detail fields */ }
 };
 var next = 0;

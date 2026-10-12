@@ -85,6 +85,23 @@ await (async function () {
       mk('__ai-department', dep ? dep.textContent.replace(/\s+/g, ' ').trim() : '');
       mk('__ai-date', dates[norm(href)] || '');
       mk('__ai-jobid', id);
+      // Per-job form (owner 2026-10-12, LRN-FORM-13): the job page's own application form; its hidden
+      // queried_id (the job's post id) and referer_title (the job page title) name the job.
+      var fu = d.querySelector('form.elementor-form input[type="file"]'), fm = fu && fu.closest('form');
+      if (fm) {
+        var fs = [];
+        fm.querySelectorAll('input, select, textarea').forEach(function (e) {
+          var t = (e.getAttribute('type') || e.tagName).toLowerCase();
+          if (!e.name || /^(submit|button|reset|image)$/.test(t)) return;
+          var lbs = e.id ? fm.querySelectorAll('label[for="' + e.id + '"]') : [], lb = lbs[lbs.length - 1];
+          var f = { name: e.name, label: lb ? lb.textContent.replace(/\s+/g, ' ').trim() : '', fieldType: t,
+            required: e.required || e.getAttribute('aria-required') === 'true', tagName: e.tagName, group: 'הגשת מועמדות' };
+          if (t === 'hidden') f.value = e.getAttribute('value') || '';
+          fs.push(f);
+        });
+        mk('__ai-form', JSON.stringify({ formSelector: 'form.elementor-form:has(input[type="file"])',
+          actionUrl: location.origin + '/wp-admin/admin-ajax.php', pageUrl: href, method: 'POST', fields: fs }));
+      }
     });
   }));
 })();

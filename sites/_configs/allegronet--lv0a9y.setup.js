@@ -43,6 +43,30 @@ function placeOf(text) {
   return 'Unknown';
 }
 
+/* 5. One site-wide application form (owner 2026-10-12, LRN-FORM-13): the page's script names the
+      job by filling form_fields[position_field] with the clicked tab title. Each job's blob is that
+      form with the job's own tab title there; the hidden Elementor values are the form's own. */
+var LBL = { 'form_fields[attach][]': 'העלה קובץ קו"ח בפורמט DOC או PDF', 'form_fields[position_field]': 'משרה' };
+var FORM = (function () {
+  var fm = document.querySelector('form#job-application');
+  if (!fm) return null;
+  var fields = [];
+  fm.querySelectorAll('input, select, textarea').forEach(function (e) {
+    var t = (e.getAttribute('type') || e.tagName).toLowerCase();
+    if (!e.name || /^(submit|button|reset|image)$/.test(t)) return;
+    // the checkbox's own option label (the last label for it), else the field label; two kept from the stored capture
+    var lbs = e.id ? fm.querySelectorAll('label[for="' + e.id + '"]') : [], lb = lbs[lbs.length - 1];
+    var f = { name: e.name, label: LBL[e.name] || (lb ? lb.textContent.replace(/\s+/g, ' ').trim() : ''), fieldType: t,
+      required: e.required || e.getAttribute('aria-required') === 'true', tagName: e.tagName, group: 'הגשת מועמדות' };
+    if (t === 'hidden') f.value = e.name === 'form_fields[position_field]' ? '__POSITION__' : e.getAttribute('value') || '';
+    if (t === 'file' && e.getAttribute('accept')) f.accept = e.getAttribute('accept');
+    if (t === 'file' && e.multiple) f.multiple = true;
+    fields.push(f);
+  });
+  return JSON.stringify({ formSelector: 'form#job-application', actionUrl: location.origin + '/wp-admin/admin-ajax.php',
+    method: 'POST', fields: fields });
+})();
+
 function add(item, cls, text) {
   var s = document.createElement('span');
   s.className = cls;
@@ -90,4 +114,5 @@ document.querySelectorAll('.eael-accordion-list').forEach(function (item) {
   add(item, '__ai-description', desc.join('\n'));
   add(item, '__ai-requirements', req.join('\n'));
   add(item, '__ai-location', placeOf(lines.join('\n')));
+  if (FORM) add(item, '__ai-form', FORM.replace('"__POSITION__"', function () { return JSON.stringify(head.innerText.trim()); }));
 });

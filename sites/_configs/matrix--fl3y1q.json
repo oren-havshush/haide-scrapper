@@ -1,5 +1,5 @@
 {
-  "_exportedAt": "2026-10-11T15:08:32.722Z",
+  "_exportedAt": "2026-10-12T07:56:17.829Z",
   "_note": "Mirror of the live config. The DB is authoritative; the worker never reads this file. setupScript lives alongside in <slug>.setup.js.",
   "id": "cmv3wim4t000k01n31bfl3y1q",
   "siteUrl": "https://www.matrix.co.il/jobs/",
@@ -9,7 +9,7 @@
   "pageFlow": [],
   "fieldMappings": {
     "_meta": {
-      "savedAt": "2026-10-11T14:13:43.629Z",
+      "savedAt": "2026-10-12T07:45:12.309Z",
       "pagination": null,
       "formCapture": {
         "fields": [

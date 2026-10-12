@@ -1,7 +1,5 @@
-// ors.co.il /search/. Runs on page 1 only: pool all pages all-or-nothing (LRN-CO-4); a failed
-// fetch, redirect, empty page or count unequal to the total removes every card. id ors-<n> (LRN-ID-11).
-// location: tag via closed city.csv map + cue lines, 4-case rule, else Unknown. body split at headings
-// (LRN-SETUP-10/18). Non Hebrew/Latin title and the "בדיקה בדיקה" test card dropped (LRN-LANG-1).
+// ors.co.il /search/: pool all pages all-or-nothing (LRN-CO-4). id ors-<n>. location: tag via closed
+// city.csv map + cue lines, 4-case rule, else Unknown. body split at headings. test card dropped.
 var S='div.swiper_hot_jobs',L=document.querySelector('#jobs-list-area');
 if(L&&!document.querySelector('.__ai-pooled')){
 var mk=document.createElement('i');mk.className='__ai-pooled';document.body.appendChild(mk);
@@ -26,7 +24,7 @@ for(var a=0;a<2&&!pooled;a++){try{pooled=await walk();}catch(e){pooled=null;}}
 document.querySelectorAll(S).forEach(function(c){c.remove();});
 if(pooled)pooled.forEach(function(c){L.appendChild(document.importNode(c,true));});
 }
-// canonical|variants ; "!" = tag only, never read from a cue line
+// canonical|variants; "!" = tag only, never text
 var T={},V=[];
 ('פריסה ארצית|כל הארץ;תל אביב-יפו|תל אביב|ת"א|תל-אביב;פתח תקווה|פ"ת|פתח תקוה;ראשון לציון|ראשל"צ;באר שבע|ב"ש;'+
 'פלמחים|פלמחים - קבוץ;מעברות|מעברות - קבוץ;דביר|קיבוץ דביר;קדימה צורן|קדימה-צורן|קדימה;פרדס חנה כרכור|פרדס חנה-כרכור;'+
@@ -35,17 +33,18 @@ var T={},V=[];
 'בני ברק;אשדוד;נס ציונה;זכרון יעקב;ניר צבי;יבנה;גוש עציון;שדרות;!גזר;דלתון;גבעת חיים איחוד;רמת ישי;!כנות;חולון;צפת;'+
 'יקום;קיסריה;ראש העין;יהוד;חדרה;מעגן מיכאל;אריאל;אשקלון;ערד;רמת השרון;כפר סילבר;ירוחם;נשר;יד בנימין;דורות;רחובות;'+
 'צרעה;מענית;כפר קאסם;גן שמואל;בית שאן;רעננה;גן יבנה;באר יעקב;כפר עזה;עכו;הרצליה;אחיסמך;בנימינה;!שקד;אור עקיבא;!אזור;'+
-// owner 2026-10-11: tag-only maps for tags not in city.csv
+'אזור צפון|צפון;אזור דרום|דרום;אזור מרכז|מרכז;'+
+// owner 2026-10-11: tags not in city.csv
 '!רמלה לוד|לוד|רמלה;!איירפורט סיטי|קריית שדה התעופה;!הגליל העליון|גליל עליון;!עמק חפר|עמק חפר מזרח מ;!אזור דרום|דבירה|דודאים|עידן הנגב')
 .split(';').forEach(function(e){var o=e.charAt(0)==='!',ns=(o?e.slice(1):e).split('|');
 ns.forEach(function(v){T[v]=ns[0];if(!o)V.push([v,ns[0]]);});});
 V.sort(function(x,y){return y[0].length-x[0].length;});
 var SEP=' ,.()-–/|:!?;\n';
-var find=function(s){var out=[];
+var find=function(s,p){var out=[];
 s=s.replace(/\s/g,' ').replace(/[״”“]/g,'"').replace(/[׳’]/g,"'");
 V.forEach(function(v){var i=s.indexOf(v[0]);while(i>=0){
 var b=s.charAt(i-1)||' ',z=s.charAt(i+v[0].length)||' ';
-if((SEP.indexOf(b)>=0||('בל'.indexOf(b)>=0&&SEP.indexOf(s.charAt(i-2)||' ')>=0))&&SEP.indexOf(z)>=0){
+if((p?b==='ב'&&SEP.indexOf(s.charAt(i-2)||' ')>=0:SEP.indexOf(b)>=0||('בל'.indexOf(b)>=0&&SEP.indexOf(s.charAt(i-2)||' ')>=0))&&SEP.indexOf(z)>=0){
 if(!out.some(function(o){return o[1]===v[1];}))out.push([i,v[1]]);
 s=s.slice(0,i)+'#'.repeat(v[0].length)+s.slice(i+v[0].length);}
 i=s.indexOf(v[0],i+1);}});
@@ -106,10 +105,13 @@ var lines=linesOf(it.querySelector('.hot_jobs_slide_middle_text'));
 var tag=((it.querySelector('.hot_jobs_slide_middle_place_text')||{}).textContent||'').trim(),P=T[tag],C=[];
 var fw=/שטח|נסיעות|ברחבי הארץ|בכל הארץ|סניפ/.test(lines.join(' '));
 lines.forEach(function(l){var k=key(l),f=[],m;if(/^(מיקום|מקום העבודה)/.test(k)&&!/מועמד|מגורים/.test(k))f=find(k.replace(/\([^)]*\)/g,' '));
-// owner 2026-10-11: "company/job located in X" counts, not on field-work or multi-branch ads
+// LRN-LOC-18: "located in X" counts, not on field-work/multi-branch ads
 else if(!fw&&(m=k.match(/(ממוקמ|יושב|נמצא)\S*\s+ב/))){f=find(k.slice(m.index).replace(/\([^)]*\)/g,' '));if(f.length>1)f=[];}
 f.forEach(function(c){if(C.indexOf(c)<0)C.push(c);});});
 var locs=!tag?C:!P?[]:P==='פריסה ארצית'?(C.length?C:[P]):(C.indexOf(P)>=0?C:[P]);
+// owner 2026-10-12: no tag/כל הארץ, no cue: one ב-place in title+"ל…דרוש" opener
+if(!fw&&!C.length&&(!tag||P==='פריסה ארצית')){var O=find(title,1);lines.forEach(function(l){var k=key(l);
+if(/^ל\S/.test(k)&&/דרוש/.test(k))find(k,1).forEach(function(c){if(O.indexOf(c)<0)O.push(c);});});if(O.length===1)locs=O;}
 put(it,'__ai-location',locs.length?locs.join(', '):'Unknown');
 split(lines,it);
 }catch(err){}}

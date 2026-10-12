@@ -1,5 +1,5 @@
 {
-  "_exportedAt": "2026-10-11T15:08:33.003Z",
+  "_exportedAt": "2026-10-12T07:56:20.656Z",
   "_note": "Mirror of the live config. The DB is authoritative; the worker never reads this file. setupScript lives alongside in <slug>.setup.js.",
   "id": "cmv3vv502000501n343oyz9o2",
   "siteUrl": "https://www.nisha.co.il/?search=&s=&positions=",
@@ -9,7 +9,7 @@
   "pageFlow": [],
   "fieldMappings": {
     "_meta": {
-      "savedAt": "2026-10-11T15:03:10.654Z",
+      "savedAt": "2026-10-12T07:45:12.903Z",
       "pagination": null,
       "formCapture": null,
       "listingUrls": null,
