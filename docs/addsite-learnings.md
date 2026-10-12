@@ -4442,3 +4442,15 @@ is added that the citing text does not say. Their status rows are in
   `structure_changed`; a 5xx that recovers on the retry is written normally.
 - **Generalizes to:** label a failure by what the host answered before reading the page as a site
   change.
+
+## LRN-WRK-28 — the zero-match refusal saved the challenge but not the wait
+
+- **Date / site:** 2026-10-12, tl-care.co.il.
+- **Signal:** SiteGround escalated tl-care's `ipr` chain to its interactive captcha. The wait judged it
+  right and logged `challenge_wait: SiteGround interactive captcha after 11.5 s — blocked`, but the
+  item carried only `blocked_challenge`: `zeroMatchRefusal` built its own warnings and never added
+  `guard.challengeWaits`, which every other path adds through `challengeWarnings`.
+- **Rule (worker/lib/zeroMatch.ts `zeroMatchRefusal`):** all four branches (Cloudflare title, host
+  challenge, host_error, structure_changed) append the run's `challenge_wait` records.
+- **Generalizes to:** a path that builds its own warnings must carry everything the shared helper
+  carries; check every refusal, not only the common one.

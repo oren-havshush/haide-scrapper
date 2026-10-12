@@ -197,6 +197,8 @@ export function onExplicitZeroMatch(
  * The listing refusal for a run whose item selector matched nothing and that
  * ended with no rows; null otherwise. Rows from another page or listing URL
  * leave it to the listing and pagination guards, which judge partial sets.
+ * Every branch carries the run's challenge_wait records (owner, 2026-10-12:
+ * tl-care's wait was logged but not saved), as the other paths do.
  */
 export function zeroMatchRefusal(
   guard: ExtractGuard | null,
@@ -211,7 +213,7 @@ export function zeroMatchRefusal(
       error:
         `item selector matched nothing: ${guard.zeroMatch} — the page was a Cloudflare challenge ("${title}"), ` +
         "not the listing; previous listings kept",
-      warnings: [`${ZERO_MATCH_WARNING}: ${guard.zeroMatch}`, `${BLOCKED_WARNING}: ${title}`],
+      warnings: [`${ZERO_MATCH_WARNING}: ${guard.zeroMatch}`, `${BLOCKED_WARNING}: ${title}`, ...guard.challengeWaits],
     };
   }
   if (guard.challenge) {
@@ -221,7 +223,7 @@ export function zeroMatchRefusal(
       error:
         `item selector matched nothing: ${guard.zeroMatch} — the page was a ${guard.challenge}, ` +
         "not the listing; previous listings kept",
-      warnings: [`${ZERO_MATCH_WARNING}: ${guard.zeroMatch}`, `${BLOCKED_WARNING}: ${guard.challenge}`],
+      warnings: [`${ZERO_MATCH_WARNING}: ${guard.zeroMatch}`, `${BLOCKED_WARNING}: ${guard.challenge}`, ...guard.challengeWaits],
     };
   }
   if (guard.hostError) {
@@ -231,13 +233,13 @@ export function zeroMatchRefusal(
       error:
         `listing answered ${guard.hostError} — item selector matched nothing: ${guard.zeroMatch}; ` +
         "previous listings kept",
-      warnings: [`${ZERO_MATCH_WARNING}: ${guard.zeroMatch}`, `${HOST_ERROR_WARNING}: ${guard.hostError}`],
+      warnings: [`${ZERO_MATCH_WARNING}: ${guard.zeroMatch}`, `${HOST_ERROR_WARNING}: ${guard.hostError}`, ...guard.challengeWaits],
     };
   }
   return {
     failureCategory: "structure_changed",
     runStatus: guard.scheduled ? "COMPLETED" : "FAILED",
     error: `item selector matched nothing: ${guard.zeroMatch} — no auto-detect fallback; previous listings kept`,
-    warnings: [`${ZERO_MATCH_WARNING}: ${guard.zeroMatch}`],
+    warnings: [`${ZERO_MATCH_WARNING}: ${guard.zeroMatch}`, ...guard.challengeWaits],
   };
 }
