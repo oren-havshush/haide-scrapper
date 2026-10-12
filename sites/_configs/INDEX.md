@@ -209,6 +209,7 @@ several listing pages back into one and stops publishing the rest.
 | פרופורציה | ACTIVE | 7 | 3530 | 1 | `proportsia--msnicc` |
 | פתרונות עדיפים-ביטוח | ACTIVE | 6 | 4489 | 1 | `adifim--26vavw` |
 | צ'יטה שליחויות | ACTIVE | 4 | 332 | 1 | `chitadelivery--xpwqf1` |
+| צעדים ייעוץ והשמה בע"מ | ACTIVE | 10 | 7590 | 1 | `tzeadim--tv5x8v` |
 | צרפתי שמעון | ACTIVE | 5 | 3075 | 1 | `s-sarfati--5dr0yc` |
 | קבוצת ברן | ACTIVE | 8 | 7783 | 1 | `barangroup--36lhv6` |
 | קבוצת ויזל - פוקס | ACTIVE | 4 | 2133 | 1 | `dreamjobs--43loqz` |
