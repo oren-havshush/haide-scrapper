@@ -7,6 +7,7 @@ import { stampFormData, staticCompletion, staticFormBlob } from "../lib/formFiel
 import { completeFormBlob } from "../lib/formShape";
 import { navigateWithRetry, serverErrorRetry } from "../lib/navRetry";
 import { capItems, MAX_EXTRACTED_ITEMS } from "../lib/itemCap";
+import { FLEET_LIMITS, pageCap, readSiteLimits, resolveLimits, type ResolvedLimits } from "../lib/siteLimits";
 import { fillRowFormTemplate, formTemplateWarnings } from "../lib/formTemplate";
 import { ITEM_CAP } from "../lib/sweepSelection";
 import {
@@ -193,6 +194,8 @@ interface RunMode {
   detailMode: DetailMode;
   /** Zero-match guard: a scheduled run never auto-detects (worker/lib/zeroMatch.ts). */
   extract: ExtractGuard;
+  /** The site's time budget, items and pages; the fleet's when it has none (worker/lib/siteLimits.ts). */
+  limits: ResolvedLimits;
 }
 
 /** Scrape execution context for error categorization */
@@ -222,13 +225,13 @@ interface ValidatedRecord {
 // Constants
 // ---------------------------------------------------------------------------
 
-const SCRAPE_TIMEOUT_MS = 900_000; // 15 minutes (large infinite-scroll listings + per-row extraction on multi-step pageFlow sites)
+// The run's deadline is runMode.limits.timeoutMs: 15 minutes unless the site sets limits (worker/lib/siteLimits.ts).
 const DETAIL_PAGE_TIMEOUT_MS = 15_000; // 15 seconds per detail page
 const NAVIGATION_TIMEOUT_MS = 30_000; // 30 seconds for page navigation
 // MAX_EXTRACTED_ITEMS (2,000) lives in worker/lib/itemCap.ts, with the rule that records it.
 
 // Completion-quality thresholds (ScrapeRun.warnings — non-blocking signals only).
-const NEAR_TIMEOUT_MS = 840_000; // warn when a COMPLETED run ran within ~1 min of the 15-min cap
+// near_timeout warns from runMode.limits.nearTimeoutMs, a minute before the deadline.
 const COUNT_DROP_WARN_RATIO = 0.3; // warn when the saved job count drops >30% vs the previous completed run
 
 /** Best-effort `networkidle` after `domcontentloaded` (non-blocking on timeout). */
@@ -1658,7 +1661,7 @@ function dedupeAndCapRawFields(
 
   // Deduped in full first, so a cap that bites knows how many there were
   // (worker/lib/itemCap.ts); it used to stop the loop at the cap in silence.
-  return capItems(deduped, MAX_EXTRACTED_ITEMS, guard);
+  return capItems(deduped, guard?.maxItems ?? MAX_EXTRACTED_ITEMS, guard);
 }
 
 // ---------------------------------------------------------------------------
@@ -2359,7 +2362,7 @@ function getPaginationConfig(
   if (!p || typeof p !== "object") return null;
 
   const maxPages = typeof p["maxPages"] === "number" && p["maxPages"]! > 0
-    ? Math.min(p["maxPages"] as number, 100)
+    ? pageCap(p["maxPages"] as number, readSiteLimits(fieldMappingsRaw))
     : 20;
   const settleMs = typeof p["settleMs"] === "number" && p["settleMs"]! > 0
     ? Math.min(p["settleMs"] as number, 10_000)
@@ -2933,8 +2936,10 @@ function buildScrapeWarnings(args: {
   previousJobCount: number | null;
   deadDetailPages: number;
   elapsedMs: number;
+  timeoutMs: number;
+  nearTimeoutMs: number;
 }): string[] {
-  const { savedCount, previousJobCount, deadDetailPages, elapsedMs } = args;
+  const { savedCount, previousJobCount, deadDetailPages, elapsedMs, timeoutMs, nearTimeoutMs } = args;
   const warnings: string[] = [];
 
   if (
@@ -2948,9 +2953,9 @@ function buildScrapeWarnings(args: {
     );
   }
 
-  if (elapsedMs >= NEAR_TIMEOUT_MS) {
+  if (elapsedMs >= nearTimeoutMs) {
     warnings.push(
-      `near_timeout: run took ${Math.round(elapsedMs / 1000)}s (cap ${Math.round(SCRAPE_TIMEOUT_MS / 1000)}s)`,
+      `near_timeout: run took ${Math.round(elapsedMs / 1000)}s (cap ${Math.round(timeoutMs / 1000)}s)`,
     );
   }
 
@@ -3167,12 +3172,15 @@ export async function handleScrapeJob(
   // Only the sweep driver sets this; the HTTP route cannot. Everything the
   // scheduled gate does hangs off it, so it is read once, here.
   const scheduled = readScheduledFlag(job.payload);
+  // The site's own limits, or the fleet's 15 minutes / 2,000 items / 100 pages.
+  const limits = resolveLimits(readSiteLimits(site.fieldMappings));
   const runMode: RunMode = {
     scheduled,
     abort: createAbortToken<ScrapeResult>(),
     walks: [],
     detailMode: readDetailMode(job.payload),
-    extract: newExtractGuard(scheduled),
+    extract: newExtractGuard(scheduled, limits.maxItems),
+    limits,
   };
 
   if (!scrapeRunId) {
@@ -3779,7 +3787,7 @@ async function executeScrape(
   setupScript: string | null = null,
   loadMoreSelector: string | null = null,
   browserOverrides: BrowserOverrides | null = null,
-  runMode: RunMode = { scheduled: false, abort: createAbortToken<ScrapeResult>(), walks: [], detailMode: "full", extract: newExtractGuard(false) },
+  runMode: RunMode = { scheduled: false, abort: createAbortToken<ScrapeResult>(), walks: [], detailMode: "full", extract: newExtractGuard(false), limits: FLEET_LIMITS },
   listingTargets: ListingTarget[] = [{ url: site.siteUrl }],
 ): Promise<ScrapeResult> {
   const scrapeStartedAt = Date.now();
@@ -4115,7 +4123,7 @@ async function executeScrape(
     // control, on a run that has already deleted nothing.
     if (
       listingTargets.length > 1 &&
-      listingBudgetExhausted(scrapeStartedAt, Date.now(), SCRAPE_TIMEOUT_MS)
+      listingBudgetExhausted(scrapeStartedAt, Date.now(), runMode.limits.timeoutMs)
     ) {
       console.warn(`[scrape] out of time budget before ${target.url}`);
       perUrl.push({ url: target.url, items: [], seen: null, error: BUDGET_EXHAUSTED });
@@ -4192,7 +4200,7 @@ async function executeScrape(
     return await refuseListingRun(scrapeRunId, {
       failureCategory: ITEM_CAP,
       error:
-        `item cap: ${runMode.extract.itemCap} distinct cards, more than the ${MAX_EXTRACTED_ITEMS} ` +
+        `item cap: ${runMode.extract.itemCap} distinct cards, more than the ${runMode.extract.maxItems} ` +
         "a run may write; previous listings kept",
       warnings: challengeWarnings(runMode.extract),
     });
@@ -4806,6 +4814,8 @@ async function executeScrape(
       previousJobCount: previousRun?.jobCount ?? null,
       deadDetailPages: countDeadDetailPages(rawFieldsList),
       elapsedMs: Date.now() - scrapeStartedAt,
+      timeoutMs: runMode.limits.timeoutMs,
+      nearTimeoutMs: runMode.limits.nearTimeoutMs,
     });
     // Location quality is read back from what was actually saved, so it
     // reflects overrides and normalisation rather than the pre-write values.
@@ -4951,7 +4961,7 @@ function createTimeoutPromise(
   scrapeRunId: string,
   siteId: string,
   fieldMappingsRaw: unknown,
-  runMode: RunMode = { scheduled: false, abort: createAbortToken<ScrapeResult>(), walks: [], detailMode: "full", extract: newExtractGuard(false) },
+  runMode: RunMode = { scheduled: false, abort: createAbortToken<ScrapeResult>(), walks: [], detailMode: "full", extract: newExtractGuard(false), limits: FLEET_LIMITS },
 ): { promise: Promise<ScrapeResult>; cancel: () => void } {
   const { scheduled } = runMode;
   let timerId: ReturnType<typeof setTimeout>;
@@ -4978,7 +4988,7 @@ function createTimeoutPromise(
           // The transaction rolled back. Nothing was written and nothing
           // deleted; let the rejection below take the ordinary failure path.
         }
-        reject(new Error(`Scrape execution exceeded ${SCRAPE_TIMEOUT_MS / 60_000}-minute timeout`));
+        reject(new Error(`Scrape execution exceeded ${runMode.limits.timeoutMs / 60_000}-minute timeout`));
         return;
       }
 
@@ -5030,7 +5040,7 @@ function createTimeoutPromise(
           }
         } else {
           await failScrapeRun(scrapeRunId, siteId, {
-            error: `Scrape execution exceeded ${SCRAPE_TIMEOUT_MS / 60_000}-minute timeout`,
+            error: `Scrape execution exceeded ${runMode.limits.timeoutMs / 60_000}-minute timeout`,
             failureCategory: "timeout",
             scheduled,
           });
@@ -5039,8 +5049,8 @@ function createTimeoutPromise(
         console.error("[scrape] Failed to update ScrapeRun on timeout:", updateError);
       }
 
-      reject(new Error(`Scrape execution exceeded ${SCRAPE_TIMEOUT_MS / 60_000}-minute timeout`));
-    }, SCRAPE_TIMEOUT_MS);
+      reject(new Error(`Scrape execution exceeded ${runMode.limits.timeoutMs / 60_000}-minute timeout`));
+    }, runMode.limits.timeoutMs);
   });
   return { promise, cancel: () => clearTimeout(timerId) };
 }

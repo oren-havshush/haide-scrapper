@@ -108,7 +108,7 @@ check("scrape.ts wires it where it counts", () => {
   );
 
   // 2. The guard is the run's own, and only a scheduled run's refuses.
-  assert(/extract:\s*newExtractGuard\(scheduled\)/.test(src), "RunMode.extract = newExtractGuard(scheduled)");
+  assert(/extract:\s*newExtractGuard\(scheduled, limits\.maxItems\)/.test(src), "RunMode.extract = newExtractGuard(scheduled, limits.maxItems)");
 
   // 3. A zero match on a scheduled run stores no rows and keeps the previous ones.
   const exec = body("executeScrape");

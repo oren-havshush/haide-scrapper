@@ -151,10 +151,12 @@ export type ExtractGuard = {
   scriptTimeouts: string[];
   /** How many distinct cards there were when MAX_EXTRACTED_ITEMS bit; null when it did not (worker/lib/itemCap.ts). */
   itemCap: number | null;
+  /** Items this run may write: the site's limits.maxItems, else MAX_EXTRACTED_ITEMS (worker/lib/siteLimits.ts). */
+  maxItems: number;
 };
 
-export function newExtractGuard(scheduled: boolean): ExtractGuard {
-  return { noAutoDetect: true, scheduled, zeroMatch: null, zeroMatchTitle: null, challenge: null, scopeSuspects: new Map(), challengeWaits: [], hostError: null, scriptTimeouts: [], itemCap: null };
+export function newExtractGuard(scheduled: boolean, maxItems: number = MAX_EXTRACTED_ITEMS): ExtractGuard {
+  return { noAutoDetect: true, scheduled, zeroMatch: null, zeroMatchTitle: null, challenge: null, scopeSuspects: new Map(), challengeWaits: [], hostError: null, scriptTimeouts: [], itemCap: null, maxItems };
 }
 
 /**
@@ -219,7 +221,7 @@ export function zeroMatchRefusal(
       error:
         `item selector matched nothing: ${guard.zeroMatch} — the page was a Cloudflare challenge ("${title}"), ` +
         "not the listing; previous listings kept",
-      warnings: [`${ZERO_MATCH_WARNING}: ${guard.zeroMatch}`, `${BLOCKED_WARNING}: ${title}`, ...guard.challengeWaits, ...guard.scriptTimeouts, ...itemCapWarnings(guard, MAX_EXTRACTED_ITEMS)],
+      warnings: [`${ZERO_MATCH_WARNING}: ${guard.zeroMatch}`, `${BLOCKED_WARNING}: ${title}`, ...guard.challengeWaits, ...guard.scriptTimeouts, ...itemCapWarnings(guard)],
     };
   }
   if (guard.challenge) {
@@ -229,7 +231,7 @@ export function zeroMatchRefusal(
       error:
         `item selector matched nothing: ${guard.zeroMatch} — the page was a ${guard.challenge}, ` +
         "not the listing; previous listings kept",
-      warnings: [`${ZERO_MATCH_WARNING}: ${guard.zeroMatch}`, `${BLOCKED_WARNING}: ${guard.challenge}`, ...guard.challengeWaits, ...guard.scriptTimeouts, ...itemCapWarnings(guard, MAX_EXTRACTED_ITEMS)],
+      warnings: [`${ZERO_MATCH_WARNING}: ${guard.zeroMatch}`, `${BLOCKED_WARNING}: ${guard.challenge}`, ...guard.challengeWaits, ...guard.scriptTimeouts, ...itemCapWarnings(guard)],
     };
   }
   if (guard.hostError) {
@@ -239,13 +241,13 @@ export function zeroMatchRefusal(
       error:
         `listing answered ${guard.hostError} — item selector matched nothing: ${guard.zeroMatch}; ` +
         "previous listings kept",
-      warnings: [`${ZERO_MATCH_WARNING}: ${guard.zeroMatch}`, `${HOST_ERROR_WARNING}: ${guard.hostError}`, ...guard.challengeWaits, ...guard.scriptTimeouts, ...itemCapWarnings(guard, MAX_EXTRACTED_ITEMS)],
+      warnings: [`${ZERO_MATCH_WARNING}: ${guard.zeroMatch}`, `${HOST_ERROR_WARNING}: ${guard.hostError}`, ...guard.challengeWaits, ...guard.scriptTimeouts, ...itemCapWarnings(guard)],
     };
   }
   return {
     failureCategory: "structure_changed",
     runStatus: guard.scheduled ? "COMPLETED" : "FAILED",
     error: `item selector matched nothing: ${guard.zeroMatch} — no auto-detect fallback; previous listings kept`,
-    warnings: [`${ZERO_MATCH_WARNING}: ${guard.zeroMatch}`, ...guard.challengeWaits, ...guard.scriptTimeouts, ...itemCapWarnings(guard, MAX_EXTRACTED_ITEMS)],
+    warnings: [`${ZERO_MATCH_WARNING}: ${guard.zeroMatch}`, ...guard.challengeWaits, ...guard.scriptTimeouts, ...itemCapWarnings(guard)],
   };
 }

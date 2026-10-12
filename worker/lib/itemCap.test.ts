@@ -33,7 +33,7 @@ const items = (n: number) => Array.from({ length: n }, (_, i) => ({ id: String(i
   assert(kept.length === 2000, `the first 2,000 are kept (got ${kept.length})`);
   assert(guard.itemCap === 2524, `the run records how many there were (got ${guard.itemCap})`);
   assert(ITEM_CAP_WARNING === "item_cap_reached", "the warning type is item_cap_reached");
-  const w = itemCapWarnings(guard, 2000);
+  const w = itemCapWarnings(guard);
   assert(JSON.stringify(w) === JSON.stringify(["item_cap_reached: 2,000 of 2,524 cards"]), `the warning reads 2,000 of 2,524 (got ${JSON.stringify(w)})`);
 }
 // Exactly at the cap, and under it: nothing recorded.
@@ -41,7 +41,7 @@ const items = (n: number) => Array.from({ length: n }, (_, i) => ({ id: String(i
   const guard = newExtractGuard(true);
   assert(capItems(items(2000), 2000, guard).length === 2000 && guard.itemCap === null, "2,000 of 2,000 is not capped");
   assert(capItems(items(10), 2000, guard).length === 10 && guard.itemCap === null, "10 is not capped");
-  assert(itemCapWarnings(guard, 2000).length === 0, "no cap, no warning");
+  assert(itemCapWarnings(guard).length === 0, "no cap, no warning");
 }
 // Two capped calls in one run (a per-page cap, then the site's): the larger count is kept.
 {
@@ -82,7 +82,7 @@ const items = (n: number) => Array.from({ length: n }, (_, i) => ({ id: String(i
 {
   const src = readFileSync(join(__dirname, "../jobs/scrape.ts"), "utf8");
   assert(!/if \(deduped\.length >= MAX_EXTRACTED_ITEMS\) break;/.test(src), "the silent break is gone");
-  assert(/capItems\(deduped, MAX_EXTRACTED_ITEMS, guard\)/.test(src), "dedupeAndCapRawFields caps through capItems with the guard");
+  assert(/capItems\(deduped, guard\?\.maxItems \?\? MAX_EXTRACTED_ITEMS, guard\)/.test(src), "dedupeAndCapRawFields caps through capItems with the guard, at its max (siteLimits)");
   const calls = src.split("dedupeAndCapRawFields(").length - 2; // minus the definition
   const withGuard = (src.match(/dedupeAndCapRawFields\((all|rawFieldsList|autoList|seeds), guard\)/g) ?? []).length +
     (src.match(/dedupeAndCapRawFields\(merged\.items, runMode\.extract\)/g) ?? []).length +

@@ -19,7 +19,7 @@
 // records blocked_challenge: <detail> (owner, 2026-10-11, LRN-WRK-26).
 
 import { BLOCKED, BLOCKED_WARNING, CHALLENGE_PASSED_WARNING, type ExtractGuard } from "./zeroMatch";
-import { itemCapWarnings, MAX_EXTRACTED_ITEMS } from "./itemCap";
+import { itemCapWarnings } from "./itemCap";
 
 /** The longest the worker waits for the ipc chain to settle. */
 export const IPC_WAIT_CAP_MS = 20_000;
@@ -123,5 +123,5 @@ export function challengeLabel(category: string, challenge: string | null): stri
 export function challengeWarnings(guard: ExtractGuard | null, wrote = false): string[] {
   if (!guard) return [];
   const kind = wrote ? CHALLENGE_PASSED_WARNING : BLOCKED_WARNING;
-  return [...(guard.challenge ? [`${kind}: ${guard.challenge}`] : []), ...guard.challengeWaits, ...guard.scriptTimeouts, ...itemCapWarnings(guard, MAX_EXTRACTED_ITEMS)];
+  return [...(guard.challenge ? [`${kind}: ${guard.challenge}`] : []), ...guard.challengeWaits, ...guard.scriptTimeouts, ...itemCapWarnings(guard)];
 }

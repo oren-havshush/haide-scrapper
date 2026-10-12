@@ -2,6 +2,7 @@ import { z } from "zod";
 import { isCanonicalLocation } from "./locations";
 import { FIX_FIELDS } from "./fixFields";
 import { SITE_LANES } from "./siteLane";
+import { FLEET_MAX_PAGES, FLEET_TIME_BUDGET_MINUTES, LIMIT_CEILINGS } from "../../worker/lib/siteLimits";
 import { templateTokenErrors } from "../../worker/lib/formTemplate";
 
 /**
@@ -270,7 +271,8 @@ export const updateSiteConfigSchema = z.object({
       z.object({
         type: z.literal("click"),
         nextSelector: z.string(),
-        maxPages: z.number().int().min(1).max(100).optional(),
+        // Above 100 only with limits.maxPages (the refine at the end).
+        maxPages: z.number().int().min(1).max(LIMIT_CEILINGS.maxPages).optional(),
         settleMs: z.number().int().min(100).max(10_000).optional(),
       }),
       z.object({
@@ -281,7 +283,8 @@ export const updateSiteConfigSchema = z.object({
         start: z.number().int().min(0).max(10_000).optional(),
         // Increment between consecutive pages.
         step: z.number().int().min(1).max(1_000).optional(),
-        maxPages: z.number().int().min(1).max(100).optional(),
+        // Above 100 only with limits.maxPages (the refine at the end).
+        maxPages: z.number().int().min(1).max(LIMIT_CEILINGS.maxPages).optional(),
         settleMs: z.number().int().min(100).max(10_000).optional(),
       }),
     ])
@@ -306,6 +309,18 @@ export const updateSiteConfigSchema = z.object({
   // window (22:00-01:45 Asia/Jerusalem) and never in the nightly. Absent is
   // the nightly. Stored under fieldMappings._meta.lane.
   lane: z.enum(SITE_LANES).optional(),
+  // Per-site limits (worker/lib/siteLimits.ts): the run's time budget, items
+  // and listing pages. Absent, the fleet's 15 minutes, 2,000 and 100. A budget
+  // above 15 needs lane "big" (checked below). Stored under _meta.limits.
+  limits: z
+    .object({
+      timeBudgetMinutes: z.number().int().min(1).max(LIMIT_CEILINGS.timeBudgetMinutes),
+      maxItems: z.number().int().min(1).max(LIMIT_CEILINGS.maxItems),
+      maxPages: z.number().int().min(1).max(LIMIT_CEILINGS.maxPages),
+    })
+    .partial()
+    .strict()
+    .optional(),
   // Optional JS snippet evaluated in the page context once after page load
   // and before extraction. Lets SPAs that hide most content behind app state
   // (Angular scope flags, React store slices) render the full listing so the
@@ -418,6 +433,26 @@ export const updateSiteConfigSchema = z.object({
     .partial()
     .strict()
     .optional(),
+}).superRefine((c, ctx) => {
+  // The nightly budgets 15 minutes a site; more is the big lane's (finding 2).
+  const budget = c.limits?.timeBudgetMinutes;
+  if (budget !== undefined && budget > FLEET_TIME_BUDGET_MINUTES && c.lane !== "big") {
+    ctx.addIssue({
+      code: "custom",
+      path: ["limits", "timeBudgetMinutes"],
+      message: `limits.timeBudgetMinutes above ${FLEET_TIME_BUDGET_MINUTES} needs lane "big" (got ${budget})`,
+    });
+  }
+  // pagination.maxPages rises above 100 only through limits.maxPages.
+  const pages = c.pagination?.maxPages;
+  const allowed = c.limits?.maxPages ?? FLEET_MAX_PAGES;
+  if (pages !== undefined && pages > allowed) {
+    ctx.addIssue({
+      code: "custom",
+      path: ["pagination", "maxPages"],
+      message: `pagination.maxPages ${pages} is above ${allowed}; raise limits.maxPages (at most ${LIMIT_CEILINGS.maxPages}) to allow it`,
+    });
+  }
 });
 
 // ---------------------------------------------------------------------------

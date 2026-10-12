@@ -20,10 +20,10 @@ export function capItems<T>(items: T[], max: number, guard: ExtractGuard | null)
 
 const fmt = (n: number) => n.toLocaleString("en-US");
 
-/** The run warning, when the cap bit: "item_cap_reached: 2,000 of 2,524 cards". */
-export function itemCapWarnings(guard: ExtractGuard | null, max: number): string[] {
+/** The run warning, when the cap bit: "item_cap_reached: 2,000 of 2,524 cards", with the run's own cap. */
+export function itemCapWarnings(guard: ExtractGuard | null): string[] {
   if (!guard || guard.itemCap === null) return [];
-  return [`${ITEM_CAP_WARNING}: ${fmt(max)} of ${fmt(guard.itemCap)} cards`];
+  return [`${ITEM_CAP_WARNING}: ${fmt(guard.maxItems)} of ${fmt(guard.itemCap)} cards`];
 }
 
 /** Items one run may write (was a local constant in scrape.ts). */

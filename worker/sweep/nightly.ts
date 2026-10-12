@@ -58,6 +58,7 @@ import {
 import { sweepDate, type ReportItem, type SkippedSite } from "../lib/sweepReport";
 import { readAcceptedGates, type AcceptedGates } from "../../src/lib/acceptedGates";
 import { sendSweepMail } from "../lib/sweepMail";
+import { readSiteLimits, sweepWaitMinutes } from "../lib/siteLimits";
 import {
   cancelPendingJobById,
   closeSweep,
@@ -349,7 +350,7 @@ async function waitForJobTerminal(
 }
 
 async function runOneSite(
-  site: { id: string; siteUrl: string },
+  site: { id: string; siteUrl: string; fieldMappings: unknown },
   detailMode: DetailMode,
   opts?: { probe?: (workerJobId: string) => Promise<DrainVerdict> },
 ): Promise<SiteResult> {
@@ -435,8 +436,11 @@ async function runOneSite(
     }
   }
 
+  // A site with limits.timeBudgetMinutes is waited for its budget + 3, so its
+  // own deadline fires first; every other site, the fleet's perSiteTimeoutMinutes.
+  const waitMinutes = sweepWaitMinutes(readSiteLimits(site.fieldMappings), sweepConfig.perSiteTimeoutMinutes);
   const waited = await waitForRun(scrapeRunId, {
-    timeoutMs: sweepConfig.perSiteTimeoutMinutes * 60_000,
+    timeoutMs: waitMinutes * 60_000,
     pollMs: sweepConfig.pollIntervalMs,
   });
   defect = waited.defect;
@@ -448,7 +452,7 @@ async function runOneSite(
   if (waited.status === "TIMED_OUT") {
     const cleanup = await cancelPendingSiteJob(
       scrapeRunId,
-      `sweep stopped waiting after ${sweepConfig.perSiteTimeoutMinutes}m`,
+      `sweep stopped waiting after ${waitMinutes}m`,
     );
     if (cleanup.leftRunning) {
       defect =

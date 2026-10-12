@@ -9,6 +9,7 @@ import {
 import { resolveHqCity } from "@/lib/locations";
 import { onlyAcceptedGatesChanged, type AcceptedGates } from "@/lib/acceptedGates";
 import type { SiteLane } from "@/lib/siteLane";
+import type { SiteLimits } from "../../worker/lib/siteLimits";
 import { nextOperatorFields } from "@/lib/operatorFields";
 import { buildScrapeJobRow } from "@/lib/scrapeJobRow";
 import { findListingRunsBySiteIds } from "@/lib/listingRun";
@@ -418,6 +419,7 @@ export async function saveSiteConfig(
     locationFallback?: string;
     listingUrls?: string[];
     lane?: SiteLane;
+    limits?: SiteLimits;
     acceptedGates?: AcceptedGates;
   }
 ) {
@@ -438,6 +440,7 @@ export async function saveSiteConfig(
       formCapture: config.formCapture,
       listingUrls,
       lane: config.lane ?? null,
+      limits: config.limits ?? null,
       pagination: config.pagination || null,
       setupScript: config.setupScript || null,
       loadMoreSelector: config.loadMoreSelector || null,
