@@ -10,6 +10,7 @@ import { resolveHqCity } from "@/lib/locations";
 import { onlyAcceptedGatesChanged, type AcceptedGates } from "@/lib/acceptedGates";
 import type { SiteLane } from "@/lib/siteLane";
 import type { SiteLimits } from "../../worker/lib/siteLimits";
+import { ajaxTemplateError } from "../../worker/lib/ajaxWalk";
 import { nextOperatorFields } from "@/lib/operatorFields";
 import { buildScrapeJobRow } from "@/lib/scrapeJobRow";
 import { findListingRunsBySiteIds } from "@/lib/listingRun";
@@ -408,7 +409,8 @@ export async function saveSiteConfig(
     originalMappings?: Record<string, unknown>;
     pagination?:
       | { type: "click"; nextSelector: string; maxPages?: number; settleMs?: number }
-      | { type: "url"; param: string; start?: number; step?: number; maxPages?: number; settleMs?: number };
+      | { type: "url"; param: string; start?: number; step?: number; maxPages?: number; settleMs?: number }
+      | { type: "ajax"; urlTemplate: string; start?: number; maxPages?: number; concurrency?: number; containerSelector: string; settleMs?: number };
     setupScript?: string;
     loadMoreSelector?: string;
     browserOverrides?: { userAgent?: string; extraHeaders?: Record<string, string>; bypassCSP?: boolean; requestDelayMs?: number };
@@ -429,6 +431,12 @@ export async function saveSiteConfig(
   }
 
   const listingUrls = canonicalizeListingUrls(config.listingUrls, site.siteUrl);
+  // The ajax mode calls its endpoint from the listing page: same host only, as
+  // for listingUrls (worker/lib/ajaxWalk.ts).
+  if (config.pagination?.type === "ajax") {
+    const err = ajaxTemplateError(config.pagination.urlTemplate, site.siteUrl);
+    if (err) throw new ValidationError(err);
+  }
 
   const fieldMappingsWithMeta: Record<string, unknown> = {
     ...config.fieldMappings,

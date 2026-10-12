@@ -29,8 +29,10 @@ export type PaginationWalk = {
   /** Items (or detail URLs) gained on each page, in order. */
   pageCounts: number[];
   /** Why the walk stopped. `maxPages` is the config's own bound; `aborted` is
-   *  the run's deadline, which already refuses persistence on its own. */
-  stoppedBy: AdvanceOutcome | "maxPages" | "aborted" | null;
+   *  the run's deadline, which already refuses persistence on its own.
+   *  `failed` is the ajax mode's page that failed twice (worker/lib/ajaxWalk.ts):
+   *  the listing had a page it could not deliver, so the walk is always truncated. */
+  stoppedBy: AdvanceOutcome | "maxPages" | "aborted" | "failed" | null;
 };
 
 export function newPaginationWalk(): PaginationWalk {
@@ -54,6 +56,9 @@ export function newPaginationWalk(): PaginationWalk {
  * config's own bound, and the deadline already refuses persistence.
  */
 export function isTruncatedWalk(walk: PaginationWalk | null | undefined): boolean {
+  // An ajax page that failed twice: there is no "partial last page" question to
+  // ask, the walk lost a page in the middle (worker/lib/ajaxWalk.ts).
+  if (walk?.stoppedBy === "failed") return true;
   if (!walk || walk.stoppedBy !== "stalled") return false;
   const pages = walk.pageCounts;
   if (pages.length < 2) return false;

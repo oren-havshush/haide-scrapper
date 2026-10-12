@@ -89,8 +89,9 @@ const items = (n: number) => Array.from({ length: n }, (_, i) => ({ id: String(i
     (src.match(/\], runMode\.extract\);/g) ?? []).length;
   // Two calls go without the guard by design: the auto-detect comparison (a
   // cap is recorded only on rows the run returns) and planDetailsReadOnly (a
-  // read-only plan, not a run).
-  assert(calls === 9 && withGuard === 7, `seven of the nine calls pass the run's guard (got ${withGuard} of ${calls})`);
+  // read-only plan, not a run). The ajax listing mode's single pass
+  // (worker/lib/ajaxWalk.ts) is the tenth, with its guard.
+  assert(calls === 10 && withGuard === 8, `eight of the ten calls pass the run's guard (got ${withGuard} of ${calls})`);
   assert(/\/\/ Compared without the guard: a cap is recorded only on rows the run returns\.\n\s+const autoDeduped = dedupeAndCapRawFields\(autoList\);/.test(src), "the auto-detect comparison records nothing");
   const after = src.slice(src.indexOf("const zeroMatch = zeroMatchRefusal(runMode.extract, rawFieldsList.length);"));
   assert(/runMode\.extract\?\.itemCap && scheduled/.test(after.slice(0, 1500)), "a scheduled run refuses right after the zero-match check");

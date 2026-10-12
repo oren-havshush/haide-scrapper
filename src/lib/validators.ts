@@ -3,6 +3,7 @@ import { isCanonicalLocation } from "./locations";
 import { FIX_FIELDS } from "./fixFields";
 import { SITE_LANES } from "./siteLane";
 import { FLEET_MAX_PAGES, FLEET_TIME_BUDGET_MINUTES, LIMIT_CEILINGS } from "../../worker/lib/siteLimits";
+import { AJAX_MAX_CONCURRENCY, AJAX_PAGE_TOKEN } from "../../worker/lib/ajaxWalk";
 import { templateTokenErrors } from "../../worker/lib/formTemplate";
 
 /**
@@ -285,6 +286,25 @@ export const updateSiteConfigSchema = z.object({
         step: z.number().int().min(1).max(1_000).optional(),
         // Above 100 only with limits.maxPages (the refine at the end).
         maxPages: z.number().int().min(1).max(LIMIT_CEILINGS.maxPages).optional(),
+        settleMs: z.number().int().min(100).max(10_000).optional(),
+      }),
+      // "ajax" (worker/lib/ajaxWalk.ts): the listing's own XHR endpoint, called
+      // from the page with {n} = start, start+1, ... until a page holds no item
+      // blocks; each answer is appended to containerSelector, and a page that
+      // fails twice refuses the run. The template's host is checked in
+      // saveSiteConfig, where the site is known.
+      z.object({
+        type: z.literal("ajax"),
+        urlTemplate: z
+          .string()
+          .trim()
+          .max(1000)
+          .refine((t) => t.includes(AJAX_PAGE_TOKEN), { message: `pagination.urlTemplate must contain ${AJAX_PAGE_TOKEN}` }),
+        start: z.number().int().min(0).max(10_000).optional(),
+        // Above 100 only with limits.maxPages (the refine at the end).
+        maxPages: z.number().int().min(1).max(LIMIT_CEILINGS.maxPages).optional(),
+        concurrency: z.number().int().min(1).max(AJAX_MAX_CONCURRENCY).optional(),
+        containerSelector: z.string().trim().min(1).max(500),
         settleMs: z.number().int().min(100).max(10_000).optional(),
       }),
     ])

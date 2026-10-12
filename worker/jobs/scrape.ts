@@ -9,6 +9,7 @@ import { navigateWithRetry, serverErrorRetry } from "../lib/navRetry";
 import { capItems, MAX_EXTRACTED_ITEMS } from "../lib/itemCap";
 import { FLEET_LIMITS, pageCap, readSiteLimits, resolveLimits, type ResolvedLimits } from "../lib/siteLimits";
 import { CUT_OFF, cutOffMessage, cutOffWarning, readStopAt, runDeadline } from "../lib/bigLane";
+import { AJAX_MAX_CONCURRENCY, ajaxWalk, type AjaxPaginationConfig } from "../lib/ajaxWalk";
 import { fillRowFormTemplate, formTemplateWarnings } from "../lib/formTemplate";
 import { ITEM_CAP } from "../lib/sweepSelection";
 import {
@@ -1451,6 +1452,14 @@ async function extractRawFieldsFromListingPage(
   /** The run's zero-match guard (worker/lib/zeroMatch.ts). */
   guard: ExtractGuard | null = null,
 ): Promise<Record<string, string>[]> {
+  // The ajax mode loads every page into the listing first, then the cards are
+  // read once (worker/lib/ajaxWalk.ts).
+  if (pagination?.type === "ajax") {
+    await runAjaxWalk(page, pagination, itemSelector, abort, walks);
+    const all = await extractRawFieldsFromListingPageOnce(page, fieldMappings, listingSelector, itemSelector, revealSelector, guard);
+    return dedupeAndCapRawFields(all, guard);
+  }
+
   // If pagination is configured, repeat extraction per page and merge.
   // We dedupe across pages so the same item from page 1 doesn't double up if
   // the SPA leaves it in the DOM. Uses the same key tuple as
@@ -1825,17 +1834,24 @@ async function extractRawFieldsWithPageFlow(
   // The URL-collection block below runs per listing page. With pagination,
   // we run it for each clicked page, accumulating into the same detailUrls /
   // listingFieldsByUrl. With no pagination, this loop runs once.
-  const maxListingPages = pagination ? pagination.maxPages : 1;
+  //
+  // The ajax mode loads every page into the listing first (worker/lib/ajaxWalk.ts),
+  // and its walk is recorded there; the loop below then runs once.
+  if (pagination?.type === "ajax") {
+    await runAjaxWalk(page, pagination, itemSelector, abort, walks);
+  }
+  const stepPagination: StepPaginationConfig | null = pagination?.type === "ajax" ? null : pagination;
+  const maxListingPages = stepPagination ? stepPagination.maxPages : 1;
   // Stable base for URL pagination (param stripped). The listing was already
   // navigated to pageFlow[0].url above, which is sequence 0.
   const paginationBaseUrl =
-    pagination?.type === "url"
-      ? stripPaginationParam(page.url(), pagination.param)
+    stepPagination?.type === "url"
+      ? stripPaginationParam(page.url(), stepPagination.param)
       : null;
-  const walk = pagination ? newPaginationWalk() : null;
+  const walk = stepPagination ? newPaginationWalk() : null;
   if (walk) walks?.push(walk);
   for (let listingPageIdx = 1; listingPageIdx <= maxListingPages; listingPageIdx++) {
-    const sigBefore = pagination
+    const sigBefore = stepPagination
       ? await firstItemSignature(page, itemSelector)
       : "";
     const urlsBefore = detailUrls.length;
@@ -1987,7 +2003,7 @@ async function extractRawFieldsWithPageFlow(
   }
 
     // ---- Pagination: advance to next listing page or stop. ----
-    if (!pagination || !walk) break;
+    if (!stepPagination || !walk) break;
     const gainedUrls = detailUrls.length - urlsBefore;
     walk.pageCounts.push(gainedUrls);
     if (isAborted(abort)) {
@@ -2009,7 +2025,7 @@ async function extractRawFieldsWithPageFlow(
     const outcome: AdvanceOutcome = await advanceToNextPage(
       page,
       itemSelector,
-      pagination,
+      stepPagination,
       sigBefore,
       paginationBaseUrl,
       listingPageIdx,
@@ -2357,7 +2373,9 @@ interface UrlPaginationConfig {
   settleMs: number;
 }
 
-type PaginationConfig = ClickPaginationConfig | UrlPaginationConfig;
+/** The modes that step page by page; the ajax mode loads every page up front (worker/lib/ajaxWalk.ts). */
+type StepPaginationConfig = ClickPaginationConfig | UrlPaginationConfig;
+type PaginationConfig = StepPaginationConfig | AjaxPaginationConfig;
 
 function getPaginationConfig(
   fieldMappingsRaw: unknown,
@@ -2376,6 +2394,30 @@ function getPaginationConfig(
   const settleMs = typeof p["settleMs"] === "number" && p["settleMs"]! > 0
     ? Math.min(p["settleMs"] as number, 10_000)
     : 1200;
+
+  if (p["type"] === "ajax") {
+    if (typeof p["urlTemplate"] !== "string" || typeof p["containerSelector"] !== "string") return null;
+    const start = typeof p["start"] === "number" && p["start"]! >= 0 ? (p["start"] as number) : 1;
+    const concurrency = typeof p["concurrency"] === "number" && p["concurrency"]! > 0
+      ? Math.min(p["concurrency"] as number, AJAX_MAX_CONCURRENCY)
+      : 1;
+    // Absent, as many pages as the site's limits allow (100 without limits).
+    const ajaxMaxPages = typeof p["maxPages"] === "number" && p["maxPages"]! > 0
+      ? maxPages
+      : pageCap(Number.MAX_SAFE_INTEGER, readSiteLimits(fieldMappingsRaw));
+    console.info(
+      `[scrape] pagination: type=ajax urlTemplate="${p["urlTemplate"]}" start=${start} maxPages=${ajaxMaxPages} concurrency=${concurrency}`,
+    );
+    return {
+      type: "ajax",
+      urlTemplate: p["urlTemplate"] as string,
+      start,
+      maxPages: ajaxMaxPages,
+      concurrency,
+      containerSelector: p["containerSelector"] as string,
+      settleMs,
+    };
+  }
 
   if (p["type"] === "url") {
     if (typeof p["param"] !== "string" || !p["param"]) return null;
@@ -2410,6 +2452,73 @@ function getPaginationConfig(
     maxPages,
     settleMs,
   };
+}
+
+/**
+ * The ajax mode's page side (worker/lib/ajaxWalk.ts): each call is a fetch from
+ * the listing page's own context, with its cookies, paced by the site's request
+ * delay; each answer's blocks are counted with the item selector and its HTML
+ * appended to the container. Images, frames and media in the appended HTML have
+ * their src/srcset set aside (data-ajax-src, data-ajax-srcset), so 250 pages
+ * cost the employer 250 calls and not every image in them. The walk is pushed
+ * onto the run's walks, so the pagination guard judges it.
+ */
+async function runAjaxWalk(
+  page: Page,
+  cfg: AjaxPaginationConfig,
+  itemSelector: string | null,
+  abort: AbortToken<unknown> | null,
+  walks: PaginationWalk[] | null,
+): Promise<void> {
+  const walk = newPaginationWalk();
+  walks?.push(walk);
+  await ajaxWalk(
+    cfg,
+    {
+      fetchPage: (url) =>
+        page.evaluate(
+          async ({ url, sel }) => {
+            try {
+              const res = await fetch(url, { credentials: "include" });
+              if (!res.ok) return { ok: false, blocks: 0, html: "" };
+              const html = await res.text();
+              const t = document.createElement("template");
+              t.innerHTML = html;
+              const blocks = sel ? t.content.querySelectorAll(sel).length : t.content.children.length;
+              return { ok: true, blocks, html };
+            } catch {
+              return { ok: false, blocks: 0, html: "" };
+            }
+          },
+          { url, sel: itemSelector },
+        ),
+      appendPage: async (html) => {
+        await page.evaluate(
+          ({ html, sel }) => {
+            const container = document.querySelector(sel);
+            if (!container) throw new Error(`ajax container ${sel} not found`);
+            const t = document.createElement("template");
+            t.innerHTML = html;
+            for (const el of Array.from(t.content.querySelectorAll("img, source, iframe, video, audio"))) {
+              for (const [attr, aside] of [["src", "data-ajax-src"], ["srcset", "data-ajax-srcset"]]) {
+                const v = el.getAttribute(attr);
+                if (v !== null) {
+                  el.setAttribute(aside, v);
+                  el.removeAttribute(attr);
+                }
+              }
+            }
+            container.appendChild(t.content);
+          },
+          { html, sel: cfg.containerSelector },
+        );
+      },
+      pace: () => beforeClickLoad(page, "pagination"),
+      aborted: () => isAborted(abort),
+    },
+    walk,
+  );
+  console.info(`[scrape] pagination(ajax): ${walk.pageCounts.length} page(s), stopped by ${walk.stoppedBy}`);
 }
 
 // Build a listing URL for a given URL-pagination sequence index (0-based).
@@ -2459,7 +2568,7 @@ function stripPaginationParam(url: string, param: string): string {
 async function advanceToNextPage(
   page: Page,
   itemSelector: string | null,
-  cfg: PaginationConfig,
+  cfg: StepPaginationConfig,
   signatureBefore: string,
   baseUrl: string | null = null,
   nextSeqIndex = 0,
