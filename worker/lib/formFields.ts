@@ -140,6 +140,11 @@ export function liveFormBlob(
  * The blob built from a site's saved formCapture, used when the live form is
  * not on the page. Stamped static, with the config's savedAt as capturedAt.
  * Null when nothing was saved, as before.
+ *
+ * A saved field value may be a per-job template, {{job.<token>}}: it is copied
+ * here as text and filled per job in buildJobRows (worker/lib/formTemplate.ts,
+ * LRN-FORM-12), so no stored row carries template text. The blob's shape is
+ * unchanged by it, so FORM_EXTRACTOR_VERSION is too.
  */
 export function staticFormBlob(formCapture: unknown, savedAt: string | null): string | null {
   if (!formCapture || typeof formCapture !== "object") return null;

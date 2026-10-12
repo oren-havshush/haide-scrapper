@@ -4526,3 +4526,23 @@ is added that the citing text does not say. Their status rows are in
   the read-only detail planner do not record a cap; only rows the run returns do.
 - **Generalizes to:** a limit that truncates must say it truncated, on the run, in words the report
   can quote.
+
+## LRN-FORM-12 — a site-wide form can carry per-job values: the {{job.<token>}} template
+
+- **Date / site:** 2026-10-13; the developer's 27 sites whose site-wide form named no job (l-b,
+  matrix, maccabi4u, yaelgroup and others).
+- **Signal:** many sites use one application form for every job and let the page's own script fill a
+  hidden job field. We stored one copy of the form per site, so every job got the same constant, or
+  none: a submit named no job, or the wrong one.
+- **Rule (worker/lib/formTemplate.ts):** a stored form field's value may contain `{{job.<token>}}`,
+  alone or inside literal text, from a closed list: `externalJobId`, `idNumber` (the last run of
+  digits in the id), `title`, `url`, `urlNumber` (the last run of digits in the detail URL),
+  `urlParam:<name>`. `buildJobRows` fills it per job, after the id fallback, on a `static` form only,
+  from that job's own values. A token that resolves to nothing leaves the field EMPTY and is reported
+  as `form_template_unfilled: <field> (<token>) on N job(s)`; a job never receives another job's
+  value. `validators.ts` refuses any other `{{...}}` at save. The blob shape is unchanged
+  (`FORM_EXTRACTOR_VERSION` stays 4); the public site sees concrete values, never template text.
+- **Before setting one:** GET one job page and confirm the page fills that field with that value;
+  a token that only looks right (a hashed id still has digits) is a wrong value.
+- **Generalizes to:** a per-site constant that is really per-job is a template, filled from the row
+  itself, never copied from a sibling.
