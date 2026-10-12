@@ -15,7 +15,7 @@
 
 export type MirrorDoc = {
   _exportedAt?: string;
-  fieldMappings?: { _meta?: { savedAt?: unknown } };
+  fieldMappings?: { _meta?: { savedAt?: unknown }; [k: string]: unknown };
   [k: string]: unknown;
 };
 
