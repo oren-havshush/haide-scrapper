@@ -13,7 +13,7 @@
 
 import { DEFAULT_DROP_THRESHOLDS, FIELD_FILL_THRESHOLD, isSuspiciousDrop, type DropThresholds } from "./scheduledRun";
 import { LISTING_SOFT_CATEGORIES } from "./listingTargets";
-import { FIELD_FILL_DROP } from "./sweepSelection";
+import { FIELD_FILL_DROP, ITEM_CAP } from "./sweepSelection";
 import { acceptedBelowGate, type AcceptedGates } from "../../src/lib/acceptedGates";
 import { challengeVendor } from "./zeroMatch";
 
@@ -530,6 +530,12 @@ export function needsAttention(
         ? w.slice(w.indexOf(":") + 1).trim()
         : `description fill fell below ${Math.round(FIELD_FILL_THRESHOLD * 100)}%`;
       add(i, `${what} — nothing written, ${i.jobsAfter} listing(s) kept`);
+    } else if (i.outcome === "suspicious_drop" && i.failureCategory === ITEM_CAP) {
+      // More distinct cards than a run may write (worker/lib/itemCap.ts): the
+      // warning carries the cap and the count.
+      const w = (i.warnings ?? []).map(String).find((x) => x.startsWith("item_cap_reached:"));
+      const what = w ? w.slice(w.indexOf(":") + 1).trim() : "more cards than the cap";
+      add(i, `item cap refused: ${what}, more than a run may write — nothing written, ${i.jobsAfter} listing(s) kept`);
     } else if (
       i.outcome === "suspicious_drop" &&
       (i.warnings ?? []).map(String).some((x) => x.startsWith("listing_gap_drop:"))

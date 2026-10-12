@@ -57,6 +57,13 @@ export const SUSPICIOUS_DROP = "suspicious_drop";
  */
 export const FIELD_FILL_DROP = "field_fill_drop";
 
+/**
+ * The item cap's refusal (worker/lib/itemCap.ts): the site had more distinct
+ * cards than a run may write, so a scheduled run wrote nothing rather than a
+ * silent partial set. The same outcome as a refused drop, rows kept.
+ */
+export const ITEM_CAP = "item_cap";
+
 export type Outcome = "success" | "hard_failure" | "soft_failure" | "suspicious_drop" | "other";
 
 export function classifyOutcome(run: {
@@ -64,7 +71,7 @@ export function classifyOutcome(run: {
   failureCategory: string | null;
 }): Outcome {
   if (isSuccessfulRun(run)) return "success";
-  if (run.failureCategory === SUSPICIOUS_DROP || run.failureCategory === FIELD_FILL_DROP) return "suspicious_drop";
+  if (run.failureCategory === SUSPICIOUS_DROP || run.failureCategory === FIELD_FILL_DROP || run.failureCategory === ITEM_CAP) return "suspicious_drop";
   if (
     run.status === "FAILED" &&
     run.failureCategory != null &&

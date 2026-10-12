@@ -4511,3 +4511,18 @@ is added that the citing text does not say. Their status rows are in
   empty, refused, crashed).
 - **Generalizes to:** a limit set by a default timeout only binds the calls that read that default;
   check which call actually runs the work.
+
+## LRN-WRK-30 — the item cap cut a site in silence
+
+- **Date / site:** 2026-10-13; found in the Maof design (2,524 jobs).
+- **Signal:** `MAX_EXTRACTED_ITEMS` (2,000) stopped the dedupe loop with a bare `break`: a scheduled
+  run wrote the first 2,000 and recorded nothing, a quiet partial set of the kind the listing guards
+  exist to refuse.
+- **Rule (worker/lib/itemCap.ts `capItems`):** the dedupe runs in full, then the cap records how many
+  distinct cards there were on the run's guard. The run carries
+  `item_cap_reached: 2,000 of <n> cards`. A scheduled run refuses the write (`item_cap`, classified
+  like suspicious_drop, rows kept, "item cap refused: …" in Needs attention) before any detail page is
+  visited; a manual run writes the first 2,000 and carries the warning. The auto-detect comparison and
+  the read-only detail planner do not record a cap; only rows the run returns do.
+- **Generalizes to:** a limit that truncates must say it truncated, on the run, in words the report
+  can quote.

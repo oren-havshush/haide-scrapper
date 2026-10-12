@@ -6,6 +6,8 @@ import { extractLiveFormData } from "../lib/formExtract";
 import { stampFormData, staticCompletion, staticFormBlob } from "../lib/formFields";
 import { completeFormBlob } from "../lib/formShape";
 import { navigateWithRetry, serverErrorRetry } from "../lib/navRetry";
+import { capItems, MAX_EXTRACTED_ITEMS } from "../lib/itemCap";
+import { ITEM_CAP } from "../lib/sweepSelection";
 import {
   jobKeyOf,
   planValueCheckItems,
@@ -222,7 +224,7 @@ interface ValidatedRecord {
 const SCRAPE_TIMEOUT_MS = 900_000; // 15 minutes (large infinite-scroll listings + per-row extraction on multi-step pageFlow sites)
 const DETAIL_PAGE_TIMEOUT_MS = 15_000; // 15 seconds per detail page
 const NAVIGATION_TIMEOUT_MS = 30_000; // 30 seconds for page navigation
-const MAX_EXTRACTED_ITEMS = 2000;
+// MAX_EXTRACTED_ITEMS (2,000) lives in worker/lib/itemCap.ts, with the rule that records it.
 
 // Completion-quality thresholds (ScrapeRun.warnings — non-blocking signals only).
 const NEAR_TIMEOUT_MS = 840_000; // warn when a COMPLETED run ran within ~1 min of the 15-min cap
@@ -1492,7 +1494,7 @@ async function extractRawFieldsFromListingPage(
       // Some sites trigger their own scroll-to-load after the page change.
       await autoScrollUntilStable(page, itemSelector);
     }
-    return dedupeAndCapRawFields(all);
+    return dedupeAndCapRawFields(all, guard);
   }
 
   return extractRawFieldsFromListingPageOnce(
@@ -1526,7 +1528,7 @@ async function extractRawFieldsFromListingPageOnce(
         revealSelector,
       );
     if (rawFieldsList.length > 0) {
-      const explicitDeduped = dedupeAndCapRawFields(rawFieldsList);
+      const explicitDeduped = dedupeAndCapRawFields(rawFieldsList, guard);
       // If itemSelector hits one wrapper that contains many rows (e.g.
       // `.cvs_wrapper` around multiple `.cv_item`), querySelector inside the
       // wrapper only ever returns the first card — one row. Auto-detect finds
@@ -1540,6 +1542,7 @@ async function extractRawFieldsFromListingPageOnce(
           fieldMappings,
           revealSelector,
         );
+        // Compared without the guard: a cap is recorded only on rows the run returns.
         const autoDeduped = dedupeAndCapRawFields(autoList);
         if (autoDeduped.length > explicitDeduped.length) {
           // worker/lib/zeroMatch.ts: a scheduled run keeps the configured
@@ -1554,6 +1557,7 @@ async function extractRawFieldsFromListingPageOnce(
             console.info(
               `[scrape] Preferring auto-detect (${autoDeduped.length} vs ${explicitDeduped.length} explicit rows); itemSelector matched ${matchedItemCount} DOM node(s)`,
             );
+            dedupeAndCapRawFields(autoList, guard); // records the cap, if any, on the rows returned
             return autoDeduped;
           }
           console.warn(
@@ -1584,7 +1588,7 @@ async function extractRawFieldsFromListingPageOnce(
     console.info(
       `[scrape] Auto-item-detection extracted ${rawFieldsList.length} records`,
     );
-    return dedupeAndCapRawFields(rawFieldsList);
+    return dedupeAndCapRawFields(rawFieldsList, guard);
   }
 
   console.warn("[scrape] All extraction strategies found 0 records");
@@ -1602,6 +1606,8 @@ function isUsableUrl(url: string): boolean {
 
 function dedupeAndCapRawFields(
   rawFieldsList: Record<string, string>[],
+  /** The run's guard: a cap that bites is recorded on it (worker/lib/itemCap.ts). */
+  guard: ExtractGuard | null = null,
 ): Record<string, string>[] {
   const seen = new Set<string>();
   const deduped: Record<string, string>[] = [];
@@ -1641,8 +1647,6 @@ function dedupeAndCapRawFields(
     }
     seen.add(fingerprint);
     deduped.push(raw);
-
-    if (deduped.length >= MAX_EXTRACTED_ITEMS) break;
   }
 
   if (deduped.length < rawFieldsList.length) {
@@ -1651,7 +1655,9 @@ function dedupeAndCapRawFields(
     );
   }
 
-  return deduped;
+  // Deduped in full first, so a cap that bites knows how many there were
+  // (worker/lib/itemCap.ts); it used to stop the loop at the cap in silence.
+  return capItems(deduped, MAX_EXTRACTED_ITEMS, guard);
 }
 
 // ---------------------------------------------------------------------------
@@ -2018,7 +2024,7 @@ async function extractRawFieldsWithPageFlow(
     _detailUrl: url,
     [PENDING_DETAIL_KEY]: "1",
   }));
-  return dedupeAndCapRawFields(seeds);
+  return dedupeAndCapRawFields(seeds, guard);
 }
 
 // ---------------------------------------------------------------------------
@@ -4142,7 +4148,7 @@ async function executeScrape(
 
   // One dedup across every page: a job listed on two department pages is one
   // job, and MAX_EXTRACTED_ITEMS caps the site rather than each page.
-  let rawFieldsList = dedupeAndCapRawFields(merged.items);
+  let rawFieldsList = dedupeAndCapRawFields(merged.items, runMode.extract);
 
   const listingOutcome = decideListingOutcome({
     perUrl,
@@ -4165,6 +4171,19 @@ async function executeScrape(
   const zeroMatch = zeroMatchRefusal(runMode.extract, rawFieldsList.length);
   if (zeroMatch) {
     return scheduled ? await refuseListingRun(scrapeRunId, zeroMatch) : await failZeroMatchRun(scrapeRunId, zeroMatch);
+  }
+  // More distinct cards than a run may write (worker/lib/itemCap.ts): a
+  // scheduled run refuses rather than publish a silent partial set, before any
+  // detail page is visited; a manual run writes the first MAX_EXTRACTED_ITEMS
+  // and carries item_cap_reached on its warnings.
+  if (runMode.extract?.itemCap && scheduled) {
+    return await refuseListingRun(scrapeRunId, {
+      failureCategory: ITEM_CAP,
+      error:
+        `item cap: ${runMode.extract.itemCap} distinct cards, more than the ${MAX_EXTRACTED_ITEMS} ` +
+        "a run may write; previous listings kept",
+      warnings: challengeWarnings(runMode.extract),
+    });
   }
   const listingWarnings = listingOutcome.warnings;
 
@@ -4256,7 +4275,7 @@ async function executeScrape(
     rawFieldsList = dedupeAndCapRawFields([
       ...rawFieldsList.filter((r) => r[PENDING_DETAIL_KEY] !== "1"),
       ...detailRecords,
-    ]);
+    ], runMode.extract);
 
     // Recorded now, while the run is still ours to annotate: these are not
     // terminal-status columns, so they do not compete with the timeout handler.
