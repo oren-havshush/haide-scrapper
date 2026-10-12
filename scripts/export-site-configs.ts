@@ -11,11 +11,11 @@
  *   npx tsx scripts/export-site-configs.ts --all-statuses  # every site
  *   npx tsx scripts/export-site-configs.ts --site <id>     # just one
  *
- * CAUTION (LRN-API-4): --site regenerates INDEX.md from ONLY that site, deleting
- * every other row. Prefer the full export; if you must use --site, restore
- * INDEX.md afterwards or edit its single row by hand. Note also that every run
- * rewrites `_exportedAt` on all files, so a full export always looks like a
- * ~140-file change — diff past that noise to find the real drift.
+ * --site writes only that site's .json and .setup.js and leaves INDEX.md alone
+ * (it used to regenerate the index from that one site, LRN-API-4). A full
+ * export regenerates INDEX.md, skips a file whose only change would be
+ * `_exportedAt`, and refuses to overwrite a file whose config is newer than the
+ * one it fetched (another session's uncommitted export); scripts/lib/configMirror.ts.
  *   npx tsx scripts/export-site-configs.ts --dry-run       # report, write nothing
  *
  * Output, one pair per site under sites/_configs/:
@@ -28,6 +28,7 @@
  */
 import * as fs from "fs";
 import * as path from "path";
+import { planMirrorWrite, writesIndex } from "./lib/configMirror";
 
 const BASE = "https://scrapper.haide-jobs.co.il";
 const PAGE_SIZE = 100; // LRN-API-1: >100 silently returns []
@@ -117,6 +118,8 @@ async function main() {
   let withScript = 0;
   let noConfig = 0;
   let failed = 0;
+  let unchanged = 0;
+  let refusedNewer = 0;
 
   for (const site of sites) {
     let cfg: Record<string, unknown>;
@@ -157,18 +160,25 @@ async function main() {
       fieldMappings: { ...fm, _meta: metaNoScript },
     };
 
-    if (!dryRun) {
-      fs.writeFileSync(
-        path.join(OUT_DIR, `${slug}.json`),
-        JSON.stringify(doc, null, 2) + "\n",
-        "utf8",
-      );
-      if (setupScript)
-        fs.writeFileSync(
-          path.join(OUT_DIR, `${slug}.setup.js`),
-          setupScript.endsWith("\n") ? setupScript : setupScript + "\n",
-          "utf8",
-        );
+    const jsonPath = path.join(OUT_DIR, `${slug}.json`);
+    const scriptPath = path.join(OUT_DIR, `${slug}.setup.js`);
+    const scriptText = setupScript ? (setupScript.endsWith("\n") ? setupScript : setupScript + "\n") : null;
+    const readOrNull = (p: string) => {
+      try {
+        return fs.readFileSync(p, "utf8");
+      } catch {
+        return null;
+      }
+    };
+    const plan = planMirrorWrite(readOrNull(jsonPath), readOrNull(scriptPath), doc, scriptText);
+    if (plan === "refuse_newer") {
+      refusedNewer++;
+      console.log(`  ! ${slug}: the mirror on disk is from a newer config than the one fetched — left as it is`);
+    } else if (plan === "skip_identical") {
+      unchanged++;
+    } else if (!dryRun) {
+      fs.writeFileSync(jsonPath, JSON.stringify(doc, null, 2) + "\n", "utf8");
+      if (scriptText) fs.writeFileSync(scriptPath, scriptText, "utf8");
     }
     // How many listing pages this site scrapes: 1 unless it has listingUrls.
     const listingUrls = (meta as { listingUrls?: unknown } | undefined)?.listingUrls;
@@ -195,10 +205,11 @@ async function main() {
     // lost that way).
     "**Keeping the mirror honest.** These files go stale silently, and a stale mirror is",
     "worse than a missing one — restoring from one that predates a fix reinstates the bug",
-    "(`kahane` held a pre-2026-08-13 setupScript that flattened descriptions). Run the",
-    "**full** export after any config change; never `--site <id>`, which regenerates this",
-    "index from that one site and deletes every other row. Ignore `_exportedAt`-only diffs;",
-    "anything else is drift that was never mirrored. Cite: `LRN-API-4`.",
+    "(`kahane` held a pre-2026-08-13 setupScript that flattened descriptions). After a",
+    "config change run `--site <id>` (that site's files only; this index is left alone) or",
+    "the full export (which also regenerates this index). The export skips a file whose only",
+    "change would be `_exportedAt`, and never overwrites a file from a newer config than the",
+    "one it fetched. Anything else in a diff is drift that was never mirrored. Cite: `LRN-API-4`.",
     "",
     "Restore: PUT the JSON back to `/api/sites/{id}/config`, adding `setupScript` from",
     "the matching `.setup.js` as a top-level field — `saveSiteConfig` rebuilds `_meta`",
@@ -212,13 +223,18 @@ async function main() {
     ...index,
     "",
   ].join("\n");
-  if (!dryRun) fs.writeFileSync(path.join(OUT_DIR, "INDEX.md"), md, "utf8");
+  // Only an export that saw every site may regenerate the index; a per-site
+  // export would delete every other row (LRN-API-4).
+  if (!dryRun && writesIndex({ oneSite })) fs.writeFileSync(path.join(OUT_DIR, "INDEX.md"), md, "utf8");
 
   console.log(
     `\nexported ${sites.length - failed} site(s)\n` +
       `  with a setupScript : ${withScript}\n` +
       `  with no config yet : ${noConfig}\n` +
-      `  fetch failures     : ${failed}`,
+      `  unchanged, skipped : ${unchanged}\n` +
+      `  newer on disk, kept: ${refusedNewer}\n` +
+      `  fetch failures     : ${failed}` +
+      (oneSite ? "\n  INDEX.md           : left alone (--site)" : ""),
   );
   if (dryRun) console.log("\nDRY RUN — nothing written.");
 }
