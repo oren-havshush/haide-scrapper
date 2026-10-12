@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { isCanonicalLocation } from "./locations";
 import { FIX_FIELDS } from "./fixFields";
+import { SITE_LANES } from "./siteLane";
 import { templateTokenErrors } from "../../worker/lib/formTemplate";
 
 /**
@@ -301,6 +302,10 @@ export const updateSiteConfigSchema = z.object({
   // known): policy/robots review is origin-scoped, so a page on another host
   // would be scraped without one. Stored under fieldMappings._meta.
   listingUrls: z.array(z.url().max(500)).max(10).optional(),
+  // The site's lane (src/lib/siteLane.ts): "big" runs it only in the big-lane
+  // window (22:00-01:45 Asia/Jerusalem) and never in the nightly. Absent is
+  // the nightly. Stored under fieldMappings._meta.lane.
+  lane: z.enum(SITE_LANES).optional(),
   // Optional JS snippet evaluated in the page context once after page load
   // and before extraction. Lets SPAs that hide most content behind app state
   // (Angular scope flags, React store slices) render the full listing so the

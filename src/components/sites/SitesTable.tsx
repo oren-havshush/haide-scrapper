@@ -26,6 +26,7 @@ import { SiteHqCityDialog } from "@/components/sites/SiteHqCityDialog";
 import { needsManualHomepage } from "@/lib/ats-hosts";
 import { CompanyLogo } from "@/components/shared/CompanyLogo";
 import { CompanyProfileBadge } from "@/components/shared/CompanyProfileBadge";
+import { readSiteLane } from "@/lib/siteLane";
 import {
   useUpdateSiteStatus,
   useDeleteSite,
@@ -598,6 +599,14 @@ export function SitesTable({
                             className="shrink-0 rounded bg-muted px-1.5 py-0.5 text-[11px] text-muted-foreground"
                           >
                             {listingUrls.length} pages
+                          </span>
+                        )}
+                        {readSiteLane(site.fieldMappings) === "big" && (
+                          <span
+                            title="Scraped only in the big-lane window (22:00-01:45 Asia/Jerusalem), never in the nightly"
+                            className="shrink-0 rounded bg-muted px-1.5 py-0.5 text-[11px] text-muted-foreground"
+                          >
+                            big lane
                           </span>
                         )}
                       </div>

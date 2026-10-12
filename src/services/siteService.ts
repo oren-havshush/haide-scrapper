@@ -8,6 +8,7 @@ import {
 } from "@/lib/errors";
 import { resolveHqCity } from "@/lib/locations";
 import { onlyAcceptedGatesChanged, type AcceptedGates } from "@/lib/acceptedGates";
+import type { SiteLane } from "@/lib/siteLane";
 import { nextOperatorFields } from "@/lib/operatorFields";
 import { buildScrapeJobRow } from "@/lib/scrapeJobRow";
 import { findListingRunsBySiteIds } from "@/lib/listingRun";
@@ -416,6 +417,7 @@ export async function saveSiteConfig(
     minPublishDays?: number;
     locationFallback?: string;
     listingUrls?: string[];
+    lane?: SiteLane;
     acceptedGates?: AcceptedGates;
   }
 ) {
@@ -435,6 +437,7 @@ export async function saveSiteConfig(
       originalMappings: config.originalMappings || null,
       formCapture: config.formCapture,
       listingUrls,
+      lane: config.lane ?? null,
       pagination: config.pagination || null,
       setupScript: config.setupScript || null,
       loadMoreSelector: config.loadMoreSelector || null,
