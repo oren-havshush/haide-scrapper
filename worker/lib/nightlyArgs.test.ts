@@ -32,8 +32,8 @@ const p = (s: string) => parseNightlyArgs(s.split(" ").filter(Boolean));
 const same = (a: NightlyMode, b: NightlyMode) => JSON.stringify(a) === JSON.stringify(b);
 
 // --- the existing forms, unchanged -------------------------------------------
-assert(same(p("--dry-run"), { kind: "dry-run" }), "--dry-run");
-assert(same(p("--now"), { kind: "fleet", detailOverride: null }), "--now is the fleet");
+assert(same(p("--dry-run"), { kind: "dry-run", lane: "nightly" }), "--dry-run");
+assert(same(p("--now"), { kind: "fleet", detailOverride: null, lane: "nightly" }), "--now is the fleet");
 assert(same(p("--site abc --now"), { kind: "single", siteId: "abc", detailOverride: null, email: false }), "--site abc --now");
 
 // Owner, 2026-10-01: a single-site run no longer emails unless asked.
@@ -48,7 +48,7 @@ assert(throws(() => p("")), "no arguments refuses");
 
 // --- the detail flags ----------------------------------------------------------
 assert(
-  same(p("--now --full-details"), { kind: "fleet", detailOverride: "full" }),
+  same(p("--now --full-details"), { kind: "fleet", detailOverride: "full", lane: "nightly" }),
   "--full-details forces a full fleet night",
 );
 assert(
@@ -85,7 +85,7 @@ assert(parseTriggerLabel(["--trigger", "timer", "--now"]) === "timer", "anywhere
 assert(throws(() => parseTriggerLabel(["--now", "--trigger"])), "--trigger with no label is refused");
 assert(throws(() => parseTriggerLabel(["--now", "--trigger", "--site"])), "a flag is not a label");
 assert(throws(() => parseTriggerLabel(["--now", "--trigger", "Timer Night!"])), "labels are a-z0-9_- only");
-assert(same(p("--now --trigger timer"), { kind: "fleet", detailOverride: null }), "and the mode parse ignores it");
+assert(same(p("--now --trigger timer"), { kind: "fleet", detailOverride: null, lane: "nightly" }), "and the mode parse ignores it");
 {
   const strip = (s: string) => s.replace(/\/\*[\s\S]*?\*\//g, "").replace(/\/\/.*$/gm, "");
   const nightly = strip(readFileSync(join(__dirname, "..", "sweep", "nightly.ts"), "utf8"));

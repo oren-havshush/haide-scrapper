@@ -124,7 +124,7 @@ for (const call of WRITE_CALLS) {
 // resolveStaleSweeps is the one shared helper dryRun calls that CAN write, so
 // it must be called in its reporting mode.
 assert(
-  /resolveStaleSweeps\("SCRAPE", true, log\)/.test(dry),
+  /resolveStaleSweeps\(lane === "big" \? BIG_LANE_SWEEP_KIND : "SCRAPE", true, log\)/.test(dry),
   "dryRun calls resolveStaleSweeps in report-only mode, for its own kind",
 );
 {
@@ -152,11 +152,11 @@ assert(
 // ---------------------------------------------------------------------------
 
 assert(
-  /createScrapeRun\([^)]*\{\s*scheduled:\s*true\s*(,\s*detailMode\s*)?\}\)/.test(driver.replace(/\s+/g, " ")),
+  /createScrapeRun\([^)]*\{\s*scheduled:\s*true\s*(,\s*detailMode\s*)?(,\s*stopAt\s*)?\}\)/.test(driver.replace(/\s+/g, " ")),
   "the driver passes scheduled: true",
 );
 assert(
-  /createScrapeRun\([^)]*\{\s*scheduled:\s*true\s*,\s*detailMode\s*\}\)/.test(driver.replace(/\s+/g, " ")),
+  /createScrapeRun\([^)]*\{\s*scheduled:\s*true\s*,\s*detailMode\s*(,\s*stopAt\s*)?\}\)/.test(driver.replace(/\s+/g, " ")),
   "and the night's detail mode with it (worker/lib/detailPlan.ts)",
 );
 
@@ -310,10 +310,11 @@ assert(
   );
 
   const anyClose = real.split("closeSweep({").length - 1;
-  const scrapeCloses = (real.match(/closeSweep\(\{\s*kind: "SCRAPE"/g) ?? []).length;
+  // The kind is the lane's: SCRAPE, or SCRAPE_BIG for --lane big (worker/lib/bigLane.ts).
+  const scrapeCloses = (real.match(/closeSweep\(\{\s*kind: sweepKind,/g) ?? []).length;
   assert(
-    anyClose === 4 && scrapeCloses === 4,
-    `site-not-found, wedged, HALTED and COMPLETED all close through closeSweep as SCRAPE (found ${anyClose} calls, ${scrapeCloses} with kind SCRAPE)`,
+    anyClose === 4 && scrapeCloses === 4 && /const sweepKind = lane === "big" \? BIG_LANE_SWEEP_KIND : "SCRAPE";/.test(real),
+    `site-not-found, wedged, HALTED and COMPLETED all close through closeSweep as the lane's kind (found ${anyClose} calls, ${scrapeCloses} with kind sweepKind)`,
   );
   const inlineUpdates = (real.match(/scrapeSweep\.update\(/g) ?? []).length;
   assert(

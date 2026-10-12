@@ -1,0 +1,28 @@
+# 22:00 Asia/Jerusalem, every day: the big lane (worker/lib/bigLane.ts).
+#
+# Sites with _meta.lane = "big" (Maof: 2,524 cards, hours for a full read) run
+# here and never in the nightly. The window is 22:00-01:45; the driver stops
+# starting sites that would not finish by 01:45 and cuts a running one off
+# there, so the lane is clear before the nightly's 02:00 (haide-sweep-scrape)
+# and long before the public site's 07:01 read. worker/lib/bigLane.test.ts pins
+# that arithmetic, and this line.
+#
+# NOT enabled by deploy.sh (no unit is). Enabling it is the owner's decision,
+# after the first big-lane site is onboarded (owner, 2026-10-13).
+
+[Unit]
+Description=haide big-lane scrape sweep (22:00-01:45 Asia/Jerusalem)
+
+[Timer]
+# The timezone goes INSIDE the calendar expression; there is no Timezone= key
+# in [Timer] (see haide-sweep-scrape.timer for what the ignored form did).
+OnCalendar=*-*-* 22:00:00 Asia/Jerusalem
+
+# A missed window is a window that did not happen: catching up on boot would
+# start an hours-long scrape at whatever time the box came back.
+Persistent=false
+
+RandomizedDelaySec=60
+
+[Install]
+WantedBy=timers.target

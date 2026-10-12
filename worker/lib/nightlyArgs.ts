@@ -14,15 +14,19 @@
 //                                it, it does not (owner, 2026-10-01). The timer's
 //                                runs always send.
 //   --test-email                 one-off: email the latest stored report, then exit.
+//   --lane big                   with --now or --dry-run: the big lane (22:00-01:45,
+//                                worker/lib/bigLane.ts), only sites with lane "big".
+//                                Its full detail pass is the window starting Friday.
 
 import { detailModeFor, type DetailMode } from "./detailPlan";
+import { bigLaneDetailMode, type SweepLane } from "./bigLane";
 
 export type NightlyMode =
-  | { kind: "dry-run" }
+  | { kind: "dry-run"; lane: SweepLane }
   | { kind: "test-email" }
   | { kind: "dry-run-details"; siteId: string; detailOverride: DetailMode | null }
   | { kind: "single"; siteId: string; detailOverride: DetailMode | null; email: boolean }
-  | { kind: "fleet"; detailOverride: DetailMode | null }
+  | { kind: "fleet"; detailOverride: DetailMode | null; lane: SweepLane }
   /** Claim one pending GuardedRunRequest and run it single-site, email off (step 3, option B). */
   | { kind: "claim-request" };
 
@@ -37,6 +41,15 @@ export function parseNightlyArgs(argv: string[]): NightlyMode {
   const siteId = siteIdx >= 0 ? argv[siteIdx + 1] : undefined;
   const email = argv.includes("--email");
   const claimRequest = argv.includes("--claim-request");
+  const laneIdx = argv.indexOf("--lane");
+  let lane: SweepLane = "nightly";
+  if (laneIdx >= 0) {
+    if (argv[laneIdx + 1] !== "big") throw new Error("--lane takes one value: big");
+    if (siteIdx >= 0 || claimRequest || testEmail || dryRunDetails) {
+      throw new Error("--lane big goes with --now or --dry-run only: a single site runs in its own command");
+    }
+    lane = "big";
+  }
   if (email && !(siteId && now)) {
     throw new Error("--email applies to --site <id> --now only; the timer's runs always send their report");
   }
@@ -63,7 +76,7 @@ export function parseNightlyArgs(argv: string[]): NightlyMode {
   }
   if (dryRun) {
     if (detailOverride) throw new Error("--dry-run has no detail phase; use --site <id> --dry-run-details");
-    return { kind: "dry-run" };
+    return { kind: "dry-run", lane };
   }
   if (dryRunDetails) {
     if (!siteId) throw new Error("--dry-run-details needs --site <id>");
@@ -74,12 +87,16 @@ export function parseNightlyArgs(argv: string[]): NightlyMode {
     if (!now) throw new Error("--site requires --now (it runs the scheduled path for real)");
     return { kind: "single", siteId, detailOverride, email };
   }
-  if (now) return { kind: "fleet", detailOverride };
+  if (now) return { kind: "fleet", detailOverride, lane };
   throw new Error("one of --dry-run, --now, --site <id> --now, or --site <id> --dry-run-details is required");
 }
 
 /** The detail mode an invocation runs in. `startedAt` decides the fleet's default. */
 export function resolveDetailMode(mode: NightlyMode, startedAt: Date): DetailMode {
+  // The big lane's full pass is the window that starts on Friday (worker/lib/bigLane.ts).
+  if ((mode.kind === "fleet" || mode.kind === "dry-run") && mode.lane === "big") {
+    return (mode.kind === "fleet" ? mode.detailOverride : null) ?? bigLaneDetailMode(startedAt);
+  }
   if (mode.kind === "dry-run" || mode.kind === "test-email") return detailModeFor(startedAt);
   // A requested guarded run is a single-site run: always full.
   if (mode.kind === "claim-request") return "full";

@@ -33,6 +33,11 @@ export type ScrapeJobRowInput = {
    * never written. The route cannot reach it, for the same reason as above.
    */
   detailMode?: "incremental" | "full";
+  /**
+   * The big lane's end (worker/lib/bigLane.ts): the run's deadline is the
+   * sooner of its own budget and this. Written only on a scheduled row.
+   */
+  stopAt?: Date;
 };
 
 export function buildScrapeJobRow(input: ScrapeJobRowInput) {
@@ -48,6 +53,7 @@ export function buildScrapeJobRow(input: ScrapeJobRowInput) {
       // reads as manual and readScheduledFlag needs no migration.
       ...(input.scheduled ? { scheduled: true } : {}),
       ...(input.scheduled && input.detailMode === "incremental" ? { detailMode: "incremental" } : {}),
+      ...(input.scheduled && input.stopAt ? { stopAt: input.stopAt.toISOString() } : {}),
     },
   };
 }

@@ -18,8 +18,9 @@ import {
   type SkippedSite,
 } from "../lib/sweepReport";
 import { sendSweepMail, type MailOutcome } from "../lib/sweepMail";
+import { BIG_LANE_SWEEP_KIND } from "../lib/bigLane";
 
-export type SweepKind = "SCRAPE" | "POLICY";
+export type SweepKind = "SCRAPE" | "POLICY" | "SCRAPE_BIG";
 
 export const sleep = (ms: number): Promise<void> => new Promise((r) => setTimeout(r, ms));
 
@@ -274,7 +275,10 @@ export async function closeSweep(args: {
   // asked with --email (owner, 2026-10-01): the stored report is the record,
   // and the inbox is for the nights.
   let emailStatus: string;
-  if (args.trigger.endsWith("-single") && args.email !== true) {
+  if (args.kind === BIG_LANE_SWEEP_KIND) {
+    emailStatus = "skipped: big lane, reported in the morning email";
+    console.info("[mail] big lane: report stored, not emailed (the morning email carries it)");
+  } else if (args.trigger.endsWith("-single") && args.email !== true) {
     emailStatus = "skipped: single-site run";
     console.info("[mail] single-site run: report stored, not emailed (pass --email to send it)");
   } else {

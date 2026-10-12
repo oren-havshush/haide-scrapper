@@ -8,6 +8,7 @@ import { completeFormBlob } from "../lib/formShape";
 import { navigateWithRetry, serverErrorRetry } from "../lib/navRetry";
 import { capItems, MAX_EXTRACTED_ITEMS } from "../lib/itemCap";
 import { FLEET_LIMITS, pageCap, readSiteLimits, resolveLimits, type ResolvedLimits } from "../lib/siteLimits";
+import { CUT_OFF, cutOffMessage, readStopAt, runDeadline } from "../lib/bigLane";
 import { fillRowFormTemplate, formTemplateWarnings } from "../lib/formTemplate";
 import { ITEM_CAP } from "../lib/sweepSelection";
 import {
@@ -196,6 +197,14 @@ interface RunMode {
   extract: ExtractGuard;
   /** The site's time budget, items and pages; the fleet's when it has none (worker/lib/siteLimits.ts). */
   limits: ResolvedLimits;
+  /** The big lane's end, from a scheduled payload only (worker/lib/bigLane.ts); null otherwise. */
+  stopAt: Date | null;
+  /**
+   * The run's deadline in ms from its start: limits.timeoutMs, or the time
+   * left to stopAt when that is sooner. Set when the deadline timer starts, and
+   * read by the listing budget so both stop at the same moment.
+   */
+  deadlineMs: number;
 }
 
 /** Scrape execution context for error categorization */
@@ -3181,6 +3190,8 @@ export async function handleScrapeJob(
     detailMode: readDetailMode(job.payload),
     extract: newExtractGuard(scheduled, limits.maxItems),
     limits,
+    stopAt: readStopAt(job.payload),
+    deadlineMs: limits.timeoutMs,
   };
 
   if (!scrapeRunId) {
@@ -3787,7 +3798,7 @@ async function executeScrape(
   setupScript: string | null = null,
   loadMoreSelector: string | null = null,
   browserOverrides: BrowserOverrides | null = null,
-  runMode: RunMode = { scheduled: false, abort: createAbortToken<ScrapeResult>(), walks: [], detailMode: "full", extract: newExtractGuard(false), limits: FLEET_LIMITS },
+  runMode: RunMode = { scheduled: false, abort: createAbortToken<ScrapeResult>(), walks: [], detailMode: "full", extract: newExtractGuard(false), limits: FLEET_LIMITS, stopAt: null, deadlineMs: FLEET_LIMITS.timeoutMs },
   listingTargets: ListingTarget[] = [{ url: site.siteUrl }],
 ): Promise<ScrapeResult> {
   const scrapeStartedAt = Date.now();
@@ -4123,7 +4134,7 @@ async function executeScrape(
     // control, on a run that has already deleted nothing.
     if (
       listingTargets.length > 1 &&
-      listingBudgetExhausted(scrapeStartedAt, Date.now(), runMode.limits.timeoutMs)
+      listingBudgetExhausted(scrapeStartedAt, Date.now(), runMode.deadlineMs)
     ) {
       console.warn(`[scrape] out of time budget before ${target.url}`);
       perUrl.push({ url: target.url, items: [], seen: null, error: BUDGET_EXHAUSTED });
@@ -4961,9 +4972,19 @@ function createTimeoutPromise(
   scrapeRunId: string,
   siteId: string,
   fieldMappingsRaw: unknown,
-  runMode: RunMode = { scheduled: false, abort: createAbortToken<ScrapeResult>(), walks: [], detailMode: "full", extract: newExtractGuard(false), limits: FLEET_LIMITS },
+  runMode: RunMode = { scheduled: false, abort: createAbortToken<ScrapeResult>(), walks: [], detailMode: "full", extract: newExtractGuard(false), limits: FLEET_LIMITS, stopAt: null, deadlineMs: FLEET_LIMITS.timeoutMs },
 ): { promise: Promise<ScrapeResult>; cancel: () => void } {
   const { scheduled } = runMode;
+  // The sooner of the site's budget and the big lane's end (worker/lib/bigLane.ts).
+  // Cut off by the lane's end, the run closes as cut_off: a decision, never a
+  // fault, and on a scheduled run the listings stay as they were.
+  const startedMs = Date.now();
+  const deadline = runDeadline(startedMs, runMode.limits.timeoutMs, runMode.stopAt);
+  runMode.deadlineMs = deadline.ms;
+  const deadlineError = () =>
+    deadline.cutOff
+      ? cutOffMessage((Date.now() - startedMs) / 60_000)
+      : `Scrape execution exceeded ${runMode.limits.timeoutMs / 60_000}-minute timeout`;
   let timerId: ReturnType<typeof setTimeout>;
   const promise = new Promise<ScrapeResult>((resolve, reject) => {
     timerId = setTimeout(async () => {
@@ -4988,7 +5009,7 @@ function createTimeoutPromise(
           // The transaction rolled back. Nothing was written and nothing
           // deleted; let the rejection below take the ordinary failure path.
         }
-        reject(new Error(`Scrape execution exceeded ${runMode.limits.timeoutMs / 60_000}-minute timeout`));
+        reject(new Error(deadlineError()));
         return;
       }
 
@@ -5040,8 +5061,8 @@ function createTimeoutPromise(
           }
         } else {
           await failScrapeRun(scrapeRunId, siteId, {
-            error: `Scrape execution exceeded ${runMode.limits.timeoutMs / 60_000}-minute timeout`,
-            failureCategory: "timeout",
+            error: deadlineError(),
+            failureCategory: deadline.cutOff ? CUT_OFF : "timeout",
             scheduled,
           });
         }
@@ -5049,8 +5070,8 @@ function createTimeoutPromise(
         console.error("[scrape] Failed to update ScrapeRun on timeout:", updateError);
       }
 
-      reject(new Error(`Scrape execution exceeded ${runMode.limits.timeoutMs / 60_000}-minute timeout`));
-    }, runMode.limits.timeoutMs);
+      reject(new Error(deadlineError()));
+    }, deadline.ms);
   });
   return { promise, cancel: () => clearTimeout(timerId) };
 }

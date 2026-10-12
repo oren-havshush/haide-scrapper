@@ -137,7 +137,7 @@ export type ReportItem = {
  * rather than matched out of `reason`, which is a human sentence carrying an
  * hour count and would change the moment someone reworded it.
  */
-export type SkippedSite = { siteUrl: string; reason: string; kind?: "fresh" };
+export type SkippedSite = { siteUrl: string; reason: string; kind?: "fresh" | "big_lane" | "no_fit" };
 
 /**
  * Warning types whose value is WHICH site they happened to. Everything else is
@@ -389,7 +389,7 @@ export function verdictLine(
   items: ReportItem[],
   opts: ReportOptions,
 ): string {
-  const label = sweep.kind === "POLICY" ? "Policy sweep" : "Nightly sweep";
+  const label = sweep.kind === "POLICY" ? "Policy sweep" : sweep.kind === "SCRAPE_BIG" ? "Big lane" : "Nightly sweep";
   const date = sweepDate(sweep.startedAt, opts.timeZone);
 
   if (sweep.status === "HALTED") {
@@ -643,8 +643,14 @@ export function renderSweepReport(
     if (fresh.length > 0) {
       lines.push(`    ${fresh.length} too recent to scrape (inside the fresh window)`);
     }
+    // Sites with lane "big" run in the 22:00 window (worker/lib/bigLane.ts):
+    // not a problem, and one count line.
+    const bigLane = opts.skipped.filter((s) => s.kind === "big_lane");
+    if (bigLane.length > 0) {
+      lines.push(`    ${bigLane.length} in the big lane (22:00-01:45)`);
+    }
     for (const s of opts.skipped) {
-      if (s.kind === "fresh") continue;
+      if (s.kind === "fresh" || s.kind === "big_lane") continue;
       lines.push(`    ${s.siteUrl} — ${s.reason}`);
     }
   }

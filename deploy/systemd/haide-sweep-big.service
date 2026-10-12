@@ -1,0 +1,35 @@
+# The big-lane scrape sweep (worker/lib/bigLane.ts).
+#
+# Installed by deploy.sh, NEVER enabled by it, like every unit here. The same
+# `sweep` compose service as the nightly, with --lane big: only sites with
+# _meta.lane = "big", a SCRAPE_BIG sweep row, and a hard stop at 01:45
+# Asia/Jerusalem. @REMOTE_DIR@ is substituted at install time by deploy.sh.
+
+[Unit]
+Description=haide big-lane scrape sweep
+Documentation=file://@REMOTE_DIR@/docs/addsite-learnings.md
+Wants=docker.service
+After=docker.service network-online.target
+
+[Service]
+Type=oneshot
+WorkingDirectory=@REMOTE_DIR@
+
+# 22:00 + 235 minutes is 01:55. The driver stops at 01:45 and waits at most
+# 3 minutes for a cut-off run to close, so this is the backstop only, and it
+# still ends before the nightly's 02:00.
+TimeoutStartSec=235min
+
+# --name with the haide-sweep- prefix: deploy.sh refuses to deploy while any
+# such container runs, so a deploy can never land in the middle of the lane.
+ExecStart=/usr/bin/docker compose run --name haide-sweep-big -T sweep \
+    node_modules/.bin/tsx worker/sweep/nightly.ts --now --lane big --trigger timer
+
+ExecStopPost=-/bin/sh -c 'docker rm -f haide-sweep-big >/dev/null 2>&1 || true'
+
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=haide-sweep-big
+
+[Install]
+WantedBy=multi-user.target

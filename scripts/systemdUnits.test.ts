@@ -45,7 +45,8 @@ function value(unit: string, key: string): string | null {
 
 const files = readdirSync(UNIT_DIR);
 // Six since step 3 (option B): the guarded-run claim timer and its service.
-assert(files.length === 6, `six unit files (got ${files.length}: ${files.join(", ")})`);
+// Eight since the big lane (worker/lib/bigLane.ts): haide-sweep-big's pair.
+assert(files.length === 8, `eight unit files (got ${files.length}: ${files.join(", ")})`);
 
 const scrapeSvc = read("haide-sweep-scrape.service");
 const scrapeTimer = read("haide-sweep-scrape.timer");
@@ -331,8 +332,8 @@ console.log("# the guarded-run claim timer (step 3, option B)");
 
   const deploy = readFileSync(join(ROOT, "deploy.sh"), "utf8");
   assert(
-    /for t in haide-sweep-scrape\.timer haide-sweep-policy\.timer haide-sweep-claim\.timer; do/.test(deploy),
-    "deploy.sh prints the claim timer's is-enabled line with the other two",
+    /for t in haide-sweep-scrape\.timer haide-sweep-policy\.timer haide-sweep-claim\.timer haide-sweep-big\.timer; do/.test(deploy),
+    "deploy.sh prints the claim timer's is-enabled line with the others (four since the big lane)",
   );
 }
 

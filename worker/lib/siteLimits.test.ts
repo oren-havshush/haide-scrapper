@@ -105,9 +105,10 @@ check("scrape.ts reads the limits", () => {
   assert(/const limits = resolveLimits\(readSiteLimits\(site\.fieldMappings\)\);[\s\S]{0,400}?\n\s+limits,\n/.test(scrape), "handleScrapeJob resolves the site's limits into runMode");
   assert(/extract:\s*newExtractGuard\(scheduled, limits\.maxItems\)/.test(scrape), "the guard carries the site's item cap");
   assert(/capItems\(deduped, guard\?\.maxItems \?\? MAX_EXTRACTED_ITEMS, guard\)/.test(scrape), "the dedupe caps at the guard's max");
-  assert(/listingBudgetExhausted\(scrapeStartedAt, Date\.now\(\), runMode\.limits\.timeoutMs\)/.test(scrape), "the listing budget is the site's");
+  assert(/listingBudgetExhausted\(scrapeStartedAt, Date\.now\(\), runMode\.deadlineMs\)/.test(scrape), "the listing budget is the run's deadline");
+  assert(/deadlineMs: limits\.timeoutMs,/.test(scrape), "which starts as the site's budget");
   const timer = scrape.slice(scrape.indexOf("function createTimeoutPromise"));
-  assert(/\}, runMode\.limits\.timeoutMs\);/.test(timer), "the deadline timer is the site's");
+  assert(/runDeadline\(startedMs, runMode\.limits\.timeoutMs, runMode\.stopAt\)/.test(timer) && /\}, deadline\.ms\);/.test(timer), "the deadline timer is the site's budget (or the big lane's stop, if sooner)");
   assert(/elapsedMs >= nearTimeoutMs/.test(scrape), "near_timeout reads the site's");
   assert(/more than the \$\{runMode\.extract\.maxItems\}/.test(scrape), "the item_cap refusal names the site's cap");
   const pag = scrape.slice(scrape.indexOf("function getPaginationConfig"), scrape.indexOf("function buildPaginatedUrl"));

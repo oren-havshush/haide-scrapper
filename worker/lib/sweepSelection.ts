@@ -7,6 +7,8 @@
 
 import { countUsableFieldMappings, getApplyRequiresLogin } from "./fieldMappings";
 import { LISTING_SOFT_CATEGORIES } from "./listingTargets";
+import { readSiteLane } from "../../src/lib/siteLane";
+import type { SweepLane } from "./bigLane";
 
 // ---------------------------------------------------------------------------
 // Success (N5)
@@ -120,8 +122,14 @@ export type SelectableSite = {
  * succeeded recently enough. The report collapses those to one count line; the
  * rest are named, because each is a fix waiting for someone. Carried as a field
  * rather than matched out of `reason`, which is a human sentence.
+ *
+ * `kind: "big_lane"` is the nightly leaving out a site with lane "big": it
+ * runs in the 22:00-01:45 window instead (worker/lib/bigLane.ts). Also one
+ * count line. `kind: "no_fit"` is the big lane's own skip of a site that
+ * would not finish before 01:45; named, since it is tonight's work undone.
  */
-export type Excluded = { site: SelectableSite; reason: string; kind?: "fresh" };
+export type SkipKind = "fresh" | "big_lane" | "no_fit";
+export type Excluded = { site: SelectableSite; reason: string; kind?: SkipKind };
 
 export type Selection = {
   selected: SelectableSite[];
@@ -147,17 +155,30 @@ export function compareByLastAttempt(a: SelectableSite, b: SelectableSite): numb
   return a.id < b.id ? -1 : a.id > b.id ? 1 : 0;
 }
 
+/**
+ * `lane` (default "nightly"): the nightly excludes every site with lane "big",
+ * by name, so the report counts them; the big lane considers only those sites
+ * and says nothing about the rest, which are simply not its fleet.
+ */
 export function selectSitesForSweep(
   sites: SelectableSite[],
-  opts: { now: Date; freshWindowMs?: number },
+  opts: { now: Date; freshWindowMs?: number; lane?: SweepLane },
 ): Selection {
   const freshWindowMs = opts.freshWindowMs ?? DEFAULT_FRESH_WINDOW_MS;
   const cutoff = opts.now.getTime() - freshWindowMs;
+  const lane = opts.lane ?? "nightly";
 
   const selected: SelectableSite[] = [];
   const excluded: Excluded[] = [];
 
   for (const site of sites) {
+    const isBig = readSiteLane(site.fieldMappings) === "big";
+    if (lane === "big" && !isBig) continue;
+    if (lane === "nightly" && isBig) {
+      excluded.push({ site, kind: "big_lane", reason: "big lane (22:00-01:45)" });
+      continue;
+    }
+
     if (!(SWEEP_SITE_STATUSES as readonly string[]).includes(site.status)) {
       excluded.push({ site, reason: `status ${site.status} is not scraped by the sweep` });
       continue;

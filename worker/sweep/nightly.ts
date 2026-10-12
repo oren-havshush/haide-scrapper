@@ -60,6 +60,16 @@ import { readAcceptedGates, type AcceptedGates } from "../../src/lib/acceptedGat
 import { sendSweepMail } from "../lib/sweepMail";
 import { readSiteLimits, sweepWaitMinutes } from "../lib/siteLimits";
 import {
+  BIG_LANE_CLOSE_MARGIN_MS,
+  BIG_LANE_SWEEP_KIND,
+  bigLaneStopAt,
+  expectedMinutes,
+  fitsBeforeStop,
+  insideBigLaneWindow,
+  noFitReason,
+  type SweepLane,
+} from "../lib/bigLane";
+import {
   cancelPendingJobById,
   closeSweep,
   probeWorkerDraining,
@@ -120,6 +130,20 @@ async function loadSelectableSites(opts: { fullPass: boolean } = { fullPass: fal
     lastAttemptAt: lastAttempt.get(s.id) ?? null,
     lastSuccessAt: lastSuccess.get(s.id) ?? null,
   }));
+}
+
+/**
+ * Minutes each of the site's last three successful runs took, newest first:
+ * what the big lane's fit check expects of tonight (worker/lib/bigLane.ts).
+ */
+async function recentRunMinutes(siteId: string): Promise<number[]> {
+  const runs = await prisma.scrapeRun.findMany({
+    where: { siteId, status: "COMPLETED", failureCategory: null, completedAt: { not: null } },
+    orderBy: { createdAt: "desc" },
+    take: 3,
+    select: { createdAt: true, completedAt: true },
+  });
+  return runs.map((r) => ((r.completedAt as Date).getTime() - r.createdAt.getTime()) / 60_000);
 }
 
 // ---------------------------------------------------------------------------
@@ -352,8 +376,10 @@ async function waitForJobTerminal(
 async function runOneSite(
   site: { id: string; siteUrl: string; fieldMappings: unknown },
   detailMode: DetailMode,
-  opts?: { probe?: (workerJobId: string) => Promise<DrainVerdict> },
+  opts?: { probe?: (workerJobId: string) => Promise<DrainVerdict>; stopAt?: Date | null },
 ): Promise<SiteResult> {
+  // The big lane's end (worker/lib/bigLane.ts); undefined on the nightly.
+  const stopAt = opts?.stopAt ?? undefined;
   const startedAt = new Date();
   const before = await siteSnapshot(site.id);
 
@@ -368,7 +394,7 @@ async function runOneSite(
   let defect: string | null = null;
 
   try {
-    const run = await createScrapeRun(site.id, { scheduled: true, detailMode });
+    const run = await createScrapeRun(site.id, { scheduled: true, detailMode, stopAt });
     scrapeRunId = run.id;
   } catch (err) {
     if (err instanceof ConflictError) {
@@ -439,8 +465,10 @@ async function runOneSite(
   // A site with limits.timeBudgetMinutes is waited for its budget + 3, so its
   // own deadline fires first; every other site, the fleet's perSiteTimeoutMinutes.
   const waitMinutes = sweepWaitMinutes(readSiteLimits(site.fieldMappings), sweepConfig.perSiteTimeoutMinutes);
+  // In the big lane, never past the stop plus the minutes a cut-off run needs to close.
+  const waitMs = stopAt ? Math.min(waitMinutes * 60_000, stopAt.getTime() - Date.now() + BIG_LANE_CLOSE_MARGIN_MS) : waitMinutes * 60_000;
   const waited = await waitForRun(scrapeRunId, {
-    timeoutMs: waitMinutes * 60_000,
+    timeoutMs: Math.max(60_000, waitMs),
     pollMs: sweepConfig.pollIntervalMs,
   });
   defect = waited.defect;
@@ -452,7 +480,7 @@ async function runOneSite(
   if (waited.status === "TIMED_OUT") {
     const cleanup = await cancelPendingSiteJob(
       scrapeRunId,
-      `sweep stopped waiting after ${waitMinutes}m`,
+      `sweep stopped waiting after ${Math.round(Math.max(60_000, waitMs) / 60_000)}m`,
     );
     if (cleanup.leftRunning) {
       defect =
@@ -557,9 +585,9 @@ function toScrapeReportItem(r: SiteResult): ReportItem {
  * close" instead. It exists so the selection, the ordering and the pre-flight
  * verdicts can be read against production before anything is enqueued.
  */
-async function dryRun(): Promise<number> {
+async function dryRun(lane: SweepLane = "nightly"): Promise<number> {
   const now = new Date();
-  log(`=== nightly sweep --dry-run (READ ONLY) ===`);
+  log(`=== nightly sweep --dry-run${lane === "big" ? " --lane big" : ""} (READ ONLY) ===`);
   log(`time         ${now.toISOString()}  (${sweepConfig.timezone})`);
   log(`enabled      ${sweepConfig.enabled}`);
   log(`fresh window ${sweepConfig.freshWindowHours}h`);
@@ -571,7 +599,7 @@ async function dryRun(): Promise<number> {
   const orphanCandidates = await prisma.scrapeRun.count({ where: { status: "IN_PROGRESS" } });
   log(`  IN_PROGRESS scrape runs: ${orphanCandidates}  (the reaper would inspect these)`);
 
-  const staleSweeps = await resolveStaleSweeps("SCRAPE", true, log);
+  const staleSweeps = await resolveStaleSweeps(lane === "big" ? BIG_LANE_SWEEP_KIND : "SCRAPE", true, log);
   log(`  stale RUNNING sweeps:    ${staleSweeps}`);
 
   const queue = await readQueueState(null);
@@ -600,6 +628,7 @@ async function dryRun(): Promise<number> {
   const { selected, excluded } = selectSitesForSweep(sites, {
     now,
     freshWindowMs: sweepConfig.freshWindowHours * 3_600_000,
+    lane,
   });
 
   log(`--- selection: ${selected.length} of ${sites.length} ACTIVE/REVIEW sites ---`);
@@ -641,6 +670,10 @@ async function realRun(mode: Mode, trigger: string, hooks: { onSweep?: (sweepId:
   }
 
   const single = mode.kind === "single" ? mode.siteId : null;
+  // The big lane (worker/lib/bigLane.ts): only sites with lane "big", a
+  // SCRAPE_BIG row, and nothing past 01:45 Jerusalem.
+  const lane: SweepLane = mode.kind === "fleet" ? mode.lane : "nightly";
+  const sweepKind = lane === "big" ? BIG_LANE_SWEEP_KIND : "SCRAPE";
   // A single-site run emails only with --email (closeSweep); the fleet always does.
   const emailReport = mode.kind === "single" ? mode.email : true;
   const now = new Date();
@@ -648,7 +681,14 @@ async function realRun(mode: Mode, trigger: string, hooks: { onSweep?: (sweepId:
   // (worker/lib/nightlyArgs.ts). Decided once, so every site tonight agrees.
   const detailMode = resolveDetailMode(mode, now);
 
-  log(`=== nightly sweep ${single ? `--site ${single}` : "--now"} (detail pages: ${detailMode}) ===`);
+  if (lane === "big" && !insideBigLaneWindow(now)) {
+    log("[sweep] --lane big runs only between 22:00 and 01:45 Asia/Jerusalem. Refusing; nothing written.");
+    return 1;
+  }
+  const stopAt = lane === "big" ? bigLaneStopAt(now) : null;
+
+  log(`=== nightly sweep ${single ? `--site ${single}` : lane === "big" ? "--now --lane big" : "--now"} (detail pages: ${detailMode}) ===`);
+  if (stopAt) log(`[sweep] big lane: stops at ${stopAt.toISOString()} (01:45 Asia/Jerusalem)`);
 
   // --- pre-flight ------------------------------------------------------
   const reaped = await reapOrphanedScrapeRuns(SWEEP_REAP_OPTIONS);
@@ -656,12 +696,12 @@ async function realRun(mode: Mode, trigger: string, hooks: { onSweep?: (sweepId:
     log(`[sweep] reaped ${reaped.reaped} orphaned run(s) of ${reaped.scanned} scanned`);
     for (const d of reaped.details) log(`[sweep]   ${d.siteId}: ${d.reason}`);
   }
-  const stale = await resolveStaleSweeps("SCRAPE", false, log);
+  const stale = await resolveStaleSweeps(sweepKind, false, log);
   if (stale > 0) log(`[sweep] closed ${stale} stale RUNNING sweep row(s) as abandoned`);
 
   const sweep = await prisma.scrapeSweep.create({
     data: {
-      kind: "SCRAPE",
+      kind: sweepKind,
       // --trigger (worker/lib/nightlyArgs.ts): "timer" from the systemd unit,
       // "manual" by default; a --site run is suffixed, as it always was.
       trigger: single ? `${trigger}-single` : trigger,
@@ -681,7 +721,7 @@ async function realRun(mode: Mode, trigger: string, hooks: { onSweep?: (sweepId:
     const found = all.find((s) => s.id === single);
     if (!found) {
       await closeSweep({
-        kind: "SCRAPE",
+        kind: sweepKind,
         detailMode,
         email: emailReport,
         sweepId: sweep.id,
@@ -703,6 +743,7 @@ async function realRun(mode: Mode, trigger: string, hooks: { onSweep?: (sweepId:
     const { selected, excluded } = selectSitesForSweep(await loadSelectableSites({ fullPass: detailMode === "full" }), {
       now,
       freshWindowMs: sweepConfig.freshWindowHours * 3_600_000,
+      lane,
     });
     queue = selected;
     skipped = excluded.map((e) => ({ siteUrl: e.site.siteUrl, reason: e.reason, kind: e.kind }));
@@ -718,12 +759,25 @@ async function realRun(mode: Mode, trigger: string, hooks: { onSweep?: (sweepId:
   const results: SiteResult[] = [];
   // Per-sweep, so tomorrow starts clean whatever happened tonight.
   let breaker = createBreakerState();
-  const deadline = now.getTime() + sweepConfig.maxRuntimeMinutes * 60_000;
+  // The big lane's deadline is its stop; the nightly's, its runtime cap.
+  const deadline = stopAt ? stopAt.getTime() : now.getTime() + sweepConfig.maxRuntimeMinutes * 60_000;
 
   for (const site of queue) {
     if (Date.now() > deadline) {
       log(`[sweep] runtime cap reached; ${queue.length - results.length} site(s) not reached`);
       break;
+    }
+
+    // The fit check: a big-lane site starts only if it is expected to finish
+    // by 01:45. Otherwise it is skipped, named in the report, and selected again
+    // in tomorrow's window.
+    if (stopAt) {
+      const expected = expectedMinutes(await recentRunMinutes(site.id), readSiteLimits(site.fieldMappings));
+      if (!fitsBeforeStop(new Date(), expected, stopAt)) {
+        log(`[sweep] skip ${site.siteUrl}: ${noFitReason(expected)}`);
+        skipped = [...(skipped ?? []), { siteUrl: site.siteUrl, reason: noFitReason(expected), kind: "no_fit" }];
+        continue;
+      }
     }
 
     log(`[sweep] -> ${site.siteUrl}`);
@@ -732,20 +786,19 @@ async function realRun(mode: Mode, trigger: string, hooks: { onSweep?: (sweepId:
     // shown the worker is claiming work — otherwise a sweep against a dead
     // worker times out site after site and reports a quiet, successful night.
     const isProbe = results.length === 0;
-    const result = await runOneSite(
-      site,
-      detailMode,
-      isProbe
+    const result = await runOneSite(site, detailMode, {
+      stopAt,
+      ...(isProbe
         ? {
-            probe: (jobId) =>
+            probe: (jobId: string) =>
               probeWorkerDraining(jobId, {
                 busyWaitCapMs: BUSY_EVIDENCE_WINDOW_MS,
                 pollMs: sweepConfig.pollIntervalMs,
                 log: (line) => log(`[sweep] ${line}`),
               }),
           }
-        : undefined,
-    );
+        : {}),
+    });
     results.push(result);
 
     log(
@@ -793,7 +846,7 @@ async function realRun(mode: Mode, trigger: string, hooks: { onSweep?: (sweepId:
       // Through closeSweep like every other close, so a wedged night has a
       // report and counters instead of a bare FAILED row.
       const failedText = await closeSweep({
-        kind: "SCRAPE",
+        kind: sweepKind,
         detailMode,
         email: emailReport,
         sweepId: sweep.id,
@@ -844,7 +897,7 @@ async function realRun(mode: Mode, trigger: string, hooks: { onSweep?: (sweepId:
 
       log(`[sweep] HALT: ${haltReason}`);
       const haltedText = await closeSweep({
-        kind: "SCRAPE",
+        kind: sweepKind,
         detailMode,
         email: emailReport,
         sweepId: sweep.id,
@@ -868,7 +921,7 @@ async function realRun(mode: Mode, trigger: string, hooks: { onSweep?: (sweepId:
   // Counters and report both come from closeSweep, so this path and the halt
   // path cannot compute them differently.
   const reportText = await closeSweep({
-    kind: "SCRAPE",
+    kind: sweepKind,
     detailMode,
     email: emailReport,
     sweepId: sweep.id,
@@ -1075,7 +1128,7 @@ async function main() {
   const parsed = parseNightlyArgs(process.argv.slice(2));
   const code =
     parsed.kind === "dry-run"
-      ? await dryRun()
+      ? await dryRun(parsed.lane)
       : parsed.kind === "test-email"
         ? await testEmail()
         : parsed.kind === "dry-run-details"
