@@ -96,6 +96,16 @@ function testHomepageDerivation() {
     assert.equal(isAtsHost(host), true, `${host} is a vendor host`);
   }
   assert.equal(isAtsHost("notvp4.me"), false, "only vp4.me itself and its subdomains");
+  // Two more recruitment vendors (developer, 2026-10-12): Priority Software
+  // takes applications only on niloos.ai, and hunter-edge.me hosts employers'
+  // Hunter boards. Neither is ever the employer.
+  for (const host of ["niloos.ai", "www.niloos.ai", "priority.niloos.ai", "hunter-edge.me", "acme.hunter-edge.me"]) {
+    assert.equal(isAtsHost(host), true, `${host} is a vendor host`);
+  }
+  assert.deepEqual(deriveHomepageCandidates("https://priority.niloos.ai/jobs"), [], "niloos.ai is the vendor's, not the employer's");
+  for (const host of ["notniloos.ai", "niloos.ai.example.com", "hunter-edge.me.example.com", "nothunter-edge.me"]) {
+    assert.equal(isAtsHost(host), false, `${host} is not the vendor`);
+  }
   assert.equal(
     homepageFromLinks([{ href: "https://www.smoove.io/he/", text: "smoove", inChrome: true }], "https://lp.vp4.me/foma"),
     null,

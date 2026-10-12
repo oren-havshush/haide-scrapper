@@ -50,6 +50,11 @@ const ATS_HOSTS: readonly RegExp[] = [
   // and captured Smoove's about text, address, city and logo.
   /(^|\.)vp4\.me$/i,
   /(^|\.)smoove\.io$/i,
+  // Two more recruitment vendors (developer, 2026-10-12): Priority Software
+  // takes applications only on its vendor's niloos.ai page, and hunter-edge.me
+  // hosts employers' Hunter boards. A vendor is never the employer.
+  /(^|\.)niloos\.ai$/i,
+  /(^|\.)hunter-edge\.me$/i,
 ];
 
 export function isAtsHost(host: string): boolean {
