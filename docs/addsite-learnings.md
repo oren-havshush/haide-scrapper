@@ -4468,3 +4468,29 @@ is added that the citing text does not say. Their status rows are in
   vendor, `; no wait ran (only SiteGround's automatic check is waited for)`.
 - **Generalizes to:** report wording is a claim; when the code changes what happens, the wording has
   to change with it.
+
+## LRN-LOC-18 — the normaliser's typo and scan steps made near-miss places
+
+- **Date / site:** 2026-10-12; found by the developer on ORS, measured across the fleet.
+- **Signal:** the typo step (any one edit) turned the kibbutz דבירה into the moshav דבורה and the
+  Tzipporit industrial zone ציפורית into the moshav ציפורי. The scan step (every known place named
+  inside a part) turned the Idan HaNegev industrial park "עידן הנגב" into the moshav עידן, "אלון תבור"
+  into אלון, "נווה תרצה" (a prison in Ramla) into נווה, "ליד בית שמש" into בית שמש, "דרום ת"א"
+  into the South region. Over all 9,651 jobs the two steps alone produced 30 wrong values (1 typo,
+  29 scan): near-miss places that LRN-LOC-4 forbids.
+- **Rule (worker/lib/locationNormalize.ts):**
+  - typo: one edit of an allowed kind only: a vav or yod inserted or deleted, a hyphen for a space,
+    a definite he after a space. Never a substitution, never another letter.
+  - scan: a place followed by a Hebrew word that is not a place, a ו- connector or a stop word is
+    part of a longer name and refused (R1'); a region directly before a city, or after one across a
+    dash, is a part of that city and dropped (R2); a place after a neighbour marker is refused (R3); a
+    place directly followed by a definite region word with no connector is one unlisted compound name,
+    both refused (R6); אלון is denied to the scanner only. Marker words are data in
+    `worker/data/scan-markers.ts`.
+- **Measured with the real code:** 28 of the 30 wrong values removed; 0 new values; 2 wrong left
+  (סגולה from "אזה"ת סגולה", the industrial-zone rule not taken). **Accepted cost, 3 right values
+  lost:** "יהוד מונסון" no longer yields יהוד, "רמת גן ב”ב" no longer yields רמת גן, and electra's
+  "מיקום ראשו לציון" no longer yields ראשון לציון (a dropped final nun is not an allowed edit). All
+  171 stored company HQ addresses resolve as before (מיקוד, פיתוח and פארק are stop words for that).
+- **Generalizes to:** an approximate match is only safe for the variations that cannot name a
+  different place; a name found inside a longer name is not that place.

@@ -10,6 +10,7 @@
 // two lists must not be allowed to drift apart unnoticed.
 
 import { readFileSync } from "fs";
+import { join } from "path";
 import {
   isCanonicalLocation,
   isRegionLocation,
@@ -231,6 +232,26 @@ console.log("\n# IL_CANONICAL still equals CSV files/city.csv");
   assert(missingFromGaz.length === 0,
     `no city.csv entry outside IL_CANONICAL (offenders: ${missingFromGaz.join(", ")})`);
   console.log(`  (${gaz.size} gazetteer vs ${csv.size} csv entries)`);
+}
+
+// The typo and scan steps never produce a near-miss place (owner, 2026-10-12,
+// LRN-LOC-18). The cases are data (locationSteps.cases.tsv: step, input, values
+// that must appear, values that must not, why), so no Hebrew sits in this file.
+{
+  console.log("\nnormaliser: no near-miss place from the typo or scan step");
+  const rows = readFileSync(join(__dirname, "locationSteps.cases.tsv"), "utf8")
+    .split("\n")
+    .filter(Boolean)
+    .slice(1)
+    .map((l) => l.split("\t"));
+  assert(rows.length === 16, `the 15 measured cases and the street denylist case are present (got ${rows.length})`);
+  for (const [step, input, mustHave, mustNot, why] of rows) {
+    const got = normalizeLocations(input);
+    for (const v of (mustHave || "").split("|").filter(Boolean))
+      assert(got.includes(v), `[${step}] ${why}: keeps ${v} (got ${JSON.stringify(got)})`);
+    for (const v of (mustNot || "").split("|").filter(Boolean))
+      assert(!got.includes(v), `[${step}] ${why}: never ${v} (got ${JSON.stringify(got)})`);
+  }
 }
 
 console.log(failures === 0 ? "\nALL PASS" : `\n${failures} FAILURE(S)`);

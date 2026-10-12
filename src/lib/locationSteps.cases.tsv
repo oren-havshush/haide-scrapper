@@ -1,0 +1,17 @@
+step	input	must include	must not include	why
+typo	דבירה		דבורה	kibbutz Dvira is not moshav Dvora (substitution)
+typo	ציפורית		ציפורי	the Tzipporit industrial zone is not moshav Tzippori (a lost letter)
+typo	גני תקוה	גני תקווה		a missing vav: the same town
+typo	ביתר עלית	ביתר עילית		a missing yod: the same town
+typo	תל-אביב-יפו	תל אביב-יפו		a hyphen for a space: the same city
+scan	עידן הנגב		עידן	the Idan HaNegev industrial park is not moshav Idan
+scan	אזור תעשייה אלון תבור		אלון	the Alon Tavor industrial zone is not Alon
+scan	בית סוהר נווה תרצה, רמלה	רמלה לוד	נווה	Neve Tirza prison is in Ramla, not in Neve
+scan	אשתאול ליד בית שמש	אשתאול	בית שמש	near Beit Shemesh is not Beit Shemesh
+scan	תל אביב גבול גבעתיים	תל אביב-יפו	גבעתיים	on the Givatayim border is Tel Aviv
+scan	דרום ת"א, הטייסים	תל אביב-יפו	אזור דרום	south Tel Aviv is not the South region
+scan	מרכז גרעיני שורק, יבנה	יבנה	אזור מרכז	a research centre's name is not the Center region
+scan	חיפה והצפון	חיפה|אזור צפון		a city and its region, joined by vav: both kept
+scan	קרית אריה פתח-תקווה	פתח תקווה		a neighbourhood before its city: the city kept
+scan	ירושלים אזור יהודה ושומרון	ירושלים|אזור יהודה ושומרון		two places side by side: both kept
+scan	יגאל אלון , תל אביב	תל אביב-יפו	אלון	Yigal Alon is a street in Tel Aviv (the scan-only denylist)

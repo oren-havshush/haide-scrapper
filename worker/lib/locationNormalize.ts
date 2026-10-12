@@ -24,11 +24,14 @@
  *
  * Cascade, per comma/pipe/slash-separated part:
  *   exact -> alias/abbreviation -> English -> hyphen/spelling variant ->
- *   typo (edit distance 1) -> scan for every known place named inside it
+ *   typo (one allowed edit: a vav or yod, a hyphen for a space, a definite he)
+ *   -> scan for every known place named inside it, refusing a place that is
+ *   part of a longer name or a neighbour (LRN-LOC-18)
  *
  * Measured on the live fleet: canonical 35.6% -> 98.5%.
  */
 import { IL_CANONICAL } from "../data/il-places";
+import { SCAN_NEIGHBOUR_BEFORE, SCAN_ONLY_DENYLIST, SCAN_STOP_AFTER } from "../data/scan-markers";
 
 const CANONICAL: ReadonlySet<string> = new Set(IL_CANONICAL);
 /** Longest-first so "תל אביב-יפו" is consumed whole, never re-matched as "תל אביב". */
@@ -226,14 +229,34 @@ export const MULTI_WORD_PLACE_NAMES: readonly string[] = (() => {
   return [...names].sort((a, b) => b.length - a.length);
 })();
 
-function levenshtein1(a: string, b: string): boolean {
-  if (Math.abs(a.length - b.length) > 1) return false;
-  const dp: number[][] = Array.from({ length: a.length + 1 }, (_, i) => [i, ...Array(b.length).fill(0)]);
-  for (let j = 0; j <= b.length; j++) dp[0][j] = j;
-  for (let i = 1; i <= a.length; i++)
-    for (let j = 1; j <= b.length; j++)
-      dp[i][j] = Math.min(dp[i - 1][j] + 1, dp[i][j - 1] + 1, dp[i - 1][j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1));
-  return dp[a.length][b.length] === 1;
+/**
+ * The typo step's one allowed edit (owner, 2026-10-12, LRN-LOC-18): the
+ * insertion or deletion of a vav or a yod (a spelling variant of the same
+ * name: גני תקוה / גני תקווה), a hyphen for a space, or a definite he after a
+ * space. Never a substitution (דבירה is kibbutz Dvira, not moshav דבורה) and
+ * never any other letter (ציפורית is an industrial zone, not moshav ציפורי).
+ * It replaced plain edit distance 1, which produced both of those.
+ */
+function allowedTypo(p: string, c: string): boolean {
+  if (p.length === c.length) {
+    let diff = -1;
+    for (let i = 0; i < p.length; i++) {
+      if (p[i] === c[i]) continue;
+      if (diff >= 0) return false;
+      diff = i;
+    }
+    if (diff < 0) return false;
+    const pair = p[diff] + c[diff];
+    return pair === "- " || pair === " -";
+  }
+  const [long, short] = p.length > c.length ? [p, c] : [c, p];
+  if (long.length !== short.length + 1) return false;
+  let i = 0;
+  while (i < short.length && long[i] === short[i]) i++;
+  if (long.slice(i + 1) !== short.slice(i)) return false;
+  const extra = long[i];
+  if (extra === VAV || extra === String.fromCharCode(0x5d9)) return true;
+  return extra === HE && (i === 0 || long[i - 1] === " ");
 }
 
 const isHeb = (ch: string) => /[֐-׿]/.test(ch);
@@ -248,13 +271,13 @@ const isHeb = (ch: string) => /[֐-׿]/.test(ch);
 function scanPlaces(raw: string): string[] {
   const hay = squash(raw);
   const candidates: Array<[string, string]> = [];
-  for (const c of BY_LEN) if (c.length >= 3 && !SCAN_DENYLIST.has(c)) candidates.push([c, c]);
+  for (const c of BY_LEN) if (c.length >= 3 && !SCAN_DENYLIST.has(c) && !SCAN_ONLY_DENY.has(c)) candidates.push([c, c]);
   for (const [k, v] of Object.entries(LOCATION_ALIAS))
-    if (k.length >= 3 && !SCAN_DENYLIST.has(k)) candidates.push([k, v]);
+    if (k.length >= 3 && !SCAN_DENYLIST.has(k) && !SCAN_ONLY_DENY.has(k)) candidates.push([k, v]);
   candidates.sort((a, b) => b[0].length - a[0].length);
 
   const taken: Array<[number, number]> = [];
-  const hits: Array<{ at: number; value: string }> = [];
+  const hits: ScanHit[] = [];
   for (const [needle, canonical] of candidates) {
     let from = 0;
     for (;;) {
@@ -266,15 +289,104 @@ function scanPlaces(raw: string): string[] {
       const after = end < hay.length ? hay[end] : " ";
       if (isHeb(before) && before !== "ו") continue;
       if (isHeb(after)) continue;
+      if (!keepScanHit(hay, at, end, candidates)) continue;
       if (taken.some(([a, b]) => at < b && end > a)) continue;
       taken.push([at, end]);
-      hits.push({ at, value: canonical });
+      hits.push({ at, end, value: canonical });
     }
   }
   hits.sort((a, b) => a.at - b.at);
   const out: string[] = [];
-  for (const h of hits) if (!out.includes(h.value)) out.push(h.value);
+  for (const h of dropPartOfAName(hay, hits)) if (!out.includes(h.value)) out.push(h.value);
   return out;
+}
+
+// ---------------------------------------------------------------------------
+// The scanner's refusal rules (owner, 2026-10-12, LRN-LOC-18). Measured on the
+// whole fleet (9,651 jobs): together they remove 27 of the scan step's 29 wrong
+// values, cost 2 right ones ("יהוד מונסון" loses יהוד, "רמת גן ב”ב" loses
+// רמת גן) and add none. The marker words are data, in worker/data/scan-markers.ts.
+// ---------------------------------------------------------------------------
+
+type ScanHit = { at: number; end: number; value: string };
+
+const SCAN_ONLY_DENY: ReadonlySet<string> = new Set(SCAN_ONLY_DENYLIST);
+const STOP_AFTER: ReadonlySet<string> = new Set(SCAN_STOP_AFTER);
+const NEIGHBOUR_BEFORE: ReadonlySet<string> = new Set(SCAN_NEIGHBOUR_BEFORE);
+const VAV = String.fromCharCode(0x5d5);
+const HE = String.fromCharCode(0x5d4);
+const RIGHT_DQUOTE = String.fromCharCode(0x201d);
+const WORD_MARKS: ReadonlySet<string> = new Set(['"', "'", ".", RIGHT_DQUOTE, String.fromCharCode(0x5f3), String.fromCharCode(0x5f4)]);
+const isHebLetter = (ch: string | undefined) => !!ch && ch.charCodeAt(0) >= 0x5d0 && ch.charCodeAt(0) <= 0x5ea;
+const isWordChar = (ch: string | undefined) => isHebLetter(ch) || (!!ch && WORD_MARKS.has(ch));
+
+/** The Hebrew word after `end` (spaces skipped), or null when punctuation or the end comes first. */
+function wordAfter(hay: string, end: number): { word: string; at: number } | null {
+  let i = end;
+  while (i < hay.length && hay[i] === " ") i++;
+  if (!isHebLetter(hay[i])) return null;
+  let j = i;
+  while (j < hay.length && isWordChar(hay[j])) j++;
+  return { word: hay.slice(i, j), at: i };
+}
+
+/** The Hebrew word before `at` (spaces skipped), or null. */
+function wordBefore(hay: string, at: number): string | null {
+  let i = at;
+  while (i > 0 && hay[i - 1] === " ") i--;
+  if (!isWordChar(hay[i - 1])) return null;
+  let j = i;
+  while (j > 0 && isWordChar(hay[j - 1])) j--;
+  return hay.slice(j, i);
+}
+
+/** True when a known place (or ו + a known place) starts at `pos`; ” is read as ". */
+function placeStartsAt(hay: string, pos: number, candidates: ReadonlyArray<[string, string]>): boolean {
+  const h = hay.split(RIGHT_DQUOTE).join('"');
+  for (const [n] of candidates) {
+    if (h.startsWith(n, pos)) return true;
+    if (h[pos] === VAV && h.startsWith(n, pos + 1)) return true;
+  }
+  return false;
+}
+
+/**
+ * R1': a place followed by another Hebrew word that is not a place, a
+ * connector (a ו- word) or a stop word is the first word of a longer name
+ * ("אלון תבור", "נווה תרצה", "מרכז גרעיני"). R3: a place right after a
+ * neighbour marker is a neighbour ("ליד בית שמש", "גבול גבעתיים").
+ */
+function keepScanHit(hay: string, at: number, end: number, candidates: ReadonlyArray<[string, string]>): boolean {
+  const next = wordAfter(hay, end);
+  if (next && !STOP_AFTER.has(next.word) && next.word[0] !== VAV && !placeStartsAt(hay, next.at, candidates)) return false;
+  const prev = wordBefore(hay, at);
+  if (prev && NEIGHBOUR_BEFORE.has(prev)) return false;
+  return true;
+}
+
+/**
+ * R2: a region directly before a city ("דרום ת"א"), or after one across a dash
+ * ("תל אביב - דרום"), is a part of that city, not the region: the region goes.
+ * R6: a place directly followed by a definite region word with no connector
+ * ("עידן הנגב") is one compound name that is not on the list: both go. Real
+ * compounds ("משמר הנגב") are list entries and were matched whole already.
+ */
+function dropPartOfAName(hay: string, hits: ScanHit[]): ScanHit[] {
+  const drop = new Set<number>();
+  for (let k = 0; k < hits.length; k++) {
+    const h = hits[k];
+    const next = hits[k + 1];
+    const prev = hits[k - 1];
+    const region = isRegionLocation(h.value);
+    if (!region && next && isRegionLocation(next.value) && /^ +$/.test(hay.slice(h.end, next.at)) && hay[next.at] === HE) {
+      drop.add(k);
+      drop.add(k + 1);
+    }
+    if (!region) continue;
+    if (next && !isRegionLocation(next.value) && /^[\s-]*$/.test(hay.slice(h.end, next.at)) && hay[next.at] !== VAV) drop.add(k);
+    if (prev && !isRegionLocation(prev.value) && /^\s*-\s*$/.test(hay.slice(prev.end, h.at))) drop.add(k);
+  }
+  return hits.filter((_, k) => !drop.has(k));
 }
 
 /**
@@ -321,7 +433,7 @@ function resolvePart(part: string): string | null {
   // The approximate tail: an employer's typo, recovered. Deliberately NOT part
   // of resolveExactLocation — see the note there.
   const p = squash(part);
-  if (p.length >= 5) for (const c of BY_LEN) if (c.length >= 5 && levenshtein1(p, c)) return c;
+  if (p.length >= 5) for (const c of BY_LEN) if (c.length >= 5 && allowedTypo(p, c)) return c;
   return null;
 }
 
