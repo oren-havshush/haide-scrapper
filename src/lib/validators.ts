@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { isCanonicalLocation } from "./locations";
 import { FIX_FIELDS } from "./fixFields";
+import { templateTokenErrors } from "../../worker/lib/formTemplate";
 
 /**
  * True when a string carries a C0 control character other than the three that
@@ -226,7 +227,24 @@ export const updateSiteConfigSchema = z.object({
       // Step 2a: a hidden input's value at capture time (a per-job id, a form
       // id, a nonce). zod stripped it before; optional, so existing configs stay
       // valid and gain values only when recaptured.
-      value: z.string().max(4000).optional(),
+      // A value may carry a per-job template, {{job.<token>}}, filled at scrape
+      // time from the closed list (worker/lib/formTemplate.ts, LRN-FORM-12).
+      // Anything else in braces is refused here, so a typo never reaches a job.
+      value: z
+        .string()
+        .max(4000)
+        .superRefine((v, ctx) => {
+          const bad = templateTokenErrors(v);
+          if (bad.length > 0)
+            ctx.addIssue({
+              code: "custom",
+              message:
+                `form field value has ${bad.map((b) => JSON.stringify(b)).join(", ")}; a template must be ` +
+                "{{job.<token>}} with <token> one of externalJobId, idNumber, title, url, urlNumber, urlParam:<name> " +
+                "(name: letters, digits, _ or -, up to 40)",
+            });
+        })
+        .optional(),
       // Step 2a: a file input's accept list and whether it takes several files.
       accept: z.string().max(500).optional(),
       multiple: z.boolean().optional(),
