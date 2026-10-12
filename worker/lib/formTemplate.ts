@@ -124,3 +124,27 @@ export function fillFormTemplate(blobJson: string, job: TemplateJob): { blob: st
   });
   return { blob: JSON.stringify({ ...blob, fields: filled }), unfilled };
 }
+
+export const FORM_TEMPLATE_UNFILLED_WARNING = "form_template_unfilled";
+
+/**
+ * One row's raw fields with its own _formData filled (buildJobRows). Each
+ * unfilled "<field> (<token>)" is counted in `tally`. The input is not mutated;
+ * a row with no form, or a form with no template, comes back as it was.
+ */
+export function fillRowFormTemplate(
+  raw: Record<string, string>,
+  job: TemplateJob,
+  tally: Map<string, number>,
+): Record<string, string> {
+  const fd = raw["_formData"];
+  if (typeof fd !== "string" || !fd) return raw;
+  const { blob, unfilled } = fillFormTemplate(fd, job);
+  for (const u of unfilled) tally.set(u, (tally.get(u) ?? 0) + 1);
+  return blob === fd ? raw : { ...raw, _formData: blob };
+}
+
+/** The run warnings: one per unfilled field and token, with how many jobs. */
+export function formTemplateWarnings(tally: Map<string, number>): string[] {
+  return [...tally.entries()].map(([what, n]) => `${FORM_TEMPLATE_UNFILLED_WARNING}: ${what} on ${n} job(s)`);
+}

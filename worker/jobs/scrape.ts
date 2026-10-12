@@ -7,6 +7,7 @@ import { stampFormData, staticCompletion, staticFormBlob } from "../lib/formFiel
 import { completeFormBlob } from "../lib/formShape";
 import { navigateWithRetry, serverErrorRetry } from "../lib/navRetry";
 import { capItems, MAX_EXTRACTED_ITEMS } from "../lib/itemCap";
+import { fillRowFormTemplate, formTemplateWarnings } from "../lib/formTemplate";
 import { ITEM_CAP } from "../lib/sweepSelection";
 import {
   jobKeyOf,
@@ -3001,6 +3002,8 @@ function buildJobRows(args: {
   seenAt: Date;
   /** Collects one override_off_list warning per job whose stored override was skipped. */
   overrideWarnings: string[];
+  /** Counts each "<field> (<token>)" a form template could not fill (worker/lib/formTemplate.ts). */
+  formTemplateTally: Map<string, number>;
 }): Prisma.JobCreateManyInput[] {
   return args.records.map(({ normalized, validation }, idx) => {
     const persistedExternalJobId =
@@ -3054,7 +3057,16 @@ function buildJobRows(args: {
       // Step 2a: every stored _formData carries capturedAt, captureSource and
       // extractorVersion. One from an older setupScript's template, or carried
       // from before this change, is stamped version 1 here.
-      rawData: stampRawFormData(normalized.rawFields, args.seenAt) as Prisma.InputJsonValue,
+      // A site-wide form's {{job.<token>}} values are filled here, from this
+      // job's own persisted id, title and URL (worker/lib/formTemplate.ts).
+      rawData: stampRawFormData(
+        fillRowFormTemplate(
+          normalized.rawFields,
+          { externalJobId: persistedExternalJobId || null, title, url: normalized.url || null },
+          args.formTemplateTally,
+        ),
+        args.seenAt,
+      ) as Prisma.InputJsonValue,
       validationStatus:
         validation.warnings.length > 0
           ? `${validation.status};warn:${validation.warnings.join(",")}`
@@ -4493,6 +4505,7 @@ async function executeScrape(
   // neither holds a lock while doing CPU work.
   // Stored overrides the location gate skipped, added to the run's warnings below.
   const overrideWarnings: string[] = [];
+  const formTemplateTally = new Map<string, number>();
   const rows = buildJobRows({
     records: recordsToPersist,
     synthesizedIds: idFallback.ids,
@@ -4504,6 +4517,7 @@ async function executeScrape(
     scrapeRunId,
     seenAt: new Date(),
     overrideWarnings,
+    formTemplateTally,
   });
 
   let savedCount = 0;
@@ -4835,6 +4849,8 @@ async function executeScrape(
     scrapeWarnings.push(...challengeWarnings(runMode.extract, true));
     // Stored location overrides not on city.csv, skipped by the gate (worker/lib/jobLocation.ts).
     scrapeWarnings.push(...overrideWarnings);
+    // Site-wide form fields a {{job.<token>}} template could not fill (worker/lib/formTemplate.ts).
+    scrapeWarnings.push(...formTemplateWarnings(formTemplateTally));
     // What each listing page contributed, saved/seen. Only present on a site
     // that has more than one, and the only place a cross-page dedup collapse
     // is attributable to the page it happened on.
