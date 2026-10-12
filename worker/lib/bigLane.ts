@@ -166,6 +166,28 @@ export function cutOffWarning(ranMinutes: number): string {
   return `${CUT_OFF}: after ${Math.round(ranMinutes)} min`;
 }
 
+/**
+ * "Consider the big lane" (design item 6(i)): a nightly site whose run took
+ * over 10 minutes, or that hit the item cap, is named in the nightly's report,
+ * and a fix item opens for it once. Onboarding should catch these first (the
+ * triage rule for addsite3.md); this catches what it missed.
+ */
+export const CONSIDER_BIG_LANE_MINUTES = 10;
+export const CONSIDER_BIG_LANE_CODE = "consider_big_lane";
+
+export function considerBigLane(item: { ranMinutes?: number | null; warnings?: readonly unknown[] | null }): string | null {
+  if ((item.warnings ?? []).some((w) => String(w).startsWith("item_cap_reached:"))) return "consider the big lane (item cap)";
+  if (typeof item.ranMinutes === "number" && item.ranMinutes > CONSIDER_BIG_LANE_MINUTES) {
+    return `consider the big lane (ran ${Math.round(item.ranMinutes)} min)`;
+  }
+  return null;
+}
+
+/** Open the item only when the flag fired and none is open for the site already. */
+export function shouldOpenConsiderItem(flag: string | null, openCodes: readonly string[]): boolean {
+  return flag !== null && !openCodes.includes(CONSIDER_BIG_LANE_CODE);
+}
+
 /** The run's error when the window's end cut it off. */
 export function cutOffMessage(ranMinutes: number): string {
   return `cut off at ${BIG_LANE_STOP_LABEL} after ${Math.round(ranMinutes)} min — nothing written, previous listings kept`;

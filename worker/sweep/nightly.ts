@@ -62,6 +62,9 @@ import { readSiteLimits, sweepWaitMinutes } from "../lib/siteLimits";
 import {
   BIG_LANE_CLOSE_MARGIN_MS,
   BIG_LANE_SWEEP_KIND,
+  CONSIDER_BIG_LANE_CODE,
+  considerBigLane,
+  shouldOpenConsiderItem,
   bigLaneStopAt,
   expectedMinutes,
   fitsBeforeStop,
@@ -143,6 +146,26 @@ async function latestBigLaneReport(now: Date): Promise<{ logText: string } | nul
     select: { logText: true },
   });
   return big?.logText ? { logText: big.logText } : null;
+}
+
+/**
+ * "Consider the big lane" (worker/lib/bigLane.ts): a nightly site over 10
+ * minutes or at the item cap gets one COVERAGE fix item, and no second one
+ * while it is open. A value check never closes it (its code is not one of
+ * VALUE_CHECK_QUEUE_CODES); a human resolves it.
+ */
+async function openConsiderBigLaneItem(result: SiteResult): Promise<void> {
+  const flag = considerBigLane(toScrapeReportItem(result));
+  if (!flag) return;
+  const open = await prisma.fixItem.findMany({
+    where: { siteId: result.siteId, code: CONSIDER_BIG_LANE_CODE, resolvedAt: null },
+    select: { code: true },
+  });
+  if (!shouldOpenConsiderItem(flag, open.map((o) => o.code))) return;
+  await prisma.fixItem.create({
+    data: { siteId: result.siteId, field: "COVERAGE", source: "CHECK", code: CONSIDER_BIG_LANE_CODE, detail: flag, note: "consider the big lane", openedAt: new Date() },
+  });
+  log(`[sweep] fix item opened for ${result.siteUrl}: ${flag}`);
 }
 
 /**
@@ -572,6 +595,7 @@ function toScrapeReportItem(r: SiteResult): ReportItem {
     scrapedCount: r.scrapedCount,
     detailsFetched: r.detailsFetched ?? null,
     detailsCarried: r.detailsCarried ?? null,
+    ranMinutes: (r.finishedAt.getTime() - r.startedAt.getTime()) / 60_000,
     warnings: r.warnings,
     newestJobAt: r.newestJobAt,
     siteStatus: r.siteStatus,
@@ -831,6 +855,7 @@ async function realRun(mode: Mode, trigger: string, hooks: { onSweep?: (sweepId:
         (result.wouldDemoteTo ? ` WOULD DEMOTE -> ${result.wouldDemoteTo}` : ""),
     );
     if (result.defect) log(`[sweep] !! DEFECT: ${result.defect}`);
+    if (lane === "nightly" && !single) await openConsiderBigLaneItem(result);
 
     await prisma.scrapeSweepItem.create({
       data: {

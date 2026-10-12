@@ -73,7 +73,8 @@ const items = (n: number) => Array.from({ length: n }, (_, i) => ({ id: String(i
   ]);
   const why = lines.find((l) => /maof/.test(l.siteUrl))?.why ?? "";
   assert(
-    why === "item cap refused: 2,000 of 2,524 cards, more than a run may write — nothing written, 1990 listing(s) kept",
+    // and, on the nightly, the pointer to the big lane (worker/lib/bigLane.ts considerBigLane)
+    why === "item cap refused: 2,000 of 2,524 cards, more than a run may write — nothing written, 1990 listing(s) kept; consider the big lane (item cap)",
     `the Needs-attention line (got "${why}")`,
   );
 }

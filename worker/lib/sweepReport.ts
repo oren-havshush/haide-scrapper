@@ -16,7 +16,7 @@ import { LISTING_SOFT_CATEGORIES } from "./listingTargets";
 import { FIELD_FILL_DROP, ITEM_CAP } from "./sweepSelection";
 import { acceptedBelowGate, type AcceptedGates } from "../../src/lib/acceptedGates";
 import { challengeVendor } from "./zeroMatch";
-import { BIG_LANE_STOP_LABEL, CUT_OFF } from "./bigLane";
+import { BIG_LANE_STOP_LABEL, CUT_OFF, considerBigLane } from "./bigLane";
 
 /**
  * A multi-page site that refused to publish a partial set. Soft, like drift,
@@ -127,6 +127,8 @@ export type ReportItem = {
    */
   detailsFetched?: number | null;
   detailsCarried?: number | null;
+  /** Scrape phase: minutes the site took tonight, start to finish. In memory only. */
+  ranMinutes?: number | null;
   defect?: string | null;
 };
 
@@ -614,6 +616,13 @@ export function needsAttention(
 
     const churn = (i.warnings ?? []).map(String).find((w) => w.startsWith("detail_fingerprint_churn:"));
     if (churn) add(i, `carry-forward is off: ${churn.slice(churn.indexOf(":") + 1).trim()}`);
+
+    // Too big for the nightly (worker/lib/bigLane.ts): over 10 minutes, or the
+    // item cap. The nightly's report only; the big lane's sites are already there.
+    if (sweep.kind === "SCRAPE" && i.phase === "scrape") {
+      const flag = considerBigLane(i);
+      if (flag) add(i, flag);
+    }
 
     if (i.defect) add(i, `DEFECT: ${i.defect}`);
   }
