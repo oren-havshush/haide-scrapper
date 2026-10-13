@@ -1,0 +1,157 @@
+{
+  "_exportedAt": "2026-10-13T13:11:26.579Z",
+  "_note": "Mirror of the live config. The DB is authoritative; the worker never reads this file. setupScript lives alongside in <slug>.setup.js.",
+  "id": "cmv6o0gvb001201s1sn4jv7qm",
+  "siteUrl": "https://readygroup.co.il/careers/",
+  "companyName": "Ready Group",
+  "status": "ACTIVE",
+  "setupScriptFile": "readygroup--4jv7qm.setup.js",
+  "pageFlow": [
+    {
+      "url": "https://readygroup.co.il/careers/",
+      "action": "navigate"
+    },
+    {
+      "url": "https://readygroup.co.il/*/",
+      "action": "navigate"
+    }
+  ],
+  "fieldMappings": {
+    "_meta": {
+      "lane": null,
+      "limits": null,
+      "savedAt": "2026-10-13T12:40:54.742Z",
+      "pagination": null,
+      "formCapture": {
+        "fields": [
+          {
+            "name": "post_id",
+            "label": "post id",
+            "value": "7101",
+            "tagName": "input",
+            "required": false,
+            "fieldType": "hidden"
+          },
+          {
+            "name": "form_id",
+            "label": "form id",
+            "value": "09523b1",
+            "tagName": "input",
+            "required": false,
+            "fieldType": "hidden"
+          },
+          {
+            "name": "referer_title",
+            "label": "referer title",
+            "value": "{{job.title}} - Ready Group",
+            "tagName": "input",
+            "required": false,
+            "fieldType": "hidden"
+          },
+          {
+            "name": "queried_id",
+            "label": "queried id",
+            "tagName": "input",
+            "required": false,
+            "fieldType": "hidden"
+          },
+          {
+            "name": "form_fields[first_name]",
+            "label": "Full Name",
+            "tagName": "input",
+            "required": true,
+            "fieldType": "text"
+          },
+          {
+            "name": "form_fields[email]",
+            "label": "Email",
+            "tagName": "input",
+            "required": true,
+            "fieldType": "email"
+          },
+          {
+            "name": "form_fields[phone]",
+            "label": "Phone",
+            "tagName": "input",
+            "required": true,
+            "fieldType": "tel"
+          },
+          {
+            "name": "form_fields[content]",
+            "label": "content",
+            "value": "{{job.title}}",
+            "tagName": "input",
+            "required": false,
+            "fieldType": "hidden"
+          },
+          {
+            "name": "form_fields[cv]",
+            "label": "Add CV",
+            "tagName": "input",
+            "required": true,
+            "fieldType": "file"
+          }
+        ],
+        "method": "POST",
+        "actionUrl": "https://readygroup.co.il/wp-admin/admin-ajax.php",
+        "formSelector": "form#job_applications"
+      },
+      "listingUrls": null,
+      "itemSelector": ".premium-blog-wrap .premium-blog-post-outer-container",
+      "acceptedGates": null,
+      "minPublishDate": null,
+      "minPublishDays": null,
+      "revealSelector": null,
+      "listingSelector": null,
+      "applyLoginReason": null,
+      "browserOverrides": null,
+      "loadMoreSelector": null,
+      "locationFallback": null,
+      "originalMappings": null,
+      "applyRequiresLogin": false
+    },
+    "title": {
+      "source": "MANUAL",
+      "selector": ".premium-blog-entry-title a",
+      "confidence": 1,
+      "capturedOnUrl": "https://readygroup.co.il/careers/"
+    },
+    "location": {
+      "source": "MANUAL",
+      "selector": ".__ai-location",
+      "confidence": 1,
+      "capturedOnUrl": "https://readygroup.co.il/c-developer/"
+    },
+    "detailUrl": {
+      "source": "MANUAL",
+      "selector": ".premium-blog-entry-title a",
+      "confidence": 1,
+      "extractAttr": "href",
+      "capturedOnUrl": "https://readygroup.co.il/careers/"
+    },
+    "description": {
+      "source": "MANUAL",
+      "selector": ".__ai-description",
+      "confidence": 1,
+      "capturedOnUrl": "https://readygroup.co.il/c-developer/"
+    },
+    "publishDate": {
+      "source": "MANUAL",
+      "selector": ".__ai-date",
+      "confidence": 1,
+      "capturedOnUrl": "https://readygroup.co.il/c-developer/"
+    },
+    "requirements": {
+      "source": "MANUAL",
+      "selector": ".__ai-requirements",
+      "confidence": 1,
+      "capturedOnUrl": "https://readygroup.co.il/c-developer/"
+    },
+    "externalJobId": {
+      "source": "MANUAL",
+      "selector": ".__ai-id",
+      "confidence": 1,
+      "capturedOnUrl": "https://readygroup.co.il/c-developer/"
+    }
+  }
+}
