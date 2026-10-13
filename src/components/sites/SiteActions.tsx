@@ -7,12 +7,16 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
 } from "@/components/ui/dropdown-menu";
+import { SweepHoldBadge } from "@/components/shared/SweepHoldBadge";
+import { holdReleaseCommand, type HoldView } from "@/lib/sweepHold";
 import { MoreHorizontal, Trash2, Loader2, ExternalLink } from "lucide-react";
 
 interface SiteActionsProps {
   siteId: string;
   siteUrl: string;
   status: "ANALYZING" | "REVIEW" | "ACTIVE" | "FAILED" | "SKIPPED";
+  /** The site's hold (src/lib/sweepHold.ts), or null. Release is the owner's word, by the script. */
+  hold?: (HoldView & { id: string }) | null;
   onSkip: (siteId: string) => void;
   onFail: (siteId: string) => void;
   onReanalyze: (siteId: string, siteUrl: string) => void;
@@ -34,6 +38,7 @@ export function SiteActions({
   siteId,
   siteUrl,
   status,
+  hold,
   onSkip,
   onFail,
   onReanalyze,
@@ -108,6 +113,7 @@ export function SiteActions({
           className="h-7 px-2 text-xs"
           onClick={() => onScrape(siteId)}
           disabled={isScraping}
+          title={hold ? "The site is on hold: this scrape runs guarded and releases nothing" : undefined}
         >
           {isScraping ? (
             <>
@@ -163,6 +169,17 @@ export function SiteActions({
           <span className="sr-only">More actions</span>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end">
+          {hold && (
+            <>
+              {/* The menu's title line: the hold, and the command that releases it (no button: release is the owner's word). */}
+              <div className="px-2 py-1.5">
+                <SweepHoldBadge site={hold} />
+              </div>
+              <DropdownMenuItem onClick={() => void navigator.clipboard?.writeText(holdReleaseCommand(siteId))}>
+                Copy release command
+              </DropdownMenuItem>
+            </>
+          )}
           {showScrapeInMenu && onScrape && (
             <DropdownMenuItem
               onClick={() => onScrape(siteId)}

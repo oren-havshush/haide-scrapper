@@ -97,6 +97,8 @@ export const siteListQuerySchema = z
     ...sortSchema.shape,
     status: z.string().optional(),
     policyStatus: z.string().optional(),
+    /** "1": held or paused sites only (src/lib/sweepHold.ts holdListWhere). */
+    hold: z.enum(["1"]).optional(),
     ...siteUrlFilterSchema.shape,
     ...siteSearchFilterSchema.shape,
   })

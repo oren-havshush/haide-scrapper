@@ -19,6 +19,7 @@ export async function GET(request: NextRequest) {
       sortOrder: q.sortOrder,
       status: q.status,
       policyStatus: q.policyStatus,
+      hold: q.hold,
       siteUrl: q.siteUrl,
       companyNameSearch: q.companyNameSearch || undefined,
       urlSearch: q.urlSearch || undefined,

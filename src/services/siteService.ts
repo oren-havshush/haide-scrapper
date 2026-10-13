@@ -15,7 +15,7 @@ import { nextOperatorFields } from "@/lib/operatorFields";
 import { buildScrapeJobRow } from "@/lib/scrapeJobRow";
 import { findListingRunsBySiteIds } from "@/lib/listingRun";
 import { markFirstActive } from "@/lib/firstDates";
-import { scrapeRunGuarded, sweepHoldData, type SweepHoldBody } from "@/lib/sweepHold";
+import { holdListWhere, scrapeRunGuarded, sweepHoldData, type SweepHoldBody } from "@/lib/sweepHold";
 import type { PaginationParams } from "@/lib/types";
 import type { SiteStatus } from "@/generated/prisma/enums";
 import { emitEvent } from "@/services/eventService";
@@ -73,6 +73,8 @@ export async function listSites(
   params: PaginationParams & {
     status?: string;
     policyStatus?: string;
+    /** "1": held or paused sites only. */
+    hold?: string;
     siteUrl?: string;
     companyNameSearch?: string;
     urlSearch?: string;
@@ -85,6 +87,7 @@ export async function listSites(
     pageSize,
     status,
     policyStatus,
+    hold,
     siteUrl,
     companyNameSearch,
     urlSearch,
@@ -98,6 +101,8 @@ export async function listSites(
   if (policyStatus) {
     where.scrapingPolicyStatus = policyStatus;
   }
+  // Held or paused (Site.sweepHold): not a status, so a filter of its own.
+  Object.assign(where, holdListWhere(hold));
   // urlSearch (partial, case-insensitive) wins over the exact-match siteUrl
   // filter when both are supplied. The exact-match path is only used by the
   // /addsite skill for dedupe, so they never come from the same caller.
@@ -170,10 +175,12 @@ export async function listSites(
 }
 
 export async function getStatusCounts(): Promise<Record<string, number> & { total: number }> {
-  const counts = await prisma.site.groupBy({
-    by: ["status"],
-    _count: { _all: true },
-  });
+  const [counts, holds] = await Promise.all([
+    prisma.site.groupBy({ by: ["status"], _count: { _all: true } }),
+    // Held and paused sites (src/lib/sweepHold.ts), shown beside the status
+    // counts: a hold is not a status, and its sites stay ACTIVE.
+    prisma.site.groupBy({ by: ["sweepHold"], where: { sweepHold: { not: null } }, _count: { _all: true } }),
+  ]);
 
   const result: Record<string, number> = {
     ANALYZING: 0,
@@ -189,7 +196,9 @@ export async function getStatusCounts(): Promise<Record<string, number> & { tota
     total += row._count._all;
   }
 
-  return { ...result, total };
+  const onHold = holds.find((h) => h.sweepHold === "HOST_CHALLENGE")?._count._all ?? 0;
+  const paused = holds.find((h) => h.sweepHold === "CHALLENGE_RETRY_SATURDAY")?._count._all ?? 0;
+  return { ...result, total, onHold, paused };
 }
 
 export async function updateSiteAdminNote(siteId: string, note: string | null) {

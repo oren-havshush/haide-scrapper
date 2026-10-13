@@ -15,6 +15,8 @@ interface UseSitesParams {
   policyStatus?: string;
   companyNameSearch?: string;
   urlSearch?: string;
+  /** "1": held or paused sites only. */
+  hold?: string;
   sortBy?: string;
   sortOrder?: string;
 }
@@ -27,6 +29,7 @@ export function useSites(params: UseSitesParams = {}) {
     policyStatus,
     companyNameSearch,
     urlSearch,
+    hold,
     sortBy = "createdAt",
     sortOrder = "desc",
   } = params;
@@ -37,6 +40,7 @@ export function useSites(params: UseSitesParams = {}) {
   if (policyStatus) searchParams.set("policyStatus", policyStatus);
   if (companyNameSearch) searchParams.set("companyNameSearch", companyNameSearch);
   if (urlSearch) searchParams.set("urlSearch", urlSearch);
+  if (hold) searchParams.set("hold", hold);
   if (sortBy) searchParams.set("sortBy", sortBy);
   if (sortOrder) searchParams.set("sortOrder", sortOrder);
 

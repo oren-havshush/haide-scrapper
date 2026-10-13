@@ -6,6 +6,7 @@ import {
   TableHeader, TableRow,
 } from "@/components/ui/table";
 import { StatusBadge } from "@/components/shared/StatusBadge";
+import { SweepHoldBadge } from "@/components/shared/SweepHoldBadge";
 import { PolicyStatusBadge, type PolicyStatusValue } from "@/components/shared/PolicyStatusBadge";
 import { ConfidenceBar } from "@/components/shared/ConfidenceBar";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -85,6 +86,13 @@ interface Site {
   companyOperatorFields?: string[];
   companyProfileStatus: string | null;
   companyProfileAt: string | null;
+  /** A hold out of the sweeps (src/lib/sweepHold.ts); the status is unchanged by it. */
+  sweepHold: string | null;
+  sweepHoldAt: string | null;
+  sweepHoldNote: string | null;
+  sweepHoldBy: string | null;
+  sweepHoldProbeAt: string | null;
+  sweepHoldProbeResult: string | null;
 }
 
 type SortableColumn = "createdAt" | "confidenceScore";
@@ -614,8 +622,9 @@ export function SitesTable({
                   })()}
                 </TableCell>
                 <TableCell>
-                  <div className="flex items-center">
+                  <div className="flex items-center flex-wrap gap-1">
                     <StatusBadge status={site.status} />
+                    <SweepHoldBadge site={site} />
                     <ScrapeStatusIndicator
                       scrapeRun={site.latestScrapeRun}
                       listingRun={site.listingRun}
@@ -666,6 +675,7 @@ export function SitesTable({
                     siteId={site.id}
                     siteUrl={site.siteUrl}
                     status={site.status}
+                    hold={site.sweepHold ? site : null}
                     onSkip={handleSkip}
                     onFail={handleFail}
                     onReanalyze={handleReanalyze}

@@ -47,6 +47,12 @@ export function SiteStatusTabs({ activeTab, onTabChange }: SiteStatusTabsProps) 
           </TabsTrigger>
         ))}
       </TabsList>
+      {/* Not tabs: a hold is not a status, and a held site stays ACTIVE (src/lib/sweepHold.ts). */}
+      {!isLoading && ((counts?.onHold ?? 0) > 0 || (counts?.paused ?? 0) > 0) && (
+        <span className="ml-3 text-xs tabular-nums" style={{ color: "#f59e0b" }}>
+          {counts?.onHold ?? 0} on hold, {counts?.paused ?? 0} paused
+        </span>
+      )}
     </Tabs>
   );
 }

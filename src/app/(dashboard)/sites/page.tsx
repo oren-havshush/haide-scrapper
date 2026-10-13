@@ -24,6 +24,7 @@ export default function SitesPage() {
   const [policyFilter, setPolicyFilter] = useState<string | undefined>(undefined);
   const [companyNameSearch, setCompanyNameSearch] = useState("");
   const [urlSearch, setUrlSearch] = useState("");
+  const [onHold, setOnHold] = useState(false);
   const [page, setPage] = useState(1);
   const [sortBy, setSortBy] = useState<"createdAt" | "confidenceScore">("createdAt");
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
@@ -34,6 +35,7 @@ export default function SitesPage() {
     policyStatus: policyFilter,
     companyNameSearch: companyNameSearch || undefined,
     urlSearch: urlSearch || undefined,
+    hold: onHold ? "1" : undefined,
     sortBy,
     sortOrder,
   });
@@ -64,6 +66,11 @@ export default function SitesPage() {
     setPage(1);
   };
 
+  const handleOnHoldChange = (value: boolean) => {
+    setOnHold(value);
+    setPage(1);
+  };
+
   const handleSort = (column: "createdAt" | "confidenceScore") => {
     if (sortBy === column) {
       setSortOrder((prev) => (prev === "asc" ? "desc" : "asc"));
@@ -85,6 +92,8 @@ export default function SitesPage() {
         urlSearch={urlSearch}
         onCompanyNameSearchChange={handleCompanyNameSearchChange}
         onUrlSearchChange={handleUrlSearchChange}
+        onHold={onHold}
+        onOnHoldChange={handleOnHoldChange}
       />
       <SiteStatusTabs
         activeTab={statusFilter ?? "ALL"}

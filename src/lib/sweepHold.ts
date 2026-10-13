@@ -98,3 +98,70 @@ export function holdSetBy(by: string | null | undefined): "owner" | "auto" {
 export function scrapeRunGuarded(requested: boolean | undefined, sweepHold: string | null | undefined): boolean {
   return requested === true || (sweepHold !== null && sweepHold !== undefined);
 }
+
+// ---------------------------------------------------------------------------
+// The dashboard's view (design G7): the badge, its tooltip, the filter
+// ---------------------------------------------------------------------------
+
+/** A site's hold columns as the list API returns them (dates as strings). */
+export type HoldView = {
+  sweepHold: string | null;
+  sweepHoldAt: string | Date | null;
+  sweepHoldNote: string | null;
+  sweepHoldBy?: string | null;
+  sweepHoldProbeAt?: string | Date | null;
+  sweepHoldProbeResult?: string | null;
+};
+
+const JERUSALEM_DATE = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Jerusalem" });
+
+/** YYYY-MM-DD in Jerusalem, as the morning email dates a hold. */
+function holdDay(d: string | Date | null | undefined): string {
+  if (!d) return "?";
+  const at = new Date(d);
+  return Number.isNaN(at.getTime()) ? "?" : JERUSALEM_DATE.format(at);
+}
+
+/** The challenge, named by its host. */
+function challengeName(v: HoldView): string {
+  const vendor = holdVendor(v.sweepHold, v.sweepHoldNote);
+  return vendor === "host" ? "host challenge" : `${vendor} challenge`;
+}
+
+/** The badge: "On hold: Cloudflare challenge since 2026-10-13", or the pause's own wording. Null when not held. */
+export function holdBadgeText(v: HoldView): string | null {
+  if (!v.sweepHold) return null;
+  if (v.sweepHold === CLOUDFLARE_PAUSE) return `Paused: ${challengeName(v)} since ${holdDay(v.sweepHoldAt)}, retry Saturday`;
+  return `On hold: ${challengeName(v)} since ${holdDay(v.sweepHoldAt)}`;
+}
+
+/** The operator's command that releases a hold or a pause (the owner's word only). */
+export function holdReleaseCommand(siteId: string): string {
+  return `npx tsx scripts/addsite-batch.ts hold release --site ${siteId}`;
+}
+
+/** The badge's tooltip: the note, who set it, the last probe, and the release command. */
+export function holdBadgeTitle(v: HoldView & { id: string }): string {
+  if (!v.sweepHold) return "";
+  const vendor = holdVendor(v.sweepHold, v.sweepHoldNote);
+  const probe =
+    v.sweepHold === CLOUDFLARE_PAUSE
+      ? "retried by the Saturday-night run; a run that writes rows lifts the pause"
+      : vendor === "Cloudflare"
+        ? "not probed: a GET cannot pass Cloudflare; a guarded run is the real test"
+        : v.sweepHoldProbeAt
+          ? `probe ${holdDay(v.sweepHoldProbeAt)}: ${v.sweepHoldProbeResult ?? "?"}`
+          : "not probed yet (next: the Saturday-night run)";
+  return [
+    v.sweepHoldNote ?? "(no note)",
+    `set by the ${holdSetBy(v.sweepHoldBy) === "auto" ? "nightly" : "owner"}`,
+    probe,
+    "a scrape from here runs guarded and releases nothing",
+    `release (the owner's word): ${holdReleaseCommand(v.id)}`,
+  ].join("\n");
+}
+
+/** The sites list's ?hold=1 filter: held or paused sites only. */
+export function holdListWhere(hold: string | undefined): { sweepHold?: { not: null } } {
+  return hold === "1" ? { sweepHold: { not: null } } : {};
+}
