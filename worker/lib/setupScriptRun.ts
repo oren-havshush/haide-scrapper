@@ -36,7 +36,8 @@ export async function runSetupScript(
   script: string,
   opts: { guard?: ExtractGuard | null; timeoutMs?: number } = {},
 ): Promise<"ran" | "error" | "timeout"> {
-  const timeoutMs = opts.timeoutMs ?? SETUP_SCRIPT_TIMEOUT_MS;
+  // The site's own limit (limits.setupScriptSeconds) rides on the run's guard.
+  const timeoutMs = opts.timeoutMs ?? opts.guard?.scriptLimitMs ?? SETUP_SCRIPT_TIMEOUT_MS;
   let outcome: "ran" | "error" | "timeout" = "ran";
   // What the page says WHILE the script runs. Captured unconditionally: the
   // failure this exists for (LRN-SETUP-19) looked like a completely successful

@@ -2,7 +2,7 @@ import { z } from "zod";
 import { isCanonicalLocation } from "./locations";
 import { FIX_FIELDS } from "./fixFields";
 import { SITE_LANES } from "./siteLane";
-import { FLEET_MAX_PAGES, FLEET_TIME_BUDGET_MINUTES, LIMIT_CEILINGS } from "../../worker/lib/siteLimits";
+import { FLEET_MAX_PAGES, FLEET_TIME_BUDGET_MINUTES, LIMIT_CEILINGS, SETUP_SCRIPT_DEFAULT_SECONDS } from "../../worker/lib/siteLimits";
 import { AJAX_MAX_CONCURRENCY, AJAX_PAGE_TOKEN } from "../../worker/lib/ajaxWalk";
 import { templateTokenErrors } from "../../worker/lib/formTemplate";
 
@@ -337,6 +337,8 @@ export const updateSiteConfigSchema = z.object({
       timeBudgetMinutes: z.number().int().min(1).max(LIMIT_CEILINGS.timeBudgetMinutes),
       maxItems: z.number().int().min(1).max(LIMIT_CEILINGS.maxItems),
       maxPages: z.number().int().min(1).max(LIMIT_CEILINGS.maxPages),
+      // The setup script's own limit, default 90 s (worker/lib/siteLimits.ts).
+      setupScriptSeconds: z.number().int().min(1).max(LIMIT_CEILINGS.setupScriptSeconds),
     })
     .partial()
     .strict()
@@ -461,6 +463,20 @@ export const updateSiteConfigSchema = z.object({
       code: "custom",
       path: ["limits", "timeBudgetMinutes"],
       message: `limits.timeBudgetMinutes above ${FLEET_TIME_BUDGET_MINUTES} needs lane "big" (got ${budget})`,
+    });
+  }
+  // A setup script over today's 90 s gets at most a third of the run's budget:
+  // it can run twice on a listing (again after load-more), and the extraction
+  // needs the rest (worker/lib/siteLimits.ts).
+  const script = c.limits?.setupScriptSeconds;
+  const budgetSeconds = (budget ?? FLEET_TIME_BUDGET_MINUTES) * 60;
+  if (script !== undefined && script > SETUP_SCRIPT_DEFAULT_SECONDS && script * 3 > budgetSeconds) {
+    ctx.addIssue({
+      code: "custom",
+      path: ["limits", "setupScriptSeconds"],
+      message:
+        `limits.setupScriptSeconds ${script} is more than a third of the run's time budget ` +
+        `(${budgetSeconds / 60} min); raise limits.timeBudgetMinutes or lower it`,
     });
   }
   // pagination.maxPages rises above 100 only through limits.maxPages.

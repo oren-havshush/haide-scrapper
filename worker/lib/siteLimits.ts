@@ -11,16 +11,26 @@
 // read at 4 s a page is 175 minutes). A budget above the fleet's 15 is for the
 // big lane only; the schema refuses it on a nightly site, whose window is
 // budgeted at 15 a site (worker/lib/sweepBudget.test.ts).
+//
+// `setupScriptSeconds` (owner, 2026-10-13, horizontech): the setup script's own
+// limit, default 90 s (SETUP_SCRIPT_TIMEOUT_MS), ceiling 300. horizontech's
+// script reads 265 detail pages at about 2 a second; at 90 s it was cut off
+// and 32 rows were written with no description. Over 90, the schema holds it
+// to a third of the site's time budget: the script can run twice on a listing
+// (again after load-more), and the extraction needs the rest.
 
 import { MAX_EXTRACTED_ITEMS } from "./itemCap";
+import { SETUP_SCRIPT_TIMEOUT_MS } from "./setupScriptRun";
 
 export const FLEET_TIME_BUDGET_MINUTES = 15;
 export const FLEET_MAX_PAGES = 100;
-export const LIMIT_CEILINGS = { timeBudgetMinutes: 180, maxItems: 5000, maxPages: 300 } as const;
+export const LIMIT_CEILINGS = { timeBudgetMinutes: 180, maxItems: 5000, maxPages: 300, setupScriptSeconds: 300 } as const;
+/** The setup script's limit when the site sets none: today's 90 s. */
+export const SETUP_SCRIPT_DEFAULT_SECONDS = SETUP_SCRIPT_TIMEOUT_MS / 1000;
 /** The sweep waits a site's budget plus this, so the scrape's own deadline fires first. */
 export const SWEEP_WAIT_MARGIN_MINUTES = 3;
 
-export type SiteLimits = { timeBudgetMinutes?: number; maxItems?: number; maxPages?: number };
+export type SiteLimits = { timeBudgetMinutes?: number; maxItems?: number; maxPages?: number; setupScriptSeconds?: number };
 export type ResolvedLimits = {
   /** The scrape's deadline. */
   timeoutMs: number;
@@ -28,6 +38,8 @@ export type ResolvedLimits = {
   nearTimeoutMs: number;
   maxItems: number;
   maxPages: number;
+  /** The setup script's limit (runSetupScript, through the run's extract guard). */
+  setupScriptMs: number;
 };
 
 const isLimit = (v: unknown, max: number): v is number => typeof v === "number" && Number.isInteger(v) && v >= 1 && v <= max;
@@ -41,7 +53,7 @@ export function readSiteLimits(fieldMappings: unknown): SiteLimits {
   if (!raw || typeof raw !== "object") return {};
   const l = raw as Record<string, unknown>;
   const out: SiteLimits = {};
-  for (const key of ["timeBudgetMinutes", "maxItems", "maxPages"] as const) {
+  for (const key of ["timeBudgetMinutes", "maxItems", "maxPages", "setupScriptSeconds"] as const) {
     if (isLimit(l[key], LIMIT_CEILINGS[key])) out[key] = l[key] as number;
   }
   return out;
@@ -55,6 +67,7 @@ export function resolveLimits(limits: SiteLimits): ResolvedLimits {
     nearTimeoutMs: (minutes - 1) * 60_000,
     maxItems: limits.maxItems ?? MAX_EXTRACTED_ITEMS,
     maxPages: limits.maxPages ?? FLEET_MAX_PAGES,
+    setupScriptMs: limits.setupScriptSeconds !== undefined ? limits.setupScriptSeconds * 1000 : SETUP_SCRIPT_TIMEOUT_MS,
   };
 }
 

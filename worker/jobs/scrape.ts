@@ -3297,7 +3297,7 @@ export async function handleScrapeJob(
     abort: createAbortToken<ScrapeResult>(),
     walks: [],
     detailMode: readDetailMode(job.payload),
-    extract: newExtractGuard(scheduled, limits.maxItems),
+    extract: newExtractGuard(scheduled, limits.maxItems, limits.setupScriptMs),
     limits,
     stopAt: readStopAt(job.payload),
     deadlineMs: limits.timeoutMs,

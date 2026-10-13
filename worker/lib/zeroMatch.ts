@@ -26,6 +26,7 @@
 // manual path still substitutes.
 
 import { itemCapWarnings, MAX_EXTRACTED_ITEMS } from "./itemCap";
+import { SETUP_SCRIPT_TIMEOUT_MS } from "./setupScriptRun";
 
 export const ZERO_MATCH_WARNING = "item_selector_zero_match";
 export const WRONG_SCOPE_WARNING = "item_scope_suspect";
@@ -147,16 +148,22 @@ export type ExtractGuard = {
   challengeWaits: string[];
   /** The listing's main response stayed 5xx after its retry: "HTTP 503 (Service Unavailable)" (hostErrorOf). */
   hostError: string | null;
-  /** Each setup script cut off at its 90 s limit, as recorded on the run (worker/lib/setupScriptRun.ts). */
+  /** Each setup script cut off at its limit, as recorded on the run (worker/lib/setupScriptRun.ts). */
   scriptTimeouts: string[];
+  /** The setup script's limit: the site's limits.setupScriptSeconds, else 90 s (worker/lib/siteLimits.ts). */
+  scriptLimitMs: number;
   /** How many distinct cards there were when MAX_EXTRACTED_ITEMS bit; null when it did not (worker/lib/itemCap.ts). */
   itemCap: number | null;
   /** Items this run may write: the site's limits.maxItems, else MAX_EXTRACTED_ITEMS (worker/lib/siteLimits.ts). */
   maxItems: number;
 };
 
-export function newExtractGuard(scheduled: boolean, maxItems: number = MAX_EXTRACTED_ITEMS): ExtractGuard {
-  return { noAutoDetect: true, scheduled, zeroMatch: null, zeroMatchTitle: null, challenge: null, scopeSuspects: new Map(), challengeWaits: [], hostError: null, scriptTimeouts: [], itemCap: null, maxItems };
+export function newExtractGuard(
+  scheduled: boolean,
+  maxItems: number = MAX_EXTRACTED_ITEMS,
+  scriptLimitMs: number = SETUP_SCRIPT_TIMEOUT_MS,
+): ExtractGuard {
+  return { noAutoDetect: true, scheduled, zeroMatch: null, zeroMatchTitle: null, challenge: null, scopeSuspects: new Map(), challengeWaits: [], hostError: null, scriptTimeouts: [], scriptLimitMs, itemCap: null, maxItems };
 }
 
 /**

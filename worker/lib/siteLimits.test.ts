@@ -103,7 +103,7 @@ check("scrape.ts reads the limits", () => {
   assert(!/SCRAPE_TIMEOUT_MS/.test(scrape), "the 15-minute constant is gone");
   assert(!/NEAR_TIMEOUT_MS/.test(scrape), "the 14-minute constant is gone");
   assert(/const limits = resolveLimits\(readSiteLimits\(site\.fieldMappings\)\);[\s\S]{0,400}?\n\s+limits,\n/.test(scrape), "handleScrapeJob resolves the site's limits into runMode");
-  assert(/extract:\s*newExtractGuard\(scheduled, limits\.maxItems\)/.test(scrape), "the guard carries the site's item cap");
+  assert(/extract:\s*newExtractGuard\(scheduled, limits\.maxItems, limits\.setupScriptMs\)/.test(scrape), "the guard carries the site's item cap and script limit");
   assert(/capItems\(deduped, guard\?\.maxItems \?\? MAX_EXTRACTED_ITEMS, guard\)/.test(scrape), "the dedupe caps at the guard's max");
   assert(/listingBudgetExhausted\(scrapeStartedAt, Date\.now\(\), runMode\.deadlineMs\)/.test(scrape), "the listing budget is the run's deadline");
   assert(/deadlineMs: limits\.timeoutMs,/.test(scrape), "which starts as the site's budget");
