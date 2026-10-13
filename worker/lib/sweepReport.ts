@@ -13,7 +13,7 @@
 
 import { DEFAULT_DROP_THRESHOLDS, FIELD_FILL_THRESHOLD, isSuspiciousDrop, type DropThresholds } from "./scheduledRun";
 import { LISTING_SOFT_CATEGORIES } from "./listingTargets";
-import { FIELD_FILL_DROP, ITEM_CAP } from "./sweepSelection";
+import { FIELD_FILL_DROP, ITEM_CAP, SETUP_SCRIPT_CUT_OFF } from "./sweepSelection";
 import { acceptedBelowGate, type AcceptedGates } from "../../src/lib/acceptedGates";
 import { challengeVendor } from "./zeroMatch";
 import { BIG_LANE_STOP_LABEL, CUT_OFF, considerBigLane } from "./bigLane";
@@ -554,6 +554,12 @@ export function needsAttention(
       const w = (i.warnings ?? []).map(String).find((x) => x.startsWith("item_cap_reached:"));
       const what = w ? w.slice(w.indexOf(":") + 1).trim() : "more cards than the cap";
       add(i, `item cap refused: ${what}, more than a run may write — nothing written, ${i.jobsAfter} listing(s) kept`);
+    } else if (i.outcome === "suspicious_drop" && i.failureCategory === SETUP_SCRIPT_CUT_OFF) {
+      // The setup script hit its limit (worker/lib/scriptCutOff.ts): the
+      // run's first warning carries the limit in seconds.
+      const w = (i.warnings ?? []).map(String).find((x) => x.startsWith(`${SETUP_SCRIPT_CUT_OFF}:`));
+      const at = w ? ` at ${w.slice(w.indexOf(":") + 1).trim()}` : "";
+      add(i, `setup script cut off${at}; nothing written, ${i.jobsAfter} listing(s) kept`);
     } else if (
       i.outcome === "suspicious_drop" &&
       (i.warnings ?? []).map(String).some((x) => x.startsWith("listing_gap_drop:"))

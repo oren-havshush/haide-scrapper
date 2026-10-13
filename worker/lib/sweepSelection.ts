@@ -66,14 +66,28 @@ export const FIELD_FILL_DROP = "field_fill_drop";
  */
 export const ITEM_CAP = "item_cap";
 
-export type Outcome = "success" | "hard_failure" | "soft_failure" | "suspicious_drop" | "other";
+/**
+ * The setup script's refusal (worker/lib/scriptCutOff.ts): a scheduled run's
+ * script hit its limit, so the page held a partial read and nothing was
+ * written. The same outcome as a refused drop, rows kept.
+ */
+export const SETUP_SCRIPT_CUT_OFF = "setup_script_cut_off";
+
+export type Outcome ="success" | "hard_failure" | "soft_failure" | "suspicious_drop" | "other";
 
 export function classifyOutcome(run: {
   status: string;
   failureCategory: string | null;
 }): Outcome {
   if (isSuccessfulRun(run)) return "success";
-  if (run.failureCategory === SUSPICIOUS_DROP || run.failureCategory === FIELD_FILL_DROP || run.failureCategory === ITEM_CAP) return "suspicious_drop";
+  if (
+    run.failureCategory === SUSPICIOUS_DROP ||
+    run.failureCategory === FIELD_FILL_DROP ||
+    run.failureCategory === ITEM_CAP ||
+    run.failureCategory === SETUP_SCRIPT_CUT_OFF
+  ) {
+    return "suspicious_drop";
+  }
   if (
     run.status === "FAILED" &&
     run.failureCategory != null &&

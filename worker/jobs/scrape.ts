@@ -12,6 +12,7 @@ import { CUT_OFF, cutOffMessage, cutOffWarning, readStopAt, runDeadline } from "
 import { AJAX_MAX_CONCURRENCY, ajaxWalk, type AjaxPaginationConfig } from "../lib/ajaxWalk";
 import { fillRowFormTemplate, formTemplateWarnings } from "../lib/formTemplate";
 import { ITEM_CAP } from "../lib/sweepSelection";
+import { scriptCutOffRefusal } from "../lib/scriptCutOff";
 import {
   jobKeyOf,
   planValueCheckItems,
@@ -4325,6 +4326,14 @@ async function executeScrape(
       warnings: challengeWarnings(runMode.extract),
     });
   }
+  // A setup script cut off at its limit left a partial read in the listing
+  // (worker/lib/scriptCutOff.ts): a scheduled run refuses here, before any
+  // detail page is visited. Checked again after the detail pages, whose own
+  // script runs can be cut off too.
+  const listingCutOff = scriptCutOffRefusal(runMode.extract);
+  if (listingCutOff) {
+    return await refuseListingRun(scrapeRunId, listingCutOff);
+  }
   const listingWarnings = listingOutcome.warnings;
 
   // Apply maxJobs limit if set (e.g. "Test 1 Job" from dashboard)
@@ -4649,6 +4658,13 @@ async function executeScrape(
   });
 
   let savedCount = 0;
+
+  // The second look (worker/lib/scriptCutOff.ts): a script cut off on a detail
+  // page. Only a scheduled guard refuses; a manual run carries the warning.
+  const detailCutOff = scriptCutOffRefusal(runMode.extract);
+  if (detailCutOff) {
+    return await refuseListingRun(scrapeRunId, detailCutOff);
+  }
 
   if (scheduled) {
     // ---- Scheduled: one transaction, or nothing. (R1) -------------------
