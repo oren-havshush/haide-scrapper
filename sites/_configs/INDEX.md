@@ -32,11 +32,13 @@ several listing pages back into one and stops publishing the rest.
 | CallBiz | ACTIVE | 3 | 2040 | 1 | `callbiz--sf48jf` |
 | Ceragon | ACTIVE | 8 | 7483 | 1 | `comeet--ty14e5` |
 | CodeOasis | ACTIVE | 5 | 5082 | 2 | `codeoasis--yb2y8w` |
+| Comblack | ACTIVE | 8 | 11668 | 1 | `comblack--lfh3rc` |
 | DHL Express | ACTIVE | 7 | 3442 | 1 | `dhl--mwqiig` |
 | ERN | ACTIVE | 6 | 7423 | 1 | `ern--tcdrkt` |
 | ESO Group | ACTIVE | 4 | 577 | 1 | `eso-group--mgz38v` |
 | Eimsys | ACTIVE | 4 | 302 | 1 | `eimsys--an8gzs` |
 | Eitan Medical | ACTIVE | 8 | 6738 | 1 | `comeet--kp1dtz` |
+| Experis Israel | ACTIVE | 10 | 10073 | 1 | `experis--hdksz3` |
 | Exyte Israel | ACTIVE | 8 | 4512 | 1 | `exyte--go206o` |
 | Femi | ACTIVE | 6 | 6082 | 1 | `adamtotal--x0aqxh` |
 | Fritz | ACTIVE | 5 | 5110 | 1 | `fritz--wafrzk` |
@@ -66,6 +68,7 @@ several listing pages back into one and stops publishing the rest.
 | RISCO | ACTIVE | 7 | 5806 | 2 | `riscogroup--7fzhg0` |
 | Rad | ACTIVE | 5 | 878 | 1 | `rad--ncqy5u` |
 | Rapyd | ACTIVE | 11 | 2802 | 1 | `rapyd--6zork4` |
+| Ready Group | ACTIVE | 7 | 7391 | 1 | `readygroup--4jv7qm` |
 | TADIRAN GROUP | ACTIVE | 7 | 2620 | 1 | `topmatch--1z5jpw` |
 | TCMCAREER | ACTIVE | 7 | 3387 | 1 | `tcmcareer--7zncwp` |
 | TECH | ACTIVE | 9 | 6772 | 1 | `tech--mwc4v8` |
@@ -112,6 +115,7 @@ several listing pages back into one and stops publishing the rest.
 | בן & ג’ריס | ACTIVE | 5 | 1215 | 1 | `benjerry--12brnw` |
 | בנק הפועלים | ACTIVE | 6 | 4172 | 1 | `bankhapoalim--39tiof` |
 | בנק מזרחי טפחות | ACTIVE | 8 | 7119 | 1 | `mizrahi-tefahot--868pbk` |
+| ברק לעסקים | ACTIVE | 9 | 7945 | 1 | `barakl--145jlf` |
 | גולדברג פרושן ושות' רואי חשבון | ACTIVE | 5 | 4236 | 1 | `goldpro--1pf5j6` |
 | גזית | ACTIVE | 7 | 7944 | 1 | `gazit--gejiix` |
 | גילאר בע"מ | ACTIVE | 7 | 2518 | 1 | `gilar--cw5j32` |
