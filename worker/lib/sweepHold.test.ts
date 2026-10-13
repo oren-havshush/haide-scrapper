@@ -8,7 +8,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { selectSitesForSweep, type SelectableSite } from "./sweepSelection";
 import { selectDuePolicyReviews, type PolicyCandidate } from "../../src/lib/policySelection";
-import { sweepHoldBodySchema, sweepHoldData } from "../../src/lib/sweepHold";
+import { holdSetBy, holdVendor, sweepHoldBodySchema, sweepHoldData } from "../../src/lib/sweepHold";
 
 let failures = 0;
 function assert(cond: boolean, msg: string) {
@@ -60,6 +60,36 @@ check("set and release write the three fields", () => {
   assert(!sweepHoldBodySchema.safeParse({ hold: "HOST_CHALLENGE" }).success, "a hold needs a note");
   assert(!sweepHoldBodySchema.safeParse({ hold: null, note: "x" }).success, "a release takes no note");
   assert(!sweepHoldBodySchema.safeParse({ hold: "BLOCKED", note: "x" }).success, "only the named reasons");
+  assert(!sweepHoldBodySchema.safeParse({ hold: "CHALLENGE_RETRY_SATURDAY", note: "x" }).success, "the pause is the nightly's, never set through the route");
+});
+
+check("G2: a hold records who set it; a release clears the source and the probe", () => {
+  const at = new Date("2026-10-13T20:00:00Z");
+  const set = sweepHoldData(sweepHoldBodySchema.parse({ hold: "HOST_CHALLENGE", note: "SiteGround interactive challenge" }), at) as Record<string, unknown>;
+  assert(set.sweepHoldBy === "owner", `a hold through the route is the owner's (got ${JSON.stringify(set.sweepHoldBy)})`);
+  assert(set.sweepHoldProbeAt === null && set.sweepHoldProbeResult === null, "and starts with no probe result");
+  const release = sweepHoldData(sweepHoldBodySchema.parse({ hold: null }), at) as Record<string, unknown>;
+  for (const k of ["sweepHold", "sweepHoldAt", "sweepHoldNote", "sweepHoldBy", "sweepHoldProbeAt", "sweepHoldProbeResult"]) {
+    assert(k in release && release[k] === null, `release clears ${k} (got ${JSON.stringify(release[k])})`);
+  }
+  assert(holdSetBy(null) === "owner" && holdSetBy("owner") === "owner" && holdSetBy("auto") === "auto", "NULL is read as the owner");
+});
+
+check("G2: holdVendor names the host from the hold and its note", () => {
+  const cases: Array<[string | null, string | null, string]> = [
+    ["HOST_CHALLENGE", "Cloudflare challenge on headless browsers since 2026-10-09 (one1)", "Cloudflare"],
+    ["HOST_CHALLENGE", "SiteGround interactive challenge on the box IP since 2026-10-12 (tl-care) / 2026-10-13 (eso-group)", "SiteGround"],
+    ["HOST_CHALLENGE", "auto: SiteGround challenge (interactive captcha) on 3 nights, 2026-10-10..2026-10-12", "SiteGround"],
+    ["HOST_CHALLENGE", "blocked by cf-mitigated: challenge", "Cloudflare"],
+    ["CHALLENGE_RETRY_SATURDAY", "auto: Cloudflare challenge on 2026-10-09; retry Saturday night", "Cloudflare"],
+    ["CHALLENGE_RETRY_SATURDAY", null, "Cloudflare"],
+    ["HOST_CHALLENGE", "the owner held it", "host"],
+    ["HOST_CHALLENGE", null, "host"],
+  ];
+  for (const [hold, note, want] of cases) {
+    const got = holdVendor(hold, note);
+    assert(got === want, `holdVendor(${hold}, ${JSON.stringify(note)}) is ${want} (got ${got})`);
+  }
 });
 
 const read = (p: string) => readFileSync(join(__dirname, "..", "..", p), "utf8");
@@ -73,7 +103,11 @@ check("the sweeps, the route and the script are wired", () => {
   assert(/sweepHold: true/.test(policy) && /excludeHeld: true/.test(policy), "the policy sweep reads the hold and asks for held sites to be left out");
   assert(/on hold/.test(policy), "and logs how many");
   const schema = read("prisma/schema.prisma");
-  assert(/enum SweepHold \{\s*HOST_CHALLENGE\s*\}/.test(schema) && /sweepHold\s+SweepHold\?/.test(schema) && /sweepHoldAt\s+DateTime\?/.test(schema) && /sweepHoldNote\s+String\?/.test(schema), "the schema has the enum and the three columns");
+  assert(/enum SweepHold \{\s*HOST_CHALLENGE\s+CHALLENGE_RETRY_SATURDAY\s*\}/.test(schema) && /sweepHold\s+SweepHold\?/.test(schema) && /sweepHoldAt\s+DateTime\?/.test(schema) && /sweepHoldNote\s+String\?/.test(schema), "the schema has the enum, both values, and the three columns");
+  assert(/sweepHoldBy\s+String\?/.test(schema) && /sweepHoldProbeAt\s+DateTime\?/.test(schema) && /sweepHoldProbeResult\s+String\?/.test(schema), "and the source and probe columns (G2)");
+  const migration = read("prisma/migrations/20261013100000_sweep_hold_pause_and_probe/migration.sql");
+  assert(/ALTER TYPE "SweepHold" ADD VALUE 'CHALLENGE_RETRY_SATURDAY'/.test(migration) && /"sweepHoldBy" TEXT/.test(migration) && /"sweepHoldProbeAt" TIMESTAMP\(3\)/.test(migration) && /"sweepHoldProbeResult" TEXT/.test(migration), "the G2 migration adds the value and the three columns");
+  assert(!/UPDATE|DELETE|NOT NULL/.test(migration.replace(/^--.*$/gm, "")), "and is additive: no backfill, nothing required");
   const route = read("src/app/api/sites/[id]/sweep-hold/route.ts");
   assert(/sweepHoldBodySchema/.test(route) && /setSweepHold\(/.test(route), "the route validates the body and writes through the service");
   const svc = read("src/services/siteService.ts");

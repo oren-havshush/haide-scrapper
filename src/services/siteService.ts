@@ -212,11 +212,14 @@ export const SWEEP_HOLD_SELECT = {
   sweepHold: true,
   sweepHoldAt: true,
   sweepHoldNote: true,
+  sweepHoldBy: true,
+  sweepHoldProbeAt: true,
+  sweepHoldProbeResult: true,
 } as const;
 
 /**
  * Hold a site out of the sweeps, or release it (src/lib/sweepHold.ts). Writes
- * the three hold columns together and nothing else: the status, the jobs and
+ * the hold columns together and nothing else: the status, the jobs and
  * the config are untouched, so a held site stays exactly as visible as it was.
  */
 export async function setSweepHold(siteId: string, body: SweepHoldBody) {

@@ -2107,7 +2107,9 @@ async function cmdHold(argv: string[]): Promise<void> {
   const show = (label: string, row: Record<string, unknown>) =>
     console.log(
       `[hold] ${label}: ${row.siteUrl} status ${row.status}, sweepHold ${row.sweepHold ?? "-"}, ` +
-        `sweepHoldAt ${row.sweepHoldAt ?? "-"}, sweepHoldNote ${row.sweepHoldNote ? JSON.stringify(row.sweepHoldNote) : "-"}`,
+        `sweepHoldAt ${row.sweepHoldAt ?? "-"}, sweepHoldNote ${row.sweepHoldNote ? JSON.stringify(row.sweepHoldNote) : "-"}, ` +
+        `by ${row.sweepHold ? (row.sweepHoldBy ?? "owner (unrecorded)") : "-"}, ` +
+        `probe ${row.sweepHoldProbeAt ? `${row.sweepHoldProbeAt} ${JSON.stringify(row.sweepHoldProbeResult ?? "")}` : "-"}`,
     );
   const before = ((await apiGet(`/api/sites/${siteId}/sweep-hold`, headers)) as { data: Record<string, unknown> }).data;
   show("before", before);

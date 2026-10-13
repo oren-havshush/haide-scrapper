@@ -59,9 +59,13 @@ enum ScrapingPolicyStatus {
   CHECK_FAILED
 }
 
-/// Why a site is held out of the sweeps (Site.sweepHold).
+/// Why a site is held out of the sweeps (Site.sweepHold). HOST_CHALLENGE is
+/// set by the owner, or by the nightly after three SiteGround nights;
+/// CHALLENGE_RETRY_SATURDAY is Cloudflare's weekday pause, set by the nightly
+/// and lifted by a Saturday-night run that writes rows (worker/lib/holdRule.ts).
 enum SweepHold {
   HOST_CHALLENGE
+  CHALLENGE_RETRY_SATURDAY
 }
 
 model Site {
@@ -100,6 +104,11 @@ model Site {
   sweepHold     SweepHold?
   sweepHoldAt   DateTime?
   sweepHoldNote String?
+  /// Who set the hold: "owner" or "auto". NULL is read as "owner".
+  sweepHoldBy          String?
+  /// The Saturday probe of a held SiteGround site: when, and what it saw (ASCII).
+  sweepHoldProbeAt     DateTime?
+  sweepHoldProbeResult String?
 
   /// --- Company profile ---------------------------------------------------
   /// Captured ONCE at onboarding by scripts/company-profile.ts and never
