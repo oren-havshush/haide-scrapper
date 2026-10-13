@@ -93,6 +93,9 @@ CSV files/*.csv
 # The statistics bureau's settlements list, the source of city.csv's kind
 # column (scripts/seed-city-regions.ts, scripts/place-region.ts).
 !CSV files/settlements-cbs-2023.csv
+# The population authority's settlement list (sub-district, regional council),
+# the evidence scripts/place-region.ts proposes a region from.
+!CSV files/settlements-population-authority.csv
 
 # Claude Code git worktrees — nested checkouts of this same repo (registered via
 # `git worktree`), local tooling state that must never be committed into it.
