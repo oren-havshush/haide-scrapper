@@ -105,7 +105,7 @@ const log = (line: string) => console.info(line);
 async function loadSelectableSites(opts: { fullPass: boolean } = { fullPass: false }): Promise<SelectableSite[]> {
   const sites = await prisma.site.findMany({
     where: { status: { in: [...SWEEP_SITE_STATUSES] } },
-    select: { id: true, siteUrl: true, status: true, fieldMappings: true },
+    select: { id: true, siteUrl: true, status: true, fieldMappings: true, sweepHold: true, sweepHoldNote: true },
   });
 
   // Last attempt (any outcome) and last success, per site. Read separately
@@ -130,6 +130,8 @@ async function loadSelectableSites(opts: { fullPass: boolean } = { fullPass: fal
     siteUrl: s.siteUrl,
     status: s.status,
     fieldMappings: s.fieldMappings,
+    sweepHold: s.sweepHold,
+    sweepHoldNote: s.sweepHoldNote,
     lastAttemptAt: lastAttempt.get(s.id) ?? null,
     lastSuccessAt: lastSuccess.get(s.id) ?? null,
   }));
@@ -788,7 +790,8 @@ async function realRun(mode: Mode, trigger: string, hooks: { onSweep?: (sweepId:
     });
     queue = selected;
     skipped = excluded.map((e) => ({ siteUrl: e.site.siteUrl, reason: e.reason, kind: e.kind }));
-    log(`[sweep] selected ${queue.length} site(s), skipped ${skipped.length}`);
+    const held = excluded.filter((e) => e.kind === "hold").length;
+    log(`[sweep] selected ${queue.length} site(s), skipped ${skipped.length}, ${held} on hold`);
   }
 
   await prisma.scrapeSweep.update({

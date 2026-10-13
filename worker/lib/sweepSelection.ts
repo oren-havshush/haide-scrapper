@@ -8,6 +8,7 @@
 import { countUsableFieldMappings, getApplyRequiresLogin } from "./fieldMappings";
 import { LISTING_SOFT_CATEGORIES } from "./listingTargets";
 import { readSiteLane } from "../../src/lib/siteLane";
+import { holdReason } from "../../src/lib/sweepHold";
 import type { SweepLane } from "./bigLane";
 
 // ---------------------------------------------------------------------------
@@ -129,6 +130,9 @@ export type SelectableSite = {
   lastSuccessAt: Date | null;
   /** Most recent run of ANY outcome. Null if never scraped. */
   lastAttemptAt: Date | null;
+  /** Site.sweepHold (src/lib/sweepHold.ts): a held site is left out of the sweep. */
+  sweepHold?: string | null;
+  sweepHoldNote?: string | null;
 };
 
 /**
@@ -141,8 +145,10 @@ export type SelectableSite = {
  * runs in the 22:00-01:45 window instead (worker/lib/bigLane.ts). Also one
  * count line. `kind: "no_fit"` is the big lane's own skip of a site that
  * would not finish before 01:45; named, since it is tonight's work undone.
+ * `kind: "hold"` is a site held out of the sweeps (Site.sweepHold, a host's bot
+ * challenge): named with its note, so the owner sees it every morning.
  */
-export type SkipKind = "fresh" | "big_lane" | "no_fit";
+export type SkipKind = "fresh" | "big_lane" | "no_fit" | "hold";
 export type Excluded = { site: SelectableSite; reason: string; kind?: SkipKind };
 
 export type Selection = {
@@ -190,6 +196,13 @@ export function selectSitesForSweep(
     if (lane === "big" && !isBig) continue;
     if (lane === "nightly" && isBig) {
       excluded.push({ site, kind: "big_lane", reason: "big lane (22:00-01:45)" });
+      continue;
+    }
+
+    // Held (src/lib/sweepHold.ts): the site stays ACTIVE and visible, and the
+    // sweep leaves it out. A --site run does not come through here.
+    if (site.sweepHold) {
+      excluded.push({ site, kind: "hold", reason: holdReason(site.sweepHold, site.sweepHoldNote) });
       continue;
     }
 

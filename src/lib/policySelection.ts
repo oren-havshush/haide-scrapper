@@ -26,6 +26,8 @@ export type PolicyCandidate = {
    * need a logo — which is why this is the timestamp and not the status.
    */
   companyProfileAt: Date | null;
+  /** Site.sweepHold (src/lib/sweepHold.ts). */
+  sweepHold?: string | null;
 };
 
 export type PolicySelectionOptions = {
@@ -44,6 +46,11 @@ export type PolicySelectionOptions = {
    * because it is also used to check sites before they are onboarded.
    */
   requireCompanyProfile?: boolean;
+  /**
+   * Leave out a site held out of the sweeps (Site.sweepHold). The sweep does;
+   * the backfill does not, since it is pointed at sites on purpose.
+   */
+  excludeHeld?: boolean;
 };
 
 export type PolicyExclusion = { site: PolicyCandidate; reason: string };
@@ -81,6 +88,10 @@ export function selectDuePolicyReviews(
     }
     if (opts.statuses && !opts.statuses.includes(site.status)) {
       excluded.push({ site, reason: `status ${site.status} is not checked by the sweep` });
+      continue;
+    }
+    if (opts.excludeHeld && site.sweepHold) {
+      excluded.push({ site, reason: `on hold (${site.sweepHold})` });
       continue;
     }
     if (opts.requireCompanyProfile && site.companyProfileAt === null) {

@@ -59,6 +59,11 @@ enum ScrapingPolicyStatus {
   CHECK_FAILED
 }
 
+/// Why a site is held out of the sweeps (Site.sweepHold).
+enum SweepHold {
+  HOST_CHALLENGE
+}
+
 model Site {
   id              String      @id @default(cuid())
   siteUrl         String      @unique
@@ -86,6 +91,15 @@ model Site {
 
   scrapingPolicyStatus    ScrapingPolicyStatus @default(NOT_CHECKED)
   scrapingPolicyCheckedAt DateTime?
+
+  /// A sweep hold (owner, 2026-10-13): the site stays as it is, visible on the
+  /// public site, and the nightly and policy sweeps leave it out. A host bot
+  /// challenge is a hold, never SKIPPED and never a reason to delete jobs. A
+  /// --site run and a dashboard scrape still work. Set and released by
+  /// scripts/addsite-batch.ts hold (src/lib/sweepHold.ts).
+  sweepHold     SweepHold?
+  sweepHoldAt   DateTime?
+  sweepHoldNote String?
 
   /// --- Company profile ---------------------------------------------------
   /// Captured ONCE at onboarding by scripts/company-profile.ts and never

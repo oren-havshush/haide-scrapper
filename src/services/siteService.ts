@@ -15,6 +15,7 @@ import { nextOperatorFields } from "@/lib/operatorFields";
 import { buildScrapeJobRow } from "@/lib/scrapeJobRow";
 import { findListingRunsBySiteIds } from "@/lib/listingRun";
 import { markFirstActive } from "@/lib/firstDates";
+import { sweepHoldData, type SweepHoldBody } from "@/lib/sweepHold";
 import type { PaginationParams } from "@/lib/types";
 import type { SiteStatus } from "@/generated/prisma/enums";
 import { emitEvent } from "@/services/eventService";
@@ -200,6 +201,31 @@ export async function updateSiteAdminNote(siteId: string, note: string | null) {
   return prisma.site.update({
     where: { id: siteId },
     data: { adminNote: trimmed && trimmed.length > 0 ? trimmed : null },
+  });
+}
+
+/** The hold's view of a site: what `hold set|release` prints before and after. */
+export const SWEEP_HOLD_SELECT = {
+  id: true,
+  siteUrl: true,
+  status: true,
+  sweepHold: true,
+  sweepHoldAt: true,
+  sweepHoldNote: true,
+} as const;
+
+/**
+ * Hold a site out of the sweeps, or release it (src/lib/sweepHold.ts). Writes
+ * the three hold columns together and nothing else: the status, the jobs and
+ * the config are untouched, so a held site stays exactly as visible as it was.
+ */
+export async function setSweepHold(siteId: string, body: SweepHoldBody) {
+  const site = await prisma.site.findUnique({ where: { id: siteId }, select: { id: true } });
+  if (!site) throw new NotFoundError("Site", siteId);
+  return prisma.site.update({
+    where: { id: siteId },
+    data: sweepHoldData(body, new Date()),
+    select: SWEEP_HOLD_SELECT,
   });
 }
 

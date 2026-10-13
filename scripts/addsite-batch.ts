@@ -2085,6 +2085,51 @@ async function cmdFix(argv: string[]): Promise<void> {
 }
 
 // ---------------------------------------------------------------------------
+// hold — hold a site out of the sweeps, or release it (src/lib/sweepHold.ts)
+// ---------------------------------------------------------------------------
+//
+//   hold set     --site <id> --reason HOST_CHALLENGE --note "<what was seen, since when>"
+//   hold release --site <id>          (asks y/N)
+//
+// A host bot challenge is a hold (owner, 2026-10-13): the site stays ACTIVE
+// and visible, the nightly and policy sweeps leave it out, and a --site run or
+// a dashboard scrape still works. Through POST /api/sites/<id>/sweep-hold;
+// prints the row before and after.
+
+async function cmdHold(argv: string[]): Promise<void> {
+  const { positional, flags } = parseArgs(argv);
+  const action = positional[0];
+  const siteId = flagStr(flags, "site");
+  if ((action !== "set" && action !== "release") || !siteId) {
+    throw new Error('hold set --site <id> --reason HOST_CHALLENGE --note "<text>"  |  hold release --site <id>');
+  }
+  const headers = authHeaders(readToken());
+  const show = (label: string, row: Record<string, unknown>) =>
+    console.log(
+      `[hold] ${label}: ${row.siteUrl} status ${row.status}, sweepHold ${row.sweepHold ?? "-"}, ` +
+        `sweepHoldAt ${row.sweepHoldAt ?? "-"}, sweepHoldNote ${row.sweepHoldNote ? JSON.stringify(row.sweepHoldNote) : "-"}`,
+    );
+  const before = ((await apiGet(`/api/sites/${siteId}/sweep-hold`, headers)) as { data: Record<string, unknown> }).data;
+  show("before", before);
+  let body: { hold: string | null; note?: string };
+  if (action === "set") {
+    const reason = flagStr(flags, "reason");
+    const note = flagStr(flags, "note");
+    if (!reason || !note) throw new Error("hold set needs --reason HOST_CHALLENGE and --note");
+    body = { hold: reason, note };
+  } else {
+    const yes = (await ask(`[hold] release ${siteId} (the sweeps will select it again)? [y/N] `)).toLowerCase();
+    if (yes !== "y" && yes !== "yes") {
+      console.log("[hold] not released.");
+      return;
+    }
+    body = { hold: null };
+  }
+  const after = ((await apiPost(`/api/sites/${siteId}/sweep-hold`, body, headers)) as { data: Record<string, unknown> }).data;
+  show("after", after);
+}
+
+// ---------------------------------------------------------------------------
 // Entry point
 // ---------------------------------------------------------------------------
 
@@ -2103,6 +2148,7 @@ const commands: Record<string, (argv: string[]) => Promise<void>> = {
   triage: cmdTriage,
   "patterns-update": cmdPatternsUpdate,
   fix: cmdFix,
+  hold: cmdHold,
 };
 
 const cmd = commands[subcommand];
@@ -2137,7 +2183,10 @@ if (!cmd) {
     `\n` +
     `  fix           --site <id> --patch <file> --field <FIELD> [--apply]\n` +
     `                [--operator <name>] [--minutes N]\n` +
-    `                (plan; with --apply: PATCH, guarded run via the API, promote on yes)\n`,
+    `                (plan; with --apply: PATCH, guarded run via the API, promote on yes)\n` +
+    `\n` +
+    `  hold          set --site <id> --reason HOST_CHALLENGE --note "<text>"  |  release --site <id>\n` +
+    `                (hold a site out of the nightly and policy sweeps; release asks y/N)\n`,
   );
   process.exit(1);
 }

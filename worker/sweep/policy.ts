@@ -57,6 +57,7 @@ async function loadCandidates(): Promise<PolicyCandidate[]> {
       scrapingPolicyStatus: true,
       scrapingPolicyCheckedAt: true,
       companyProfileAt: true,
+      sweepHold: true,
     },
   });
 }
@@ -68,6 +69,8 @@ function selectionOptions() {
     limit: sweepConfig.policyMaxPerNight,
     statuses: SWEEP_STATUSES,
     requireCompanyProfile: true,
+    // A held site (Site.sweepHold) is left out, like the nightly's.
+    excludeHeld: true,
   };
 }
 
@@ -142,8 +145,9 @@ async function realRun(trigger: string): Promise<number> {
   const stale = await resolveStaleSweeps("POLICY", false, log);
   if (stale > 0) log(`[policy] closed ${stale} stale RUNNING policy sweep(s)`);
 
-  const { selected, cappedOut } = selectDuePolicyReviews(await loadCandidates(), opts);
-  log(`[policy] ${selected.length} site(s) due${cappedOut > 0 ? ` (${cappedOut} past the cap)` : ""}`);
+  const { selected, excluded, cappedOut } = selectDuePolicyReviews(await loadCandidates(), opts);
+  const held = excluded.filter((e) => e.reason.startsWith("on hold")).length;
+  log(`[policy] ${selected.length} site(s) due${cappedOut > 0 ? ` (${cappedOut} past the cap)` : ""}, ${held} on hold`);
 
   const sweep = await prisma.scrapeSweep.create({
     data: {

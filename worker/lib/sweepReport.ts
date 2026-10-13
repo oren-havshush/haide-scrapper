@@ -140,7 +140,7 @@ export type ReportItem = {
  * rather than matched out of `reason`, which is a human sentence carrying an
  * hour count and would change the moment someone reworded it.
  */
-export type SkippedSite = { siteUrl: string; reason: string; kind?: "fresh" | "big_lane" | "no_fit" };
+export type SkippedSite = { siteUrl: string; reason: string; kind?: "fresh" | "big_lane" | "no_fit" | "hold" };
 
 /**
  * Warning types whose value is WHICH site they happened to. Everything else is
