@@ -31,6 +31,7 @@ import {
   isRegionLocation,
   normalizeLocations,
 } from "../../worker/lib/locationNormalize";
+import { cityColumn } from "../../worker/lib/cityCsvParse";
 
 export const CITY_CSV_PATH = path.join("CSV files", "city.csv");
 
@@ -48,37 +49,6 @@ export function normalizeCity(value: string): string {
     .replace(/\s+/g, " ");
 }
 
-/** Parse one RFC4180 line into cells, honouring quotes and "" escapes. */
-function parseCsvLine(line: string): string[] {
-  const cells: string[] = [];
-  let cur = "";
-  let inQuotes = false;
-  for (let i = 0; i < line.length; i++) {
-    const ch = line[i];
-    if (inQuotes) {
-      if (ch === '"') {
-        if (line[i + 1] === '"') {
-          cur += '"';
-          i++;
-        } else {
-          inQuotes = false;
-        }
-      } else {
-        cur += ch;
-      }
-    } else if (ch === '"') {
-      inQuotes = true;
-    } else if (ch === ",") {
-      cells.push(cur);
-      cur = "";
-    } else {
-      cur += ch;
-    }
-  }
-  cells.push(cur);
-  return cells;
-}
-
 export interface CityList {
   /** normalized form -> the verbatim CSV spelling to store. */
   byNormalized: Map<string, string>;
@@ -88,14 +58,13 @@ export interface CityList {
 
 export function parseCityCsv(raw: string): CityList {
   const byNormalized = new Map<string, string>();
-  for (const line of raw.replace(/^\ufeff/, "").split(/\r?\n/)) {
-    if (!line.trim()) continue;
-    for (const cell of parseCsvLine(line)) {
-      const verbatim = cell.trim();
-      const key = normalizeCity(cell);
-      if (!key || key === "city") continue; // drop the header row
-      if (!byNormalized.has(key)) byNormalized.set(key, verbatim);
-    }
+  // The city column only, by its header (worker/lib/cityCsvParse.ts): the file
+  // carries region and kind columns beside it, which are not places.
+  for (const cell of cityColumn(raw)) {
+    const verbatim = cell.trim();
+    const key = normalizeCity(cell);
+    if (!key) continue;
+    if (!byNormalized.has(key)) byNormalized.set(key, verbatim);
   }
   const sortedVerbatim = [...byNormalized.values()].sort(
     (a, b) => b.length - a.length || a.localeCompare(b),

@@ -19,6 +19,7 @@
  */
 import * as fs from "fs";
 import * as path from "path";
+import { cityColumn } from "../worker/lib/cityCsvParse";
 
 const CSV_PATH = path.resolve("CSV files", "city.csv");
 const OUT_PATH = path.resolve("worker", "data", "il-places.ts");
@@ -40,36 +41,19 @@ const SEED_CITIES = [
   "דימונה", "ערד", "קרית גת", "קריית גת",
 ];
 
-function normalizeRow(raw: string): string {
-  let s = raw.replace(/^\uFEFF/, "").replace(/[\r\n]+$/, "").trim();
-  // Unescape a CSV-quoted field. 18 rows contain a gershayim, which CSV encodes
-  // by doubling it and wrapping the field: \u05E0\u05EA\u05D1"\u05D2 is written "\u05E0\u05EA\u05D1""\u05D2". Splitting
-  // on newlines alone kept the raw form, so those places were stored corrupt
-  // (`"\u05E0\u05EA\u05D1""\u05D2"`) in IL_CITIES and could never match anything.
-  if (s.length >= 2 && s.startsWith('"') && s.endsWith('"')) {
-    s = s.slice(1, -1).replace(/""/g, '"');
-  }
-  return s.trim();
-}
-
 function main(): void {
   const text = fs.readFileSync(CSV_PATH, "utf8");
-  const rows = text.split(/\r?\n/);
+  // The city column, by its header (worker/lib/cityCsvParse.ts): verbatim,
+  // gershayim unescaped, the header and any other column left out.
+  const rows = cityColumn(text);
 
   const regions = new Set<string>(SEED_REGIONS);
   const cities = new Set<string>(SEED_CITIES);
 
-  let header = true;
   let cityCount = 0;
   let regionCount = 0;
-  for (const rawRow of rows) {
-    const row = normalizeRow(rawRow);
+  for (const row of rows) {
     if (!row) continue;
-    if (header) {
-      header = false;
-      // Skip an obvious header cell; otherwise treat as data.
-      if (/^city$/i.test(row)) continue;
-    }
     const isRegion = /^אזור\s+\S/.test(row) && !/תעשי[יה]ה?/.test(row);
     if (isRegion) {
       const name = row.replace(/^אזור\s+/, "").trim();
@@ -91,10 +75,7 @@ function main(): void {
   // Exact CSV rows, verbatim and seed-free. IL_CITIES/IL_REGIONS are matching
   // aids (they add spelling variants, and regions drop the "אזור " prefix), so
   // they must NOT be used to decide whether a stored value is canonical.
-  const canonicalList = rows
-    .map(normalizeRow)
-    .filter((r) => r && !/^city$/i.test(r))
-    .sort(byLenDesc);
+  const canonicalList = [...rows].sort(byLenDesc);
 
   const fmt = (arr: string[]) =>
     arr.map((s) => `  ${JSON.stringify(s)},`).join("\n");

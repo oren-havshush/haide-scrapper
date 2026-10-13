@@ -19,6 +19,7 @@ import {
   UNKNOWN_LOCATION,
 } from "./locations";
 import { IL_CANONICAL } from "../../worker/data/il-places";
+import { cityColumn } from "../../worker/lib/cityCsvParse";
 
 let failures = 0;
 function assert(cond: boolean, msg: string) {
@@ -198,32 +199,10 @@ console.log("\n# city abbreviations: both quote styles, with and without a leadi
 console.log("\n# IL_CANONICAL still equals CSV files/city.csv");
 {
   // Production cannot read the CSV (standalone image), so this test is the only
-  // thing keeping the bundled vocabulary honest. city.csv is RFC4180: it has a
-  // `city` header and quotes names containing a gershayim — "ביל""ו" is ביל"ו.
+  // thing keeping the bundled vocabulary honest. The city column, by its header
+  // (worker/lib/cityCsvParse.ts), quoted names unescaped: "ביל""ו" is ביל"ו.
   const norm = (s: string) => s.normalize("NFC").trim().replace(/\s+/g, " ");
-  const csv = new Set<string>();
-  const raw = readFileSync("CSV files/city.csv", "utf8").replace(/^﻿/, "");
-  for (const line of raw.split(/\r?\n/)) {
-    if (!line.trim()) continue;
-    const cells: string[] = [];
-    let cur = "";
-    let inQuotes = false;
-    for (let i = 0; i < line.length; i++) {
-      const ch = line[i];
-      if (inQuotes) {
-        if (ch === '"') {
-          if (line[i + 1] === '"') { cur += '"'; i++; } else inQuotes = false;
-        } else cur += ch;
-      } else if (ch === '"') inQuotes = true;
-      else if (ch === ",") { cells.push(cur); cur = ""; }
-      else cur += ch;
-    }
-    cells.push(cur);
-    for (const c of cells) {
-      const v = norm(c);
-      if (v && v !== "city") csv.add(v);
-    }
-  }
+  const csv = new Set(cityColumn(readFileSync("CSV files/city.csv", "utf8")).map(norm));
   const gaz = new Set(IL_CANONICAL.map(norm));
   const missingFromCsv = [...gaz].filter((v) => !csv.has(v));
   const missingFromGaz = [...csv].filter((v) => !gaz.has(v));

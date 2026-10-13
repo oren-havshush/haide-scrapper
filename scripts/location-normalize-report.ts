@@ -25,6 +25,7 @@
  */
 import * as fs from "fs";
 import * as path from "path";
+import { cityColumn } from "../worker/lib/cityCsvParse";
 
 const BASE = "https://scrapper.haide-jobs.co.il";
 const PAGE_SIZE = 100;
@@ -48,10 +49,9 @@ function token(): string {
 // canonical list
 // ---------------------------------------------------------------------------
 function loadCities(): Set<string> {
-  const raw = fs.readFileSync(path.resolve("CSV files", "city.csv"), "utf8").replace(/^﻿/, "");
-  const rows = raw.split(/\r?\n/).map((s) => s.trim()).filter(Boolean);
-  rows.shift(); // header
-  return new Set(rows);
+  // The city column, by its header (worker/lib/cityCsvParse.ts). Quoted names
+  // (ביל"ו and the 17 others with a gershayim) are unescaped, as every reader does.
+  return new Set(cityColumn(fs.readFileSync(path.resolve("CSV files", "city.csv"), "utf8")));
 }
 
 // ---------------------------------------------------------------------------
