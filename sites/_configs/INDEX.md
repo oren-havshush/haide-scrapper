@@ -206,6 +206,7 @@ several listing pages back into one and stops publishing the rest.
 | פוליכד | ACTIVE | 3 | 315 | 1 | `polycad--is4jw2` |
 | פלאפון | ACTIVE | 9 | 7981 | 1 | `adamtotal--4fg0y7` |
 | פליינג קרגו | ACTIVE | 9 | 7325 | 1 | `flying-cargo--pyuhhh` |
+| פרולוג'יק | ACTIVE | 9 | 11165 | 1 | `prologic--6s1sxo` |
 | פרופורציה | ACTIVE | 7 | 3530 | 1 | `proportsia--msnicc` |
 | פתרונות עדיפים-ביטוח | ACTIVE | 6 | 4489 | 1 | `adifim--26vavw` |
 | צ'יטה שליחויות | ACTIVE | 4 | 332 | 1 | `chitadelivery--xpwqf1` |
