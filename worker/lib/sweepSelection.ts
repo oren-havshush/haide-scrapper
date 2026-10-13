@@ -192,6 +192,11 @@ export function selectSitesForSweep(
      * whatever its last success.
      */
     retryPaused?: boolean;
+    /**
+     * Held sites whose Saturday probe passed tonight (worker/lib/holdProbe.ts):
+     * selected for this run, guarded; the hold stays.
+     */
+    probePassed?: ReadonlySet<string>;
   },
 ): Selection {
   const freshWindowMs = opts.freshWindowMs ?? DEFAULT_FRESH_WINDOW_MS;
@@ -213,7 +218,9 @@ export function selectSitesForSweep(
     // sweep leaves it out. A --site run does not come through here. A paused
     // site is retried by the Saturday-night run, past the fresh window: a hand
     // run during the week lifts nothing.
-    const retry = site.sweepHold === CLOUDFLARE_PAUSE && opts.retryPaused === true;
+    const retry =
+      (site.sweepHold === CLOUDFLARE_PAUSE && opts.retryPaused === true) ||
+      (site.sweepHold === "HOST_CHALLENGE" && opts.probePassed?.has(site.id) === true);
     if (site.sweepHold && !retry) {
       excluded.push({ site, kind: "hold", reason: holdReason(site.sweepHold, site.sweepHoldNote) });
       continue;

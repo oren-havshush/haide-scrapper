@@ -14,6 +14,8 @@
 //                                it, it does not (owner, 2026-10-01). The timer's
 //                                runs always send.
 //   --test-email                 one-off: email the latest stored report, then exit.
+//   --probe-holds                one-off, on the owner's word: the Saturday probe of the
+//                                held sites alone (worker/sweep/holdProbe.ts), then exit.
 //   --lane big                   with --now or --dry-run: the big lane (22:00-01:45,
 //                                worker/lib/bigLane.ts), only sites with lane "big".
 //                                Its full detail pass is the window starting Friday.
@@ -28,7 +30,9 @@ export type NightlyMode =
   | { kind: "single"; siteId: string; detailOverride: DetailMode | null; email: boolean }
   | { kind: "fleet"; detailOverride: DetailMode | null; lane: SweepLane }
   /** Claim one pending GuardedRunRequest and run it single-site, email off (step 3, option B). */
-  | { kind: "claim-request" };
+  | { kind: "claim-request" }
+  /** The Saturday probe of held sites alone (worker/sweep/holdProbe.ts). */
+  | { kind: "probe-holds" };
 
 export function parseNightlyArgs(argv: string[]): NightlyMode {
   const dryRun = argv.includes("--dry-run");
@@ -41,6 +45,7 @@ export function parseNightlyArgs(argv: string[]): NightlyMode {
   const siteId = siteIdx >= 0 ? argv[siteIdx + 1] : undefined;
   const email = argv.includes("--email");
   const claimRequest = argv.includes("--claim-request");
+  const probeHolds = argv.includes("--probe-holds");
   const laneIdx = argv.indexOf("--lane");
   let lane: SweepLane = "nightly";
   if (laneIdx >= 0) {
@@ -61,6 +66,12 @@ export function parseNightlyArgs(argv: string[]): NightlyMode {
     throw new Error("--site needs a site id");
   }
 
+  if (probeHolds) {
+    if (dryRun || testEmail || dryRunDetails || now || siteIdx >= 0 || email || detailOverride || claimRequest || laneIdx >= 0) {
+      throw new Error("--probe-holds stands alone: it probes the held sites and exits");
+    }
+    return { kind: "probe-holds" };
+  }
   if (claimRequest) {
     // The request names the site; a requested run never emails and is always full.
     if (dryRun || testEmail || dryRunDetails || now || siteIdx >= 0 || email || detailOverride) {
@@ -97,7 +108,7 @@ export function resolveDetailMode(mode: NightlyMode, startedAt: Date): DetailMod
   if ((mode.kind === "fleet" || mode.kind === "dry-run") && mode.lane === "big") {
     return (mode.kind === "fleet" ? mode.detailOverride : null) ?? bigLaneDetailMode(startedAt);
   }
-  if (mode.kind === "dry-run" || mode.kind === "test-email") return detailModeFor(startedAt);
+  if (mode.kind === "dry-run" || mode.kind === "test-email" || mode.kind === "probe-holds") return detailModeFor(startedAt);
   // A requested guarded run is a single-site run: always full.
   if (mode.kind === "claim-request") return "full";
   if (mode.detailOverride) return mode.detailOverride;

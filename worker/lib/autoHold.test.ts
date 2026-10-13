@@ -105,7 +105,7 @@ check("nightly.ts: after the items, before the report, timer nights only, hold c
   const halt = run.indexOf("const haltedText = await closeSweep(");
   const firstCall = run.indexOf("applyAutoHolds(");
   assert(firstCall > 0 && firstCall < halt, "the halt path applies it before its report too");
-  assert(/retryPaused: timerNight && isSaturdayRun\(now\)/.test(run), "the selection retries paused sites on the Saturday-night timer run only");
+  assert(/const saturdayNight = timerNight && isSaturdayRun\(now\);/.test(run) && /retryPaused: saturdayNight,/.test(run),"the selection retries paused sites on the Saturday-night timer run only");
 });
 
 check("no path clears a hold but the route's release and the pause's lift", () => {

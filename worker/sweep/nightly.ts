@@ -66,6 +66,7 @@ import {
   type AutoHoldEvent,
   type HoldState,
 } from "../lib/holdRule";
+import { probeHeldSites, recordProbeRuns } from "./holdProbe";
 import { sendSweepMail } from "../lib/sweepMail";
 import { readSiteLimits, sweepWaitMinutes } from "../lib/siteLimits";
 import {
@@ -841,6 +842,17 @@ async function realRun(mode: Mode, trigger: string, hooks: { onSweep?: (sweepId:
   // The big lane's block, for the nightly fleet's morning report only.
   const bigLaneReport = lane === "nightly" && !single ? await latestBigLaneReport(now) : undefined;
 
+  // --- the Saturday probe (worker/lib/holdProbe.ts) ----------------------
+  // Before selection, on the Saturday-night timer run only: one GET per held
+  // SiteGround site; a pass selects it for tonight, guarded. The hold stays.
+  const saturdayNight = timerNight && isSaturdayRun(now);
+  const probePassed = new Set<string>();
+  if (saturdayNight) {
+    for (const p of await probeHeldSites((line) => log(`[sweep] ${line}`), now)) {
+      if (p.verdict.result === "passed") probePassed.add(p.siteId);
+    }
+  }
+
   // --- what to run -----------------------------------------------------
   let queue: SelectableSite[];
   /** Selection exclusions, for the report. Undefined in single-site mode: there was no selection. */
@@ -874,8 +886,10 @@ async function realRun(mode: Mode, trigger: string, hooks: { onSweep?: (sweepId:
       now,
       freshWindowMs: sweepConfig.freshWindowHours * 3_600_000,
       lane,
-      // Cloudflare's weekday pause is retried by the Saturday-night timer run only.
-      retryPaused: timerNight && isSaturdayRun(now),
+      // Cloudflare's weekday pause is retried by the Saturday-night timer run
+      // only, and so is a held site whose probe passed tonight.
+      retryPaused: saturdayNight,
+      probePassed,
     });
     queue = selected;
     skipped = excluded.map((e) => ({ siteUrl: e.site.siteUrl, reason: e.reason, kind: e.kind }));
@@ -1032,6 +1046,7 @@ async function realRun(mode: Mode, trigger: string, hooks: { onSweep?: (sweepId:
 
       log(`[sweep] HALT: ${haltReason}`);
       if (timerNight) await applyAutoHolds(sweep.id, sweep.startedAt, results);
+      if (probePassed.size > 0) await recordProbeRuns(results, probePassed, log);
       const haltedText = await closeSweep({
         kind: sweepKind,
         detailMode,
@@ -1057,6 +1072,8 @@ async function realRun(mode: Mode, trigger: string, hooks: { onSweep?: (sweepId:
   // --- close out -------------------------------------------------------
   // The automatic hold and pause, after the night's items and before its report.
   if (timerNight) await applyAutoHolds(sweep.id, sweep.startedAt, results);
+  // What each probe-passed site's run did, on its probe line. Releases nothing.
+  if (probePassed.size > 0) await recordProbeRuns(results, probePassed, log);
 
   // Counters and report both come from closeSweep, so this path and the halt
   // path cannot compute them differently.
@@ -1268,6 +1285,19 @@ async function claimRequest(trigger: string): Promise<number> {
   return error ? 1 : code;
 }
 
+/**
+ * `--probe-holds`: the Saturday probe alone, on the owner's word. One GET per
+ * held SiteGround site; writes the two probe columns and nothing else. Runs
+ * nothing: a pass is reported, and the Saturday-night run (or the owner's
+ * `--site <id> --now`) is what runs the site.
+ */
+async function probeHoldsOnly(): Promise<number> {
+  log("=== nightly --probe-holds (one GET per held SiteGround site; writes the probe columns only) ===");
+  const out = await probeHeldSites(log);
+  log(`[probe] ${out.length} site(s) probed, ${out.filter((p) => p.verdict.result === "passed").length} passed`);
+  return 0;
+}
+
 async function main() {
   const parsed = parseNightlyArgs(process.argv.slice(2));
   const code =
@@ -1279,7 +1309,9 @@ async function main() {
           ? await dryRunDetails(parsed.siteId, resolveDetailMode(parsed, new Date()))
           : parsed.kind === "claim-request"
             ? await claimRequest(parseTriggerLabel(process.argv.slice(2)))
-            : await realRun(parsed, parseTriggerLabel(process.argv.slice(2)));
+            : parsed.kind === "probe-holds"
+              ? await probeHoldsOnly()
+              : await realRun(parsed, parseTriggerLabel(process.argv.slice(2)));
   await prisma.$disconnect();
   process.exit(code);
 }
