@@ -9,6 +9,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { cityColumn, parseCityCsvTable } from "./cityCsvParse";
 import { parseCityCsv } from "../../scripts/lib/city-csv";
+import { IL_CANONICAL } from "../data/il-places";
 
 let failures = 0;
 function assert(cond: boolean, msg: string) {
@@ -53,19 +54,17 @@ check("a file with no city column is refused", () => {
   assert(threw, "no city header, no list");
 });
 
-check("today's city.csv: the column is what every reader read before", () => {
+check("today's city.csv: the city column is exactly the places", () => {
+  // Commit A ran this as an identity against the one-column file (1,368 rows,
+  // the same values in the same order). Since the seed (commit B) the file has
+  // three columns; the city column is every row's first cell and nothing else.
   const raw = readFileSync(join(root, "CSV files", "city.csv"), "utf8");
-  // Today's behaviour, as scripts/lib/city-csv.ts had it: every cell of every
-  // line, the header dropped. On a one-column file it is the whole list.
-  const before: string[] = [];
-  for (const line of raw.replace(new RegExp("^" + String.fromCharCode(0xfeff)), "").split(/\r?\n/)) {
-    if (!line.trim()) continue;
-    const v = line.startsWith('"') ? line.trim().slice(1, -1).replace(/""/g, '"') : line.trim();
-    if (v !== "city") before.push(v);
-  }
   const now = cityColumn(raw);
-  assert(now.length === before.length && now.every((v, i) => v === before[i]), `identical, in order (${now.length} vs ${before.length})`);
-  assert(now.length === 1368, `1,368 places (got ${now.length})`);
+  const rows = parseCityCsvTable(raw).rows;
+  assert(now.length === rows.length && now.every((v, i) => v === rows[i].city), `one city per row, in order (${now.length} vs ${rows.length})`);
+  assert(new Set(now).size === now.length, "no city twice");
+  assert(!now.some((v) => ["town", "kibbutz", "moshav", "zone", "base", "region", "nationwide"].includes(v)), "no kind word is read as a city");
+  assert(JSON.stringify([...now].sort()) === JSON.stringify([...IL_CANONICAL].sort()), "the column is IL_CANONICAL, as the build reads it");
 });
 
 check("scripts/lib/city-csv.ts takes the city column only", () => {

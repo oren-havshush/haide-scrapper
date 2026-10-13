@@ -99,6 +99,10 @@ export const LOCATION_ALIAS: Readonly<Record<string, string>> = {
   // spelling variants seen live
   "פתח תיקווה": "פתח תקווה", "פתח תקוה": "פתח תקווה", "פתח תיקוה": "פתח תקווה",
   "פתח-תקווה": "פתח תקווה", "נצרת עלית": "נצרת עילית", יקנעם: "יוקנעם",
+  // The spellings city.csv dropped for the public site's (CSV files/city-extras.tsv,
+  // owner 2026-10-13). The other four of the nine resolve by the typo step and
+  // the squash; these five did not, and the scanner read תלמי ביל"ו as ביל"ו.
+  'גבעת ניל"י': "גבעת נילי", סאגור: "סאג'ור", 'נעמ"ה': "נעמה", 'תלמי ביל"ו': "תלמי בילו", 'יד רמב"ם': "יד רמבם",
   // standing overrides — city.csv has no standalone לוד/רמלה, and חצור is
   // ambiguous there; pinned by product decision (2026-08-03).
   לוד: "רמלה לוד", רמלה: "רמלה לוד", חצור: "חצור הגלילית",
@@ -237,7 +241,7 @@ export const MULTI_WORD_PLACE_NAMES: readonly string[] = (() => {
  * never any other letter (ציפורית is an industrial zone, not moshav ציפורי).
  * It replaced plain edit distance 1, which produced both of those.
  */
-function allowedTypo(p: string, c: string): boolean {
+export function allowedTypo(p: string, c: string): boolean {
   if (p.length === c.length) {
     let diff = -1;
     for (let i = 0; i < p.length; i++) {

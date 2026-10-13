@@ -79,3 +79,10 @@ export function cityColumn(raw: string): string[] {
     .rows.map((r) => r.city)
     .filter((v) => v !== "");
 }
+
+/**
+ * A row's kind (the city-file design, owner 2026-10-13): what sort of place it
+ * is. A region row is one of the 9 regions; "nationwide" is פריסה ארצית only.
+ */
+export const PLACE_KINDS = ["town", "kibbutz", "moshav", "zone", "base", "region", "nationwide"] as const;
+export type PlaceKind = (typeof PLACE_KINDS)[number];
