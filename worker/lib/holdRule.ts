@@ -141,3 +141,85 @@ export function decideNight(args: {
   }
   return { action: "none" };
 }
+
+// ---------------------------------------------------------------------------
+// The night's plan, and what each decision writes
+// ---------------------------------------------------------------------------
+
+/** A site's earlier timer item, with its night. */
+export type TimerNight = { night: string; item: NightItem };
+
+export type AutoHoldInput = {
+  siteId: string;
+  siteUrl: string;
+  /** Site.sweepHold as read after the night's runs. */
+  state: HoldState;
+  /** Tonight's timer item. */
+  tonight: NightItem;
+  /** The site's timer items from earlier nights, oldest first. */
+  history: readonly TimerNight[];
+};
+
+export type AutoHoldEvent = { siteId: string; siteUrl: string; decision: Exclude<NightDecision, { action: "none" }> };
+
+/**
+ * Tonight's decisions, for the sites the timer ran. A night with two items
+ * (a re-run) is judged by its last one; tonight's item replaces any earlier
+ * item of tonight's date.
+ */
+export function planAutoHolds(sites: readonly AutoHoldInput[], args: { night: string; timerNights: readonly string[]; saturday: boolean }): AutoHoldEvent[] {
+  const events: AutoHoldEvent[] = [];
+  for (const s of sites) {
+    const byNight = new Map<string, NightItem>();
+    for (const h of s.history) if (h.night !== args.night) byNight.set(h.night, h.item);
+    const tonight: NightRecord = { night: args.night, verdict: classifyNight(s.tonight) };
+    const history: NightRecord[] = [...[...byNight.entries()].map(([night, item]) => ({ night, verdict: classifyNight(item) })), tonight];
+    const decision = decideNight({ state: s.state, tonight, history, timerNights: args.timerNights, saturday: args.saturday });
+    if (decision.action !== "none") events.push({ siteId: s.siteId, siteUrl: s.siteUrl, decision });
+  }
+  return events;
+}
+
+/** The hold columns a decision writes. Nothing else is ever in `data`. */
+export type AutoHoldColumns = {
+  sweepHold: "HOST_CHALLENGE" | "CHALLENGE_RETRY_SATURDAY" | null;
+  sweepHoldAt: Date | null;
+  sweepHoldNote: string | null;
+  sweepHoldBy: string | null;
+  sweepHoldProbeAt: Date | null;
+  sweepHoldProbeResult: string | null;
+};
+
+/**
+ * The write for a decision: `onlyIf` is the hold the site must still have for
+ * the write to land (a hold or pause only on a site with none, so an owner's
+ * hold set meanwhile is never overwritten; a lift only on a site still
+ * paused). A pause that stays writes nothing.
+ *
+ * The lift is the one automatic clear (owner, 2026-10-13). A HOST_CHALLENGE
+ * hold is released only by the owner, through the route.
+ */
+export function autoHoldWrite(decision: AutoHoldEvent["decision"], now: Date): { onlyIf: HoldState; data: AutoHoldColumns } | null {
+  switch (decision.action) {
+    case "hold":
+    case "pause":
+      return {
+        onlyIf: null,
+        data: {
+          sweepHold: decision.action === "hold" ? "HOST_CHALLENGE" : "CHALLENGE_RETRY_SATURDAY",
+          sweepHoldAt: now,
+          sweepHoldNote: asciiOnly(decision.note),
+          sweepHoldBy: "auto",
+          sweepHoldProbeAt: null,
+          sweepHoldProbeResult: null,
+        },
+      };
+    case "lift_pause":
+      return {
+        onlyIf: "CHALLENGE_RETRY_SATURDAY",
+        data: { sweepHold: null, sweepHoldAt: null, sweepHoldNote: null, sweepHoldBy: null, sweepHoldProbeAt: null, sweepHoldProbeResult: null },
+      };
+    default:
+      return null;
+  }
+}

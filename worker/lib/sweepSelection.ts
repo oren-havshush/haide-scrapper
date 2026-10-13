@@ -8,7 +8,7 @@
 import { countUsableFieldMappings, getApplyRequiresLogin } from "./fieldMappings";
 import { LISTING_SOFT_CATEGORIES } from "./listingTargets";
 import { readSiteLane } from "../../src/lib/siteLane";
-import { holdReason } from "../../src/lib/sweepHold";
+import { CLOUDFLARE_PAUSE, holdReason } from "../../src/lib/sweepHold";
 import type { SweepLane } from "./bigLane";
 
 // ---------------------------------------------------------------------------
@@ -182,7 +182,17 @@ export function compareByLastAttempt(a: SelectableSite, b: SelectableSite): numb
  */
 export function selectSitesForSweep(
   sites: SelectableSite[],
-  opts: { now: Date; freshWindowMs?: number; lane?: SweepLane },
+  opts: {
+    now: Date;
+    freshWindowMs?: number;
+    lane?: SweepLane;
+    /**
+     * The Saturday-night timer run (worker/lib/holdRule.ts): a site in
+     * Cloudflare's weekday pause is retried, guarded like every timer run,
+     * whatever its last success.
+     */
+    retryPaused?: boolean;
+  },
 ): Selection {
   const freshWindowMs = opts.freshWindowMs ?? DEFAULT_FRESH_WINDOW_MS;
   const cutoff = opts.now.getTime() - freshWindowMs;
@@ -200,8 +210,11 @@ export function selectSitesForSweep(
     }
 
     // Held (src/lib/sweepHold.ts): the site stays ACTIVE and visible, and the
-    // sweep leaves it out. A --site run does not come through here.
-    if (site.sweepHold) {
+    // sweep leaves it out. A --site run does not come through here. A paused
+    // site is retried by the Saturday-night run, past the fresh window: a hand
+    // run during the week lifts nothing.
+    const retry = site.sweepHold === CLOUDFLARE_PAUSE && opts.retryPaused === true;
+    if (site.sweepHold && !retry) {
       excluded.push({ site, kind: "hold", reason: holdReason(site.sweepHold, site.sweepHoldNote) });
       continue;
     }
@@ -225,7 +238,7 @@ export function selectSitesForSweep(
       continue;
     }
 
-    if (site.lastSuccessAt && site.lastSuccessAt.getTime() > cutoff) {
+    if (!retry && site.lastSuccessAt && site.lastSuccessAt.getTime() > cutoff) {
       excluded.push({
         site,
         kind: "fresh",

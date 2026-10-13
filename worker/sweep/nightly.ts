@@ -57,6 +57,14 @@ import {
 } from "../lib/sweepBreaker";
 import { sweepDate, type ReportItem, type SkippedSite } from "../lib/sweepReport";
 import { readAcceptedGates, type AcceptedGates } from "../../src/lib/acceptedGates";
+import {
+  autoHoldWrite,
+  HOLD_WINDOW_NIGHTS,
+  isSaturdayRun,
+  planAutoHolds,
+  type AutoHoldEvent,
+  type HoldState,
+} from "../lib/holdRule";
 import { sendSweepMail } from "../lib/sweepMail";
 import { readSiteLimits, sweepWaitMinutes } from "../lib/siteLimits";
 import {
@@ -615,6 +623,81 @@ function toScrapeReportItem(r: SiteResult): ReportItem {
 }
 
 // ---------------------------------------------------------------------------
+// The automatic hold and pause (worker/lib/holdRule.ts)
+// ---------------------------------------------------------------------------
+
+/**
+ * After the timer night's items, before its report: a third SiteGround night
+ * in a row holds the site (HOST_CHALLENGE), a Cloudflare night pauses it until
+ * Saturday (CHALLENGE_RETRY_SATURDAY), and a Saturday retry that wrote rows
+ * lifts the pause. Timer nights only; a hand or requested run never counts.
+ *
+ * Writes the hold columns through autoHoldWrite and nothing else: no status,
+ * no job, no config. Each write is scoped by the hold the site must still
+ * have, so an owner's hold set meanwhile is never overwritten. A
+ * HOST_CHALLENGE hold is never released here.
+ */
+async function applyAutoHolds(sweepId: string, startedAt: Date, results: SiteResult[]): Promise<AutoHoldEvent[]> {
+  const ran = results.filter((r) => r.scrapeRunId !== null);
+  if (ran.length === 0) return [];
+  const tz = sweepConfig.timezone;
+  const night = sweepDate(startedAt, tz);
+  const ids = ran.map((r) => r.siteId);
+
+  // The last seven timer nights, tonight's included.
+  const sweeps = await prisma.scrapeSweep.findMany({
+    where: { kind: "SCRAPE", trigger: "timer", startedAt: { lte: startedAt } },
+    orderBy: { startedAt: "desc" },
+    take: 60,
+    select: { id: true, startedAt: true },
+  });
+  const timerNights = [...new Set([night, ...sweeps.map((w) => sweepDate(w.startedAt, tz))])].sort().slice(-HOLD_WINDOW_NIGHTS);
+  const windowSweeps = sweeps.filter((w) => w.id !== sweepId && timerNights.includes(sweepDate(w.startedAt, tz)));
+
+  const [sites, earlier] = await Promise.all([
+    prisma.site.findMany({ where: { id: { in: ids } }, select: { id: true, sweepHold: true } }),
+    prisma.scrapeSweepItem.findMany({
+      where: { siteId: { in: ids }, phase: "scrape", sweepId: { in: windowSweeps.map((w) => w.id) } },
+      orderBy: { startedAt: "asc" },
+      select: { siteId: true, outcome: true, failureCategory: true, warnings: true, sweep: { select: { startedAt: true } } },
+    }),
+  ]);
+  const stateOf = new Map(sites.map((x) => [x.id, (x.sweepHold ?? null) as HoldState]));
+
+  const events = planAutoHolds(
+    ran.map((r) => ({
+      siteId: r.siteId,
+      siteUrl: r.siteUrl,
+      state: stateOf.get(r.siteId) ?? null,
+      tonight: { outcome: r.outcome, failureCategory: r.failureCategory, warnings: r.warnings },
+      history: earlier
+        .filter((e) => e.siteId === r.siteId)
+        .map((e) => ({
+          night: sweepDate(e.sweep.startedAt, tz),
+          item: { outcome: e.outcome, failureCategory: e.failureCategory, warnings: Array.isArray(e.warnings) ? e.warnings.map(String) : null },
+        })),
+    })),
+    { night, timerNights, saturday: isSaturdayRun(startedAt) },
+  );
+
+  const applied: AutoHoldEvent[] = [];
+  const now = new Date();
+  for (const e of events) {
+    const write = autoHoldWrite(e.decision, now);
+    if (write) {
+      const done = await prisma.site.updateMany({ where: { id: e.siteId, sweepHold: write.onlyIf }, data: write.data });
+      if (done.count === 0) {
+        log(`[sweep] hold: ${e.siteUrl} ${e.decision.action} not written (its hold changed meanwhile)`);
+        continue;
+      }
+    }
+    log(`[sweep] hold: ${e.siteUrl} ${e.decision.action}${"note" in e.decision ? ` (${e.decision.note})` : ""}${"why" in e.decision ? ` (${e.decision.why})` : ""}`);
+    applied.push(e);
+  }
+  return applied;
+}
+
+// ---------------------------------------------------------------------------
 // Dry run — READ ONLY
 // ---------------------------------------------------------------------------
 
@@ -725,6 +808,9 @@ async function realRun(mode: Mode, trigger: string, hooks: { onSweep?: (sweepId:
     return 1;
   }
   const stopAt = lane === "big" ? bigLaneStopAt(now) : null;
+  // The timer's nightly fleet run: the only run whose items hold, pause or
+  // lift (worker/lib/holdRule.ts).
+  const timerNight = trigger === "timer" && !single && lane === "nightly";
 
   log(`=== nightly sweep ${single ? `--site ${single}` : lane === "big" ? "--now --lane big" : "--now"} (detail pages: ${detailMode}) ===`);
   if (stopAt) log(`[sweep] big lane: stops at ${stopAt.toISOString()} (01:45 Asia/Jerusalem)`);
@@ -787,6 +873,8 @@ async function realRun(mode: Mode, trigger: string, hooks: { onSweep?: (sweepId:
       now,
       freshWindowMs: sweepConfig.freshWindowHours * 3_600_000,
       lane,
+      // Cloudflare's weekday pause is retried by the Saturday-night timer run only.
+      retryPaused: timerNight && isSaturdayRun(now),
     });
     queue = selected;
     skipped = excluded.map((e) => ({ siteUrl: e.site.siteUrl, reason: e.reason, kind: e.kind }));
@@ -942,6 +1030,7 @@ async function realRun(mode: Mode, trigger: string, hooks: { onSweep?: (sweepId:
       }
 
       log(`[sweep] HALT: ${haltReason}`);
+      if (timerNight) await applyAutoHolds(sweep.id, sweep.startedAt, results);
       const haltedText = await closeSweep({
         kind: sweepKind,
         detailMode,
@@ -965,6 +1054,9 @@ async function realRun(mode: Mode, trigger: string, hooks: { onSweep?: (sweepId:
   }
 
   // --- close out -------------------------------------------------------
+  // The automatic hold and pause, after the night's items and before its report.
+  if (timerNight) await applyAutoHolds(sweep.id, sweep.startedAt, results);
+
   // Counters and report both come from closeSweep, so this path and the halt
   // path cannot compute them differently.
   const reportText = await closeSweep({
