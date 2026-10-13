@@ -8,7 +8,9 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { selectSitesForSweep, type SelectableSite } from "./sweepSelection";
 import { selectDuePolicyReviews, type PolicyCandidate } from "../../src/lib/policySelection";
-import { holdSetBy, holdVendor, sweepHoldBodySchema, sweepHoldData } from "../../src/lib/sweepHold";
+import { holdSetBy, holdVendor, scrapeRunGuarded, sweepHoldBodySchema, sweepHoldData } from "../../src/lib/sweepHold";
+import { buildScrapeJobRow } from "../../src/lib/scrapeJobRow";
+import { readScheduledFlag } from "./scheduledRun";
 
 let failures = 0;
 function assert(cond: boolean, msg: string) {
@@ -115,6 +117,24 @@ check("the sweeps, the route and the script are wired", () => {
   const script = read("scripts/addsite-batch.ts");
   assert(script.includes("  hold: cmdHold,") && script.includes("/sweep-hold"), "addsite-batch.ts has the hold command, through the route");
   assert(/release[\s\S]{0,1200}\[y\/N\]/.test(script.slice(script.indexOf("async function cmdHold"))), "release asks y/N");
+});
+
+check("G4: a hand run on a held or paused site is guarded, and releases nothing", () => {
+  assert(scrapeRunGuarded(undefined, "HOST_CHALLENGE") === true, "a dashboard scrape of a held site is guarded");
+  assert(scrapeRunGuarded(undefined, "CHALLENGE_RETRY_SATURDAY") === true, "and of a paused one");
+  assert(scrapeRunGuarded(undefined, null) === false && scrapeRunGuarded(false, null) === false, "an unheld site's hand run is as today, unguarded");
+  assert(scrapeRunGuarded(true, null) === true, "the sweep's own runs stay guarded");
+  const row = buildScrapeJobRow({ siteId: "s1", scrapeRunId: "r1", scheduled: scrapeRunGuarded(undefined, "HOST_CHALLENGE") });
+  assert(readScheduledFlag(row.payload) === true, "the worker reads the held site's job as scheduled");
+  const open = buildScrapeJobRow({ siteId: "s1", scrapeRunId: "r1", scheduled: scrapeRunGuarded(undefined, null) });
+  assert(readScheduledFlag(open.payload) === false && !("scheduled" in (open.payload as Record<string, unknown>)), "and an unheld site's payload is unchanged");
+  const svc = read("src/services/siteService.ts");
+  const at = svc.indexOf("export async function createScrapeRun");
+  const create = svc.slice(at, svc.indexOf("\n}\n", at)).replace(/^\s*\/\/.*$/gm, "");
+  assert(/scheduled: scrapeRunGuarded\(options\?\.scheduled, site\.sweepHold\)/.test(create), "createScrapeRun guards from the site's own hold");
+  const route = read("src/app/api/sites/[id]/scrape/route.ts");
+  assert(!/scheduled|sweepHold/.test(route), "the route still cannot choose it");
+  assert(!/sweepHold/.test(create.replace(/scrapeRunGuarded\(options\?\.scheduled, site\.sweepHold\)/, "")), "and the run writes no hold column");
 });
 
 if (failures > 0) {

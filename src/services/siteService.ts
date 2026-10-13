@@ -15,7 +15,7 @@ import { nextOperatorFields } from "@/lib/operatorFields";
 import { buildScrapeJobRow } from "@/lib/scrapeJobRow";
 import { findListingRunsBySiteIds } from "@/lib/listingRun";
 import { markFirstActive } from "@/lib/firstDates";
-import { sweepHoldData, type SweepHoldBody } from "@/lib/sweepHold";
+import { scrapeRunGuarded, sweepHoldData, type SweepHoldBody } from "@/lib/sweepHold";
 import type { PaginationParams } from "@/lib/types";
 import type { SiteStatus } from "@/generated/prisma/enums";
 import { emitEvent } from "@/services/eventService";
@@ -607,7 +607,8 @@ export async function createScrapeRun(
         siteId,
         scrapeRunId: run.id,
         maxJobs: options?.maxJobs,
-        scheduled: options?.scheduled,
+        // A held or paused site's run is guarded, whoever asked (src/lib/sweepHold.ts).
+        scheduled: scrapeRunGuarded(options?.scheduled, site.sweepHold),
         detailMode: options?.detailMode,
         stopAt: options?.stopAt,
       }),

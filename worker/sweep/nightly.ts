@@ -15,7 +15,8 @@
 //
 // It is the only caller that passes `scheduled: true`, which is what suppresses
 // every site-mutating write in scrape.ts (worker/lib/scheduledRun.ts). Nothing
-// reachable from the HTTP route can set it.
+// reachable from the HTTP route can set it; createScrapeRun sets it itself for
+// a held or paused site, read from the site (src/lib/sweepHold.ts).
 //
 // SCRAPE only, never ANALYSIS: an ANALYSIS job rewrites a site's config, so a
 // fleet-wide refresh would flatten every hand-built config in one night.

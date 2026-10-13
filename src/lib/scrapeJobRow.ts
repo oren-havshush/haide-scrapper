@@ -23,7 +23,9 @@ export type ScrapeJobRowInput = {
   /**
    * Only an in-process caller (the sweep driver) may set this. The HTTP route
    * allowlists `maxJobs` by name and has no way to reach it — see
-   * src/lib/scrapeRequestBoundary.test.ts.
+   * src/lib/scrapeRequestBoundary.test.ts. createScrapeRun also sets it for a
+   * held or paused site, read from the site, never the request
+   * (src/lib/sweepHold.ts scrapeRunGuarded).
    */
   scheduled?: boolean;
   /**

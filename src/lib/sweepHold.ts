@@ -86,3 +86,15 @@ export function holdVendor(hold: string | null | undefined, note: string | null 
 export function holdSetBy(by: string | null | undefined): "owner" | "auto" {
   return by === "auto" ? "auto" : "owner";
 }
+
+/**
+ * Whether a scrape run is guarded (`scheduled: true`, worker/lib/scheduledRun.ts).
+ * A run on a held or paused site always is, whoever asked (design G4): a
+ * partly blocked page would otherwise write the few rows it saw and delete the
+ * rest, and the guard also keeps the activation gate from changing the status
+ * of a site whose status the hold leaves alone. Such a run releases nothing.
+ * Read from the site, never from the request, so no caller can choose it.
+ */
+export function scrapeRunGuarded(requested: boolean | undefined, sweepHold: string | null | undefined): boolean {
+  return requested === true || (sweepHold !== null && sweepHold !== undefined);
+}
