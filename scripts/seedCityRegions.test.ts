@@ -11,7 +11,7 @@ import { join } from "node:path";
 import { formatCityCsv, seedCityRows, type PublicFile } from "./seed-city-regions";
 import { cityColumn, parseCityCsvTable } from "../worker/lib/cityCsvParse";
 import * as places from "../worker/data/il-places";
-import { normalizeLocations } from "../worker/lib/locationNormalize";
+import { LOCATION_ALIAS, normalizeLocations } from "../worker/lib/locationNormalize";
 
 let failures = 0;
 function assert(cond: boolean, msg: string) {
@@ -99,15 +99,24 @@ check("the written file reads back through the parser", () => {
 });
 
 const root = join(__dirname, "..");
+/** v3 merged each duplicate pair into the spelling the population authority lists (H, 2026-10-13). */
+const V3_REMOVED: ReadonlyArray<readonly [string, string]> = [
+  ["אלון השבות", "אלון שבות"],
+  ["נצני עוז", "ניצני עוז"],
+  ["רנתיה", "רינתיה"],
+  ["חיספין", "חספין"],
+];
 check("the seeded city.csv", () => {
   const t = parseCityCsvTable(readFileSync(join(root, "CSV files", "city.csv"), "utf8"));
   assert(JSON.stringify(t.header) === JSON.stringify(["city", "region", "kind"]), `the header is city,region,kind (got ${JSON.stringify(t.header)})`);
-  assert(t.rows.length === 1359, `1,359 rows: 1,368 less the 9 removed spellings (got ${t.rows.length})`);
+  assert(t.rows.length === 1355, `1,355 rows: 1,368 less the 9 removed spellings of v2 and the 4 of v3 (got ${t.rows.length})`);
   const by = new Map(t.rows.map((r) => [r.city, r]));
-  for (const gone of ['גבעת ניל"י', "סאגור", "שעריי תקווה", "בני-דקלים", "כרמי-קטיף", 'נעמ"ה', 'תלמי ביל"ו', "נוה ירק", 'יד רמב"ם']) {
+  for (const gone of ['גבעת ניל"י', "סאגור", "שעריי תקווה", "בני-דקלים", "כרמי-קטיף", 'נעמ"ה', 'תלמי ביל"ו', "נוה ירק", 'יד רמב"ם', ...V3_REMOVED.map(([g]) => g)]) {
     assert(!by.has(gone), `${gone} is removed`);
   }
   const is = (c: string, region: string, kind: string) => by.get(c)?.region === region && by.get(c)?.kind === kind;
+  // v3: the public site's corrected placements (city-misfilings-2026-10-13.md, plus ברנר).
+  assert(by.get("ברנר")?.region === "אזור שפלה", `ברנר: אזור שפלה, as v3 corrects it (got ${by.get("ברנר")?.region})`);
   assert(is("תל חי", "אזור צפון", "town"), "תל חי: אזור צפון, town");
   assert(is("שיזפון", "אזור אילת", "base"), "שיזפון: אזור אילת, base");
   assert(is("גזר", "אזור שפלה", "kibbutz"), "גזר: אזור שפלה, kibbutz");
@@ -118,7 +127,12 @@ check("the seeded city.csv", () => {
 check("a removed spelling still resolves to the row that stays", () => {
   // A site that still writes the old spelling must land on the kept row, never
   // on Unknown and never on another place (the scanner read תלמי ביל"ו as ביל"ו).
-  const tsv = readFileSync(join(root, "CSV files", "city-extras.tsv"), "utf8").split(/\r?\n/).filter((l) => l && !l.startsWith("#") && !l.startsWith("name\t"));
+  // A removal already applied by an earlier seed stays on record as "#<line>"
+  // (the seed skips it, since the row is gone); it must still resolve.
+  const tsv = readFileSync(join(root, "CSV files", "city-extras.tsv"), "utf8")
+    .split(/\r?\n/)
+    .map((l) => l.replace(/^#(?=\S)/, ""))
+    .filter((l) => l && !l.startsWith("#") && !l.startsWith("name\t"));
   let n = 0;
   for (const l of tsv) {
     const [name, action, , , kept] = l.split("\t");
@@ -127,7 +141,11 @@ check("a removed spelling still resolves to the row that stays", () => {
     const got = normalizeLocations(name);
     assert(JSON.stringify(got) === JSON.stringify([kept]), `${name} -> ${kept} (got ${JSON.stringify(got)})`);
   }
-  assert(n === 9, `nine removed spellings (got ${n})`);
+  assert(n === 13, `thirteen removed spellings, nine of v2 and four of v3 (got ${n})`);
+  for (const [gone, kept] of V3_REMOVED) {
+    assert(LOCATION_ALIAS[gone] === kept, `LOCATION_ALIAS maps ${gone} to ${kept} (got ${LOCATION_ALIAS[gone]})`);
+    assert(JSON.stringify(normalizeLocations(gone)) === JSON.stringify([kept]), `${gone} -> ${kept} (got ${JSON.stringify(normalizeLocations(gone))})`);
+  }
 });
 
 check("the build carries the region and the kind", () => {

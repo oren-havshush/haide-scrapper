@@ -57,13 +57,12 @@ const DISTINCT: ReadonlyArray<readonly [string, string, string]> = [
   ["עמוקה", "עמקה", "both אזור צפון, in מרום הגליל and in מטה אשר: two places"],
 ];
 
-/** One place listed twice, in both files. The public site decides which spelling survives. */
-const DUPLICATE_PENDING: ReadonlyArray<readonly [string, string, string]> = [
-  ["אלון שבות", "אלון השבות", "duplicate pending: the public site's choice of spelling (both under אזור יהודה ושומרון)"],
-  ["ניצני עוז", "נצני עוז", "duplicate pending: the public site's choice of spelling (both under אזור השרון)"],
-  ["רינתיה", "רנתיה", "duplicate pending: the public site's choice of spelling (both under אזור מרכז)"],
-  ["חיספין", "חספין", "duplicate pending: the public site's choice of spelling (both under אזור רמת הגולן)"],
-];
+/**
+ * One place listed twice, in both files, while the public site chooses the
+ * spelling. Empty since H (2026-10-13): their v3 export merged the four pairs
+ * (אלון שבות, ניצני עוז, רינתיה, חספין stay) and the seed removed the others.
+ */
+const DUPLICATE_PENDING: ReadonlyArray<readonly [string, string, string]> = [];
 
 const root = join(__dirname, "..");
 const raw = readFileSync(join(root, "CSV files", "city.csv"), "utf8");
@@ -121,7 +120,7 @@ check("no name twice, no place spelled twice", () => {
   for (const [a, b] of [...DISTINCT, ...DUPLICATE_PENDING]) {
     assert(found.includes(`${a}\t${b}`) || found.includes(`${b}\t${a}`), `the listed pair ${a} / ${b} is in the file (remove it from the list when a row goes)`);
   }
-  assert(DISTINCT.length === 19 && DUPLICATE_PENDING.length === 4, "19 distinct pairs and 4 pending on the list");
+  assert(DISTINCT.length === 19 && DUPLICATE_PENDING.length === 0, "19 distinct pairs and none pending on the list");
 });
 
 check("the build agrees with the file", () => {

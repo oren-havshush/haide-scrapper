@@ -20,6 +20,10 @@
  *
  * It refuses to write if any of their towns is missing from ours, sits under
  * two regions, or any row of ours has no source for its region.
+ *
+ * Run again (H, 2026-10-13) on the public site's corrected v3 export: the same
+ * rules, so a re-seed is how a corrected placement reaches city.csv. A removal
+ * an earlier seed applied stays in city-extras.tsv as a "#<line>" record.
  */
 
 import { createHash } from "node:crypto";

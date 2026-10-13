@@ -1,16 +1,23 @@
-# The 13 rows of city.csv that are not in the public site's job-location file (misrotil-job-locations-2026-10-12-v2.json),
-# and the owner's decision for each (2026-10-13). Read by scripts/seed-city-regions.ts, which refuses to run while any
-# such row has no line here. action: remove (the row goes; "kept" names the spelling that stays) or keep (region and kind given).
+# The rows of city.csv that are not in the public site's job-location file, and the owner's decision for each.
+# Read by scripts/seed-city-regions.ts, which refuses to run while any such row has no line here.
+# action: remove (the row goes; "kept" names the spelling that stays) or keep (region and kind given).
+# Seeded from misrotil-job-locations-2026-10-12-v2.json (B, cec8528), then -2026-10-13-v3.json (H).
+# A line starting "#" directly before the name is a removal already applied by an earlier seed: the row is gone,
+# the seed skips the line, and it stays here on record (scripts/seedCityRegions.test.ts still checks it resolves).
 name	action	region	kind	kept	note
-גבעת ניל"י	remove			גבעת נילי	the public site's spelling, without a gershayim; 0 stored jobs
-סאגור	remove			סאג'ור	with the geresh; 0 stored jobs
-שעריי תקווה	remove			שערי תקווה	0 stored jobs
-בני-דקלים	remove			בני דקלים	0 stored jobs
-כרמי-קטיף	remove			כרמי קטיף	0 stored jobs
-נעמ"ה	remove			נעמה	0 stored jobs
-תלמי ביל"ו	remove			תלמי בילו	0 stored jobs
-נוה ירק	remove			נווה ירק	0 stored jobs
-יד רמב"ם	remove			יד רמבם	the public site's spelling, without a gershayim; 0 stored jobs
+#גבעת ניל"י	remove			גבעת נילי	the public site's spelling, without a gershayim; 0 stored jobs
+#סאגור	remove			סאג'ור	with the geresh; 0 stored jobs
+#שעריי תקווה	remove			שערי תקווה	0 stored jobs
+#בני-דקלים	remove			בני דקלים	0 stored jobs
+#כרמי-קטיף	remove			כרמי קטיף	0 stored jobs
+#נעמ"ה	remove			נעמה	0 stored jobs
+#תלמי ביל"ו	remove			תלמי בילו	0 stored jobs
+#נוה ירק	remove			נווה ירק	0 stored jobs
+#יד רמב"ם	remove			יד רמבם	the public site's spelling, without a gershayim; 0 stored jobs
+אלון השבות	remove			אלון שבות	v3 merged the duplicate into the spelling the population authority lists; 0 stored values
+נצני עוז	remove			ניצני עוז	v3 merged the duplicate into the spelling the population authority lists; 0 stored values
+רנתיה	remove			רינתיה	v3 merged the duplicate into the spelling the population authority lists; 0 stored values
+חיספין	remove			חספין	v3 merged the duplicate into the spelling the population authority lists; 0 stored values
 תל חי	keep	אזור צפון	town		1 stored job
 שיזפון	keep	אזור אילת	base		the army base by Neot Smadar; 1 stored job
 גזר	keep	אזור שפלה	kibbutz		kibbutz Gezer; 5 stored jobs on 3 sites

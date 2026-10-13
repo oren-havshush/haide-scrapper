@@ -103,6 +103,9 @@ export const LOCATION_ALIAS: Readonly<Record<string, string>> = {
   // owner 2026-10-13). The other four of the nine resolve by the typo step and
   // the squash; these five did not, and the scanner read תלמי ביל"ו as ביל"ו.
   'גבעת ניל"י': "גבעת נילי", סאגור: "סאג'ור", 'נעמ"ה': "נעמה", 'תלמי ביל"ו': "תלמי בילו", 'יד רמב"ם': "יד רמבם",
+  // The four duplicate spellings v3 merged (H, 2026-10-13): each lands on the
+  // spelling the population authority lists, never on Unknown.
+  "אלון השבות": "אלון שבות", "נצני עוז": "ניצני עוז", רנתיה: "רינתיה", חיספין: "חספין",
   // standing overrides — city.csv has no standalone לוד/רמלה, and חצור is
   // ambiguous there; pinned by product decision (2026-08-03).
   לוד: "רמלה לוד", רמלה: "רמלה לוד", חצור: "חצור הגלילית",
