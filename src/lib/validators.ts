@@ -5,6 +5,7 @@ import { SITE_LANES } from "./siteLane";
 import { FLEET_MAX_PAGES, FLEET_TIME_BUDGET_MINUTES, LIMIT_CEILINGS, SETUP_SCRIPT_DEFAULT_SECONDS } from "../../worker/lib/siteLimits";
 import { AJAX_MAX_CONCURRENCY, AJAX_PAGE_TOKEN } from "../../worker/lib/ajaxWalk";
 import { templateTokenErrors } from "../../worker/lib/formTemplate";
+import { IL_PLACE_KIND } from "../../worker/data/il-places";
 
 /**
  * True when a string carries a C0 control character other than the three that
@@ -329,6 +330,23 @@ export const updateSiteConfigSchema = z.object({
   // window (22:00-01:45 Asia/Jerusalem) and never in the nightly. Absent is
   // the nightly. Stored under fieldMappings._meta.lane.
   lane: z.enum(SITE_LANES).optional(),
+  // A site's own area labels -> city.csv rows (worker/lib/locationMap.ts),
+  // applied before the normaliser: label -> a verbatim city.csv row, or null for
+  // "no place". A target named "אזור ..." must be one of the 9 region rows, not
+  // the town אזור or an industrial zone. Stored under _meta.locationMap.
+  locationMap: z
+    .record(z.string().trim().min(1).max(200), z.string().nullable())
+    .superRefine((map, ctx) => {
+      for (const [label, target] of Object.entries(map)) {
+        if (target === null) continue;
+        if (!isCanonicalLocation(target)) {
+          ctx.addIssue({ code: "custom", path: [label], message: `locationMap: "${label}" -> "${target}" is not verbatim on CSV files/city.csv` });
+        } else if (/^אזור /.test(target) && IL_PLACE_KIND[target] !== "region") {
+          ctx.addIssue({ code: "custom", path: [label], message: `locationMap: "${label}" -> "${target}" is a ${IL_PLACE_KIND[target] ?? "place"}, not one of the 9 region rows` });
+        }
+      }
+    })
+    .optional(),
   // Per-site limits (worker/lib/siteLimits.ts): the run's time budget, items
   // and listing pages. Absent, the fleet's 15 minutes, 2,000 and 100. A budget
   // above 15 needs lane "big" (checked below). Stored under _meta.limits.
@@ -456,6 +474,13 @@ export const updateSiteConfigSchema = z.object({
     .strict()
     .optional(),
 }).superRefine((c, ctx) => {
+  // A field mapping's `all` (worker/lib/locationMap.ts) is a boolean or absent.
+  for (const [name, entry] of Object.entries(c.fieldMappings)) {
+    const all = entry && typeof entry === "object" ? (entry as Record<string, unknown>).all : undefined;
+    if (all !== undefined && typeof all !== "boolean") {
+      ctx.addIssue({ code: "custom", path: ["fieldMappings", name, "all"], message: `fieldMappings.${name}.all must be true or false (got ${JSON.stringify(all)})` });
+    }
+  }
   // The nightly budgets 15 minutes a site; more is the big lane's (finding 2).
   const budget = c.limits?.timeBudgetMinutes;
   if (budget !== undefined && budget > FLEET_TIME_BUDGET_MINUTES && c.lane !== "big") {

@@ -422,6 +422,7 @@ export async function saveSiteConfig(
     listingUrls?: string[];
     lane?: SiteLane;
     limits?: SiteLimits;
+    locationMap?: Record<string, string | null>;
     acceptedGates?: AcceptedGates;
   }
 ) {
@@ -449,6 +450,8 @@ export async function saveSiteConfig(
       listingUrls,
       lane: config.lane ?? null,
       limits: config.limits ?? null,
+      // A site's area labels -> city.csv rows (worker/lib/locationMap.ts).
+      locationMap: config.locationMap ?? null,
       pagination: config.pagination || null,
       setupScript: config.setupScript || null,
       loadMoreSelector: config.loadMoreSelector || null,

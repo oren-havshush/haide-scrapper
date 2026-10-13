@@ -62,6 +62,7 @@ import type { ValidationResult } from "../lib/validator";
 import type { Browser, Page } from "playwright";
 import { emitWorkerEvent } from "../lib/emitEvent";
 import { DOM_FIELD_EXTRACT_SOURCE } from "../lib/domFieldExtract";
+import { applyLocationMap, LOCATION_FROM_MAP, readAllMatches, readLocationMap, unmappedLabelWarnings } from "../lib/locationMap";
 import { APPLY_LOGIN_SKIP_NOTE, APPLY_LOGIN_FAILURE_CATEGORY } from "../lib/applyGate";
 import { applyJobIdFallback } from "../lib/synthesizeJobId";
 import { getApplyRequiresLogin, isUsableMappingEntry } from "../lib/fieldMappings";
@@ -147,6 +148,12 @@ interface FieldMappingEntry {
    * editor; opaque to the rest of the worker.
    */
   extractAttr?: string;
+  /**
+   * Read EVERY element the selector matches on a detail page, each trimmed,
+   * joined with " | " (worker/lib/locationMap.ts). Maof prints a job's areas
+   * as separate elements whose labels contain spaces.
+   */
+  all?: boolean;
 }
 
 /** A single page flow step from Site.pageFlow JSON */
@@ -2179,6 +2186,13 @@ async function visitDetailPages(
 
       for (const [fieldName, mapping] of Object.entries(fieldsToRunOnDetail)) {
         try {
+          // all: true reads every match (worker/lib/locationMap.ts); an empty
+          // read keeps a listing seed, as the single read below does.
+          if (mapping.all === true) {
+            const joined = await readAllMatches(page, mapping.selector, fieldName, mapping.extractAttr);
+            if (joined.length > 0 || !rawFields[fieldName]) rawFields[fieldName] = joined;
+            continue;
+          }
           const fieldEl = await page.$(mapping.selector);
           if (fieldEl) {
             const extracted = await extractMappedFieldFromElement(
@@ -4488,7 +4502,18 @@ async function executeScrape(
   // Normalize and validate each record using dedicated modules. The time is the
   // capturedAt of a setup script's form blob that does not carry its own.
   const normalizedAt = new Date();
-  const validatedRecords: ValidatedRecord[] = rawFieldsList.map((rawFields) => {
+  // A site's own area labels -> city.csv rows, before the normaliser sees them
+  // (worker/lib/locationMap.ts). A label the map lacks is dropped and counted,
+  // never scanned for a place; the mapped value is final.
+  const locationMap = readLocationMap(site.fieldMappings);
+  const unmappedLabels = new Map<string, number>();
+  const validatedRecords: ValidatedRecord[] = rawFieldsList.map((raw) => {
+    let rawFields = raw;
+    if (locationMap) {
+      const mapped = applyLocationMap(raw["location"], locationMap);
+      for (const label of new Set(mapped.unmapped)) unmappedLabels.set(label, (unmappedLabels.get(label) ?? 0) + 1);
+      rawFields = { ...raw, location: mapped.value, [LOCATION_FROM_MAP]: "1" };
+    }
     const normalized = normalizeJobRecord(rawFields, { at: normalizedAt });
     const validation = validateJobRecord(normalized);
     return { normalized, validation };
@@ -4995,6 +5020,8 @@ async function executeScrape(
     scrapeWarnings.push(...challengeWarnings(runMode.extract, true));
     // Stored location overrides not on city.csv, skipped by the gate (worker/lib/jobLocation.ts).
     scrapeWarnings.push(...overrideWarnings);
+    // Area labels the site's locationMap does not know, dropped (worker/lib/locationMap.ts).
+    scrapeWarnings.push(...unmappedLabelWarnings(unmappedLabels));
     // Site-wide form fields a {{job.<token>}} template could not fill (worker/lib/formTemplate.ts).
     scrapeWarnings.push(...formTemplateWarnings(formTemplateTally));
     // What each listing page contributed, saved/seen. Only present on a site

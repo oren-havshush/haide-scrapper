@@ -14,6 +14,7 @@ import {
   NATIONWIDE_LOCATION,
 } from "./locationNormalize";
 import { structureDescription } from "./descriptionStructure";
+import { LOCATION_FROM_MAP } from "./locationMap";
 import { stampScriptFormBlob, stampScriptFormData } from "./formShape";
 
 /**
@@ -882,6 +883,10 @@ export function normalizeJobRecord(
   }
   requirements = structureDescription(requirements);
   let location = normalizeField(rawFields["location"]);
+  // A location that came through the site's locationMap is final, empty or
+  // not: no place is looked for in the description or the title
+  // (worker/lib/locationMap.ts). Empty, the job takes locationFallback or Unknown.
+  const locationFromMap = rawFields[LOCATION_FROM_MAP] === "1";
   let department = normalizeField(rawFields["department"]);
   let externalJobId = normalizeField(rawFields["externalJobId"]);
   let publishDate = normalizeField(rawFields["publishDate"]);
@@ -956,7 +961,7 @@ export function normalizeJobRecord(
       rawOut[`_enrichedFromDescription_${name}`] = found;
       return found;
     };
-    location = applyFallback("location", location);
+    if (!locationFromMap) location = applyFallback("location", location);
     department = applyFallback("department", department);
     externalJobId = applyFallback("externalJobId", externalJobId);
     publishDate = applyFallback("publishDate", publishDate);
@@ -1000,7 +1005,7 @@ export function normalizeJobRecord(
   // Joined with a COMMA, never a slash: the block below rewrites "/" to a space
   // before normalizeLocations() splits, which would fuse two cities into one
   // off-vocabulary string and lose both at the gate. A comma survives both.
-  if (!location || location.trim().length === 0) {
+  if (!locationFromMap && (!location || location.trim().length === 0)) {
     const locationSource = [title, description, requirements]
       .filter(Boolean)
       .join("\n");
