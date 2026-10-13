@@ -13,6 +13,7 @@ import {
   renderSweepReport,
   sweepDate,
   type FixQueueEntry,
+  type HoldReport,
   type ReportItem,
   type ReportSweep,
   type SkippedSite,
@@ -213,6 +214,8 @@ export async function closeSweep(args: {
   email?: boolean;
   /** The nightly fleet's report only: the big lane's block (sweepReport.ts ReportOptions.bigLane). */
   bigLane?: { logText: string } | null;
+  /** The nightly fleet's report only: the On hold block (sweepReport.ts ReportOptions.holds). */
+  holds?: HoldReport;
 }, deps: CloseSweepDeps = {}): Promise<string> {
   const update = deps.update ?? ((a: SweepRowUpdate) => prisma.scrapeSweep.update(a));
   const send = deps.send ?? ((a: Parameters<typeof sendSweepMail>[0]) => sendSweepMail(a));
@@ -247,6 +250,7 @@ export async function closeSweep(args: {
     detailMode: args.detailMode,
     fixQueue,
     bigLane: args.bigLane,
+    holds: args.holds,
     // The thresholds the worker's undersize guard read, so the report's drop
     // rule is the same rule.
     dropThresholds: {

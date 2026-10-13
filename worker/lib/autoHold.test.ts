@@ -95,7 +95,7 @@ check("nightly.ts: after the items, before the report, timer nights only, hold c
 
   const run = src.slice(src.indexOf("async function realRun"));
   assert(/const timerNight = trigger === "timer" && !single && lane === "nightly";/.test(run), "timerNight: the timer's nightly fleet run only");
-  const calls = run.match(/if \(timerNight\) await applyAutoHolds\(sweep\.id, sweep\.startedAt, results\);/g) ?? [];
+  const calls = run.match(/const holdEvents = timerNight \? await applyAutoHolds\(sweep\.id, sweep\.startedAt, results\) : \[\];/g) ?? [];
   const bare = run.match(/applyAutoHolds\(/g) ?? [];
   assert(calls.length === 2 && bare.length === 2, `called twice (halt, close), each behind timerNight (got ${calls.length} guarded of ${bare.length})`);
   const loop = run.indexOf("for (const site of queue)");

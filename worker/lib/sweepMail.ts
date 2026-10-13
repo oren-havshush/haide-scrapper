@@ -148,9 +148,17 @@ function escapeHtml(s: string): string {
  * The whole report, preformatted. `dir="rtl"` on the wrapper so a Hebrew mail
  * client lays the message out as it expects; `dir="ltr"` on the <pre> so the
  * report's own columns and indentation read the way they were rendered.
+ *
+ * A line that starts with "ACTION:" (the On hold block, worker/lib/sweepReport.ts
+ * renderHeld) is set in bold: the owner must not miss it. The stored report,
+ * the journal and the dashboard carry the same line, prefixed, in plain text.
  */
 export function buildMailBody(logText: string): string {
-  return `<div dir="rtl"><pre dir="ltr">${escapeHtml(logText)}</pre></div>`;
+  const body = escapeHtml(logText)
+    .split("\n")
+    .map((l) => (l.startsWith("ACTION:") ? `<b>${l}</b>` : l))
+    .join("\n");
+  return `<div dir="rtl"><pre dir="ltr">${body}</pre></div>`;
 }
 
 // ---------------------------------------------------------------------------

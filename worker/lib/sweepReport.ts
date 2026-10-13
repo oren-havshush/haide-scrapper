@@ -181,7 +181,104 @@ export type ReportOptions = {
    * a policy, single-site or big-lane report never carries one.
    */
   bigLane?: { logText: string } | null;
+  /**
+   * The held and paused sites, and tonight's automatic decisions
+   * (worker/lib/holdRule.ts), loaded by the nightly fleet run. Absent prints no
+   * On hold block and names held sites in the skipped list as before.
+   */
+  holds?: HoldReport;
 };
+
+/** A site held or paused out of the sweeps, as the On hold block names it. */
+export type HeldSite = {
+  siteUrl: string;
+  hold: string;
+  /** src/lib/sweepHold.ts holdVendor. */
+  vendor: "SiteGround" | "Cloudflare" | "host";
+  since: Date | null;
+  by: "owner" | "auto";
+  note: string | null;
+  /** The site's listings, kept while it is held. */
+  jobs: number;
+  probeAt: Date | null;
+  probeResult: string | null;
+  /** The latest run since the hold that wrote rows (a guarded hand run, or the Saturday run). */
+  runPassedAt?: Date | null;
+};
+
+/** Tonight's automatic hold decisions, as the nightly applied them. */
+export type HoldEvent =
+  | { siteUrl: string; action: "hold" | "pause"; note: string }
+  | { siteUrl: string; action: "lift_pause" }
+  | { siteUrl: string; action: "pause_stays"; blockedAgain: boolean; why: string };
+
+export type HoldReport = { sites: readonly HeldSite[]; events: readonly HoldEvent[] };
+
+/** The site's host, as the owner names it in "say release <site>". */
+function hostOf(siteUrl: string): string {
+  try {
+    return new URL(siteUrl).host;
+  } catch {
+    return siteUrl;
+  }
+}
+
+/** The second line of a HOST_CHALLENGE site: what the probe or a run said, and what to say. */
+function heldDetail(h: HeldSite, timeZone: string): string {
+  const site = hostOf(h.siteUrl);
+  const ranOk = h.runPassedAt ? `; a guarded run passed on ${sweepDate(h.runPassedAt, timeZone)}: say release ${site}` : "";
+  if (h.vendor === "Cloudflare") {
+    // A GET cannot pass Cloudflare: never probed. The owner orders a browser run.
+    const since = h.since ? sweepDate(h.since, timeZone) : "?";
+    return `held by the ${h.by === "auto" ? "nightly" : "owner"} since ${since}; say run ${site} to test with the browser${ranOk}`;
+  }
+  if (!h.probeResult || !h.probeAt) return `not probed yet (next: the Saturday-night run)${ranOk}`;
+  const at = `probe ${sweepDate(h.probeAt, timeZone)}: `;
+  const r = h.probeResult;
+  if (r === "passed; the run passed") return `${at}probe passed and the run passed: say release ${site}`;
+  if (r === "passed; the run was blocked") return `${at}probe passed but the run was blocked: hold stays${ranOk}`;
+  if (r.startsWith("passed; the run failed")) return `${at}probe passed but the run failed${r.slice("passed; the run failed".length)}: hold stays${ranOk}`;
+  if (r === "passed") return `${at}passed, no run yet: hold stays${ranOk}`;
+  return `${at}${r}; hold stays${ranOk}`;
+}
+
+/**
+ * The On hold block, right after Needs attention (owner, 2026-10-13): an
+ * ACTION line first for each paused site blocked again on Saturday, then the
+ * HOST_CHALLENGE sites, then Cloudflare's weekday pauses under their own
+ * heading. Empty when nothing is held or paused and no pause was retried.
+ */
+export function renderHeld(holds: HoldReport, timeZone: string): string[] {
+  const held = holds.sites.filter((h) => h.hold === "HOST_CHALLENGE");
+  const paused = holds.sites.filter((h) => h.hold === "CHALLENGE_RETRY_SATURDAY");
+  const pauseEvents = holds.events.filter((e) => e.action === "lift_pause" || e.action === "pause_stays");
+  if (held.length === 0 && paused.length === 0 && pauseEvents.length === 0) return [];
+  const lines = [`On hold (${held.length})`];
+  // A line the owner cannot miss: its own line, prefixed, and set in bold by
+  // the mailer (worker/lib/sweepMail.ts buildMailBody).
+  for (const e of holds.events) {
+    if (e.action === "pause_stays" && e.blockedAgain) lines.push(`ACTION: say hold ${hostOf(e.siteUrl)} (Cloudflare blocked on Saturday too)`);
+  }
+  if (held.length === 0) lines.push("  nothing held");
+  for (const h of held) {
+    const since = h.since ? sweepDate(h.since, timeZone) : "?";
+    lines.push(`  ${hostOf(h.siteUrl)} — ${h.vendor}, held since ${since} by the ${h.by === "auto" ? "nightly" : "owner"}, ${h.jobs} listing(s) kept`);
+    lines.push(`      ${heldDetail(h, timeZone)}`);
+  }
+  if (paused.length > 0 || pauseEvents.length > 0) {
+    lines.push(`Cloudflare, retry Saturday (${paused.length})`);
+    for (const h of paused) {
+      const since = h.since ? sweepDate(h.since, timeZone) : "?";
+      lines.push(`  ${hostOf(h.siteUrl)} — paused since ${since}, ${h.jobs} listing(s) kept; retried by the Saturday-night run`);
+    }
+    for (const e of pauseEvents) {
+      if (e.action === "lift_pause") lines.push(`  ${hostOf(e.siteUrl)}: Cloudflare pause lifted, run passed`);
+      else if (e.action === "pause_stays" && e.blockedAgain) lines.push(`  ${hostOf(e.siteUrl)}: blocked on Saturday too; the pause stays until the owner says hold`);
+      else if (e.action === "pause_stays") lines.push(`  ${hostOf(e.siteUrl)}: ${e.why} on Saturday; the pause stays, retried next Saturday`);
+    }
+  }
+  return lines;
+}
 
 /** One open fix item, as the report needs it. */
 export type FixQueueEntry = { siteUrl: string; field: string; code: string; openedAt: Date };
@@ -424,7 +521,15 @@ export function verdictLine(
   }
 
   const attention = needsAttention(sweep, items, opts).length;
-  return `${label} ${date}: ${sweep.selectedCount} sites, ${attention} need attention`;
+  return `${label} ${date}: ${sweep.selectedCount} sites, ${attention} need attention${holdCounts(opts.holds)}`;
+}
+
+/** ", N on hold, M paused" for the verdict line; empty when nothing is. */
+function holdCounts(holds: HoldReport | undefined): string {
+  if (!holds) return "";
+  const held = holds.sites.filter((h) => h.hold === "HOST_CHALLENGE").length;
+  const paused = holds.sites.filter((h) => h.hold === "CHALLENGE_RETRY_SATURDAY").length;
+  return held + paused > 0 ? `, ${held} on hold, ${paused} paused` : "";
 }
 
 type AttentionLine = { siteUrl: string; why: string };
@@ -633,6 +738,14 @@ export function needsAttention(
     if (i.defect) add(i, `DEFECT: ${i.defect}`);
   }
 
+  // Held or paused tonight by the nightly itself (worker/lib/holdRule.ts): once, the night it happens.
+  for (const e of opts.holds?.events ?? []) {
+    if (e.action !== "hold" && e.action !== "pause") continue;
+    const list = reasons.get(e.siteUrl) ?? [];
+    list.push(e.action === "hold" ? `held tonight: ${e.note}; listings kept` : `paused tonight: ${e.note}; listings kept`);
+    reasons.set(e.siteUrl, list);
+  }
+
   return [...reasons.entries()].map(([siteUrl, why]) => ({ siteUrl, why: why.join("; ") }));
 }
 
@@ -680,8 +793,17 @@ export function renderSweepReport(
     if (bigLane.length > 0) {
       lines.push(`    ${bigLane.length} in the big lane (22:00-01:45)`);
     }
+    // Held and paused sites have their own block: one count line here, so a
+    // site is not named twice.
+    const heldSkips = opts.holds ? opts.skipped.filter((s) => s.kind === "hold") : [];
+    if (heldSkips.length > 0) {
+      const holdOf = new Map((opts.holds as HoldReport).sites.map((h) => [h.siteUrl, h.hold]));
+      const paused = heldSkips.filter((s) => holdOf.get(s.siteUrl) === "CHALLENGE_RETRY_SATURDAY").length;
+      lines.push(`    ${heldSkips.length - paused} on hold, ${paused} paused (see On hold)`);
+    }
     for (const s of opts.skipped) {
       if (s.kind === "fresh" || s.kind === "big_lane") continue;
+      if (s.kind === "hold" && opts.holds) continue;
       lines.push(`    ${s.siteUrl} — ${s.reason}`);
     }
   }
@@ -711,6 +833,15 @@ export function renderSweepReport(
     for (const a of attention) lines.push(`  ${a.siteUrl}\n      ${a.why}`);
   }
   lines.push("");
+
+  // --- On hold ---------------------------------------------------------------
+  // Right after Needs attention (owner, 2026-10-13). Printed only when a site
+  // is held or paused, or tonight decided something about a pause.
+  const heldLines = opts.holds ? renderHeld(opts.holds, opts.timeZone) : [];
+  if (heldLines.length > 0) {
+    lines.push(...heldLines);
+    lines.push("");
+  }
 
   // --- Accepted below gate ------------------------------------------------
   // Sites the owner set ACTIVE below a gate (src/lib/acceptedGates.ts): one

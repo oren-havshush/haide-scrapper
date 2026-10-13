@@ -56,7 +56,8 @@ import {
   shouldAlertSoftFailures,
   SOFT_FAILURE_ALERT_RATIO,
 } from "../lib/sweepBreaker";
-import { sweepDate, type ReportItem, type SkippedSite } from "../lib/sweepReport";
+import { sweepDate, type HoldEvent, type HoldReport, type ReportItem, type SkippedSite } from "../lib/sweepReport";
+import { holdSetBy, holdVendor } from "../../src/lib/sweepHold";
 import { readAcceptedGates, type AcceptedGates } from "../../src/lib/acceptedGates";
 import {
   autoHoldWrite,
@@ -699,6 +700,61 @@ async function applyAutoHolds(sweepId: string, startedAt: Date, results: SiteRes
   return applied;
 }
 
+/**
+ * The On hold block's data (worker/lib/sweepReport.ts renderHeld): every held
+ * or paused site as it stands after tonight, its listings, the latest run
+ * since the hold that wrote rows, and tonight's automatic decisions. Reads
+ * only.
+ */
+async function loadHoldReport(events: readonly AutoHoldEvent[]): Promise<HoldReport> {
+  const sites = await prisma.site.findMany({
+    where: { sweepHold: { not: null } },
+    select: {
+      id: true,
+      siteUrl: true,
+      sweepHold: true,
+      sweepHoldAt: true,
+      sweepHoldNote: true,
+      sweepHoldBy: true,
+      sweepHoldProbeAt: true,
+      sweepHoldProbeResult: true,
+    },
+    orderBy: { sweepHoldAt: "asc" },
+  });
+  const ids = sites.map((s) => s.id);
+  const [counts, runs] = await Promise.all([
+    prisma.job.groupBy({ by: ["siteId"], where: { siteId: { in: ids } }, _count: { _all: true } }),
+    prisma.scrapeRun.findMany({
+      where: { siteId: { in: ids }, status: "COMPLETED", failureCategory: null },
+      orderBy: { createdAt: "desc" },
+      select: { siteId: true, status: true, failureCategory: true, createdAt: true },
+    }),
+  ]);
+  const jobs = new Map(counts.map((c) => [c.siteId, c._count._all]));
+  const toEvent = (e: AutoHoldEvent): HoldEvent => {
+    const d = e.decision;
+    if (d.action === "hold" || d.action === "pause") return { siteUrl: e.siteUrl, action: d.action, note: d.note };
+    if (d.action === "pause_stays") return { siteUrl: e.siteUrl, action: "pause_stays", blockedAgain: d.blockedAgain, why: d.why };
+    return { siteUrl: e.siteUrl, action: "lift_pause" };
+  };
+  return {
+    sites: sites.map((s) => ({
+      siteUrl: s.siteUrl,
+      hold: s.sweepHold as string,
+      vendor: holdVendor(s.sweepHold, s.sweepHoldNote),
+      since: s.sweepHoldAt,
+      by: holdSetBy(s.sweepHoldBy),
+      note: s.sweepHoldNote,
+      jobs: jobs.get(s.id) ?? 0,
+      probeAt: s.sweepHoldProbeAt,
+      probeResult: s.sweepHoldProbeResult,
+      runPassedAt:
+        runs.find((r) => r.siteId === s.id && isSuccessfulRun(r) && s.sweepHoldAt !== null && r.createdAt.getTime() > s.sweepHoldAt.getTime())?.createdAt ?? null,
+    })),
+    events: events.map(toEvent),
+  };
+}
+
 // ---------------------------------------------------------------------------
 // Dry run — READ ONLY
 // ---------------------------------------------------------------------------
@@ -813,6 +869,8 @@ async function realRun(mode: Mode, trigger: string, hooks: { onSweep?: (sweepId:
   // The timer's nightly fleet run: the only run whose items hold, pause or
   // lift (worker/lib/holdRule.ts).
   const timerNight = trigger === "timer" && !single && lane === "nightly";
+  // The nightly fleet's report carries the On hold block, timer or not.
+  const fleetNightly = !single && lane === "nightly";
 
   log(`=== nightly sweep ${single ? `--site ${single}` : lane === "big" ? "--now --lane big" : "--now"} (detail pages: ${detailMode}) ===`);
   if (stopAt) log(`[sweep] big lane: stops at ${stopAt.toISOString()} (01:45 Asia/Jerusalem)`);
@@ -893,8 +951,10 @@ async function realRun(mode: Mode, trigger: string, hooks: { onSweep?: (sweepId:
     });
     queue = selected;
     skipped = excluded.map((e) => ({ siteUrl: e.site.siteUrl, reason: e.reason, kind: e.kind }));
-    const held = excluded.filter((e) => e.kind === "hold").length;
-    log(`[sweep] selected ${queue.length} site(s), skipped ${skipped.length}, ${held} on hold`);
+    const held = excluded.filter((e) => e.kind === "hold" && e.site.sweepHold === "HOST_CHALLENGE").length;
+    const paused = excluded.filter((e) => e.kind === "hold" && e.site.sweepHold === "CHALLENGE_RETRY_SATURDAY").length;
+    const retried = queue.filter((s) => s.sweepHold).length;
+    log(`[sweep] selected ${queue.length} site(s)${retried > 0 ? ` (${retried} held or paused, retried tonight)` : ""}, skipped ${skipped.length}, ${held} on hold, ${paused} paused`);
   }
 
   await prisma.scrapeSweep.update({
@@ -1045,7 +1105,7 @@ async function realRun(mode: Mode, trigger: string, hooks: { onSweep?: (sweepId:
       }
 
       log(`[sweep] HALT: ${haltReason}`);
-      if (timerNight) await applyAutoHolds(sweep.id, sweep.startedAt, results);
+      const holdEvents = timerNight ? await applyAutoHolds(sweep.id, sweep.startedAt, results) : [];
       if (probePassed.size > 0) await recordProbeRuns(results, probePassed, log);
       const haltedText = await closeSweep({
         kind: sweepKind,
@@ -1060,6 +1120,7 @@ async function realRun(mode: Mode, trigger: string, hooks: { onSweep?: (sweepId:
         haltReason,
         items: results.map(toScrapeReportItem),
         skipped,
+        holds: fleetNightly ? await loadHoldReport(holdEvents) : undefined,
       });
       // Printed last so the journal carries the whole report, verdict line
       // included — `journalctl -u haide-nightly` is the durable copy.
@@ -1071,7 +1132,7 @@ async function realRun(mode: Mode, trigger: string, hooks: { onSweep?: (sweepId:
 
   // --- close out -------------------------------------------------------
   // The automatic hold and pause, after the night's items and before its report.
-  if (timerNight) await applyAutoHolds(sweep.id, sweep.startedAt, results);
+  const holdEvents = timerNight ? await applyAutoHolds(sweep.id, sweep.startedAt, results) : [];
   // What each probe-passed site's run did, on its probe line. Releases nothing.
   if (probePassed.size > 0) await recordProbeRuns(results, probePassed, log);
 
@@ -1090,6 +1151,7 @@ async function realRun(mode: Mode, trigger: string, hooks: { onSweep?: (sweepId:
     haltReason: null,
     items: results.map(toScrapeReportItem),
     skipped,
+    holds: fleetNightly ? await loadHoldReport(holdEvents) : undefined,
   });
 
   if (breaker.hardUnqualified > 0) {
