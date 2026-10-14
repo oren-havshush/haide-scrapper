@@ -1,0 +1,82 @@
+{
+  "_exportedAt": "2026-10-14T14:58:54.518Z",
+  "_note": "Mirror of the live config. The DB is authoritative; the worker never reads this file. setupScript lives alongside in <slug>.setup.js.",
+  "id": "cmv874u8b000001lviti1i2eb",
+  "siteUrl": "https://elbatech.co.il/careers/?company-name=elipse-engineering",
+  "companyName": "Elipse Engineering",
+  "status": "ACTIVE",
+  "setupScriptFile": "elbatech--i1i2eb.setup.js",
+  "pageFlow": [],
+  "fieldMappings": {
+    "_meta": {
+      "lane": null,
+      "limits": null,
+      "savedAt": "2026-10-14T14:20:52.442Z",
+      "pagination": null,
+      "formCapture": null,
+      "listingUrls": null,
+      "locationMap": null,
+      "itemSelector": "#haide-elipse > div.haide-job",
+      "acceptedGates": null,
+      "minPublishDate": null,
+      "minPublishDays": null,
+      "revealSelector": null,
+      "listingSelector": null,
+      "applyLoginReason": null,
+      "browserOverrides": null,
+      "loadMoreSelector": null,
+      "locationFallback": null,
+      "originalMappings": null,
+      "applyRequiresLogin": false
+    },
+    "title": {
+      "source": "MANUAL",
+      "selector": "a.haide-link",
+      "confidence": 0.95,
+      "capturedOnUrl": "https://elbatech.co.il/careers/?company-name=elipse-engineering"
+    },
+    "location": {
+      "source": "MANUAL",
+      "selector": ".__ai-location",
+      "confidence": 0.9,
+      "capturedOnUrl": "https://elbatech.co.il/careers/?company-name=elipse-engineering"
+    },
+    "_formData": {
+      "source": "MANUAL",
+      "selector": ".__ai-formData",
+      "confidence": 0.9,
+      "capturedOnUrl": "https://elbatech.co.il/careers/?company-name=elipse-engineering"
+    },
+    "detailUrl": {
+      "source": "MANUAL",
+      "selector": "a.haide-link",
+      "confidence": 0.95,
+      "extractAttr": "href",
+      "capturedOnUrl": "https://elbatech.co.il/careers/?company-name=elipse-engineering"
+    },
+    "description": {
+      "source": "MANUAL",
+      "selector": ".__ai-description",
+      "confidence": 0.9,
+      "capturedOnUrl": "https://elbatech.co.il/careers/?company-name=elipse-engineering"
+    },
+    "requirements": {
+      "source": "MANUAL",
+      "selector": ".__ai-requirements",
+      "confidence": 0.9,
+      "capturedOnUrl": "https://elbatech.co.il/careers/?company-name=elipse-engineering"
+    },
+    "externalJobId": {
+      "source": "MANUAL",
+      "selector": ".__ai-externalJobId",
+      "confidence": 0.95,
+      "capturedOnUrl": "https://elbatech.co.il/careers/?company-name=elipse-engineering"
+    },
+    "applicationInfo": {
+      "source": "MANUAL",
+      "selector": ".__ai-applicationInfo",
+      "confidence": 0.9,
+      "capturedOnUrl": "https://elbatech.co.il/careers/?company-name=elipse-engineering"
+    }
+  }
+}

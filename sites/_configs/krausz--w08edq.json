@@ -1,0 +1,152 @@
+{
+  "_exportedAt": "2026-10-14T14:58:54.203Z",
+  "_note": "Mirror of the live config. The DB is authoritative; the worker never reads this file. setupScript lives alongside in <slug>.setup.js.",
+  "id": "cmv88865k000a01lvtpw08edq",
+  "siteUrl": "https://krausz.com/he/join-us-2/",
+  "companyName": "קראוס תעשיות",
+  "status": "ACTIVE",
+  "setupScriptFile": "krausz--w08edq.setup.js",
+  "pageFlow": [],
+  "fieldMappings": {
+    "_meta": {
+      "lane": null,
+      "limits": null,
+      "savedAt": "2026-10-14T14:50:48.576Z",
+      "pagination": null,
+      "formCapture": {
+        "fields": [
+          {
+            "name": "full-name",
+            "label": "Full Name",
+            "tagName": "input",
+            "required": true,
+            "fieldType": "text"
+          },
+          {
+            "name": "your-email",
+            "label": "E-mail",
+            "tagName": "input",
+            "required": true,
+            "fieldType": "email"
+          },
+          {
+            "name": "your-file",
+            "label": "Upload CV",
+            "accept": ".doc,.pdf,.csv",
+            "tagName": "input",
+            "required": true,
+            "fieldType": "file"
+          },
+          {
+            "name": "your-message",
+            "label": "Message",
+            "value": "{{job.title}}",
+            "tagName": "textarea",
+            "required": false,
+            "fieldType": "textarea"
+          },
+          {
+            "name": "_wpcf7",
+            "label": "_wpcf7",
+            "value": "8254",
+            "tagName": "input",
+            "required": false,
+            "fieldType": "hidden"
+          },
+          {
+            "name": "_wpcf7_version",
+            "label": "_wpcf7_version",
+            "value": "6.1.7",
+            "tagName": "input",
+            "required": false,
+            "fieldType": "hidden"
+          },
+          {
+            "name": "_wpcf7_locale",
+            "label": "_wpcf7_locale",
+            "value": "en_US",
+            "tagName": "input",
+            "required": false,
+            "fieldType": "hidden"
+          },
+          {
+            "name": "_wpcf7_unit_tag",
+            "label": "_wpcf7_unit_tag",
+            "value": "wpcf7-f8254-o1",
+            "tagName": "input",
+            "required": false,
+            "fieldType": "hidden"
+          },
+          {
+            "name": "_wpcf7_container_post",
+            "label": "_wpcf7_container_post",
+            "value": "0",
+            "tagName": "input",
+            "required": false,
+            "fieldType": "hidden"
+          },
+          {
+            "name": "_wpcf7_posted_data_hash",
+            "label": "_wpcf7_posted_data_hash",
+            "value": "",
+            "tagName": "input",
+            "required": false,
+            "fieldType": "hidden"
+          }
+        ],
+        "method": "POST",
+        "enctype": "multipart/form-data",
+        "actionUrl": "https://krausz.com/wp-json/contact-form-7/v1/contact-forms/8254/feedback",
+        "formSelector": "form.wpcf7-form:has(input[name=\"job-title\"])"
+      },
+      "listingUrls": [
+        "https://krausz.com/he/join-us-2/",
+        "https://krausz.com/join-us/"
+      ],
+      "locationMap": null,
+      "itemSelector": "#haide-krausz > div.haide-job",
+      "acceptedGates": null,
+      "minPublishDate": null,
+      "minPublishDays": null,
+      "revealSelector": null,
+      "listingSelector": null,
+      "applyLoginReason": null,
+      "browserOverrides": null,
+      "loadMoreSelector": null,
+      "locationFallback": null,
+      "originalMappings": null,
+      "applyRequiresLogin": false
+    },
+    "title": {
+      "source": "MANUAL",
+      "selector": "a.haide-link",
+      "confidence": 0.95,
+      "capturedOnUrl": "https://krausz.com/he/join-us-2/"
+    },
+    "location": {
+      "source": "MANUAL",
+      "selector": ".__ai-location",
+      "confidence": 0.95,
+      "capturedOnUrl": "https://krausz.com/he/join-us-2/"
+    },
+    "detailUrl": {
+      "source": "MANUAL",
+      "selector": "a.haide-link",
+      "confidence": 0.95,
+      "extractAttr": "href",
+      "capturedOnUrl": "https://krausz.com/he/join-us-2/"
+    },
+    "description": {
+      "source": "MANUAL",
+      "selector": ".__ai-description",
+      "confidence": 0.95,
+      "capturedOnUrl": "https://krausz.com/he/join-us-2/"
+    },
+    "requirements": {
+      "source": "MANUAL",
+      "selector": ".__ai-requirements",
+      "confidence": 0.95,
+      "capturedOnUrl": "https://krausz.com/he/join-us-2/"
+    }
+  }
+}

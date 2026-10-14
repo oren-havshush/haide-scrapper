@@ -38,6 +38,7 @@ several listing pages back into one and stops publishing the rest.
 | ESO Group | ACTIVE | 4 | 577 | 1 | `eso-group--mgz38v` |
 | Eimsys | ACTIVE | 4 | 302 | 1 | `eimsys--an8gzs` |
 | Eitan Medical | ACTIVE | 8 | 6738 | 1 | `comeet--kp1dtz` |
+| Elipse Engineering | ACTIVE | 8 | 6698 | 1 | `elbatech--i1i2eb` |
 | Experis Israel | ACTIVE | 10 | 10073 | 1 | `experis--hdksz3` |
 | Exyte Israel | ACTIVE | 8 | 4512 | 1 | `exyte--go206o` |
 | Femi | ACTIVE | 6 | 6082 | 1 | `adamtotal--x0aqxh` |
@@ -108,6 +109,7 @@ several listing pages back into one and stops publishing the rest.
 | אמנת ניהול ומערכות בע"מ | ACTIVE | 8 | 4952 | 1 | `amanet--zknvec` |
 | אנשים ומחשבים | ACTIVE | 5 | 2645 | 1 | `pc--51eg8t` |
 | אפטר סקול | ACTIVE | 5 | 5946 | 1 | `etgarim2000--zsyc2z` |
+| אפשר אחרת | ACTIVE | 9 | 15710 | 1 | `efshar-a--haqido` |
 | אשטרום | ACTIVE | 8 | 1341 | 1 | `ashtrom--9nr6ww` |
 | באדג'ט | ACTIVE | 6 | 5566 | 1 | `budget--yutag5` |
 | בון תור | ACTIVE | 6 | 6241 | 1 | `bontour--f5yzqh` |
@@ -178,6 +180,7 @@ several listing pages back into one and stops publishing the rest.
 | מי אביבים | ACTIVE | 9 | 7970 | 1 | `mei-avivim--5afgkc` |
 | מי עדן | ACTIVE | 5 | 4162 | 1 | `campaigns-meyeden--6u5xb3` |
 | מי שבע | ACTIVE | 5 | 1645 | 1 | `mey7--scshwy` |
+| מיטב משאבי אנוש ותוכנה בע"מ | ACTIVE | 8 | 9053 | 1 | `meitavjob--9xtfdr` |
 | מילואות | ACTIVE | 7 | 7931 | 1 | `milouot--dbfy4p` |
 | מינט טכנולוגיות | ACTIVE | 8 | 4291 | 1 | `minet--ho0kc8` |
 | מיקוד ביטחון ישראל בע''מ | ACTIVE | 7 | 3272 | 1 | `mikud-avtaha--x1f85a` |
@@ -237,6 +240,7 @@ several listing pages back into one and stops publishing the rest.
 | קידום | ACTIVE | 8 | 6139 | 1 | `kidum--wb3q8e` |
 | קימאמה | ACTIVE | 6 | 2719 | 1 | `campkimama--lz6kls` |
 | קישורית | ACTIVE | 3 | 370 | 1 | `kishurit--gjuja3` |
+| קראוס תעשיות | ACTIVE | 5 | 5995 | 2 | `krausz--w08edq` |
 | קשטן | ACTIVE | 6 | 4781 | 1 | `kashtan--6bvt3n` |
 | קשת טעמים | ACTIVE | 7 | 7722 | 1 | `app-civi--tvlqmp` |
 | רותם תעשיות | ACTIVE | 10 | 5038 | 1 | `rotem-career--sl0akw` |
