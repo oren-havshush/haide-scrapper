@@ -28,7 +28,7 @@ const FORM_HELPER = `
       var name = el.getAttribute('name') || '';
       var style = (el.getAttribute('style') || '').toLowerCase();
       var isOffscreen = style.indexOf('-99999') !== -1 || style.indexOf('display:none !important') !== -1 || style.indexOf('display: none !important') !== -1;
-      var isHpName = /\\b(hp[_-]|honeypot|maspik|nickname)/i.test(name + ' ' + (el.id || '') + ' ' + (el.className || ''));
+      var isHpName = /\\b(hp[_-]|honeypot|maspik|nickname|malkodet)/i.test(name + ' ' + (el.id || '') + ' ' + (el.className || ''));
       if ((isOffscreen || isHpName) && type !== 'hidden') continue;
       var label = '';
       if (el.id) {

@@ -23,10 +23,20 @@ import { completeFormBlob } from "./formShape";
  */
 export const FORM_EXTRACTOR_VERSION = 4;
 
-/** The honeypot name rule, identical to the capture template's. */
-export const HONEYPOT_NAME = /\b(hp[_-]|honeypot|maspik|nickname)/i;
+/**
+ * The honeypot name rule, identical to the capture template's. "malkodet"
+ * is Hebrew for a trap (מלכודת; Comblack's malkodetdvash, H4).
+ */
+export const HONEYPOT_NAME = /\b(hp[_-]|honeypot|maspik|nickname|malkodet)/i;
 
 const SKIPPED_TYPES = new Set(["submit", "button", "image", "reset"]);
+
+/**
+ * The fields a person types into. Only these are judged by how they are
+ * styled or emptied (H4): a radio, a checkbox or a file input is often hidden
+ * on purpose behind a styled control, and is a real field.
+ */
+const TEXT_LIKE = new Set(["text", "email", "tel", "url", "number", "search", "password", "textarea"]);
 
 /** What the in-page code reports for one input, select or textarea. */
 export type RawFieldDescriptor = {
@@ -44,6 +54,15 @@ export type RawFieldDescriptor = {
   hpHint?: string;
   /** Styled off-screen the way honeypots are. */
   offscreen?: boolean;
+  /**
+   * Hidden by its own style (H4): display none, visibility hidden while its
+   * parent is visible, opacity 0, a width or height of 1px or less, placed far
+   * off-screen, or aria-hidden with tabindex -1 (Prologic's message and
+   * emailHidden).
+   */
+  styleHidden?: boolean;
+  /** The markup gave it a value and a script emptied it before the capture (H4). */
+  emptiedOnLoad?: boolean;
   /** A radio's group label: its fieldset legend, when it has one. */
   groupLabel?: string;
 };
@@ -66,7 +85,12 @@ export function normalizeFormFields(descriptors: RawFieldDescriptor[]): FormFiel
   for (const d of descriptors) {
     const type = (d.type || "").toLowerCase();
     if (SKIPPED_TYPES.has(type)) continue;
-    const isHoneypot = d.offscreen === true || HONEYPOT_NAME.test(d.hpHint ?? d.name);
+    // A trap is captured by the page and never filled: it is left out of the
+    // fields to fill, as a honeypot always was. A hidden input never is.
+    const isHoneypot =
+      d.offscreen === true ||
+      HONEYPOT_NAME.test(d.hpHint ?? d.name) ||
+      (TEXT_LIKE.has(type) && (d.styleHidden === true || d.emptiedOnLoad === true));
     if (isHoneypot && type !== "hidden") continue;
 
     if (type === "radio") {

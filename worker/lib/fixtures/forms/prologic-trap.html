@@ -1,0 +1,37 @@
+<!-- https://www.prologic.co.il/%D7%9E%D7%A2%D7%A6%D7%91_%D7%AA_ui_ux___product_desinger -->
+<!-- Prologic, as served 2026-10-14 (GET): the job CV form; message is hidden by main.css (.info-r below, copied from it) and emailHidden is off-screen (H4). -->
+<style>.info-r {     display: none; }</style>
+                            <form class="JobPageSendCVForm" data-toggle="validator" method="post" action="/sendjobscv" enctype="multipart/form-data">
+
+                                <div class="form-group FormNameDIV10 FormUploadDIV10">
+                                    <div class="upload-btn-wrapper3">
+                                        <button class="btn3">העלה קובץ</button>
+                                        <input type="file" accept="application/doc,application/docx,application/pdf" name="file" class="form-control FormFile inputCV3" data-validate="true" data-validate-type="empty,3" data-error-empty="שדה חובה" data-err-content="קובץ לא חוקי" data-error="אנא בחר קובץ" required />
+                                        <span class="help-block with-errors JobPageSendCVInputError"></span>
+                                    </div>
+
+                                    <div class="cvName3 fileName3"></div>
+
+                                    <span class="redVLD3" style="visibility:hidden">
+                                        <span class="redVLDError3">בחר קובץ מתאים PDF, DOC או DOCX</span>
+                                    </span>
+
+                                    <div class="form-group JobPageSendBTNGroup">
+                                        <textarea rows="4" name="message" class="info-r" placeholder="message-info-r"></textarea>
+                                        <input type="hidden" name="formtepy" value="form10">
+                                        <input type="hidden" name="lidmakor" value="10">
+                                        <input type="hidden" name="PageURL" value="מעצב_ת_ui_ux___product_desinger">
+                                        <input type="hidden" name="cmsId" value="755">
+                                        <input type="hidden" name="cmsNameUrl" value="מעצב_ת_ui_ux___product_desinger">
+                                        <input type="text" class="emailHidden" name="emailHidden" value="" tabindex="-1" autocomplete="off" aria-hidden="true"
+                                               style="position:absolute;left:-9999px;width:1px;height:1px;opacity:0" />
+                                        <input type="hidden" name="formTs" value="hTIastW51m81KyG1H2ay4WVucMLzVbZp_9fPRsDQM_1fSeAUslNXldJcy-qG6BZj4OL7y8vCkAtv4TsSJ1XnYQ2" />
+                                        <img class="JobPageSendCVloadingGif" src="/img/Eclipse-1s-200px.gif" alt="loading" />
+                                        <button type="submit" class="btn btn-primary btn-block JobPageSendCVBTNForm">
+                                            <span> שלח </span>
+                                            <i class="fa fa-angle-double-left JobPageSendCVFormAngleIon" aria-hidden="true"></i>
+                                        </button>
+                                    </div>
+                                </div>
+
+                            </form>

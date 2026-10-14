@@ -76,6 +76,8 @@ export async function extractLiveFormData(
       options?: Array<{ value: string; label: string }>;
       hpHint: string;
       offscreen: boolean;
+      styleHidden: boolean;
+      emptiedOnLoad: boolean;
       groupLabel: string;
     }> = [];
 
@@ -118,6 +120,24 @@ export async function extractLiveFormData(
       const style = (el.getAttribute("style") || "").toLowerCase();
       const offscreen =
         style.includes("-99999") || style.includes("display:none !important") || style.includes("display: none !important");
+      // Hidden by its own computed style (H4; judged only for text-like fields
+      // in formFields.ts). Inline, no helper: see the keepNames note above.
+      const cs = getComputedStyle(htmlEl);
+      const parentVisibility = htmlEl.parentElement ? getComputedStyle(htmlEl.parentElement).visibility : "visible";
+      const styleHidden =
+        cs.display === "none" ||
+        (cs.visibility === "hidden" && parentVisibility !== "hidden") ||
+        cs.opacity === "0" ||
+        (/px$/.test(cs.width) && parseFloat(cs.width) <= 1) ||
+        (/px$/.test(cs.height) && parseFloat(cs.height) <= 1) ||
+        ((cs.position === "absolute" || cs.position === "fixed") &&
+          ((parseFloat(cs.left) || 0) <= -1000 || (parseFloat(cs.top) || 0) <= -1000)) ||
+        (el.getAttribute("aria-hidden") === "true" && el.getAttribute("tabindex") === "-1");
+      // The markup gave it a value and a script emptied it on load (H4).
+      const emptiedOnLoad =
+        (tag === "input" || tag === "textarea") &&
+        (tag === "textarea" ? (el.textContent || "").trim() !== "" : (el.getAttribute("value") || "").trim() !== "") &&
+        (el as HTMLInputElement).value === "";
       const hpHint = `${name} ${htmlEl.id || ""} ${typeof htmlEl.className === "string" ? htmlEl.className : ""}`;
       const groupLabel =
         type === "radio"
@@ -150,6 +170,8 @@ export async function extractLiveFormData(
           : {}),
         hpHint,
         offscreen,
+        styleHidden,
+        emptiedOnLoad,
         groupLabel,
       });
     }

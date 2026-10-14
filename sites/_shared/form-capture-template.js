@@ -29,8 +29,25 @@
       var name = el.getAttribute('name') || '';
       var style = (el.getAttribute('style') || '').toLowerCase();
       var isOffscreen = style.indexOf('-99999') !== -1 || style.indexOf('display:none !important') !== -1 || style.indexOf('display: none !important') !== -1;
-      var isHpName = /\b(hp[_-]|honeypot|maspik|nickname)/i.test(name + ' ' + (el.id || '') + ' ' + (el.className || ''));
-      if ((isOffscreen || isHpName) && type !== 'hidden') continue;
+      var isHpName = /\b(hp[_-]|honeypot|maspik|nickname|malkodet)/i.test(name + ' ' + (el.id || '') + ' ' + (el.className || ''));
+      // A text-like field hidden by its own style, or emptied by a script on
+      // load, is a trap too (H4; worker/lib/formFields.ts TEXT_LIKE).
+      var isTrap = false;
+      if (/^(text|email|tel|url|number|search|password|textarea)$/.test(type)) {
+        var cs = window.getComputedStyle(el);
+        var pv = el.parentElement ? window.getComputedStyle(el.parentElement).visibility : 'visible';
+        isTrap =
+          cs.display === 'none' ||
+          (cs.visibility === 'hidden' && pv !== 'hidden') ||
+          cs.opacity === '0' ||
+          (/px$/.test(cs.width) && parseFloat(cs.width) <= 1) ||
+          (/px$/.test(cs.height) && parseFloat(cs.height) <= 1) ||
+          ((cs.position === 'absolute' || cs.position === 'fixed') &&
+            ((parseFloat(cs.left) || 0) <= -1000 || (parseFloat(cs.top) || 0) <= -1000)) ||
+          (el.getAttribute('aria-hidden') === 'true' && el.getAttribute('tabindex') === '-1') ||
+          ((tag === 'textarea' ? (el.textContent || '').trim() !== '' : (el.getAttribute('value') || '').trim() !== '') && el.value === '');
+      }
+      if ((isOffscreen || isHpName || isTrap) && type !== 'hidden') continue;
       var label = '';
       if (el.id) {
         var safeId = el.id.replace(/"/g, '\\"');
