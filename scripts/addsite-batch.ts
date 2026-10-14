@@ -62,7 +62,7 @@
 import * as fs from "fs";
 import * as path from "path";
 import { classifyResponse } from "./lib/challenge-detect";
-import { parseAcceptance, renderConfigDiff, type AcceptanceInput } from "./lib/fixPlan";
+import { parseAcceptance, renderConfigDiff, sentKeysNotStored, type AcceptanceInput } from "./lib/fixPlan";
 import { scriptIdRules } from "./lib/verifyJobIds";
 import { compareSetupScript } from "./lib/verifyConfig";
 import { flattenStoredConfig, mergeConfigPatch, type StoredConfig } from "../src/lib/configPatch";
@@ -930,6 +930,10 @@ async function cmdSummary(argv: string[]): Promise<void> {
 //   npx tsx scripts/addsite-batch.ts verify-config --site-id <id> \
 //     --expect-file .scratch/scrap-config.json
 //
+// With --expect-file, EVERY key of that body is also compared with what was
+// stored (keysOk, keyDiffs; H3): a key the save did not keep is named, where
+// before only the selectors, field keys, form fields and listing pages were.
+//
 // Exit codes: 0 = config OK · 2 = clobbered/mismatch · 1 = usage/API error.
 
 interface StoredFieldMapping {
@@ -946,10 +950,10 @@ type StoredFieldMappings = Record<string, StoredFieldMapping | StoredMeta> & {
   _meta?: StoredMeta;
 };
 
-async function getStoredFieldMappings(
+async function getStoredConfig(
   siteId: string,
   headers: Record<string, string>,
-): Promise<StoredFieldMappings | undefined> {
+): Promise<{ fieldMappings?: StoredFieldMappings; pageFlow?: unknown } | undefined> {
   // Use the per-site config endpoint, NOT the list filtered by id: the list route
   // had no `id` filter, so that param was silently ignored and page 1 (50 of N
   // sites) came back instead (since step 5 it is a 400). The old code then fell back to `data[0]` when the target
@@ -959,8 +963,8 @@ async function getStoredFieldMappings(
   const r = (await apiGet(
     `/api/sites/${encodeURIComponent(siteId)}/config`,
     headers,
-  )) as { data?: { fieldMappings?: StoredFieldMappings } };
-  return r?.data?.fieldMappings;
+  )) as { data?: { fieldMappings?: StoredFieldMappings; pageFlow?: unknown } };
+  return r?.data;
 }
 
 async function cmdVerifyConfig(argv: string[]): Promise<void> {
@@ -981,6 +985,9 @@ async function cmdVerifyConfig(argv: string[]): Promise<void> {
     .filter(Boolean);
 
   const expectFile = flagStr(flags, "expect-file");
+  // The whole body that was PUT: every key of it is compared with what was
+  // stored (H3), not only the selectors, fields, form and listing pages.
+  let sentBody: Record<string, unknown> | null = null;
   if (expectFile) {
     const cfg = JSON.parse(fs.readFileSync(expectFile, "utf8")) as {
       itemSelector?: string;
@@ -988,6 +995,7 @@ async function cmdVerifyConfig(argv: string[]): Promise<void> {
       formCapture?: { fields?: unknown[] } | null;
       listingUrls?: string[];
     };
+    sentBody = cfg as Record<string, unknown>;
     if (!expectItem) expectItem = cfg.itemSelector;
     if (!expectFields.length && cfg.fieldMappings) {
       expectFields = Object.keys(cfg.fieldMappings);
@@ -1001,8 +1009,14 @@ async function cmdVerifyConfig(argv: string[]): Promise<void> {
   }
 
   const headers = authHeaders(readToken());
-  const fm = await getStoredFieldMappings(siteId, headers);
+  const storedConfig = await getStoredConfig(siteId, headers);
+  const fm = storedConfig?.fieldMappings;
   if (!fm) throw new Error(`No fieldMappings found for site ${siteId}`);
+  // Every key that was sent, against the stored config in the body's shape.
+  const keyDiffs = sentBody
+    ? sentKeysNotStored(sentBody, flattenStoredConfig({ fieldMappings: fm, pageFlow: storedConfig?.pageFlow }))
+    : [];
+  const keysOk = keyDiffs.length === 0;
 
   const meta = (fm._meta ?? {}) as StoredMeta;
   const storedItem = meta.itemSelector;
@@ -1036,7 +1050,7 @@ async function cmdVerifyConfig(argv: string[]): Promise<void> {
     (storedListingUrls.length === expectListingUrls.length &&
       expectListingUrls.every((u) => storedListingUrls.includes(u)));
 
-  const ok = itemOk && fieldsOk && formOk && listingUrlsOk && setupScriptOk;
+  const ok = itemOk && fieldsOk && formOk && listingUrlsOk && setupScriptOk && keysOk;
   const verdict = {
     siteId,
     ok,
@@ -1045,6 +1059,8 @@ async function cmdVerifyConfig(argv: string[]): Promise<void> {
     formOk,
     listingUrlsOk,
     setupScriptOk,
+    keysOk,
+    ...(sentBody ? { keyDiffs } : {}),
     ...(scriptCheck ? { setupScript: scriptCheck.detail } : {}),
     expectedItem: expectItem ?? null,
     storedItem: storedItem ?? null,
@@ -1059,8 +1075,9 @@ async function cmdVerifyConfig(argv: string[]): Promise<void> {
   if (!ok) {
     console.error(
       `[verify-config] CLOBBERED: itemOk=${itemOk} fieldsOk=${fieldsOk} formOk=${formOk}` +
-        ` listingUrlsOk=${listingUrlsOk}` +
+        ` listingUrlsOk=${listingUrlsOk} keysOk=${keysOk}` +
         (scriptCheck && !scriptCheck.ok ? ` setupScript: ${scriptCheck.detail}` : "") +
+        (keyDiffs.length ? ` sent but not stored: ${keyDiffs.join("; ")}` : "") +
         (missingFields.length ? ` missing=[${missingFields.join(",")}]` : "") +
         ` (stored itemSelector="${storedItem ?? ""}")`,
     );

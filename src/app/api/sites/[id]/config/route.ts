@@ -2,7 +2,7 @@ import { NextRequest } from "next/server";
 import { successResponse } from "@/lib/api-utils";
 import { formatErrorResponse, NotFoundError, ValidationError } from "@/lib/errors";
 import { prisma } from "@/lib/prisma";
-import { updateSiteConfigSchema } from "@/lib/validators";
+import { configIssueMessage, updateSiteConfigSchema } from "@/lib/validators";
 import { mergeConfigPatch } from "@/lib/configPatch";
 import { saveSiteConfig } from "@/services/siteService";
 import { applyAutoFix, recordSiteCall } from "@/services/autoFixService";
@@ -43,7 +43,7 @@ export async function PUT(
     const parsed = updateSiteConfigSchema.safeParse(body);
     if (!parsed.success) {
       throw new ValidationError(
-        parsed.error.issues.map((e) => e.message).join(", ")
+        parsed.error.issues.map(configIssueMessage).join(", ")
       );
     }
 

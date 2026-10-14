@@ -12,7 +12,7 @@
 
 import type { z } from "zod";
 import { ValidationError } from "./errors";
-import { updateSiteConfigSchema } from "./validators";
+import { configIssueMessage, updateSiteConfigSchema } from "./validators";
 
 export type StoredConfig = { fieldMappings: unknown; pageFlow: unknown };
 export type SiteConfigBody = z.infer<typeof updateSiteConfigSchema>;
@@ -82,6 +82,6 @@ export function mergeConfigPatch(stored: StoredConfig, patch: Record<string, unk
   }
 
   const parsed = updateSiteConfigSchema.safeParse(merged);
-  if (!parsed.success) throw new ValidationError(parsed.error.issues.map((i) => i.message).join(", "));
+  if (!parsed.success) throw new ValidationError(parsed.error.issues.map(configIssueMessage).join(", "));
   return parsed.data;
 }

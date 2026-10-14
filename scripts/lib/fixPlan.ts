@@ -70,6 +70,44 @@ export function renderConfigDiff(before: Record<string, unknown>, after: Record<
   return out;
 }
 
+/**
+ * verify-config's read-back (H3, owner 2026-10-14): every key of the body that
+ * was sent, compared with the stored config in the same shape
+ * (src/lib/configPatch.ts flattenStoredConfig). One line per path that differs,
+ * `sent -> stored`. An empty string, an absent value or a null (other than
+ * formCapture) sends nothing to compare: the save stores them as absent.
+ * listingUrls is compared as the save stores it, each URL's href.
+ */
+export function sentKeysNotStored(sent: Record<string, unknown>, stored: Record<string, unknown>): string[] {
+  const out: string[] = [];
+  for (const k of Object.keys(sent)) {
+    let v = sent[k];
+    if (v === undefined || v === "" || (v === null && k !== "formCapture")) continue;
+    if (k === "listingUrls" && Array.isArray(v)) {
+      v = [
+        ...new Set(
+          v.map((u) => {
+            try {
+              return new URL(String(u).trim()).href;
+            } catch {
+              return u;
+            }
+          }),
+        ),
+      ];
+    }
+    if (k === "fieldMappings" && isRecord(v)) {
+      const storedFields = isRecord(stored.fieldMappings) ? stored.fieldMappings : {};
+      for (const f of Object.keys(v)) walk(`$.fieldMappings.${f}`, v[f], storedFields[f], out);
+    } else if (k === "pageFlow") {
+      walk("$.pageFlow", v, stored.pageFlow, out);
+    } else {
+      walk(`$.fieldMappings._meta.${k}`, v, stored[k], out, k === "setupScript" ? scriptSummary : undefined);
+    }
+  }
+  return out;
+}
+
 export type AcceptanceInput = {
   /** One entry of GET /api/sites/[id]/guarded-run. */
   request: {

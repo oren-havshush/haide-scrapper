@@ -195,6 +195,20 @@ export const jobsFilterSchema = z.object({
   ageBucket: z.enum(["over90", "over180", "over365", "fresh", "none"]).optional(),
 });
 
+/**
+ * A config-save issue as the 400 states it. An unknown key names itself and
+ * where it was sent (H3, owner 2026-10-14): the save used to drop it silently,
+ * so Maof's area table was answered 200 and never stored.
+ */
+export function configIssueMessage(issue: { code: string; message: string; path: PropertyKey[]; keys?: string[] }): string {
+  if (issue.code === "unrecognized_keys") {
+    const at = issue.path.length > 0 ? issue.path.map(String).join(".") : "the top level";
+    return `unknown config key(s) at ${at}: ${(issue.keys ?? []).join(", ")}`;
+  }
+  return issue.message;
+}
+
+// Strict at every level (H3): an unknown key is a 400 naming it, never dropped.
 export const updateSiteConfigSchema = z.object({
   listingSelector: z.string().optional(),
   itemSelector: z.string().optional(),
@@ -204,7 +218,7 @@ export const updateSiteConfigSchema = z.object({
     url: z.string(),
     action: z.string(),
     waitFor: z.string().optional(),
-  })),
+  }).strict()),
   formCapture: z.object({
     formSelector: z.string(),
     actionUrl: z.string(),
@@ -228,7 +242,7 @@ export const updateSiteConfigSchema = z.object({
       // (value + visible label). Optional so other fields and older payloads
       // remain valid.
       options: z
-        .array(z.object({ value: z.string(), label: z.string() }))
+        .array(z.object({ value: z.string(), label: z.string() }).strict())
         .optional(),
       // Step 2a: a hidden input's value at capture time (a per-job id, a form
       // id, a nonce). zod stripped it before; optional, so existing configs stay
@@ -258,8 +272,8 @@ export const updateSiteConfigSchema = z.object({
       // form + a contact form) can render its fields under separate subheaders
       // on the dashboard. Worker passes it through verbatim in the static blob.
       group: z.string().optional(),
-    })),
-  }).nullable(),
+    }).strict()),
+  }).strict().nullable(),
   originalMappings: z.record(z.string(), z.unknown()).optional(),
   // Listing-page pagination. Stored under fieldMappings._meta in the DB.
   //  - "click": worker clicks a "Next" button until it disappears/disables or
@@ -270,15 +284,17 @@ export const updateSiteConfigSchema = z.object({
   //    the URL (Drupal `?page=0..N`, WordPress `?paged=N`, etc.). Works
   //    alongside pageFlow so each paginated listing page still gets its detail
   //    pages visited for descriptions.
+  // Discriminated on `type` (H3): with strict variants, a plain union reported
+  // an unknown key only as "Invalid input"; this way the matching variant names it.
   pagination: z
-    .union([
+    .discriminatedUnion("type", [
       z.object({
         type: z.literal("click"),
         nextSelector: z.string(),
         // Above 100 only with limits.maxPages (the refine at the end).
         maxPages: z.number().int().min(1).max(LIMIT_CEILINGS.maxPages).optional(),
         settleMs: z.number().int().min(100).max(10_000).optional(),
-      }),
+      }).strict(),
       z.object({
         type: z.literal("url"),
         // Query-string param to increment, e.g. "page" or "paged".
@@ -290,7 +306,7 @@ export const updateSiteConfigSchema = z.object({
         // Above 100 only with limits.maxPages (the refine at the end).
         maxPages: z.number().int().min(1).max(LIMIT_CEILINGS.maxPages).optional(),
         settleMs: z.number().int().min(100).max(10_000).optional(),
-      }),
+      }).strict(),
       // "ajax" (worker/lib/ajaxWalk.ts): the listing's own XHR endpoint, called
       // from the page with {n} = start, start+1, ... until a page holds no item
       // blocks; each answer is appended to containerSelector, and a page that
@@ -309,7 +325,7 @@ export const updateSiteConfigSchema = z.object({
         concurrency: z.number().int().min(1).max(AJAX_MAX_CONCURRENCY).optional(),
         containerSelector: z.string().trim().min(1).max(500),
         settleMs: z.number().int().min(100).max(10_000).optional(),
-      }),
+      }).strict(),
     ])
     .optional(),
   // Several listing pages belonging to ONE employer, scraped into this one
@@ -413,6 +429,7 @@ export const updateSiteConfigSchema = z.object({
       // worker/lib/requestDelay.ts.
       requestDelayMs: z.number().int().min(0).max(15_000).optional(),
     })
+    .strict()
     .optional(),
   // Login-gated apply flow flag. Set by onboarding when the apply path forces
   // sign-in / account creation before the application form is reachable
@@ -475,7 +492,16 @@ export const updateSiteConfigSchema = z.object({
     .partial()
     .strict()
     .optional(),
-}).superRefine((c, ctx) => {
+}).strict().superRefine((c, ctx) => {
+  // _meta is the save's own (saveSiteConfig rebuilds it from the top-level
+  // keys), so one sent inside fieldMappings was silently replaced (H3).
+  if (Object.prototype.hasOwnProperty.call(c.fieldMappings, "_meta")) {
+    ctx.addIssue({
+      code: "custom",
+      path: ["fieldMappings", "_meta"],
+      message: "fieldMappings._meta is not saved: send each of its keys at the top level",
+    });
+  }
   // A field mapping's `all` (worker/lib/locationMap.ts) is a boolean or absent.
   for (const [name, entry] of Object.entries(c.fieldMappings)) {
     const all = entry && typeof entry === "object" ? (entry as Record<string, unknown>).all : undefined;
