@@ -4,6 +4,7 @@
 
 import { createHash } from "node:crypto";
 import { VALUE_CHECK_QUEUE_CODES } from "../../worker/lib/valueChecks";
+import { readTextlessWarning, TEXTLESS_ATTENTION_SHARE } from "../../worker/lib/textless";
 
 /** Top-level body keys that are not stored under fieldMappings._meta. */
 const NOT_META = new Set(["fieldMappings", "pageFlow"]);
@@ -78,7 +79,7 @@ export type AcceptanceInput = {
       id: string;
       startedAt: string;
       status: string;
-      item: { outcome: string; wouldPromoteTo: string | null; failureCategory?: string | null } | null;
+      item: { outcome: string; wouldPromoteTo: string | null; failureCategory?: string | null; warnings?: string[] } | null;
     } | null;
   };
   /** The site's fix items (GET /api/dashboard/fix-queue?siteId=). */
@@ -93,6 +94,8 @@ export type AcceptanceInput = {
  * recurred: none was opened during the run, and no value-check item
  * (worker/lib/valueChecks.ts) is still open after it. An auto: item is the
  * fix's own write; any other item opened before the run does not block.
+ * Nor is ACTIVE offered when more than 20% of the run's jobs have no text
+ * (worker/lib/textless.ts): the owner decides on such a site (owner, 2026-10-14).
  */
 export function parseAcceptance(a: AcceptanceInput): { accept: boolean; reasons: string[] } {
   const reasons: string[] = [];
@@ -105,6 +108,10 @@ export function parseAcceptance(a: AcceptanceInput): { accept: boolean; reasons:
     reasons.push(
       `wouldPromoteTo is ${item.wouldPromoteTo ?? "null"} (outcome ${item.outcome}${item.failureCategory ? `, ${item.failureCategory}` : ""})`,
     );
+  }
+  const textless = readTextlessWarning(item?.warnings);
+  if (textless && textless.m > 0 && textless.n / textless.m > TEXTLESS_ATTENTION_SHARE) {
+    reasons.push(`text-less share ${Math.round((textless.n / textless.m) * 100)}%: the owner decides`);
   }
   if (sweep) {
     const started = Date.parse(sweep.startedAt);

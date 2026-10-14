@@ -141,6 +141,19 @@ const field = "LOCATION";
   );
 }
 
+// The text-less share (owner, 2026-10-14): above 20% of the run's jobs with no
+// text, ACTIVE is not offered; the owner decides (an agency board like Maof).
+{
+  const withText = (w: string[]) => done({ ...goodItem, warnings: w });
+  const maof = parseAcceptance({ request: withText(["unknown_location_rate: 1/10", "text_less: 33 of 100 cards"]), items: [], field });
+  eq(maof.accept, false, "33 of 100 with no text: ACTIVE not offered");
+  eq(maof.reasons, ["text-less share 33%: the owner decides"], "and the reason says so");
+  eq(parseAcceptance({ request: withText(["text_less: 3 of 38 cards"]), items: [], field }).accept, true, "3 of 38 (8%): accept");
+  eq(parseAcceptance({ request: withText(["text_less: 1 of 5 cards"]), items: [], field }).accept, true, "exactly 20% is not above: accept");
+  eq(parseAcceptance({ request: withText(["text_less: 2 of 6 cards"]), items: [], field }).accept, false, "2 of 6 (33%): the share alone decides, no minimum");
+  eq(parseAcceptance({ request: withText([]), items: [], field }).accept, true, "no text_less warning: accept");
+}
+
 if (failures > 0) {
   console.error(`\n${failures} assertion(s) failed`);
   process.exit(1);
