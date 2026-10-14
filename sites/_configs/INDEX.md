@@ -198,6 +198,7 @@ several listing pages back into one and stops publishing the rest.
 | נישה | ACTIVE | 9 | 7778 | 1 | `nisha--oyz9o2` |
 | נעמת | ACTIVE | 6 | 6028 | 1 | `naamat--3s0g1d` |
 | סופרגז POWER | ACTIVE | 6 | 3196 | 1 | `supergas-power--qfnmmb` |
+| סיאל גיוס והשמה | ACTIVE | 7 | 7222 | 1 | `app-civi--i1agk8` |
 | סימפלי קלאב בע"מ | ACTIVE | 8 | 4066 | 1 | `simplyclub--27xg35` |
 | סינופיה | ACTIVE | 5 | 5032 | 1 | `sinopia--pw5yyh` |
 | סיני סטור | ACTIVE | 3 | 1002 | 1 | `sinaistore--uxgr3o` |
