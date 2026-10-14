@@ -62,6 +62,7 @@
 import * as fs from "fs";
 import * as path from "path";
 import { classifyResponse } from "./lib/challenge-detect";
+import { reachWithRetry, wpJobPostType } from "./lib/triageRules";
 import { parseAcceptance, renderConfigDiff, sentKeysNotStored, type AcceptanceInput } from "./lib/fixPlan";
 import { scriptIdRules } from "./lib/verifyJobIds";
 import { compareSetupScript } from "./lib/verifyConfig";
@@ -1291,20 +1292,24 @@ async function cmdReach(argv: string[]): Promise<void> {
     process.exit(1);
   }
 
-  const bare = await tryNav(chromium, url, {});
-  if (bare.ok) {
+  // Bare (a timeout retried once), then the browser identity (H5, scripts/lib/triageRules.ts).
+  const reach = await reachWithRetry((kind) =>
+    tryNav(chromium, url, kind === "bare" ? {} : { userAgent: REAL_UA, extraHTTPHeaders: HE_HEADERS }),
+  );
+  const bare = reach.bare;
+  if (reach.reachable && !reach.needsUaOverride) {
     console.log(
       JSON.stringify(
-        { url, ok: true, needsUaOverride: false, lane: "reachable", bytes: bare.htmlLen },
+        { url, ok: true, needsUaOverride: false, lane: "reachable", bytes: bare.htmlLen, ...(reach.bareRetried ? { bareRetried: true } : {}) },
         null,
         2,
       ),
     );
-    console.error(`[reach] PASS bare (status=${bare.status}, ${bare.htmlLen} bytes)`);
+    console.error(`[reach] PASS bare (status=${bare.status}, ${bare.htmlLen} bytes)${reach.bareRetried ? " on the retry" : ""}`);
     return;
   }
-  const real = await tryNav(chromium, url, { userAgent: REAL_UA, extraHTTPHeaders: HE_HEADERS });
-  if (real.ok) {
+  const real = reach.real as NavResult;
+  if (reach.reachable) {
     console.log(
       JSON.stringify(
         {
@@ -1740,14 +1745,13 @@ async function cmdFingerprint(argv: string[]): Promise<void> {
       lane = "YELLOW";
       signals.push("Elementor detected");
     } else if (/wp-content|wp-json|name="generator" content="WordPress/i.test(html)) {
-      const hasJobCpt =
-        /\bhref=["'][^"']*\/job\/[^"']+["']/i.test(html) ||
-        /\bsingle-job\b|\bjob-template\b|\bpost-type-archive-job\b|\btype-job\b/i.test(html);
-      if (hasJobCpt) {
+      // A job post type by its word list, not "job" alone (H5; TOP BIT's vacancies).
+      const jobCpt = wpJobPostType(html);
+      if (jobCpt) {
         vendor = "wordpress-job-cpt";
         recipe = null;
         lane = "GREEN";
-        signals.push("WordPress with job custom post type (links or body classes)");
+        signals.push(`WordPress with job custom post type "${jobCpt}" (links or body classes)`);
       } else {
         vendor = "wordpress";
         recipe = null;
@@ -1805,21 +1809,14 @@ async function cmdTriage(argv: string[]): Promise<void> {
     process.exit(1);
   }
 
-  // 1. Reachability (bare then real-UA).
-  let reachable = false;
-  let needsUaOverride = false;
-  const bare = await tryNav(chromium, url, {});
-  let listingHtml = bare.html;
-  if (bare.ok) {
-    reachable = true;
-  } else {
-    const real = await tryNav(chromium, url, { userAgent: REAL_UA, extraHTTPHeaders: HE_HEADERS });
-    if (real.ok) {
-      reachable = true;
-      needsUaOverride = true;
-      listingHtml = real.html;
-    }
-  }
+  // 1. Reachability: bare (a timeout retried once), then the browser identity,
+  //    before any reachable verdict (H5, scripts/lib/triageRules.ts).
+  const reach = await reachWithRetry((kind) =>
+    tryNav(chromium, url, kind === "bare" ? {} : { userAgent: REAL_UA, extraHTTPHeaders: HE_HEADERS }),
+  );
+  const { reachable, needsUaOverride } = reach;
+  const bare = reach.bare;
+  const listingHtml = reach.html;
 
   let host = "";
   try {
@@ -1862,9 +1859,9 @@ async function cmdTriage(argv: string[]): Promise<void> {
       recipe = "recipes/spa-frameworks.md#comeet";
     } else if (
       /wp-content|wp-json|name="generator" content="WordPress/i.test(listingHtml) &&
-      (/\bhref=["'][^"']*\/job\/[^"']+["']/i.test(listingHtml) ||
-        /\bsingle-job\b|\bjob-template\b|\bpost-type-archive-job\b|\btype-job\b/i.test(listingHtml))
+      wpJobPostType(listingHtml) !== null
     ) {
+      // A job post type by its word list, not "job" alone (H5; TOP BIT's vacancies).
       vendor = "wordpress-job-cpt";
     }
   }

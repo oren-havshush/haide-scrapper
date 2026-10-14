@@ -34,9 +34,14 @@
  * have not seen yet.
  */
 
-/** Text that only ever appears on a block/challenge interstitial. Conclusive. */
+/**
+ * Text that only ever appears on a block/challenge interstitial. Conclusive.
+ * The F5 family (H5, owner 2026-10-14): L.M.'s firewall answered a headless
+ * browser with HTTP 200, the title "Request Rejected" and "The requested URL
+ * was rejected. Please consult with your administrator. Your support ID is:".
+ */
 export const BLOCK_TEXT_RE =
-  /Request unsuccessful|Incapsula incident|Powered by Imperva|just a moment|cf-mitigated|attention required|checking your browser|enable javascript and cookies|access denied/i;
+  /Request unsuccessful|Incapsula incident|Powered by Imperva|just a moment|cf-mitigated|attention required|checking your browser|enable javascript and cookies|access denied|Request Rejected|The requested URL was rejected|Please consult with your administrator|Your support ID is/i;
 
 /**
  * Reblaze `ac_v2` bootstrap. Present on the challenge stub; treated as a block
