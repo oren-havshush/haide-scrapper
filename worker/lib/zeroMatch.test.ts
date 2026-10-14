@@ -125,8 +125,9 @@ check("scrape.ts wires it where it counts", () => {
     /const zeroMatch = zeroMatchRefusal\(runMode\.extract, rawFieldsList\.length\); if \(zeroMatch\) \{ return scheduled \? await refuseListingRun\(scrapeRunId, zeroMatch\) : await failZeroMatchRun\(scrapeRunId, zeroMatch\); \}/.test(flat),
     "a scheduled run returns through refuseListingRun, a manual one through failZeroMatchRun",
   );
-  // The manual close: FAILED, and not failScrapeRun — whose manual branch
-  // DELETES the site's listings (scheduledRun.planScrapeFailure).
+  // The manual close: FAILED, and not failScrapeRun — whose manual branch sets
+  // the site FAILED (scheduledRun.planScrapeFailure; it deleted the listings
+  // until H1).
   const failZero = body("failZeroMatchRun");
   assert(failZero.length > 150, `failZeroMatchRun extracted (${failZero.length})`);
   assert(/status: "FAILED"/.test(failZero), "failZeroMatchRun closes the run FAILED");

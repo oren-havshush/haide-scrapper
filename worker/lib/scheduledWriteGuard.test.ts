@@ -132,20 +132,20 @@ function countOf(haystack: string, needle: string): number {
 }
 
 {
-  // Listing deletes. Two are legitimate: the manual chunked path, and the
-  // gated one in failScrapeRun. The scheduled path's delete uses `tx.` because
-  // it must be inside the atomic transaction — a `prisma.` delete there would
-  // commit on its own and defeat the whole rollback guarantee.
+  // Listing deletes. One bare one is legitimate: the gated one in
+  // failScrapeRun (never taken since H1, but still gated). The manual chunked
+  // path, which deleted outside a transaction, is gone (owner, 2026-10-14):
+  // both paths delete inside the one transaction (worker/lib/replaceListings.ts),
+  // where a `prisma.` delete would commit on its own and defeat the rollback.
   const bareDeletes = countOf(src, "prisma.job.deleteMany(");
   const inFailScrapeRun = countOf(GATED.failScrapeRun, "prisma.job.deleteMany(");
   assert(
-    bareDeletes === inFailScrapeRun + 1,
-    `only the manual path and failScrapeRun delete listings outside a transaction ` +
-      `(found ${bareDeletes})`,
+    bareDeletes === inFailScrapeRun,
+    `only failScrapeRun deletes listings outside a transaction (found ${bareDeletes})`,
   );
   assert(
-    countOf(src, "tx.job.deleteMany(") === 1,
-    "the scheduled delete happens exactly once, inside the transaction",
+    countOf(src, "replaceListingsInTx(tx,") === 1,
+    "the delete happens exactly once, inside the transaction, for every run",
   );
 }
 
@@ -167,15 +167,14 @@ function countOf(haystack: string, needle: string): number {
   // scrape.ts does not hand it the site's current count, or lets the refusal
   // fall through to the transaction. And the manual path must not grow the
   // check: an operator accepts a real drop by scraping by hand.
-  // Comments are stripped from `src`, so the branches are found by code: the
-  // `if (scheduled) {` that opens the plan, and the `} else {` before the
-  // manual path's chunk size.
+  // Comments are stripped from `src`, so the branch is found by code: the
+  // `if (scheduled) {` that opens the plan, up to the one commit both paths
+  // share since H1 (the manual run's chunked save is gone).
   const scheduledStart = src.lastIndexOf("if (scheduled) {", src.indexOf("planScheduledPersist("));
-  const manualStart = src.lastIndexOf("} else {", src.indexOf("const CHUNK_SIZE = 20;"));
-  assert(scheduledStart >= 0 && manualStart > scheduledStart, "the scheduled and manual persistence branches were found");
-  const scheduledBranch = src.slice(scheduledStart, manualStart);
-  const manualBranch = src.slice(manualStart, src.indexOf("const gate = await applyActivationGate", manualStart));
-  assert(manualBranch.length > 200, "the manual branch was extracted");
+  const commitStart = src.indexOf("const commit = beginCommit(runMode.abort", scheduledStart);
+  assert(scheduledStart >= 0 && commitStart > scheduledStart, "the scheduled branch and the shared commit were found");
+  const scheduledBranch = src.slice(scheduledStart, commitStart);
+  const commitBlock = src.slice(commitStart, src.indexOf("await commit;", commitStart));
 
   const count = scheduledBranch.indexOf("prisma.job.count({ where: { siteId: site.id } })");
   const plan = scheduledBranch.indexOf("planScheduledPersist(rows.length, previousCount");
@@ -183,27 +182,28 @@ function countOf(haystack: string, needle: string): number {
   // Since 2026-10-10 the category is suspicious_drop unless the run met a host
   // challenge, then blocked (worker/lib/challengeWait.ts challengeLabel).
   const refusalFail = scheduledBranch.indexOf('failureCategory: challengeLabel("suspicious_drop"', refusal);
-  const txDelete = scheduledBranch.indexOf("tx.job.deleteMany(");
 
   assert(count >= 0, "the scheduled branch reads the site's current listing count");
   assert(plan > count, "and passes it to planScheduledPersist");
   assert(refusal > plan, "it handles the suspicious_drop plan");
   assert(refusalFail > refusal, "by closing the run FAILED with failureCategory suspicious_drop");
-  assert(txDelete > refusalFail, "before the transaction that deletes anything");
+  assert(commitBlock.includes("replaceListingsInTx(tx,"), "before the transaction that deletes anything");
+  assert(!scheduledBranch.includes("replaceListingsInTx("), "which sits after the scheduled branch, where a manual run reaches it too");
   assert(
     /const unhandled: never = plan/.test(scheduledBranch),
     "and every plan mode is handled before the commit, so a new refusal cannot fall through to it",
   );
 
-  assert(!manualBranch.includes("suspicious_drop"), "the manual path has no undersize guard");
-  assert(!manualBranch.includes("planScheduledPersist"), "nor any scheduled persistence plan");
+  assert(!commitBlock.includes("suspicious_drop"), "the shared commit has no undersize guard: a manual run accepts a real drop");
+  assert(countOf(src, "planScheduledPersist(") === 1 && plan >= 0, "and the scheduled persistence plan is only in the scheduled branch");
 }
 
 // --- the atomic path stays atomic ---------------------------------------
 
 assert(
-  /tx\.job\.createMany\(/.test(src),
-  "the scheduled path inserts with createMany inside the transaction",
+  /replaceListingsInTx\(tx,/.test(src) &&
+    /tx\.job\.createMany\(/.test(readFileSync(join(__dirname, "replaceListings.ts"), "utf8")),
+  "the commit inserts with createMany inside the transaction (worker/lib/replaceListings.ts)",
 );
 assert(
   /timeout: TX_TIMEOUT_MS/.test(src) && /maxWait: TX_MAX_WAIT_MS/.test(src),

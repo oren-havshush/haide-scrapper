@@ -119,7 +119,7 @@ assert(
 }
 
 // ---------------------------------------------------------------------------
-// 2. The manual path is unchanged (B)
+// 2. The manual path (B): it still moves the site, but keeps the listings on a failure (H1)
 // ---------------------------------------------------------------------------
 
 {
@@ -130,13 +130,13 @@ assert(
 }
 
 {
-  // Today's manual failure path deletes the listings. That is destructive, and
-  // it is deliberately left alone: the plan scopes this change to the
-  // unattended path, and an operator watching a failure can act on it. If this
-  // assertion ever has to change, that is a decision, not a refactor.
+  // A manual failure keeps the listings (owner, 2026-10-14, H1). It deleted
+  // them until then: a crash in a rescrape after a fix, or in a QA run,
+  // emptied a live company page. The status change and the site write stay.
   const d = planScrapeFailure({ scheduled: false });
   assert(d.applySiteWrite, "manual failure still sets the site FAILED");
-  assert(d.deleteListings, "manual failure still deletes listings — unchanged, on purpose");
+  assert(d.emitStatusChange, "and still announces it");
+  assert(!d.deleteListings, "manual failure deletes no listings (H1)");
 }
 
 {
@@ -505,4 +505,4 @@ if (failures > 0) {
   console.error(`\n${failures} assertion(s) failed`);
   process.exit(1);
 }
-console.info("scheduledRun: a scheduled run changes no site, and the manual path is unchanged");
+console.info("scheduledRun: a scheduled run changes no site; a manual one moves it and keeps its listings on a failure");

@@ -408,8 +408,9 @@ export function planApplyLoginSkip(args: {
 }
 
 /**
- * `failScrapeRun` — today: deletes every listing, site → FAILED. Called from
- * three places (no field mappings, an escaped error, the timeout).
+ * `failScrapeRun` — site → FAILED on a manual run; the listings are kept on
+ * every run since H1 (they were deleted on a manual one). Called from three
+ * places (no field mappings, an escaped error, the timeout).
  *
  * A failed scrape is evidence about this attempt. It is not evidence that the
  * listings already stored are wrong, and deleting them publishes an empty
@@ -423,9 +424,12 @@ export function planApplyLoginSkip(args: {
  */
 export function planScrapeFailure(args: { scheduled: boolean }): SiteWriteDecision {
   if (!args.scheduled) {
+    // A manual failure keeps the listings too (owner, 2026-10-14, H1): a crash
+    // in a rescrape after a fix or a QA run emptied a live company page. The
+    // site still goes FAILED, which takes it off the public site.
     return {
       applySiteWrite: true,
-      deleteListings: true,
+      deleteListings: false,
       emitStatusChange: true,
       withheld: {},
     };

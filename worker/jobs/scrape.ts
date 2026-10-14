@@ -85,7 +85,6 @@ import {
   INSERT_BATCH,
   TX_MAX_WAIT_MS,
   TX_TIMEOUT_MS,
-  chunkRows,
   describedJobsLost,
   mayOverwriteAdminNote,
   planActivationGate,
@@ -124,6 +123,7 @@ import {
   requestAbort,
   type AbortToken,
 } from "../lib/abortToken";
+import { replaceListingsInTx } from "../lib/replaceListings";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -3868,9 +3868,10 @@ async function refuseListingRun(
  * The manual close for a configured item selector that matched nothing
  * (worker/lib/zeroMatch.ts): the run is FAILED, so the operator sees it did not
  * work, and nothing else is touched — no job row written, none deleted, the site
- * row left alone. Deliberately NOT failScrapeRun: on a manual run that deletes
- * the site's listings (scheduledRun.planScrapeFailure), which is exactly the
- * wrong answer to a page that merely stopped matching.
+ * row left alone. Deliberately NOT failScrapeRun: on a manual run that sets the
+ * site FAILED (scheduledRun.planScrapeFailure; until H1 it deleted the
+ * listings too), which is the wrong answer to a page that merely stopped
+ * matching.
  */
 async function failZeroMatchRun(
   scrapeRunId: string,
@@ -4844,109 +4845,72 @@ async function executeScrape(
       const unhandled: never = plan;
       throw new Error(`unhandled persistence plan: ${JSON.stringify(unhandled)}`);
     }
-
-    // Opening the commit window is what stops the timeout handler writing a
-    // terminal status of its own. Null means the deadline already passed, so
-    // the transaction must not START — that refusal is what keeps the listings.
-    const commit = beginCommit(runMode.abort, () =>
-      prisma.$transaction(
-        async (tx) => {
-          await tx.job.deleteMany({ where: { siteId: site.id } });
-          for (const batch of chunkRows(rows, INSERT_BATCH)) {
-            await tx.job.createMany({ data: batch });
-          }
-          await tx.scrapeRun.update({
-            where: { id: scrapeRunId },
-            data: {
-              // COMPLETED or nothing. PARTIAL is not reachable here, which is
-              // the trade this path makes: atomicity over per-chunk progress.
-              status: "COMPLETED",
-              jobCount: rows.length,
-              totalJobs: validatedRecords.length,
-              validJobs: rows.length,
-              invalidJobs: invalidCount,
-              completedAt: new Date(),
-            },
-          });
-
-          const result: ScrapeResult = {
-            success: true,
-            scrapeRunId,
-            jobCount: rows.length,
-            totalJobs: validatedRecords.length,
-            validJobs: rows.length,
-            invalidJobs: invalidCount,
-            scheduled,
-          };
-          return result;
-        },
-        // Prisma's defaults are 5s/2s — far too tight for the largest site.
-        { timeout: TX_TIMEOUT_MS, maxWait: TX_MAX_WAIT_MS },
-      ),
-    );
-
-    if (!commit) {
-      // The abort landed between the check above and here. Same rule: the
-      // timeout handler has already written the terminal status, so this path
-      // writes nothing rather than racing it for a second FAILED row.
-      console.warn(
-        "[scrape] deadline passed as persistence was opening; listings untouched",
-      );
-      return {
-        success: false,
-        scrapeRunId,
-        jobCount: 0,
-        totalJobs: validatedRecords.length,
-        validJobs: 0,
-        invalidJobs: invalidCount,
-        failureCategory: "timeout",
-        scheduled,
-      };
-    }
-
-    await commit;
-    savedCount = rows.length;
-    console.info(
-      `[scrape] Committed ${savedCount} listing(s) atomically in ` +
-        `${Math.ceil(rows.length / INSERT_BATCH)} batch(es)`,
-    );
-  } else {
-    // ---- Manual: today's chunked behaviour, unchanged. (B) --------------
-    //
-    // The chunking is deliberate — progress survives a timeout — and with an
-    // operator watching, a partial result is useful.
-    const CHUNK_SIZE = 20;
-    await prisma.job.deleteMany({ where: { siteId: site.id } });
-
-    for (let offset = 0; offset < rows.length; offset += CHUNK_SIZE) {
-      const chunk = rows.slice(offset, offset + CHUNK_SIZE);
-
-      await prisma.$transaction(async (tx) => {
-        for (const row of chunk) {
-          await tx.job.create({ data: row });
-        }
-
-        savedCount += chunk.length;
-
-        // Update ScrapeRun progress after each chunk
-        await tx.scrapeRun.update({
-          where: { id: scrapeRunId },
-          data: {
-            status: savedCount < rows.length ? "IN_PROGRESS" : "COMPLETED",
-            jobCount: savedCount,
-            totalJobs: validatedRecords.length,
-            validJobs: savedCount,
-            invalidJobs: invalidCount,
-            ...(savedCount >= rows.length ? { completedAt: new Date() } : {}),
-          },
-        });
-      });
-
-      console.info(
-        `[scrape] Saved chunk: ${savedCount}/${rows.length} jobs (${context.itemsFound} found on page)`,
-      );
-    }
   }
+
+  // ---- Both paths: one transaction, or nothing. (R1; manual since H1) ------
+  //
+  // The delete and every insert commit together; a rollback leaves the previous
+  // listings completely intact. A manual run saved in chunks of 20 after
+  // deleting everything first, so a timeout or an error mid-save left a
+  // half-emptied company page (owner, 2026-10-14, H1). Now it is the same
+  // transaction as the scheduled run's.
+  //
+  // Opening the commit window is what stops the timeout handler writing a
+  // terminal status of its own. Null means the deadline already passed, so
+  // the transaction must not START — that refusal is what keeps the listings.
+  const commit = beginCommit(runMode.abort, () =>
+    prisma.$transaction(
+      async (tx) => {
+        // Delete, insert every row, close the run COMPLETED (worker/lib/replaceListings.ts).
+        await replaceListingsInTx(tx, {
+          siteId: site.id,
+          scrapeRunId,
+          rows,
+          totalJobs: validatedRecords.length,
+          invalidJobs: invalidCount,
+        });
+
+        const result: ScrapeResult = {
+          success: true,
+          scrapeRunId,
+          jobCount: rows.length,
+          totalJobs: validatedRecords.length,
+          validJobs: rows.length,
+          invalidJobs: invalidCount,
+          scheduled,
+        };
+        return result;
+      },
+      // Prisma's defaults are 5s/2s — far too tight for the largest site.
+      { timeout: TX_TIMEOUT_MS, maxWait: TX_MAX_WAIT_MS },
+    ),
+  );
+
+  if (!commit) {
+    // The abort landed between the check above and here. Same rule: the
+    // timeout handler has already written the terminal status, so this path
+    // writes nothing rather than racing it for a second FAILED row.
+    console.warn(
+      "[scrape] deadline passed as persistence was opening; listings untouched",
+    );
+    return {
+      success: false,
+      scrapeRunId,
+      jobCount: 0,
+      totalJobs: validatedRecords.length,
+      validJobs: 0,
+      invalidJobs: invalidCount,
+      failureCategory: "timeout",
+      scheduled,
+    };
+  }
+
+  await commit;
+  savedCount = rows.length;
+  console.info(
+    `[scrape] Committed ${savedCount} listing(s) atomically in ` +
+      `${Math.ceil(rows.length / INSERT_BATCH)} batch(es)`,
+  );
 
   // Both paths have written every row and closed the run COMPLETED: the site's
   // first completed scrape, kept once (step A; src/lib/firstDates.ts).
@@ -5340,7 +5304,8 @@ async function failScrapeRun(
     });
 
     if (decision.applySiteWrite) {
-      // Moving a site to FAILED wipes its scraped jobs (mirror siteService path).
+      // The site goes FAILED. Its listings are kept: planScrapeFailure says
+      // deleteListings false on every run since H1 (owner, 2026-10-14).
       await prisma.$transaction([
         ...(decision.deleteListings
           ? [prisma.job.deleteMany({ where: { siteId } })]

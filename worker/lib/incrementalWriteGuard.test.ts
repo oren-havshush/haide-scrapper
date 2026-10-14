@@ -74,8 +74,12 @@ assert(decide > 0 && decide < refuse, "the refusal is decided on what the listin
 // ---------------------------------------------------------------------------
 
 const count = (needle: string) => src.split(needle).length - 1;
-assert(count("job.createMany(") === 1, `still exactly one job.createMany — the scheduled transaction (${count("job.createMany(")})`);
-assert(count("job.create(") === 1, `still exactly one job.create — the manual chunked insert (${count("job.create(")})`);
+// Since H1 every run inserts through one transaction body
+// (worker/lib/replaceListings.ts); scrape.ts itself creates no Job row.
+const lib = readFileSync(join(__dirname, "replaceListings.ts"), "utf8");
+assert(count("job.createMany(") === 0 && count("job.create(") === 0, `scrape.ts creates no Job row itself (${count("job.createMany(")} createMany, ${count("job.create(")} create)`);
+assert(count("replaceListingsInTx(tx,") === 1, `exactly one write path — the one transaction (${count("replaceListingsInTx(tx,")})`);
+assert(lib.split("job.createMany(").length - 1 === 1 && !lib.includes("job.create("), "whose body has exactly one job.createMany and no job.create");
 assert(!/buildCarriedRawFields\([^)]*\)[\s\S]{0,200}prisma\./.test(execute), "a carried row is not written where it is built");
 assert(
   /planScheduledPersist\(rows\.length,/.test(execute),

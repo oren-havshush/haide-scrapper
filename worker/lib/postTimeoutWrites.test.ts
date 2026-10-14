@@ -133,38 +133,33 @@ const src = raw.replace(/\/\*[\s\S]*?\*\//g, "").replace(/\/\/.*$/gm, "");
 const at = (needle: string) => src.indexOf(needle);
 
 const persistGuard = at("if (isAborted(runMode.abort)) {");
-const manualDelete = at("await prisma.job.deleteMany({ where: { siteId: site.id } });");
-const manualInsert = at("await tx.job.create({ data: row });");
-const scheduledDelete = at("await tx.job.deleteMany({ where: { siteId: site.id } });");
-const scheduledInsert = at("await tx.job.createMany({ data: batch });");
+// Since H1 (owner, 2026-10-14) manual and scheduled runs write through one
+// transaction, the same commit: its body (worker/lib/replaceListings.ts)
+// deletes and inserts. The manual chunked save is gone.
+const commitOpen = at("const commit = beginCommit(runMode.abort");
+const txBody = at("await replaceListingsInTx(tx,");
 
 // If a marker moved, this test must fail loudly rather than compare -1 < n and
 // silently report success. That is the exact way a guard test stops guarding.
 for (const [name, idx] of Object.entries({
   persistGuard,
-  manualDelete,
-  manualInsert,
-  scheduledDelete,
-  scheduledInsert,
+  commitOpen,
+  txBody,
 })) {
   assert(idx >= 0, `marker "${name}" was found in scrape.ts (the test still matches the code)`);
 }
 
 assert(
-  persistGuard >= 0 && manualDelete >= 0 && persistGuard < manualDelete,
-  "the abort check comes BEFORE the manual path deletes listings — this is the whole fix",
+  persistGuard >= 0 && commitOpen >= 0 && persistGuard < commitOpen,
+  "the abort check comes BEFORE the commit opens — this is the whole fix",
 );
 assert(
-  persistGuard >= 0 && manualInsert >= 0 && persistGuard < manualInsert,
-  "and before the manual path inserts",
+  persistGuard >= 0 && txBody >= 0 && persistGuard < txBody,
+  "and before the transaction deletes or inserts, on a manual run as on a scheduled one",
 );
 assert(
-  persistGuard >= 0 && scheduledDelete >= 0 && persistGuard < scheduledDelete,
-  "and before the scheduled transaction deletes",
-);
-assert(
-  persistGuard >= 0 && scheduledInsert >= 0 && persistGuard < scheduledInsert,
-  "and before the scheduled transaction inserts",
+  at("await prisma.job.deleteMany({ where: { siteId: site.id } });") < 0 && at("tx.job.create({ data: row })") < 0,
+  "and there is no other delete-then-insert path left to race the deadline",
 );
 
 {

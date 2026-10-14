@@ -57,7 +57,8 @@ assert(
 // --- the first completed scrape --------------------------------------------------------
 {
   const exec = fnBody(read("worker/jobs/scrape.ts"), "executeScrape");
-  const persisted = exec.lastIndexOf("Saved chunk:");
+  // The one commit both paths share since H1 (the manual chunked save is gone).
+  const persisted = exec.lastIndexOf("listing(s) atomically");
   const mark = exec.indexOf("markFirstScraped(");
   const gate = exec.indexOf('label: "post-persist"');
   assert(mark > persisted && persisted > 0, "firstScrapedAt is marked after both paths have written every row");
