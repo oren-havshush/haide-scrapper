@@ -90,6 +90,15 @@ function scripted(steps: Array<[kind: "bare" | "real", out: Partial<ReachNav>]>)
     assert(wpJobPostType(`<a href="https://x.example/${w}/some-post/">a</a>`) === w, `the word ${w}, by its link`);
     assert(wpJobPostType(`<body class="single-${w} postid-1">`) === w, `the word ${w}, by its body class`);
   }
+  // H5b: the Hebrew words, raw and percent-encoded (WordPress writes a Hebrew slug encoded).
+  const enc = encodeURIComponent("משרות");
+  assert(wpJobPostType(`<a href="https://x.example/${enc}/devops/">DevOps</a>`) === "משרות", `a percent-encoded /${enc}/ link is a job post type`);
+  assert(wpJobPostType(`<a href="https://x.example/${enc.toLowerCase()}/devops/">DevOps</a>`) === "משרות", "in lower-case hex too");
+  assert(wpJobPostType('<a href="https://x.example/דרושים/נהג/">נהג</a>') === "דרושים", "a raw Hebrew link");
+  assert(wpJobPostType(`<body class="single single-${encodeURIComponent("קריירה").toLowerCase()} postid-3">`) === "קריירה", "an encoded Hebrew body class");
+  assert(wpJobPostType('<body class="single-משרה postid-4">') === "משרה", "a raw Hebrew body class");
+  assert(wpJobPostType('<a href="https://x.example/משרות/">כל המשרות</a>') === null, "the Hebrew archive page itself is not a post");
+  assert(wpJobPostType('<body class="single-משרותיה">') === null, "nor a Hebrew word inside another word");
   assert(wpJobPostType('<a href="https://x.example/careers/">Careers</a>') === null, "the careers page itself is not a post");
   assert(wpJobPostType('<body class="type-jobsearch">') === null && wpJobPostType('<a href="/blog/jobsite-tips">') === null, "a word inside another word is not");
   assert(wpJobPostType("<body class=\"page-template-default\">") === null, "a plain page is not");

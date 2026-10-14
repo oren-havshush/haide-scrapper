@@ -53,15 +53,38 @@ export async function reachWithRetry<N extends ReachNav>(nav: (kind: "bare" | "r
 
 /** The words a WordPress job post type is named by (the slug in its links, its body classes). */
 export const JOB_POST_TYPE_WORDS = ["job", "jobs", "vacancy", "vacancies", "position", "positions", "career", "careers"] as const;
+/** The same in Hebrew (H5b, owner 2026-10-14), matched raw and percent-encoded, as WordPress writes a Hebrew slug. */
+export const HEBREW_JOB_POST_TYPE_WORDS = ["משרות", "משרה", "דרושים", "קריירה"] as const;
+
+/** Every form of every word, longest first, as one alternation. Nothing in them needs escaping. */
+const WORD_ALT = [
+  ...JOB_POST_TYPE_WORDS,
+  ...HEBREW_JOB_POST_TYPE_WORDS,
+  ...HEBREW_JOB_POST_TYPE_WORDS.map((w) => encodeURIComponent(w)),
+]
+  .sort((a, b) => b.length - a.length)
+  .join("|");
 
 /** A link to one post of such a type: /<word>/<slug>, not the archive page itself. */
-const JOB_POST_HREF = /\bhref=["'][^"']*\/(jobs?|vacanc(?:y|ies)|positions?|careers?)\/[^"'/?#]+/i;
-/** WordPress's body classes for such a type: single-<word>, type-<word>, post-type-archive-<word>, <word>-template. */
-const JOB_POST_CLASS = /\b(?:single|type|post-type-archive)-(jobs?|vacanc(?:y|ies)|positions?|careers?)\b|\b(jobs?|vacanc(?:y|ies)|positions?|careers?)-template\b/i;
+const JOB_POST_HREF = new RegExp(`\\bhref=["'][^"']*/(${WORD_ALT})/[^"'/?#]+`, "i");
+/**
+ * WordPress's body classes for such a type: single-<word>, type-<word>,
+ * post-type-archive-<word>, <word>-template. A class ends at a space or a
+ * quote; \b is not used, since it does not fire after a Hebrew letter.
+ */
+const JOB_POST_CLASS = new RegExp(
+  `(?:^|[\\s"'])(?:single|type|post-type-archive)-(${WORD_ALT})(?=[\\s"']|$)|(?:^|[\\s"'])(${WORD_ALT})-template`,
+  "i",
+);
 
-/** The job post type a WordPress page shows, by its word, or null. */
+/** The job post type a WordPress page shows, by its word (decoded, lower-case), or null. */
 export function wpJobPostType(html: string): string | null {
   const m = JOB_POST_HREF.exec(html) ?? JOB_POST_CLASS.exec(html);
   if (!m) return null;
-  return (m[1] ?? m[2] ?? "").toLowerCase();
+  const word = m[1] ?? m[2] ?? "";
+  try {
+    return decodeURIComponent(word).toLowerCase();
+  } catch {
+    return word.toLowerCase();
+  }
 }
