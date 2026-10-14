@@ -41,6 +41,27 @@ export function isTextless(j: TextlessView): boolean {
   return !!title && description.toLowerCase() === title.toLowerCase();
 }
 
+/** The run's warning (worker/lib/valueChecks.ts textLess): N text-less of M saved. */
+export function textlessWarning(n: number, m: number): string {
+  return `text_less: ${n} of ${m} cards`;
+}
+
+/** N and M back from a run's warnings, or null when the run had none. */
+export function readTextlessWarning(warnings: readonly unknown[] | null | undefined): { n: number; m: number } | null {
+  for (const w of warnings ?? []) {
+    const hit = /^text_less: (\d+) of (\d+) cards$/.exec(String(w));
+    if (hit) return { n: Number(hit[1]), m: Number(hit[2]) };
+  }
+  return null;
+}
+
+/** Needs attention: more than 20% of the site's jobs have no text, and at least 3. */
+export const TEXTLESS_ATTENTION_SHARE = 0.2;
+export const TEXTLESS_ATTENTION_MIN = 3;
+export function isTextlessAttention(n: number, m: number): boolean {
+  return m > 0 && n >= TEXTLESS_ATTENTION_MIN && n / m > TEXTLESS_ATTENTION_SHARE;
+}
+
 /** Detail visits that found no page: the same set countDeadDetailPages counts in worker/jobs/scrape.ts. */
 const DEAD_NAV_STATUSES: ReadonlySet<string> = new Set(["http_error", "timeout", "skipped_no_url", DETAIL_UNAVAILABLE_STATUS]);
 

@@ -22,6 +22,7 @@ import { planFixItems, type CheckFinding, type FixFieldName, type FixQueuePlan, 
 import { HONEYPOT_NAME } from "./formFields";
 import { extractLocationFromGazetteer } from "./normalizer";
 import { FIELD_FILL_THRESHOLD } from "./scheduledRun";
+import { isTextless, textlessWarning } from "./textless";
 
 export type ReplayTokenFinding = { code: "apply_replay_token"; field: "APPLY"; count: number; names: string[] };
 
@@ -131,6 +132,8 @@ export const VALUE_CHECK_QUEUE_CODES: ReadonlySet<string> = new Set([
   "description_fill_low",
   // Live from its own deploy, not 2026-10-04 (scripts/lib/cohortScore.ts CHECK_CODE_LIVE_FROM).
   "apply_endpoint_mismatch",
+  // Live from its own deploy as well (owner, 2026-10-14).
+  "text_less",
 ]);
 
 /** Warn when this share of a site's jobs end up with no usable location. */
@@ -429,6 +432,22 @@ export function descriptionFillLow(saved: SavedJobForChecks[]): CheckResult | nu
   };
 }
 
+/**
+ * Saved jobs with no text (worker/lib/textless.ts; owner, 2026-10-14). Never
+ * dropped: each is a signal that the page may carry text the config misses
+ * (freesbe, egged, j-t on 2026-10-14). One COVERAGE item per site, refreshed
+ * each run while it fires, closed by the first run with none.
+ */
+export function textLess(saved: SavedJobForChecks[]): CheckResult | null {
+  const without = saved.filter((j) => isTextless(j));
+  if (without.length === 0) return null;
+  const detail = `${without.length} jobs with no text: page has text?`;
+  return {
+    warning: textlessWarning(without.length, saved.length),
+    finding: finding("text_less", "COVERAGE", detail, without.length, without.map(jobKeyOf)),
+  };
+}
+
 // ---------------------------------------------------------------------------
 // LOCATION, COVERAGE
 // ---------------------------------------------------------------------------
@@ -532,6 +551,7 @@ export function runValueChecks(input: ValueCheckInput): { warnings: string[]; fi
     regionOverCity(input.saved),
     undatedRate(input.saved),
     descriptionFillLow(input.saved),
+    textLess(input.saved),
     applyNoIdentityField(input.formBlobs),
     applyTemplateActionUrl(input.formBlobs),
     applyHoneypotField(input.formBlobs),

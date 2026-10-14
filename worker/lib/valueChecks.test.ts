@@ -467,7 +467,9 @@ console.log("# the queue: these checks open and close only their own items");
     { id: "desc", source: "CHECK" as const, code: "description_fill_low", field: "DESCRIPTION" },
   ];
   const plan = planValueCheckItems(r.findings, open);
-  eq(plan.open.map((x) => x.code), [], "description_fill_low is already open: nothing new");
+  // The one job has neither a description nor requirements: text_less (owner,
+  // 2026-10-14) opens its own item beside the description item already open.
+  eq(plan.open.map((x) => x.code), ["text_less"], "description_fill_low is already open: nothing new for it");
   eq(plan.close, [{ id: "homograph", resolvedBy: "CHECK" }], "the homograph no longer fires: closed");
   eq(plan.keep, ["desc"], "the firing item is kept");
   eq(

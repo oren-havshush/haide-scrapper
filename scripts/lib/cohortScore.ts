@@ -125,6 +125,9 @@ export const CHECK_CODE_LIVE_FROM: Readonly<Record<string, string | null>> = {
   // owner, 2026-10-08 (LRN-APPLY-13): the worker start of
   // deploy-20261008-131113-406b14a, which shipped it.
   apply_endpoint_mismatch: "2026-10-08T10:20:27Z",
+  // owner, 2026-10-14: the text-less signal. null until the deploy that ships
+  // it has run; then the worker start of that deploy.
+  text_less: null,
 };
 
 /** Each queue code's live-from: the twelve from CHECK_CODES_LIVE_FROM, later ones from their own. */

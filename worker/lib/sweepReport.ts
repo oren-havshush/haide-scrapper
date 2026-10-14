@@ -17,6 +17,7 @@ import { FIELD_FILL_DROP, ITEM_CAP, SETUP_SCRIPT_CUT_OFF } from "./sweepSelectio
 import { acceptedBelowGate, type AcceptedGates } from "../../src/lib/acceptedGates";
 import { challengeVendor } from "./zeroMatch";
 import { BIG_LANE_STOP_LABEL, CUT_OFF, considerBigLane } from "./bigLane";
+import { isTextlessAttention, readTextlessWarning } from "./textless";
 
 /**
  * A multi-page site that refused to publish a partial set. Soft, like drift,
@@ -728,6 +729,13 @@ export function needsAttention(
     const churn = (i.warnings ?? []).map(String).find((w) => w.startsWith("detail_fingerprint_churn:"));
     if (churn) add(i, `carry-forward is off: ${churn.slice(churn.indexOf(":") + 1).trim()}`);
 
+    // Jobs stored with no text (worker/lib/textless.ts): never dropped, named
+    // here when they are more than 20% of the site and at least 3.
+    const textless = readTextlessWarning(i.warnings);
+    if (textless && isTextlessAttention(textless.n, textless.m)) {
+      add(i, `${textless.n} of ${textless.m} jobs with no text (page has text?)`);
+    }
+
     // Too big for the nightly (worker/lib/bigLane.ts): over 10 minutes, or the
     // item cap. The nightly's report only; the big lane's sites are already there.
     if (sweep.kind === "SCRAPE" && i.phase === "scrape") {
@@ -775,6 +783,12 @@ export function renderSweepReport(
   }
   if (sweep.status === "HALTED") {
     lines.push(`  HALTED    ${sweep.haltReason ?? "(no reason recorded)"}`);
+  }
+  // Jobs stored with no text tonight, fleet-wide (worker/lib/textless.ts); printed only on a night with any.
+  const textlessSites = items.map((i) => readTextlessWarning(i.warnings)).filter((t) => t !== null);
+  if (textlessSites.length > 0) {
+    const n = textlessSites.reduce((s, t) => s + t.n, 0);
+    lines.push(`  text-less ${n} job(s) on ${textlessSites.length} site(s)`);
   }
   if (opts.skipped) {
     // Named, with the reason: a site selection left out is a site nobody looked
