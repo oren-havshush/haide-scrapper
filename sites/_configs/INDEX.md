@@ -52,6 +52,7 @@ several listing pages back into one and stops publishing the rest.
 | LEASE4U | ACTIVE | 8 | 6532 | 1 | `freesbe--6cznyg` |
 | Lime Digital | ACTIVE | 6 | 5282 | 1 | `limedigital--svqtde` |
 | Medulla | ACTIVE | 8 | 7954 | 1 | `medulla--m2u5xb` |
+| Mega Talents | ACTIVE | 10 | 12240 | 1 | `talentflow--ww2ief` |
 | Mentee Robotics | ACTIVE | 8 | 7617 | 1 | `comeet--lfseiu` |
 | Mobileye | ACTIVE | 9 | 6318 | 1 | `mobileye--6xnl0n` |
 | Naya Technologies | ACTIVE | 6 | 3558 | 1 | `naya-tech--0212vn` |
@@ -59,6 +60,7 @@ several listing pages back into one and stops publishing the rest.
 | Nextcom Group | ACTIVE | 8 | 4808 | 1 | `nextcomgroup--nvjcxb` |
 | Novilis Software Systems | ACTIVE | 4 | 905 | 1 | `novilis--1u1jp3` |
 | ORS משאבי אנוש | ACTIVE | 8 | 7844 | 1 | `ors--1qkvyu` |
+| ORganize | ACTIVE | 7 | 11452 | 1 | `app-civi--srua7c` |
 | On Line | ACTIVE | 4 | 857 | 1 | `oneline--dqdxkb` |
 | One Technologies | ACTIVE | 4 | 2733 | 1 | `one1--m39rer` |
 | Personetics | ACTIVE | 5 | 1426 | 1 | `personetics--ovj4kr` |
@@ -217,6 +219,7 @@ several listing pages back into one and stops publishing the rest.
 | צ'יטה שליחויות | ACTIVE | 4 | 332 | 1 | `chitadelivery--xpwqf1` |
 | צעדים ייעוץ והשמה בע"מ | ACTIVE | 10 | 7590 | 1 | `tzeadim--tv5x8v` |
 | צרפתי שמעון | ACTIVE | 5 | 3075 | 1 | `s-sarfati--5dr0yc` |
+| קבוצת אמן | ACTIVE | 10 | 12104 | 1 | `aman--izwxqy` |
 | קבוצת ברן | ACTIVE | 8 | 7783 | 1 | `barangroup--36lhv6` |
 | קבוצת ויזל - פוקס | ACTIVE | 4 | 2133 | 1 | `dreamjobs--43loqz` |
 | קבוצת דוידוביץ' | ACTIVE | 7 | 4719 | 1 | `davidovitz--51rk2o` |
