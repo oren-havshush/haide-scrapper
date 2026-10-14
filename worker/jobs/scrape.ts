@@ -2283,7 +2283,9 @@ async function visitDetailPages(
           page,
           formCaptureConfig,
         );
-        if (formData) rawFields["_formData"] = formData;
+        // Only a record without a form of its own gets it: a per-job form from
+        // the listing card is never overwritten (H2b, worker/lib/siteForm.ts).
+        if (formData) attachSiteForm([rawFields], formData);
       }
 
       rawFieldsList.push(rawFields);

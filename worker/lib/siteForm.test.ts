@@ -52,6 +52,23 @@ const SITE = JSON.stringify({ actionUrl: "https://x.example/contact", fields: [{
   assert(!/raw\["_formData"\] = formData/.test(branch), "with no bare overwrite left");
 }
 
+// H2b (owner, 2026-10-14): the detail loop's capture, the same guard. A record
+// seeded from its listing card with its own form keeps it.
+{
+  const card: Record<string, string> = { title: "job", _detailUrl: "https://x.example/jobs/1", _formData: OWN };
+  attachSiteForm([card], SITE);
+  assert(card._formData === OWN, "a detail record that carries a form keeps it");
+  const bare: Record<string, string> = { title: "job" };
+  attachSiteForm([bare], SITE);
+  assert(bare._formData === SITE, "and one without gets the captured form");
+  const src = readFileSync(join(__dirname, "..", "jobs", "scrape.ts"), "utf8").replace(/\/\*[\s\S]*?\*\//g, "").replace(/\/\/.*$/gm, "");
+  const start = src.indexOf("const applyStep = pageFlow.length > 2 ? pageFlow[2] : null;");
+  const loop = src.slice(start, src.indexOf("rawFieldsList.push(rawFields);", start));
+  assert(start > 0 && loop.length > 100, "the detail loop's form capture was found");
+  assert(/if \(formData\) attachSiteForm\(\[rawFields\], formData\);/.test(loop), "the detail loop attaches through attachSiteForm");
+  assert(!/rawFields\["_formData"\] = formData/.test(src), "with no bare overwrite left anywhere");
+}
+
 if (failures > 0) {
   console.error(`\n${failures} failure(s)`);
   process.exit(1);
