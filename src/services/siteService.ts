@@ -16,6 +16,7 @@ import { buildScrapeJobRow } from "@/lib/scrapeJobRow";
 import { findListingRunsBySiteIds } from "@/lib/listingRun";
 import { markFirstActive } from "@/lib/firstDates";
 import { holdListWhere, scrapeRunGuarded, sweepHoldData, type SweepHoldBody } from "@/lib/sweepHold";
+import { registeredDomain, sameRegisteredDomain } from "@/lib/registeredDomain";
 import type { PaginationParams } from "@/lib/types";
 import type { SiteStatus } from "@/generated/prisma/enums";
 import { emitEvent } from "@/services/eventService";
@@ -78,6 +79,8 @@ export async function listSites(
     siteUrl?: string;
     companyNameSearch?: string;
     urlSearch?: string;
+    /** An exact registered domain, for the duplicate check (src/lib/registeredDomain.ts). */
+    domain?: string;
     sortBy?: "createdAt" | "confidenceScore" | "reviewAt";
     sortOrder?: "asc" | "desc";
   }
@@ -91,6 +94,7 @@ export async function listSites(
     siteUrl,
     companyNameSearch,
     urlSearch,
+    domain,
     sortBy = "createdAt",
     sortOrder = "desc",
   } = params;
@@ -127,6 +131,15 @@ export async function listSites(
   }
   if (companyNameSearch) {
     where.companyName = { contains: companyNameSearch, mode: "insensitive" };
+  }
+  // The exact registered domain (H6): the contains match narrows, then only a
+  // site on exactly that domain is kept — tech.co.il, never naya-tech.co.il.
+  if (domain !== undefined) {
+    const rd = registeredDomain(domain);
+    const candidates = rd
+      ? await prisma.site.findMany({ where: { siteUrl: { contains: rd, mode: "insensitive" } }, select: { id: true, siteUrl: true } })
+      : [];
+    where.id = { in: candidates.filter((s) => sameRegisteredDomain(s.siteUrl, domain)).map((s) => s.id) };
   }
 
   // Build orderBy - handle nulls for confidenceScore and reviewAt

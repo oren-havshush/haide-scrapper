@@ -23,6 +23,7 @@ export async function GET(request: NextRequest) {
       siteUrl: q.siteUrl,
       companyNameSearch: q.companyNameSearch || undefined,
       urlSearch: q.urlSearch || undefined,
+      domain: q.domain,
     });
     return listResponse(sites, {
       total,

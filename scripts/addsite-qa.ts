@@ -45,6 +45,7 @@
 import * as fs from "fs";
 import * as path from "path";
 import { fileURLToPath } from "url";
+import { DEPARTMENT_LABELS, PUBLISH_DATE_LABELS, hasLabel } from "./lib/qaLabels";
 
 const BASE = "https://scrapper.haide-jobs.co.il";
 const UA_DEFAULT =
@@ -389,8 +390,8 @@ export async function probeDetail(
       const fieldsOnPage: Record<string, boolean> = {
         location: has(/מיקום|אזור|סניף|כתובת|עיר|location|city|region|based in/i),
         requirements: has(/דרישות|דרישות התפקיד|כישורים|מה אנחנו מחפשים|requirements|qualifications|what you.?ll need/i),
-        publishDate: has(/תאריך פרסום|פורסם|תאריך|publish|posted on|date posted/i),
-        department: has(/מחלקה|תחום|אגף|department|team|division/i),
+        // publishDate and department are set below from the page's own lines,
+        // as labels (H6, scripts/lib/qaLabels.ts).
         description: (document.body?.innerText || "").length > 400,
       };
       const APPLY = /apply|הגש|שלח|מועמד|קורות|cv|resume|הגשת מועמדות|להגשה|צרף/i;
@@ -416,9 +417,15 @@ export async function probeDetail(
       const mailto = !!document.querySelector('a[href^="mailto:"]');
       // Return a truncated body text for location-sanity check (max 8k chars).
       const detailBodyText = (document.body?.innerText || "").slice(0, 8000);
-      return { fieldsOnPage, formCount, maxFormFields, modalApplyButton, mailto, externalApply, detailBodyText };
+      // The text with its lines, for the label cues read below.
+      const labelText = document.body?.innerText || "";
+      return { fieldsOnPage, formCount, maxFormFields, modalApplyButton, mailto, externalApply, detailBodyText, labelText };
     });
-    return out;
+    // A label at the start of a line or before a colon, never inside a word (H6).
+    const { labelText, ...rest } = out;
+    rest.fieldsOnPage.publishDate = hasLabel(labelText, PUBLISH_DATE_LABELS);
+    rest.fieldsOnPage.department = hasLabel(labelText, DEPARTMENT_LABELS);
+    return rest;
   } catch {
     return null;
   } finally {

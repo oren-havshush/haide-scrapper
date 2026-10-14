@@ -76,6 +76,9 @@ export const siteUrlFilterSchema = z.object({
 export const siteSearchFilterSchema = z.object({
   companyNameSearch: z.string().trim().max(120).optional(),
   urlSearch: z.string().trim().max(500).optional(),
+  // The exact registered domain, for the duplicate check (H6,
+  // src/lib/registeredDomain.ts); urlSearch stays the dashboard's contains match.
+  domain: z.string().trim().min(1).max(253).optional(),
 });
 
 export const sortSchema = z.object({
