@@ -124,6 +124,7 @@ import {
   type AbortToken,
 } from "../lib/abortToken";
 import { replaceListingsInTx } from "../lib/replaceListings";
+import { attachSiteForm, needsSiteForm } from "../lib/siteForm";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -4228,20 +4229,18 @@ async function executeScrape(
         }
       }
 
-      // Extract form data once from the single page and attach to all records.
+      // Extract form data once from the single page and attach it to every
+      // record that has no form of its own: a per-job form the setup script
+      // built is never overwritten (H2, worker/lib/siteForm.ts).
       // This is a listing-only site (no pageFlow), so a live <form> on the listing
       // is likely a decoy — prefer the verified static blob (LRN-APPLY-7).
-      if (formCaptureConfig && rawFieldsList.length > 0) {
+      if (formCaptureConfig && needsSiteForm(rawFieldsList)) {
         const formData = await extractFormDataOrFallback(
           page,
           formCaptureConfig,
           true,
         );
-        if (formData) {
-          for (const raw of rawFieldsList) {
-            raw["_formData"] = formData;
-          }
-        }
+        if (formData) attachSiteForm(rawFieldsList, formData);
       }
     }
 
