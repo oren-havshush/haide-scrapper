@@ -77,8 +77,10 @@ check("one item per site: opened once, refreshed, closed at N = 0", () => {
 });
 
 check("scored only from its own deploy", () => {
-  assert("text_less" in CHECK_CODE_LIVE_FROM && CHECK_CODE_LIVE_FROM.text_less === null, "a live-from entry, null until the deploy");
-  assert(!("text_less" in checkCodeLiveFrom()), "so the fix score does not judge it before then");
+  // The worker start of deploy-20261014-154521-f457d94, which shipped it.
+  const LIVE = "2026-10-14T12:55:55Z";
+  assert(CHECK_CODE_LIVE_FROM.text_less === LIVE, `a live-from entry, the deploy's worker start (got ${CHECK_CODE_LIVE_FROM.text_less})`);
+  assert(checkCodeLiveFrom().text_less?.toISOString() === new Date(LIVE).toISOString(), "so the fix score judges it from then, not from 2026-10-04");
 });
 
 const sweep: ReportSweep = {
