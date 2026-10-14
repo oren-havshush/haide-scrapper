@@ -103,7 +103,8 @@ check("the PATCH merge agrees with the schema", () => {
 check("verify-config: every key that was sent", () => {
   const stored = flattenStoredConfig({ fieldMappings: { ...base.fieldMappings, _meta: { ...base, fieldMappings: undefined, pageFlow: undefined, savedAt: "x" } }, pageFlow: base.pageFlow });
   assert(sentKeysNotStored(base, stored).length === 0, `everything stored: nothing named (got ${sentKeysNotStored(base, stored).join("; ")})`);
-  const { locationMap: _dropped, ...withoutMap } = stored;
+  const withoutMap: Record<string, unknown> = { ...stored };
+  delete withoutMap.locationMap;
   const lost = sentKeysNotStored(base, withoutMap);
   assert(lost.length === 1 && lost[0].startsWith("$.fieldMappings._meta.locationMap:") && lost[0].endsWith("-> (absent)"), `Maof's case: the table sent and not stored is named (got ${lost.join("; ")})`);
   const changed = sentKeysNotStored({ ...base, fieldMappings: { title: { selector: "h3" } } }, stored);
