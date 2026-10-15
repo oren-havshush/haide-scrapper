@@ -6,7 +6,7 @@
 // Body: after a requirements heading -> requirements; headless lines classified by LRN-SETUP-18; labels dropped.
 // Location: no tags on this site, so only a work-location line in the ad (LRN-LOC-21 case 4), mapped through a closed
 // city.csv-verified table; else Unknown. Recruitment agency: no office-address fallback. "באתרי הלקוחות בארץ" on that
-// line adds פריסה ארצית. Date: the sitemap lastmod of the job page (site prints none; decision 2026-10-13).
+// line adds פריסה ארצית. No date: the site prints none; a sitemap lastmod is not a publish date (LRN-AGE-5).
 // Apply: the job's own CV form (POST /sendjobscv), copied per job with its hidden values (LRN-FORM-13).
 var HUB = document.querySelector('a.allJobsMainCategoriesTitleA');
 if (HUB && !document.getElementById('haide-jobs-root')) {
@@ -40,16 +40,6 @@ if (HUB && !document.getElementById('haide-jobs-root')) {
   };
   await Promise.all([1, 2, 3, 4, 5, 6, 7, 8].map(worker));
   if (HOME * 2 >= urls.length) { BAD = true; console.warn('[prologic] ' + HOME + ' of ' + urls.length + ' pages redirect home'); }
-  // dates: the site prints none; the sitemap's lastmod for the job page (last edit, so never older than the posting)
-  var key = function (u) { var p = new URL(u, location.href).pathname; try { p = decodeURIComponent(p); } catch (e) { } return p.replace(/\/+$/, '').toLowerCase(); };
-  var DATES = {};
-  if (!BAD) try {
-    var sm = await (await fetch('/sitemap.xml', { credentials: 'same-origin' })).text();
-    sm.split('<url>').slice(1).forEach(function (u) {
-      var l = /<loc>([^<]+)<\/loc>/.exec(u), d = /<lastmod>(\d{4}-\d\d-\d\d)/.exec(u);
-      if (l && d) DATES[key(l[1].trim())] = d[1];
-    });
-  } catch (e) { }
   var MATH = new RegExp('[' + String.fromCodePoint(0x1D400) + '-' + String.fromCodePoint(0x1D7FF) + ']', 'gu');
   var WS = new RegExp('[ \\t' + String.fromCharCode(160) + ']+', 'g');
   var lines = function (el) {
@@ -134,8 +124,6 @@ if (HUB && !document.getElementById('haide-jobs-root')) {
         if (/באתרי\s+ה?לקוחות\s+ב(כל\s+)?ה?ארץ|ברחבי\s+הארץ/.test(l) && loc.indexOf('פריסה ארצית') < 0) loc.push('פריסה ארצית');
       });
     });
-    var pd = DATES[key(c.url)];
-    if (pd) add('__ai-publishDate', pd);
     add('__ai-location', loc.length ? loc.join(', ') : 'Unknown');
     if (c.fm) {
       var fields = [];

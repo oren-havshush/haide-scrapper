@@ -680,8 +680,9 @@ page's menu, not the jobs. Cite: `LRN-SETUP-16`.
 8. **Location only from the job's own text** (an office town, "בכל הארץ", camps/schools →
    `פריסה ארצית`); nothing stated → `Unknown`. Never scan the shared closing section.
 
-**Keep it under the 8,000-character `setupScript` cap** (`LRN-API-7`) — a script with all of the
-above plus comments landed at 8,262 and the PUT was refused. Short comments, inline helpers.
+**Keep it under the 16,000-character `setupScript` cap** (`LRN-SETUP-23`; it was 8,000 until
+2026-10-12, when a script with all of the above plus comments landed at 8,262 and the PUT was
+refused, `LRN-API-7`). Short comments, inline helpers.
 
 **Write non-ASCII characters by code, not by `\u` escape.** `String.fromCharCode(160)` for a
 non-breaking space: the file-writing tool decodes a `\u`-escaped U+00A0 into a raw invisible character, which

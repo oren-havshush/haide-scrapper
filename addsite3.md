@@ -317,8 +317,8 @@ lists all three pages. A site onboarded fresh from the hub gets the hub as `site
 
 > **This is not pagination.** `pagination` walks pages 2..N of ONE listing;
 > `listingUrls` is several DIFFERENT listings. And it is not a `setupScript` that
-> fetches the other pages: that hides a page going dark, and the script cap is 8,000
-> characters (`LRN-API-7`).
+> fetches the other pages: that hides a page going dark, and the script cap is 16,000
+> characters (`LRN-SETUP-23`).
 
 ---
 
@@ -332,11 +332,15 @@ curl -s "$BASE/api/sites?siteUrl=$(python3 -c 'import urllib.parse,sys; print(ur
 Also check: trailing-slash variant, http↔https swap, www/no-www prefix.
 
 **Then check the host, not just the URL.** A second jobs page for the same employer on
-another path or subdomain matches none of the variants above. Use `urlSearch` (partial
-match on `siteUrl`) and, when the company is known, `companyNameSearch`:
+another path or subdomain matches none of the variants above. Use `domain` (every site on
+exactly that registered domain, any subdomain) and, when the company is known,
+`companyNameSearch`:
 ```bash
-curl -s "$BASE/api/sites?urlSearch=<registrable-domain>&pageSize=10" -H "$AUTH" | jq '.data[]? | {id, siteUrl, status}'
+curl -s "$BASE/api/sites?domain=<registrable-domain>&pageSize=10" -H "$AUTH" | jq '.data[]? | {id, siteUrl, status}'
 ```
+Never `urlSearch` for this check: it is a partial match on `siteUrl`, so `tech.co.il` also
+returns naya-tech and horizontech. `domain=tech.co.il` returns `www.tech.co.il` and
+`careers.tech.co.il` only (`src/lib/registeredDomain.ts`, since 2026-10-14).
 A host hit is not automatically a duplicate (one host can serve several employers; a
 company can run two boards) — look before creating. Cite: `LRN-API-8`.
 
@@ -808,11 +812,12 @@ fields vanish silently: extraction still succeeds, the DOM-sourced fields still 
 > Chrome extension's Save rebuilds `_meta` from seven keys and drops the rest, so it
 > clears `listingUrls` too (as it already clears `pagination` and `setupScript`).
 
-`setupScript` is capped at 8,000 characters; a longer one makes the PUT a 400 that writes
-nothing. Pass `--expect-setup-script <file>` to `verify-config` after every PUT (§9.1): it
-compares the stored script with your file byte for byte and exits 2 if they differ. To get
-under the cap, cut comments and duplicated helpers, and prove the shorter script yields
-identical jobs in the dry-run before re-PUTting. Cite: `LRN-API-7`.
+`setupScript` is capped at 16,000 characters (since 2026-10-12; the cap is about
+reviewability, `LRN-SETUP-23`); a longer one makes the PUT a 400 that writes nothing. Pass
+`--expect-setup-script <file>` to `verify-config` after every PUT (§9.1): it compares the
+stored script with your file byte for byte and exits 2 if they differ. To get under the cap,
+cut comments and duplicated helpers, and prove the shorter script yields identical jobs in
+the dry-run before re-PUTting. Cite: `LRN-API-7`, `LRN-SETUP-23`.
 
 **LANDMINE — honored vs ignored fields:** (`LRN-WRK-1`)
 The worker honors **only**: `selector`, `extractAttr`, `confidence`, `source`, `capturedOnUrl`.
@@ -1199,3 +1204,97 @@ each; the archive entry has the evidence.
   is missing, grep for the bare name and for rows containing it (pairs like `רמלה לוד`,
   qualified names). Surface the job and the city to the owner; never write a neighbouring or
   combined row on your own, and never edit `city.csv` unprompted — it is product data.
+
+---
+
+## 19. Decided 2026-10-14 (the developer's reply to the 2026-10-12/13 report)
+
+One line each, where it applies; the archive entry has the evidence.
+
+**Phase 0 and coverage**
+- **A job board is out, paid or free** (`LRN-COV-12`): a site that publishes ads for many employers
+  stays out with `לא רלוונטי - לוח דרושים`. A recruiter posting its own clients' jobs is not a board.
+- **Postings that exist only as images are left out** (`LRN-SETUP-25`): the site stays out with
+  `משרות בתמונה בלבד`. Phase 0 counts text, so look at the page in a browser when it counts 0.
+- **A dead application address keeps a site out** (`LRN-APPLY-14`): check the mail domain
+  (DNS, whois) without sending anything; the site stays out with `כתובת ההגשה אינה פעילה`.
+- **A job with no text is stored and counted, never dropped by default** (`LRN-COV-13`, replaces the
+  2026-10-13 rule). A description that only repeats the title counts as no text. Above 20% text-less
+  in the dry run, read three on the site: navigation or headings means the item selector is wrong
+  (the §2.3 hub check); real postings with no text are flagged to Shay. Only Shay marks a site
+  text-less by nature.
+- **An English careers page is added only for the jobs it alone lists** (`LRN-LANG-3`); name the
+  twin page in the adminNote.
+- **A big-lane site becomes ACTIVE only by hand** (`LRN-WRK-31`): create, configure, wait for the
+  night run, check, set ACTIVE. Never a manual first scrape, from the dashboard or the fix command.
+
+**Location (§6.2)**
+- **No place in the ad and one printed company address → that address's city** (`LRN-LOC-20`), a
+  verbatim `city.csv` row. Not when the ad hints at field work or names another place, and never for
+  a recruitment agency. A P.O. box is not an address; a branches page or a second branch means more
+  than one address.
+- **Area tags are read through `locationMap`** (`LRN-LOC-21`): a top-level config key mapping each
+  tag to a verbatim `city.csv` row or null; an unmapped tag is dropped with a warning. A city alone or
+  "<city> והסביבה" is the city; joined cities are each city; a city plus a region is both; a tag with
+  no city is its region; a city with no `city.csv` row goes to the owner. The map governs only how
+  tags are read: a work-location cue line in the ad text still counts, as before.
+- **A "city + region" tag that is one of a site's fixed regional buckets is the region only**
+  (`LRN-LOC-23`): count how many ads under it name another city before mapping it.
+- **Location lines in the ad text** (`LRN-LOC-22`): a line placing the hiring company counts, and
+  "… ובאתרי הלקוחות בארץ" adds פריסה ארצית. A line about the candidate ("מגורים באזור …") or about
+  visiting a client is not the place of work.
+- **Tag plus ad text: the ad wins only when it names a city** (`LRN-LOC-24`, Comblack): a region
+  word alone ("במרכז", "בצפון") keeps the tag; "באזור X" means X.
+- **`רמלה לוד` is the public site's own row** (`LRN-LOC-15`): לוד alone and רמלה alone map to it.
+  A split is the public-site developer's call, never ours.
+
+**Dates (§10)**
+- **A sitemap lastmod is never a job's date** (`LRN-AGE-5`, not adopted): it is a last-edit time,
+  not a publish date. A job with no printed date stays undated. Name a lastmod on the card only as a
+  staleness signal. A stale board still goes in; the public site shows the age.
+
+**Build (§6)**
+- **A pooled category page that redirects to the homepage is an empty category** (`LRN-CO-5`), not
+  a failure, unless half or more of the pages do; every other failure still empties the list.
+- **A job listed on several pages: emit every row** (`LRN-ID-15`); the worker collapses them by URL.
+  Never `seen[` in the script, and run `verify-jobids`' script checks on the local file before the
+  first PUT.
+- **The site's number repeats and titles change: an ASCII WordPress address is the id**
+  (`LRN-ID-16`); a Hebrew address gives none, and the worker builds `h-<hash>`.
+- **A number the site has reused for another job is not an id** (`LRN-ID-17`): check an archived
+  copy before trusting a short number.
+- **Requirement lists with no heading move as one block** (`LRN-SETUP-24`) when at least half the
+  lines look like requirements; English lists need their own word list. Keep the half threshold.
+- **WordPress emoji: put `wp-exclude-emoji` on every injected element** (`LRN-WP-5`), the holder
+  and each span; otherwise ✔ turns into an image and a text read drops it.
+- **Hash-routed boards (`#/` job pages): read the site's own data file once from the listing page**
+  (`LRN-SPA-24`), never route by route.
+- **Civi: `&p=1&r=300` returns the whole board; `&f=promocity,<city>` gives each job's city tag**
+  (`LRN-SPA-23`), one city per GET, through `locationMap`.
+- **Civi: pace every request, 3 at a time, 200 ms apart** (`LRN-WAF-10`), in preparation too.
+- **Civi: a locked job page gets one openPromo POST** (`LRN-SPA-22`), only while it is still locked,
+  never more than one per job, nothing else. Allowed by Shay for Civi boards only; say so in the
+  site's adminNote. A page that redirects to `&fallback=1` is closed and gets no POST. If an opened
+  page locks again, stop and tell Shay.
+
+**Apply forms (§8)**
+- **A hidden text box, or a field the page's script empties, is a spam trap** (`LRN-FORM-14`): never
+  filled. The worker enforces it since 2026-10-14; an optional box hidden until another answer
+  reveals it is left out too, so tell Shay when a real form has one.
+- **A per-job apply blob no longer needs `formCapture: null`** (`LRN-FORM-15`): since 2026-10-14 the
+  worker never writes a site-level form over it. Keeping null does no harm.
+- **A checkbox that only looks like reCAPTCHA is not a captcha** (`LRN-FORM-16`): no captcha
+  script, no request to Google, no token in the submit.
+- **Store the request the page really sends** (`LRN-FORM-17`): when the submit button sends AJAX
+  elsewhere with renamed fields, the per-job blob is that request.
+- **A listing page can hold a real form bound to one unrelated job** (`LRN-FORM-18`): narrow the
+  form selector to job-page forms, or leave `formCapture` null.
+- **A form and an email line in the same job:** the email line stays in the text as printed; the
+  form is the apply method. **A mailto with no subject** is stored as printed; the public site adds
+  the job title.
+- **A general contact page as the only apply path** counts only when it carries a form or an email
+  address; a phone-only page is `אין דרך הגשה`.
+
+**Company profile (§14)**
+- **About text is never composed:** copy a sentence verbatim from the company's own pages, or leave
+  it empty.

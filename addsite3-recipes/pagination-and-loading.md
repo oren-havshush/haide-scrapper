@@ -153,7 +153,10 @@ selector under `fieldMappings._meta.loadMoreSelector`:
 ```
 The worker (`clickLoadMoreUntilStable`) clicks it until the button disappears /
 disables or the item count stops growing — defaults: maxClicks 100, settle 3 s,
-stop after 2 no-growth rounds, cap 2000 items. It also re-runs your `setupScript`
+stop after 2 no-growth rounds, cap 2000 items. That click cap is not the site's item cap:
+the item cap is per site, `_meta.limits.maxItems` (default 2,000, ceiling 5,000,
+`worker/lib/siteLimits.ts`); past it a scheduled run writes nothing and records
+`item_cap_reached` (`LRN-WRK-30`). It also re-runs your `setupScript`
 after expansion so injected fields cover the appended items. This is the robust
 path that avoids the async-await landmine below. Use a **CSS** selector
 (`button.load-more-btn`), not a Playwright `:has-text()` pseudo — the worker does a
