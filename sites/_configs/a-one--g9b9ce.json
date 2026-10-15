@@ -1,0 +1,125 @@
+{
+  "_exportedAt": "2026-10-15T13:56:50.569Z",
+  "_note": "Mirror of the live config. The DB is authoritative; the worker never reads this file. setupScript lives alongside in <slug>.setup.js.",
+  "id": "cmv9k4v00007301sdk8g9b9ce",
+  "siteUrl": "https://www.a-one.co.il/?s",
+  "companyName": "A-One Legal Recruitment",
+  "status": "ACTIVE",
+  "setupScriptFile": "a-one--g9b9ce.setup.js",
+  "pageFlow": [],
+  "fieldMappings": {
+    "_meta": {
+      "lane": null,
+      "limits": null,
+      "savedAt": "2026-10-15T13:12:10.435Z",
+      "pagination": null,
+      "formCapture": null,
+      "listingUrls": null,
+      "locationMap": {
+        "גדרה": "גדרה",
+        "דרום": "אזור דרום",
+        "חדרה": "חדרה",
+        "חו״ל": null,
+        "חיפה": "חיפה",
+        "מרכז": "אזור מרכז",
+        "צפון": "אזור צפון",
+        "שפלה": "אזור שפלה",
+        "שרון": "אזור השרון",
+        "אשדוד": "אשדוד",
+        "חולון": "חולון",
+        "נתניה": "נתניה",
+        "רעננה": "רעננה",
+        "רמת גן": "רמת גן",
+        "הרצליה": "הרצליה",
+        "קיסריה": "קיסריה",
+        "רחובות": "רחובות",
+        "באר שבע": "באר שבע",
+        "בני ברק": "בני ברק",
+        "כפר סבא": "כפר סבא",
+        "גבעתיים": "גבעתיים",
+        "ירושלים": "ירושלים",
+        "מודיעין": "מודיעין",
+        "ראש העין": "ראש העין",
+        "אזור דרום": "אזור דרום",
+        "אזור מרכז": "אזור מרכז",
+        "אזור צפון": "אזור צפון",
+        "אזור שפלה": "אזור שפלה",
+        "הוד השרון": "הוד השרון",
+        "פתח תקווה": "פתח תקווה",
+        "רמת השרון": "רמת השרון",
+        "אזור השרון": "אזור השרון",
+        "קרית מלאכי": "קרית מלאכי",
+        "תל אביב-יפו": "תל אביב-יפו",
+        "ראשון לציון": "ראשון לציון",
+        "ירושלים והסביבה": "אזור ירושלים"
+      },
+      "itemSelector": "#haide-aone > div.haide-job",
+      "acceptedGates": null,
+      "minPublishDate": null,
+      "minPublishDays": null,
+      "revealSelector": null,
+      "listingSelector": null,
+      "applyLoginReason": null,
+      "browserOverrides": null,
+      "loadMoreSelector": null,
+      "locationFallback": null,
+      "originalMappings": null,
+      "applyRequiresLogin": false
+    },
+    "title": {
+      "source": "MANUAL",
+      "selector": "a.haide-link",
+      "confidence": 0.95,
+      "capturedOnUrl": "https://www.a-one.co.il/?s"
+    },
+    "location": {
+      "source": "MANUAL",
+      "selector": ".__ai-location",
+      "confidence": 0.9,
+      "capturedOnUrl": "https://www.a-one.co.il/?s"
+    },
+    "_formData": {
+      "source": "MANUAL",
+      "selector": ".__ai-formData",
+      "confidence": 0.9,
+      "capturedOnUrl": "https://www.a-one.co.il/?s"
+    },
+    "detailUrl": {
+      "source": "MANUAL",
+      "selector": "a.haide-link",
+      "confidence": 0.95,
+      "extractAttr": "href",
+      "capturedOnUrl": "https://www.a-one.co.il/?s"
+    },
+    "description": {
+      "source": "MANUAL",
+      "selector": ".__ai-description",
+      "confidence": 0.9,
+      "capturedOnUrl": "https://www.a-one.co.il/?s"
+    },
+    "publishDate": {
+      "source": "MANUAL",
+      "selector": ".__ai-publishDate",
+      "confidence": 0.85,
+      "capturedOnUrl": "https://www.a-one.co.il/?s"
+    },
+    "requirements": {
+      "source": "MANUAL",
+      "selector": ".__ai-requirements",
+      "confidence": 0.9,
+      "capturedOnUrl": "https://www.a-one.co.il/?s"
+    },
+    "externalJobId": {
+      "source": "MANUAL",
+      "selector": ".__ai-externalJobId",
+      "confidence": 0.95,
+      "capturedOnUrl": "https://www.a-one.co.il/?s"
+    },
+    "applicationInfo": {
+      "source": "MANUAL",
+      "selector": ".__ai-applicationInfo",
+      "confidence": 0.9,
+      "capturedOnUrl": "https://www.a-one.co.il/?s"
+    }
+  }
+}

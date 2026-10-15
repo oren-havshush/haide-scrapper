@@ -27,6 +27,7 @@ refused. This is how `listingUrls` gets back too: on a site whose Pages column i
 | Company | Status | Fields | setupScript chars | Pages | File |
 | --- | --- | --- | --- | --- | --- |
 | 4Chef | ACTIVE | 5 | 3777 | 1 | `4chef--fbqr3s` |
+| A-One Legal Recruitment | ACTIVE | 9 | 12716 | 1 | `a-one--g9b9ce` |
 | AGAS 3K | ACTIVE | 4 | 1049 | 1 | `agas--vfl5da` |
 | AIG | ACTIVE | 5 | 2625 | 1 | `aig--7dete3` |
 | Aerohandling | ACTIVE | 7 | 3693 | 1 | `aerohandling--jp4y4x` |
@@ -82,6 +83,7 @@ refused. This is how `listingUrls` gets back too: on a site whose Pages column i
 | TECH | ACTIVE | 9 | 6772 | 1 | `tech--mwc4v8` |
 | TOP BIT | ACTIVE | 9 | 5438 | 1 | `topbit--4nqve0` |
 | Tender Loving Care | ACTIVE | 4 | 1240 | 1 | `tl-care--cylsu8` |
+| Tikal | ACTIVE | 10 | 10057 | 1 | `tikalk--xxhoi7` |
 | ToTali | ACTIVE | 6 | 3739 | 1 | `totali--duk823` |
 | Top Match | ACTIVE | 6 | 759 | 1 | `topmatch--f67z41` |
 | Top Sky Line | ACTIVE | 5 | 3497 | 1 | `topskyline--wp6an1` |
@@ -122,6 +124,7 @@ refused. This is how `listingUrls` gets back too: on a site whose Pages column i
 | בית אקשטיין | ACTIVE | 5 | 7523 | 1 | `b-e--m6tkek` |
 | בית חולים אורטופדי אליון | ACTIVE | 4 | 1576 | 1 | `alyn--el7arg` |
 | בן & ג’ריס | ACTIVE | 5 | 1215 | 1 | `benjerry--12brnw` |
+| בנדא מגנטיק | ACTIVE | 9 | 7579 | 1 | `benda--vzie40` |
 | בנק הפועלים | ACTIVE | 6 | 4172 | 1 | `bankhapoalim--39tiof` |
 | בנק מזרחי טפחות | ACTIVE | 8 | 7119 | 1 | `mizrahi-tefahot--868pbk` |
 | ברק לעסקים | ACTIVE | 9 | 7945 | 1 | `barakl--145jlf` |
@@ -157,6 +160,7 @@ refused. This is how `listingUrls` gets back too: on a site whose Pages column i
 | חמת | ACTIVE | 7 | 3390 | 1 | `hamat-group--4ris60` |
 | טלכלל | ACTIVE | 6 | 4062 | 1 | `teleclalcc--n6k1yl` |
 | טמבור | ACTIVE | 5 | 2580 | 1 | `tambour--2nwjvz` |
+| טמפו משקאות | ACTIVE | 9 | 9016 | 1 | `adamtotal--ipuvxm` |
 | יזמקו | ACTIVE | 7 | 6661 | 1 | `yazamco--vwexjk` |
 | יעדים סוכנות לביטוח | ACTIVE | 5 | 1027 | 1 | `yeadim-bit--sh82rc` |
 | יעל גרופ | ACTIVE | 8 | 3283 | 1 | `yaelgroup--rdvk6e` |
@@ -216,6 +220,7 @@ refused. This is how `listingUrls` gets back too: on a site whose Pages column i
 | סמלת | ACTIVE | 8 | 4203 | 1 | `samelet--16q1rd` |
 | סנו | ACTIVE | 6 | 5045 | 1 | `sano--mh8veb` |
 | עמותת איכות בשיקום | ACTIVE | 4 | 686 | 1 | `eychut--6336w9` |
+| עמותת שלומית | ACTIVE | 6 | 4968 | 1 | `shlomit--tk5xop` |
 | עמיתים | ACTIVE | 9 | 6461 | 1 | `amitim--cjmqz5` |
 | ענבי ציון | ACTIVE | 7 | 4070 | 1 | `anvei-zion--o0cjxq` |
 | פוליכד | ACTIVE | 3 | 315 | 1 | `polycad--is4jw2` |
