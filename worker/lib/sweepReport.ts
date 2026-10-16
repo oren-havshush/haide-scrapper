@@ -577,7 +577,7 @@ export function needsAttention(
       !isListingRefusal(i.failureCategory) &&
       i.failureCategory !== CUT_OFF
     ) {
-      add(i, `${i.jobsBefore} listing(s) kept that a manual run would have deleted`);
+      add(i, `${i.jobsBefore} listing(s) kept (the run failed)`);
     }
     if (isStaleButGreen(i, sweep.startedAt)) {
       add(i, "reported success but its rows predate this sweep — the run never persisted");
@@ -914,7 +914,7 @@ export function renderSweepReport(
   lines.push("");
 
   lines.push("Gate");
-  lines.push(`  ${counters.listingsProtected} site(s) kept listings a manual run would have deleted`);
+  lines.push(`  ${counters.listingsProtected} site(s) kept listings through a failed run`);
   lines.push(`  ${counters.wouldHavePromoted} would have been promoted, ${counters.wouldHaveDemoted} demoted`);
   lines.push(`  ${counters.skippedConflict} skipped (an operator was already scraping)`);
   // Each withheld verdict by name, with the gate's reason: the counts alone

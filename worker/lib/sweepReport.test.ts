@@ -293,6 +293,26 @@ const ok = (n: number) =>
 }
 
 {
+  // Since H1 (2026-10-14) a manual run that fails keeps its listings too, so
+  // the kept listings are the failed run's, not something a manual run would
+  // have deleted.
+  const failed = item({
+    siteId: "k",
+    siteUrl: "https://kept.test",
+    outcome: "hard_failure",
+    failureCategory: "timeout",
+    jobsBefore: 30,
+    jobsAfter: 30,
+  });
+  const why = needsAttention(sweep(), [failed])[0]?.why ?? "";
+  assert(why.includes("30 listing(s) kept (the run failed)"), `the per-site line says the run failed (got ${JSON.stringify(why)})`);
+  const text = renderSweepReport(sweep(), [failed, ...ok(1)], { timeZone: TZ });
+  const gate = text.slice(text.indexOf("\nGate\n"));
+  assert(gate.includes("\n  1 site(s) kept listings through a failed run\n"), "the Gate line counts the sites that kept listings through a failed run");
+  assert(!text.includes("a manual run would have deleted"), "and no line says a manual run would have deleted them");
+}
+
+{
   const text = renderSweepReport(sweep({ status: "HALTED", haltReason: "3 consecutive hard failures" }), ok(4), {
     timeZone: TZ,
   });
