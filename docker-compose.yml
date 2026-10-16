@@ -108,6 +108,9 @@ services:
     # derived from the project name; pinning it only makes the reuse sayable.
     image: haide-scrapper-worker
     restart: unless-stopped
+    # Node is PID 1 and never reaps the Chromium children a scrape leaves; two
+    # nights filled the pid space (2026-10-16).
+    init: true
     depends_on:
       db:
         condition: service_healthy
@@ -146,6 +149,9 @@ services:
   sweep:
     image: haide-scrapper-worker
     restart: "no"
+    # Node is PID 1 and never reaps the Chromium children a scrape leaves; two
+    # nights filled the pid space (2026-10-16).
+    init: true
     depends_on:
       db:
         condition: service_healthy
