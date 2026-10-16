@@ -4546,3 +4546,355 @@ is added that the citing text does not say. Their status rows are in
   a token that only looks right (a hashed id still has digits) is a wrong value.
 - **Generalizes to:** a per-site constant that is really per-job is a template, filled from the row
   itself, never copied from a sibling.
+
+## LRN-COV-12 — a job board is not scraped, paid or free
+
+- **Date / site:** 2026-10-12 · jobspacepro.com/job-board (not created; 709 jobs from 428 employers, employers pay
+  890–2,990 ₪ per ad and Job Space writes it); 2026-10-13 · icpas.org.il FlowJobs (~210 ads) and aeai.org.il/job/
+  (86 jobs), both free association boards (not created); 2026-10-14 · merkazbar.org.il, the Bar Association's
+  placement unit (not created).
+- **Signal:** the ranking first kept icpas and aeai because "neither board charges employers". The employer behind
+  each ad is someone else, so the site publishes other employers' jobs under the board's name.
+- **Rule (owner, 2026-10-13; note approved 2026-10-14; matches the developer's standing rule):** a site that
+  publishes ads for many employers stays out, whether it charges or not. Final-list note
+  `לא רלוונטי - לוח דרושים`, at Phase 0. A recruiter or staffing agency posting its own clients' jobs is not a board.
+  The developer (2026-10-14): jobinfo was retired for the same reason.
+- **Job Space (owner, 2026-10-15):** the later decision of 2026-10-12 stands: a recruiter that sells ad publishing to
+  many named employers is a paid job board, and it stays out.
+- **Generalizes to:** every Phase 0 ranking. **Becomes:** `addsite3.md` §19.
+
+## LRN-COV-13 — a job with no text is stored and counted, not dropped
+
+- **Date / site:** 2026-10-13 · maof-hr.co.il (`cmv6tjwrj007j01s1ldwpr4de`): 798 of 2,455 jobs (32.5%) have no text on
+  the card or the job page, only a title and area tags; in a 60-job sample card and job page agreed every time.
+  Description fill was about 70%, above the 60% bar, so no gate saw them. 2026-10-14 fleet scan: 31 jobs on 15
+  ACTIVE sites with no text, 14 with placeholder text only.
+- **First rule (2026-10-13), withdrawn:** "a job with no text at all does not go in".
+- **Rule (developer, 2026-10-14):** of 35 text-less jobs checked on the page, most were our own selector misses with
+  full text on the page, so nothing is dropped by default. The worker counts them: a run warning
+  `text_less: N of M`, one fix item per site, Needs attention above 20%. A description that only repeats the title
+  counts as no text. A drop happens only on a site Shay flags text-less by nature through the fix command.
+- **Onboarding:** above 20% text-less in the dry run, read three of them on the site. Navigation or headings means the
+  item selector is wrong (the hub check); real postings with no text are flagged to Shay.
+- **Generalizes to:** every site. **Becomes:** `worker/lib/textlessSignal.test.ts`.
+
+## LRN-APPLY-14 — a dead application address keeps a site out
+
+- **Date / site:** 2026-10-12 · datapool.co.il /דרושים/ (not created).
+- **Signal:** the only apply address on both jobs was `frontdesk@datapoo.co.il` (a missing "l"). DNS over HTTPS
+  (Cloudflare and Google; NS, A, AAAA, MX, SOA, TXT) answered NXDOMAIN for every type; whois.isoc.org.il has no
+  record, so the domain is not registered. datapool.co.il itself has MX records. The Wayback Machine shows
+  `Frontdesk@datapool.co.il` until 2025-01-18; the typo came with the 2025-02-25 rewrite. Nothing was sent: no SMTP
+  probe, no test mail.
+- **Rule (owner, 2026-10-12; accepted 2026-10-14):** an application address that cannot receive mail is no apply
+  path; the site stays out and is not created, even when the right address is easy to guess (publish the employer's
+  content as printed). Final-list note `כתובת ההגשה אינה פעילה` (approved 2026-10-15; Data Pool went out as
+  `אין דרך הגשה` before it existed).
+- **Generalizes to:** email-apply sites. **Becomes:** `addsite3.md` §19.
+
+## LRN-SETUP-25 — postings that exist only as images are left out
+
+- **Date / site:** 2026-10-07 · lior-electric.co.il/דרושים/ (not created): 6 ads, one role across 6 branches, each a
+  single PNG with `alt=""` and the title inside the image. 2026-10-14 · globus-intr.co.il/דרושים/ (not created): 18
+  job ads and 3 referral posters, 720×720 images with empty alt; the titles are in the pixels only (0 hits in the
+  HTML, the render and REST).
+- **Signal:** Phase 0 counts text, so it saw 0 jobs; triage's top cluster was the product grid (Lior) or the menu
+  (globus). The owner found the ads in a browser.
+- **Rule (owner; accepted 2026-10-14):** a posting with no text to read is not onboarded; the site stays out with the
+  final-list note `משרות בתמונה בלבד` (approved 2026-10-15). Reading text out of images is not done.
+- **Generalizes to:** every Phase 0. **Becomes:** `addsite3.md` §19.
+
+## LRN-LOC-20 — no place in the ad and one printed company address: that address's city
+
+- **Date / site:** 2026-10-12 · codeoasis.com (`cmv52w36o002i01n30ryb2y8w`, הרצליה), sinopia.co.il
+  (`cmv53r1o5003a01n3lipw5yyh`, כפר סבא), rs-cpa.co.il (`cmv53vzlb003g01n3kr84e5da`, תל אביב-יפו),
+  kashtan.co.il job 1820 (`cmv5481sm003r01n3it6bvt3n`, באר יעקב); the agency exception on tzeadim.co.il
+  (`cmv5daaau000301oua4tv5x8v`).
+- **Signal:** on 2026-10-07 (aig.co.il) every job was kept Unknown although the company prints one office, and the
+  2026-10-12 cards followed that practice: small employers whose ads never say where the job is (a software
+  house, an IT services firm, an accounting firm, an electrical distributor) would have shipped every job with no
+  city.
+- **Rule (owner, 2026-10-12; accepted by the developer 2026-10-14):** when the ad names no place AND the company
+  prints only one address on its site, the job gets that address's city, a verbatim `city.csv` row. Not when the
+  ad hints at field work ("עבודת שטח", "אצל לקוחותינו ברחבי הארץ", installation or service at customers' sites) or
+  names another place: then the ad wins. Not for a recruitment agency: its jobs are at client companies (tzeadim's
+  one untagged job stays Unknown, not the agency's חדרה). A P.O. box is not an address; a second branch, a
+  branches page or a "סניפים" line means more than one address. Replaces the 2026-10-07 practice "a single office
+  does not place the jobs".
+- **Generalizes to:** small employers whose ads name no place. **Becomes:** `addsite3.md` §19.
+
+## LRN-LOC-21 — area tags: the city in the tag is the value; its region only when the tag names no city
+
+- **Date / site:** 2026-10-12 · l-m.co.il (`cmv5b3z2s009x01n3i8yg3dno`; 32 distinct area tags on 925 jobs, 4 of
+  them `city.csv` rows).
+- **Signal:** staffing boards tag each job with areas like "<city> והסביבה", "רחובות - נס ציונה", "חיפה והקריות",
+  "השרון". The 2026-10-11 rule mapped every compound tag to a region row only, and the Maof rule mapped
+  "<city> והסביבה" to the finest covering region. Both threw away the city the tag names, and overlapping regions
+  (אשדוד, קרית גת, חדרה) had no single answer.
+- **Rule (owner, 2026-10-12):** a city alone, or "<city> והסביבה", is that city; joined cities ("רחובות - נס ציונה")
+  are each city; a city plus a group or region ("חיפה והקריות") is the city and the region; a tag with no city
+  ("השרון", "ואדי ערה") is its region; a city that is not a `city.csv` row goes to the owner, never a spelling or a
+  neighbour (`LRN-LOC-15`). Not retroactive: b-e, nisha, bankhapoalim and elbitsystemscareer keep their maps.
+- **How (developer, 2026-10-14):** with the deployed `locationMap` key, a top-level config key that maps each tag to
+  a verbatim `city.csv` row or null; an unmapped tag is dropped with a warning. The map is how TAGS are read; it
+  does not stop a work-location cue line in the ad text from counting as before (four-case rule, `LRN-LOC-22`).
+- **Spelling traps seen:** "קריית גת" against the row "קרית גת"; "יקנעם" has no row ("יוקנעם" is the city);
+  "ק. שמונה"; "רמלה - לוד" has only the joint row "רמלה לוד".
+- **Generalizes to:** every site with area tags. **Becomes:** `addsite3.md` §19.
+
+## LRN-LOC-22 — location lines in the ad text: the hiring company's place counts, the candidate's does not
+
+- **Date / site:** 2026-10-13 · prologic.co.il (`cmv6ef5ng000001p3rv6s1sxo`; prologic-750: "המשרה בראש העין (פארק
+  אפק) ובאתרי הלקוחות בארץ").
+- **Rule (owner, 2026-10-13; accepted 2026-10-14):** on a site placed from the ad text (a recruiter with no tags),
+  a line placing the hiring company is the work place ("לחברת הייטק באזור הרצליה" → הרצליה; "לארגון ממשלתי
+  בירושלים" → ירושלים); "… ובאתרי הלקוחות בארץ" adds פריסה ארצית (prologic-750: ראש העין and פריסה ארצית). A line
+  about the candidate ("מגורים באזור המרכז – יתרון") or about visiting a client (Ready Group) places nothing.
+- **Fix:** cue patterns in the site script (a work or position line, "יושבים/הממוקמת ב", "ל(חברת|ארגון|משרד) …
+  ב<place>", a title ending "ב/ל<place>") through a closed table of verbatim `city.csv` rows.
+- **Generalizes to:** sites placed from the ad text. **Becomes:** `addsite3.md` §19.
+
+## LRN-LOC-23 — a "city + region" tag that names a region maps to the region only
+
+- **Date / site:** 2026-10-13 · experis.co.il (`cmv6nomaz000w01s15ihdksz3`; 217 jobs, 6 area tags) and
+  comblack.co.il (`cmv6mnrg7000l01s10dlfh3rc`, tag "ירושלים יו"ש").
+- **Signal:** experis tags every job with one of 6 regional buckets ("תל אביב והמרכז", "חיפה והצפון", "באר שבע
+  והדרום", "ירושלים והסביבה", "שפלה", "שרון"). Read literally, `LRN-LOC-21` puts Tel Aviv on every "תל אביב והמרכז"
+  job: of 130 such jobs, 68 name another city in the ad and only 10 name Tel Aviv.
+- **Rule (owner, 2026-10-13):** when a "city + region" tag is one of a site's fixed regional buckets, the city only
+  naming the region's centre, it maps to the region row only (experis: אזור מרכז, אזור צפון, אזור דרום, אזור
+  ירושלים, אזור שפלה, אזור השרון; comblack: ירושלים יו"ש → אזור ירושלים). A city from a work-location cue line
+  inside that region still refines it. How to tell: the tag list is small and covers the country region by region,
+  and most ads under the tag name a different city or none. A tag list of real places (l-m, 32 tags) keeps
+  `LRN-LOC-21`. Read through `locationMap`, as `LRN-LOC-21`.
+- **Generalizes to:** sites with regional tag buckets. **Becomes:** `addsite3.md` §19.
+
+## LRN-LOC-24 — tag plus ad text: the ad wins only when it names a city (Comblack)
+
+- **Date / site:** 2026-10-13 · comblack.co.il/career/ (`cmv6mnrg7000l01s10dlfh3rc`, 293 jobs).
+- **Rule (owner, 2026-10-13; accepted 2026-10-14 as a pattern for tag-plus-text sites):** the ad's
+  "ל<ארגון> ב<place>" line wins over the tag (as on Pelephone), but only when it names a city. A region word alone
+  ("במרכז", "בצפון", "בדרום", "בשפלה", "בשרון", "באיו"ש") keeps the tag. "באזור X" means X.
+- **Fix:** a closed table of `city.csv` rows; the rule reads the first 3 lines of the ad and skips field-work lines.
+  86 jobs moved from their tag, all on a named city (73 from ירושלים יו"ש to ירושלים); region-only lines kept the tag
+  (6 חיפה והקריות + "בצפון" jobs stay חיפה, אזור צפון). Live 293/293 matched the dry run, 0 values outside
+  `city.csv`, 0 Unknown.
+- **Generalizes to:** sites where a site rule lets the ad refine the tag. **Becomes:** `addsite3.md` §19.
+
+## LRN-AGE-5 — a sitemap lastmod is not a publish date (not adopted)
+
+- **Date / site:** 2026-10-13 · prologic.co.il (`cmv6ef5ng000001p3rv6s1sxo`).
+- **Signal:** the board prints no date anywhere, so every job published with no age badge and looked new. The
+  sitemap has a lastmod for 96 of 97 job pages (2018-12-31 … 2021-07-01, 28 distinct values, so not frozen,
+  `LRN-AGE-3`), and the owner decided on 2026-10-13 to store it as the job's date.
+- **Decision (developer, 2026-10-14): not adopted.** A last-edited time is not a publish date, and a wrong date is
+  a wrong value. A job with no printed date stays undated, with an unknown age bucket. A lastmod may still be named
+  as a staleness signal for the owner (`LRN-AGE-1`, `LRN-AGE-2`); it is never stored on a job.
+- **Open:** prologic's setupScript still injects the lastmod as `.__ai-publishDate`; not changed yet.
+- **Becomes:** `addsite3.md` §19.
+
+## LRN-CO-5 — a pooled category page that redirects home is an empty category, unless half or more do
+
+- **Date / site:** 2026-10-13 · prologic.co.il (`cmv6ef5ng000001p3rv6s1sxo`; hub `/High-tech-jobs`, 61 category
+  pages, 97 jobs).
+- **Signal:** the setupScript pools the 61 pages all-or-nothing (`LRN-CO-4`), which treats `r.redirected` as a
+  failure. One linked subcategory (`/help-desk`) answers 301 to the homepage every time, so under `LRN-CO-4` as
+  written that one dead link emptied the list every night.
+- **Rule (owner, 2026-10-13; accepted 2026-10-14):** a redirect to the homepage is a category with no jobs; if half
+  or more of the pages redirect home, the board has moved and the run fails as before. Every other failure (an
+  error, a redirect elsewhere, a page without the listing frame) still empties the list.
+- **Fix:** count homepage redirects in the fetch loop; `HOME * 2 >= pages` → fail. Tested both ways: an added 404
+  page → 0 items; 20 of 40 pages redirecting home → 0 items; the real set → 97. A dead category with a query
+  string redirects elsewhere (`/help-desk?z=7` → `/lp-desk`), so test with the real link.
+- **Generalizes to:** sites read from many category pages. **Becomes:** `addsite3.md` §19.
+
+## LRN-ID-15 — a job listed on several pages: emit every row, the worker collapses them
+
+- **Date / site:** 2026-10-13 · prologic.co.il (`cmv6ef5ng000001p3rv6s1sxo`; 61 pooled pages, 298 rows, 97 jobs).
+- **Signal:** the pooled setupScript dropped a job's repeat appearances with `seen[url]`. `verify-jobids` exits 2 on
+  any `seen[` in an addsite3 script, so the gate failed AFTER the first scrape had already activated the site; the
+  local dry run never runs that gate.
+- **Fix:** keep every row; `dedupeAndCapRawFields` (`worker/jobs/scrape.ts`) keys on the row's URL first and keeps
+  the first row. Checked: 298 rows → 97 after the worker's dedupe, identical to the earlier output; re-scrape 97
+  jobs, `verify-jobids` OK. Run `verify-jobids`' script checks on the local file before the first PUT.
+- **Generalizes to:** sites read from several pages. **Becomes:** `addsite3.md` §19; the `seen[` refusal is
+  `scripts/lib/verifyJobIds.ts`.
+
+## LRN-ID-16 — the site's number repeats and titles change: the WordPress address is the id
+
+- **Date / site:** 2026-10-12 · tzeadim.co.il/jobs/ (`cmv5daaau000301oua4tv5x8v`, a recruitment agency, 97 jobs).
+- **Signal:** the form's `job-id` repeats across jobs (1676, 2326 and 1117 each on two jobs; one empty), and titles
+  carry pay figures ("שכר 11K") that change, so neither is a stable key.
+- **Rule (owner, 2026-10-12; accepted 2026-10-14):** an ASCII WordPress address is the id: 62 jobs
+  (`/job/1810/`, `/job/2211-3/`) → `tzeadim-<address>`, 97/97 distinct. A Hebrew address gives no id: the 35 such
+  jobs get none and the worker builds `h-<hash>`. 5 of the 62 posts were reused for another job and keep their
+  address id. `verify-jobids` OK; QA's "id looks like slug" was expected.
+- **Open:** the mixed `tzeadim-` / `h-` prefixes fall under the prefix question open since 2026-09-23.
+- **Generalizes to:** WordPress boards with no printed number. **Becomes:** `addsite3.md` §19.
+
+## LRN-ID-17 — a number the site has reused for another job is not an id
+
+- **Date / site:** 2026-10-12 · kashtan.co.il (`cmv5481sm003r01n3it6bvt3n`).
+- **Signal:** the `data-jobid` the apply form sends was reused: the Wayback Machine shows 1820 on "מחסנאי" from
+  2023-01-03 to 2025-07-02, then on "מנהל/ת מכירות ופרויקטים" from 2025-08-08. It is not a post id (`?p=1820` is 404).
+  Used as the id, a stored job would turn into a different job under the same id.
+- **Rule (owner, 2026-10-12; accepted 2026-10-14):** no id; the worker hashes the title (h-5tpec3, h-8zuh5w).
+  Check an archived copy before trusting a short number that the site may recycle (`LRN-ID-12`).
+- **Generalizes to:** every site. **Becomes:** `addsite3.md` §19.
+
+## LRN-SETUP-24 — requirement lists with no heading move as one block when half the lines qualify
+
+- **Date / site:** 2026-10-13 · prologic.co.il (`cmv6ef5ng000001p3rv6s1sxo`; 97 jobs, 43 with no requirements
+  heading, about 20 in English).
+- **Signal:** the `LRN-SETUP-18` line test, applied line by line, split single lists between the two fields: lines
+  starting "ניסיון"/"ידע" moved and lines starting with a product name ("בארכיטקטורות Maven") stayed (622, 662, 960,
+  961, 881 and more). Its word list is Hebrew only, so English lists ("At least 4 years…") never moved.
+- **Fix (site script):** outside a requirements section, find the first requirement line; from there to the end of
+  the section, if at least half the lines qualify, the whole run moves. The role line (דרוש), pay and terms, scope
+  ("משרה מלאה") and the work-place line stay. English starts: years of experience, At least, Experience, Knowledge,
+  Familiarity, a degree (BSc/BA/MSc), Strong, Excellent, Ability, Proficiency, Background, Hands-on, Must,
+  Advantage. Known miss: prologic-675 (2 of 5 lines qualify) keeps its list in description.
+- **Decided (owner, 2026-10-14):** keep the half-the-lines rule and the English word list; do not lower the
+  threshold (a lower one moves more prose into requirements).
+- **Generalizes to:** sites with lists that have no heading. **Becomes:** `addsite3.md` §19.
+
+## LRN-WP-5 — WordPress's emoji script turns ✔ into images inside injected text
+
+- **Date / site:** 2026-10-13 · comblack.co.il (`cmv6mnrg7000l01s10dlfh3rc`); first seen 2026-10-12 on datapool.co.il
+  (not created).
+- **Signal:** at setupScript time the bullets are plain "✔️" (12/12 checks). `wp-emoji-release.min.js` (7.1.3) then
+  runs a MutationObserver over `document.body` and turns emoji in our injected spans into `<img class="emoji">`; a
+  text read drops them. It is a race: 73, 99, 87 and 88 jobs lost marks across four runs.
+- **Cause:** twemoji's `doNotParse` skips an element whose class contains `wp-exclude-emoji`, but never checks the
+  root node it is called on.
+- **Fix:** the class on the holder AND on every injected span. Break test: with a 3 s wait, the old script lost every
+  ✔ on 4 jobs, the new one kept 5–6 per job. Live: 1,288 ✔ in the dry run and 1,288 stored.
+- **Generalizes to:** WordPress sites with injected text. **Becomes:** `addsite3.md` §19.
+
+## LRN-FORM-14 — a hidden text box, or a field the page's script empties, is a spam trap
+
+- **Date / site:** 2026-10-13 · prologic.co.il (`cmv6ef5ng000001p3rv6s1sxo`; per-job form, POST `/sendjobscv`,
+  multipart).
+- **Signal:** the only visible field is the CV file. The form also carries a `message` textarea the page hides
+  (display:none) and an `emailHidden` input the page's own script sets to "" on load; the submit handler reads
+  neither. The worker knew only trap name patterns and off-screen fields, so it would have filled both, and a
+  filled trap loses the whole application.
+- **Rule (worker, deployed 2026-10-14):** a text-like field hidden by its own style (display none, visibility
+  hidden, opacity 0, 1px, far off-screen, aria-hidden with tabindex -1), or one the markup gave a value and a script
+  emptied, is a trap: never filled (left out of the stored form's fields). Radios, checkboxes and file inputs behind a styled control stay.
+  Known limit: an optional text box hidden until another answer reveals it ("other, please say") is left out too;
+  meet one on a real form, tell Shay.
+- **Generalizes to:** every apply form. **Becomes:** `worker/lib/formTraps.test.ts`.
+
+## LRN-FORM-15 — a site-level form was written over the per-job forms (fixed in the worker)
+
+- **Date / site:** 2026-10-13 · barakl.co.il (`cmv6neywj000q01s18p145jlf`) and experis.co.il
+  (`cmv6nomaz000w01s15ihdksz3`), caught before publishing; comblack.co.il (`cmv6mnrg7000l01s10dlfh3rc`).
+- **Signal:** both cards built a per-job apply blob in the setupScript AND kept a static `formCapture` as a
+  fallback. On a listing-only site the worker wrote the formCapture blob over every row's `_formData`; on a
+  two-step site the live detail capture did the same. As built, 171 barakl and 217 experis jobs would have
+  published a form that names no job.
+- **Workaround then:** `formCapture: null`, `_formData` mapped to the injected element.
+- **Fix (worker, deployed 2026-10-14):** a per-job `_formData` the setup script built is never overwritten, on
+  either path. `formCapture: null` is no longer needed on new sites; keeping it does no harm.
+- **Generalizes to:** sites with per-job forms. **Becomes:** `worker/lib/siteForm.test.ts`.
+
+## LRN-FORM-16 — a checkbox that only looks like reCAPTCHA is not a captcha
+
+- **Date / site:** 2026-10-12 · j-t.org.il/#/careers (`cmv538gfd002u01n3vglcp0q6`).
+- **Signal:** Phase 0 called it a reCAPTCHA v2 checkbox. It is React markup in app.js: a required checkbox with spans
+  "I'm not a robot", "reCAPTCHA" and "Privacy · Terms". `window.grecaptcha` is undefined, no request goes to
+  google.com/recaptcha or gstatic, and the submit FormData carries no token.
+- **Rule (accepted 2026-10-14):** with no captcha script and no token it is no protection; the form is captured as
+  usual. A real reCAPTCHA v3 on an apply form is a separate question (with the CTO).
+- **Generalizes to:** every apply form. **Becomes:** `addsite3.md` §19.
+
+## LRN-FORM-17 — store the request the page really sends, not the form's own action
+
+- **Date / site:** 2026-10-13 · comblack.co.il (`cmv6mnrg7000l01s10dlfh3rc`).
+- **Signal:** the visible "שלח" (`#submitdiv`; the real submit button is display:none) does not post the form. It
+  sends jQuery AJAX to `/wp-admin/admin-ajax.php` with `action=review_vote_ajax_request` and the fields renamed
+  (fname, email, phone, courceid, havercv, file), then redirects to /thank-you/.
+- **Fix (owner's pick, 2026-10-13):** the setupScript builds a per-job multipart blob in the page's FormData order,
+  with `courceid` set to the job's own value. All 293 live jobs post to admin-ajax with their own courceid. Never
+  submitted; the adminNote says so.
+- **Generalizes to:** sites with a script-driven submit. **Becomes:** `addsite3.md` §19.
+
+## LRN-FORM-18 — a listing page can hold a real apply form bound to one unrelated job
+
+- **Date / site:** 2026-10-13 · comblack.co.il (`cmv6mnrg7000l01s10dlfh3rc`).
+- **Signal:** the listing page /categories/all/ holds a crmform with `courceid=9575` and action `/position-25002/`,
+  another job. A fallback to it would stamp that job on every application.
+- **Fix:** first the selector `form#crmformnewid:has(input[name="phone9"])`, which matches job-page forms only (the
+  listing form has no phone field); finally `formCapture: null` with the per-job blobs (`LRN-FORM-17`).
+- **Generalizes to:** every site with a form on the listing page. **Becomes:** `addsite3.md` §19.
+
+## LRN-SPA-22 — Civi job pages nobody has opened are locked: one openPromo POST opens them
+
+- **Date / site:** 2026-10-13/14 · siel, app.civi.co.il board VJEZQHAV5J/10963 (`cmv7sz4b1000001t84li1agk8`);
+  2026-10-14 · or-ganize, board N42BXPBXDG/8958 (`cmv7zps4p006z01t8xzsrua7c`, 11 of 25 pages locked at Phase 0).
+- **Signal:** a never-opened `promo/id=N` page redirects server-side to `/?ERROR 404` ("הדף אינו קיים או שאין לך את
+  ההרשאה המתאימה") before domcontentloaded, so a job-page script cannot tell which job it is on. A fetch from inside
+  the loaded board does not avoid it (4 of 4). siel: 30 of 256 pages locked.
+- **Fix:** inside the listing script, one POST `command=openPromo&job_public_id=<id>&source_id=<src>&button=1` to the
+  board (what a visitor's click sends), then re-read with `cache: 'no-store'`. It opens the page for everyone, for
+  good: 30 unlocked with one POST each, 256/256 complete. A closed job redirects to `&fallback=1` instead and gets
+  no POST.
+- **Allowed (Shay, 2026-10-14), Civi boards only:** one POST per job, only while the page is still locked, so each job
+  gets at most one press ever, the same as the first candidate's click. It is the one exception to reading employer
+  boards only: no other action, and the site's adminNote says so. If Civi changes so that an opened page locks again,
+  stop and tell Shay.
+- **Generalizes to:** Civi boards. **Becomes:** `addsite3.md` §19.
+
+## LRN-SPA-23 — Civi: the whole board in one request, and the city filter gives each job's city
+
+- **Date / site:** 2026-10-13 · siel (`cmv7sz4b1000001t84li1agk8`, 255 jobs).
+- **Signal:** `&p=1&r=300` returns all 255 jobs in one response (`r` is the page size in libPROFList.js).
+  `&f=promocity,<city>` (the whole value through encodeURIComponent) filters by the job's city tag, one value per
+  request (`+` returns 0, `|` is ignored). Survey: every job tagged; 221 with one city, 27 with 2–19, 7 with every
+  city (nationwide); 53 distinct cities, all `city.csv` rows. Only 1 of 255 ads has a location line.
+- **Fix (owner, 2026-10-13):** locations from the tags, one GET per city, through `locationMap`; every-city jobs →
+  פריסה ארצית. A board with no tags (or-ganize: 113 towns queried, 0 hits) falls back to the ad's cue lines.
+- **Generalizes to:** Civi boards. **Becomes:** `addsite3.md` §19.
+
+## LRN-SPA-24 — hash-routed boards: read the site's own data file from the listing page
+
+- **Date / site:** 2026-10-12 · j-t.org.il/#/careers (`cmv538gfd002u01n3vglcp0q6`, 6 jobs).
+- **Signal:** job pages are hash routes (`#/careers/<tender id>`) drawn from `window.__JT_SITE_CONTENT__.he`, the same
+  data as GET `/wp-json/jt/v1/content?lang=he`. A hash change can leave the previous job's DOM in place, so visiting
+  routes one by one can read the wrong job.
+- **Fix:** listing-only (`pageFlow: []`); the setupScript reads the data once and injects each job. The developer
+  notes (2026-10-14) that j-t's jobs have no text today; this lesson is its fix.
+- **Generalizes to:** hash-routed apps. **Becomes:** `addsite3.md` §19.
+
+## LRN-LANG-3 — an English careers page is added only when it lists other jobs
+
+- **Date / site:** 2026-10-12 · codeoasis.com (`cmv52w36o002i01n30ryb2y8w`): /en/careers/ lists 4 jobs the Hebrew page
+  does not, both pages onboarded (11 jobs). sinopia.co.il (`cmv53r1o5003a01n3lipw5yyh`): the English page repeats the
+  same 2 roles, Hebrew page only. 2026-10-14 · krausz.com (`cmv88865k000a01lvtpw08edq`): 5 of 9 English rows repeat
+  Hebrew jobs and stay out, 4 were added.
+- **Rule (owner, 2026-10-12; accepted 2026-10-14):** compare the English page with the Hebrew one job by job; add it
+  only for jobs it alone lists, and name the twin in the adminNote.
+- **Generalizes to:** sites with an English careers page. **Becomes:** `addsite3.md` §19.
+
+## LRN-WAF-10 — Civi's firewall blocks fast reading: pace every request
+
+- **Date / site:** 2026-10-13 · siel (`cmv7sz4b1000001t84li1agk8`), during preparation.
+- **Signal:** a city survey (1,278 requests at concurrency 8) plus job-page reads (255 at concurrency 6), about 1,550
+  requests in 5 minutes, got AWS WAF "Human Verification" (HTTP 405) on all of app.civi.co.il from this IP. We caused
+  it; it had lifted later the same day.
+- **Fix:** 3 requests at a time, 200 ms apart, in the setupScript and in preparation alike; siel stops at 150 s with
+  `limits.setupScriptSeconds` 180 (about 371 requests a run). Watch: the script took 119.9 s on 2026-10-14 against
+  55 s at onboarding.
+- **Generalizes to:** Civi boards. **Becomes:** `addsite3.md` §19.
+
+## LRN-WRK-31 — a big-lane site becomes ACTIVE only by hand, never through a manual first scrape
+
+- **Date / site:** 2026-10-13 · maof-hr.co.il (`cmv6tjwrj007j01s1ldwpr4de`; REVIEW, big lane, 180-minute budget).
+- **Signal:** a scheduled run never changes a site's status. A manual scrape would promote it, but it ignores the
+  night's stop time, writes whatever it has at timeout, and with a 180-minute budget holds every other site.
+- **Rule (developer, 2026-10-13; confirmed 2026-10-14):** create, configure, wait for the night run, check, then set
+  ACTIVE by hand. Never a manual first scrape, not from the dashboard and not from the fix command. The morning report
+  will name a big-lane site that has never run and refuse manual scrapes on big-lane sites. Big-lane work is paused
+  until the CTO decides on Maof's reCAPTCHA apply form.
+- **Generalizes to:** big-lane sites. **Becomes:** `addsite3.md` §19.

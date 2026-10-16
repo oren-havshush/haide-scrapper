@@ -1,5 +1,5 @@
 {
-  "_exportedAt": "2026-10-13T08:16:50.887Z",
+  "_exportedAt": "2026-10-15T09:04:18.320Z",
   "_note": "Mirror of the live config. The DB is authoritative; the worker never reads this file. setupScript lives alongside in <slug>.setup.js.",
   "id": "cmv6ef5ng000001p3rv6s1sxo",
   "siteUrl": "https://www.prologic.co.il/High-tech-jobs",
@@ -11,10 +11,11 @@
     "_meta": {
       "lane": null,
       "limits": null,
-      "savedAt": "2026-10-13T08:12:59.679Z",
+      "savedAt": "2026-10-15T08:56:30.867Z",
       "pagination": null,
       "formCapture": null,
       "listingUrls": null,
+      "locationMap": null,
       "itemSelector": "#haide-jobs-root > div.haide-job",
       "acceptedGates": null,
       "minPublishDate": null,
@@ -56,12 +57,6 @@
     "description": {
       "source": "MANUAL",
       "selector": ".__ai-description",
-      "confidence": 0.9,
-      "capturedOnUrl": "https://www.prologic.co.il/High-tech-jobs"
-    },
-    "publishDate": {
-      "source": "MANUAL",
-      "selector": ".__ai-publishDate",
       "confidence": 0.9,
       "capturedOnUrl": "https://www.prologic.co.il/High-tech-jobs"
     },

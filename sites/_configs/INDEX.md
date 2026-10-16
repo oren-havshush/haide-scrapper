@@ -7,21 +7,27 @@ config that gets overwritten (a re-analyze clears `configLocked`, see
 
 **Keeping the mirror honest.** These files go stale silently, and a stale mirror is
 worse than a missing one — restoring from one that predates a fix reinstates the bug
-(`kahane` held a pre-2026-08-13 setupScript that flattened descriptions). Run the
-**full** export after any config change; never `--site <id>`, which regenerates this
-index from that one site and deletes every other row. Ignore `_exportedAt`-only diffs;
-anything else is drift that was never mirrored. Cite: `LRN-API-4`.
+(`kahane` held a pre-2026-08-13 setupScript that flattened descriptions). After a
+config change run `--site <id>` (that site's files only; this index is left alone) or
+the full export (which also regenerates this index). The export skips a file whose only
+change would be `_exportedAt`, and never overwrites a file from a newer config than the
+one it fetched. Anything else in a diff is drift that was never mirrored. Cite: `LRN-API-4`.
 
-Restore: PUT the JSON back to `/api/sites/{id}/config`, adding `setupScript` from
-the matching `.setup.js` as a top-level field — `saveSiteConfig` rebuilds `_meta`
-from top-level params, so a setupScript left only inside `_meta` is dropped.
-**`listingUrls` behaves the same way**: on a site whose Pages column is above 1 it
-must be re-sent as a TOP-LEVEL key too, or the restore silently turns a company's
-several listing pages back into one and stops publishing the rest.
+Restore: PUT to `/api/sites/{id}/config` a body built from the JSON, not the file as
+it is. The save is strict (H3, 2026-10-14): an unknown key is a 400 that names it,
+where it used to be dropped silently. So leave out the file's own keys (`_exportedAt`,
+`_note`, `id`, `siteUrl`, `companyName`, `status`, `setupScriptFile`); take
+`fieldMappings` without its `_meta`; send every key of `_meta` except `savedAt` at the
+TOP level, `setupScript` included (from the matching `.setup.js`) — `saveSiteConfig`
+rebuilds `_meta` from the top-level keys, and a `_meta` sent inside `fieldMappings` is
+refused. This is how `listingUrls` gets back too: on a site whose Pages column is above
+1, leaving it out turns a company's several listing pages back into one. Then run
+`addsite-batch.ts verify-config --expect-file <the body>`, which compares every key sent.
 
 | Company | Status | Fields | setupScript chars | Pages | File |
 | --- | --- | --- | --- | --- | --- |
 | 4Chef | ACTIVE | 5 | 3777 | 1 | `4chef--fbqr3s` |
+| A-One Legal Recruitment | ACTIVE | 9 | 12716 | 1 | `a-one--g9b9ce` |
 | AGAS 3K | ACTIVE | 4 | 1049 | 1 | `agas--vfl5da` |
 | AIG | ACTIVE | 5 | 2625 | 1 | `aig--7dete3` |
 | Aerohandling | ACTIVE | 7 | 3693 | 1 | `aerohandling--jp4y4x` |
@@ -61,7 +67,7 @@ several listing pages back into one and stops publishing the rest.
 | Nextcom Group | ACTIVE | 8 | 4808 | 1 | `nextcomgroup--nvjcxb` |
 | Novilis Software Systems | ACTIVE | 4 | 905 | 1 | `novilis--1u1jp3` |
 | ORS משאבי אנוש | ACTIVE | 8 | 7844 | 1 | `ors--1qkvyu` |
-| ORganize | ACTIVE | 7 | 11452 | 1 | `app-civi--srua7c` |
+| ORganize | ACTIVE | 7 | 11579 | 1 | `app-civi--srua7c` |
 | On Line | ACTIVE | 4 | 857 | 1 | `oneline--dqdxkb` |
 | One Technologies | ACTIVE | 4 | 2733 | 1 | `one1--m39rer` |
 | Personetics | ACTIVE | 5 | 1426 | 1 | `personetics--ovj4kr` |
@@ -77,6 +83,7 @@ several listing pages back into one and stops publishing the rest.
 | TECH | ACTIVE | 9 | 6772 | 1 | `tech--mwc4v8` |
 | TOP BIT | ACTIVE | 9 | 5438 | 1 | `topbit--4nqve0` |
 | Tender Loving Care | ACTIVE | 4 | 1240 | 1 | `tl-care--cylsu8` |
+| Tikal | ACTIVE | 10 | 10057 | 1 | `tikalk--xxhoi7` |
 | ToTali | ACTIVE | 6 | 3739 | 1 | `totali--duk823` |
 | Top Match | ACTIVE | 6 | 759 | 1 | `topmatch--f67z41` |
 | Top Sky Line | ACTIVE | 5 | 3497 | 1 | `topskyline--wp6an1` |
@@ -117,6 +124,7 @@ several listing pages back into one and stops publishing the rest.
 | בית אקשטיין | ACTIVE | 5 | 7523 | 1 | `b-e--m6tkek` |
 | בית חולים אורטופדי אליון | ACTIVE | 4 | 1576 | 1 | `alyn--el7arg` |
 | בן & ג’ריס | ACTIVE | 5 | 1215 | 1 | `benjerry--12brnw` |
+| בנדא מגנטיק | ACTIVE | 9 | 7579 | 1 | `benda--vzie40` |
 | בנק הפועלים | ACTIVE | 6 | 4172 | 1 | `bankhapoalim--39tiof` |
 | בנק מזרחי טפחות | ACTIVE | 8 | 7119 | 1 | `mizrahi-tefahot--868pbk` |
 | ברק לעסקים | ACTIVE | 9 | 7945 | 1 | `barakl--145jlf` |
@@ -152,6 +160,7 @@ several listing pages back into one and stops publishing the rest.
 | חמת | ACTIVE | 7 | 3390 | 1 | `hamat-group--4ris60` |
 | טלכלל | ACTIVE | 6 | 4062 | 1 | `teleclalcc--n6k1yl` |
 | טמבור | ACTIVE | 5 | 2580 | 1 | `tambour--2nwjvz` |
+| טמפו משקאות | ACTIVE | 9 | 9016 | 1 | `adamtotal--ipuvxm` |
 | יזמקו | ACTIVE | 7 | 6661 | 1 | `yazamco--vwexjk` |
 | יעדים סוכנות לביטוח | ACTIVE | 5 | 1027 | 1 | `yeadim-bit--sh82rc` |
 | יעל גרופ | ACTIVE | 8 | 3283 | 1 | `yaelgroup--rdvk6e` |
@@ -211,12 +220,13 @@ several listing pages back into one and stops publishing the rest.
 | סמלת | ACTIVE | 8 | 4203 | 1 | `samelet--16q1rd` |
 | סנו | ACTIVE | 6 | 5045 | 1 | `sano--mh8veb` |
 | עמותת איכות בשיקום | ACTIVE | 4 | 686 | 1 | `eychut--6336w9` |
+| עמותת שלומית | ACTIVE | 6 | 4968 | 1 | `shlomit--tk5xop` |
 | עמיתים | ACTIVE | 9 | 6461 | 1 | `amitim--cjmqz5` |
 | ענבי ציון | ACTIVE | 7 | 4070 | 1 | `anvei-zion--o0cjxq` |
 | פוליכד | ACTIVE | 3 | 315 | 1 | `polycad--is4jw2` |
 | פלאפון | ACTIVE | 9 | 7981 | 1 | `adamtotal--4fg0y7` |
 | פליינג קרגו | ACTIVE | 9 | 7325 | 1 | `flying-cargo--pyuhhh` |
-| פרולוג'יק | ACTIVE | 9 | 11165 | 1 | `prologic--6s1sxo` |
+| פרולוג'יק | ACTIVE | 8 | 10466 | 1 | `prologic--6s1sxo` |
 | פרופורציה | ACTIVE | 7 | 3530 | 1 | `proportsia--msnicc` |
 | פתרונות עדיפים-ביטוח | ACTIVE | 6 | 4489 | 1 | `adifim--26vavw` |
 | צ'יטה שליחויות | ACTIVE | 4 | 332 | 1 | `chitadelivery--xpwqf1` |

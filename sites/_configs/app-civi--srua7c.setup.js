@@ -1,7 +1,8 @@
 // or-ganize (Civi board N42BXPBXDG/8958), listing only. All cards in one request (&r=300); requirements and the
 // apply form from each job page. A job page nobody has opened yet redirects to "?ERROR 404": one POST openPromo
-// (what a visitor's click sends) opens it, then it is read again. A page still locked after two tries leaves the
-// job out of this run (no job ships without its requirements); a page that falls back to the board is a closed job.
+// (what a visitor's click sends) opens it, then it is read again; never more than one POST per job (Civi exception,
+// Shay 2026-10-14). A page still locked after that POST leaves the job out of this run (no job ships without its
+// requirements); a page that falls back to the board is a closed job.
 // The board carries no city tags; the place comes only from work-location cue lines, through a closed table.
 var SRC = '8958', BOARD = 'https://app.civi.co.il/promos/id=N42BXPBXDG&src=' + SRC;
 var T0 = Date.now(), STOP_MS = 75000;
@@ -104,8 +105,9 @@ if (location.pathname.indexOf('/promos/') === 0 && list && !document.querySelect
   await pool(items, async function (it) {
     var id = idOf(it), u = 'https://app.civi.co.il/promo/id=' + id + '&src=' + SRC;
     var pg = await readPage(u), tries = 0;
-    while (!pg.d.querySelector('#je-descr') && pg.url.indexOf('fallback=1') < 0 && tries < 2) {
-      tries++; await openIt(id); await sleep(tries === 1 ? 400 : 1500); pg = await readPage(u);
+    if (!pg.d.querySelector('#je-descr') && pg.url.indexOf('fallback=1') < 0) {
+      tries = 1; await openIt(id); await sleep(400); pg = await readPage(u);
+      if (!pg.d.querySelector('#je-descr')) { await sleep(1500); pg = await readPage(u); }
     }
     if (pg.url.indexOf('fallback=1') >= 0 && !pg.d.querySelector('#je-descr')) { stat.closed++; it.setAttribute('data-ai-page', 'closed'); return; }
     if (!pg.d.querySelector('#je-descr')) { stat.locked++; it.setAttribute('data-ai-page', 'locked'); return; }
