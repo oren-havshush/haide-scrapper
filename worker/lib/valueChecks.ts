@@ -153,7 +153,7 @@ export function jobKeyOf(j: { externalJobId: string | null; detailUrl: string | 
 }
 
 type BlobField = { name: string; label?: string; fieldType?: string };
-type ParsedBlob = { actionUrl?: string; actionAttribute?: string; pageUrl?: string; submitEndpoint?: string; fields?: BlobField[] };
+type ParsedBlob = { actionUrl?: string; actionAttribute?: string; pageUrl?: string; submitEndpoint?: string; fields?: BlobField[]; honeypots?: string[] };
 
 function parseBlob(raw: string | null | undefined): ParsedBlob | null {
   if (!raw) return null;
@@ -169,7 +169,9 @@ function parseBlob(raw: string | null | undefined): ParsedBlob | null {
     ? (b.fields as unknown[]).filter((x): x is BlobField => typeof (x as BlobField)?.name === "string")
     : undefined;
   const str = (k: string) => (typeof b[k] === "string" ? (b[k] as string) : undefined);
-  return { actionUrl: str("actionUrl"), actionAttribute: str("actionAttribute"), submitEndpoint: str("submitEndpoint"), fields };
+  // The trap fields a capture left out of fields, by name (formFields.ts, version 5).
+  const honeypots = Array.isArray(b.honeypots) ? (b.honeypots as unknown[]).filter((x): x is string => typeof x === "string" && x !== "") : undefined;
+  return { actionUrl: str("actionUrl"), actionAttribute: str("actionAttribute"), submitEndpoint: str("submitEndpoint"), fields, honeypots };
 }
 
 function finding(code: string, field: FixFieldName, detail: string, count: number, keys: string[]): ValueCheckFinding {
@@ -274,16 +276,20 @@ export function applyEndpointMismatch(blobs: FormBlobForChecks[]): CheckResult |
   return { warning: `apply_endpoint_mismatch: ${detail}`, finding: finding("apply_endpoint_mismatch", "APPLY", detail, keys.length, keys) };
 }
 
+/**
+ * A form with a honeypot: a field in fields named for one, or (R8) a trap the
+ * capture left out of fields and named in honeypots (CallBiz's "email").
+ */
 export function applyHoneypotField(blobs: FormBlobForChecks[]): CheckResult | null {
   const keys: string[] = [];
   const names = new Set<string>();
   for (const b of blobs) {
-    const fields = parseBlob(b.formData)?.fields;
-    if (!fields) continue;
-    const hit = fields.filter((f) => HONEYPOT_NAME.test(f.name));
+    const parsed = parseBlob(b.formData);
+    if (!parsed) continue;
+    const hit = [...(parsed.fields ?? []).filter((f) => HONEYPOT_NAME.test(f.name)).map((f) => f.name), ...(parsed.honeypots ?? [])];
     if (hit.length === 0) continue;
     keys.push(b.key);
-    for (const f of hit) names.add(f.name);
+    for (const n of hit) names.add(n);
   }
   if (keys.length === 0) return null;
   const detail = `${keys.length} job(s) captured a honeypot field (${[...names].sort().join(", ")}) — a submit must leave it empty`;

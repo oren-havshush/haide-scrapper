@@ -135,7 +135,7 @@ async function serveFixture(page: Page, file: string): Promise<string> {
     const live = await extractLiveFormData(page, { formSelector: "form.elementor-form" }, new Date("2026-10-01T09:30:00Z"));
     const liveBlob = live ? (JSON.parse(live) as Blob) : null;
     checkBlob(liveBlob, "live extractor", "live", FORM_EXTRACTOR_VERSION);
-    eq(liveBlob?.extractorVersion, 4, "live extractor: version 4, the required and label rules of 8ada1a1");
+    eq(liveBlob?.extractorVersion, 5, "live extractor: version 5, with the honeypots array (R8)");
     eq(liveBlob?.capturedAt ?? null, "2026-10-01T09:30:00.000Z", "live extractor: capturedAt is the scrape's time");
     eq(
       [liveBlob?.submitMechanism, liveBlob?.submitEndpoint, liveBlob?.submitAction],

@@ -207,8 +207,8 @@ eq(lilit.actionUrl, "https://www.lilit.co.il/forms/index/index/", "lilit: action
   const verified = complete({ ...lilitCapture, verifiedAction: LILIT_ACTION, formTag: "div" });
   eq(
     [verified.captureSource, verified.submitMechanism, verified.submitEndpoint, verified.actionAttribute, verified.extractorVersion],
-    ["static", "ajax", LILIT_ACTION, LILIT_ACTION, 4],
-    "lilit with verifiedAction and formTag div: static, ajax to that endpoint, version 4",
+    ["static", "ajax", LILIT_ACTION, LILIT_ACTION, 5],
+    "lilit with verifiedAction and formTag div: static, ajax to that endpoint, version 5",
   );
   const plain = complete(lilitCapture);
   eq([plain.submitMechanism, plain.submitEndpoint, plain.actionAttribute], ["unknown", undefined, ""], "the same capture without the keys: unknown, no endpoint");
@@ -333,7 +333,7 @@ const liveBlob = completeFormBlob(
 );
 const n3 = normalizeJobRecord({ title: "Driver", _formData: liveBlob }, { at: AT });
 eq(n3.applicationInfo, liveBlob, "with no explicit field, applicationInfo is the worker's _formData exactly");
-eq(JSON.parse(n3.applicationInfo).extractorVersion, 4, "a live capture through the normalizer keeps version 4");
+eq(JSON.parse(n3.applicationInfo).extractorVersion, 5, "a live capture through the normalizer keeps version 5");
 
 // --- a _formData a setup script wrote (owner, 2026-10-02) -------------------------------
 // advice.co.il maps _formData to an element its setup script injects; the blob

@@ -57,7 +57,7 @@ const MEDULLA: RawFieldDescriptor[] = [
   { tag: "input", type: "submit", name: "", label: "שלח", required: false },
 ];
 
-eq(FORM_EXTRACTOR_VERSION, 4, "the extractor version is 4 (3 = before the required and label rules of 8ada1a1; 2 = step 2a without mechanism and hash; 1 = the shape before step 2a)");
+eq(FORM_EXTRACTOR_VERSION, 5, "the extractor version is 5 (4 = before the honeypots array, R8; 3 = before the required and label rules of 8ada1a1; 2 = step 2a without mechanism and hash; 1 = the shape before step 2a)");
 
 // --- the fields --------------------------------------------------------------------
 {
@@ -91,14 +91,14 @@ eq(FORM_EXTRACTOR_VERSION, 4, "the extractor version is 4 (3 = before the requir
   const now = new Date("2026-10-01T09:30:00.000Z");
   const blob = JSON.parse(liveFormBlob({ actionUrl: "https://medulla.test/wp-admin/admin-ajax.php", method: "POST", enctype: "multipart/form-data" }, normalizeFormFields(MEDULLA), now));
   eq(blob.enctype, "multipart/form-data", "the form's enctype is kept");
-  eq([blob.capturedAt, blob.captureSource, blob.extractorVersion], ["2026-10-01T09:30:00.000Z", "live", 4], "a live capture is stamped live, now, version 4");
+  eq([blob.capturedAt, blob.captureSource, blob.extractorVersion], ["2026-10-01T09:30:00.000Z", "live", 5], "a live capture is stamped live, now, version 5");
   eq(blob.fields.length, 10, "with every field (6 hidden, name, one radio group, CV, city)");
   const noEnctype = JSON.parse(liveFormBlob({ actionUrl: "a", method: "GET", enctype: null }, [], now));
   assert(!("enctype" in noEnctype), "no enctype attribute, no enctype key — never a guessed default");
 
   const cfg = { formSelector: "form", actionUrl: "https://x.test/apply", method: "POST", enctype: "multipart/form-data", fields: [{ name: "a", label: "A", fieldType: "text", required: false, tagName: "input" }] };
   const st = JSON.parse(staticFormBlob(cfg, "2026-06-09T19:46:13.455Z") ?? "{}");
-  eq([st.capturedAt, st.captureSource, st.extractorVersion], ["2026-06-09T19:46:13.455Z", "static", 4], "the static blob carries the config's savedAt, static, version 4");
+  eq([st.capturedAt, st.captureSource, st.extractorVersion], ["2026-06-09T19:46:13.455Z", "static", 5], "the static blob carries the config's savedAt, static, version 5");
   eq([st.actionUrl, st.method, st.enctype, st.fields.length], ["https://x.test/apply", "POST", "multipart/form-data", 1], "and the saved form");
   eq(staticFormBlob({ ...cfg, fields: [] }, "x"), null, "no saved fields, no static blob — as before");
 }

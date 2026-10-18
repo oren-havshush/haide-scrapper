@@ -9,7 +9,7 @@
 // wraps named functions in __name(...) calls, which do not exist in the page.
 
 import type { Page } from "playwright";
-import { liveFormBlob, normalizeFormFields, type RawFieldDescriptor } from "./formFields";
+import { liveFormBlob, normalizeFormFieldsWithTraps, type RawFieldDescriptor } from "./formFields";
 
 type PageForm = {
   actionUrl: string;
@@ -75,6 +75,8 @@ export async function extractLiveFormData(
       multiple?: boolean;
       options?: Array<{ value: string; label: string }>;
       hpHint: string;
+      placeholder: string;
+      nearLabel: string;
       offscreen: boolean;
       styleHidden: boolean;
       emptiedOnLoad: boolean;
@@ -133,12 +135,45 @@ export async function extractLiveFormData(
         ((cs.position === "absolute" || cs.position === "fixed") &&
           ((parseFloat(cs.left) || 0) <= -1000 || (parseFloat(cs.top) || 0) <= -1000)) ||
         (el.getAttribute("aria-hidden") === "true" && el.getAttribute("tabindex") === "-1");
+      // Or hidden by an ancestor below the form (R8: CallBiz's 1px clipped
+      // span.cf7apps-honeypot-wrap around a full-size input): display none,
+      // visibility hidden while its own parent is visible, a box of 1px or less
+      // with overflow hidden, or clipped. The form itself is not judged: a form
+      // in a closed modal keeps its fields. The ancestors' classes and ids join
+      // the trap-word hint. Inline, no helper (keepNames).
+      let ancestorHidden = false;
+      let ancestorHint = "";
+      for (let a = htmlEl.parentElement; a && a !== form; a = a.parentElement) {
+        ancestorHint += ` ${a.id || ""} ${typeof a.className === "string" ? a.className : ""}`;
+        if (ancestorHidden) continue;
+        const acs = getComputedStyle(a);
+        const aParentVisibility = a.parentElement ? getComputedStyle(a.parentElement).visibility : "visible";
+        const tiny =
+          (/px$/.test(acs.width) && parseFloat(acs.width) <= 1) || (/px$/.test(acs.height) && parseFloat(acs.height) <= 1);
+        const clip = acs.clip.replace(/\s+/g, "");
+        const clipPath = acs.clipPath.replace(/\s+/g, "");
+        ancestorHidden =
+          acs.display === "none" ||
+          (acs.visibility === "hidden" && aParentVisibility !== "hidden") ||
+          (tiny && acs.overflow.includes("hidden")) ||
+          clip === "rect(0px,0px,0px,0px)" ||
+          clipPath === "inset(50%)" ||
+          clipPath === "inset(100%)";
+      }
+      // The text of a <label> beside the field in its own parent (CallBiz's
+      // "Please leave this field empty."), for the leave-empty rule.
+      let nearLabel = "";
+      if (htmlEl.parentElement) {
+        for (const sib of Array.from(htmlEl.parentElement.children)) {
+          if (sib !== htmlEl && sib.tagName === "LABEL") nearLabel += " " + (sib.textContent || "");
+        }
+      }
       // The markup gave it a value and a script emptied it on load (H4).
       const emptiedOnLoad =
         (tag === "input" || tag === "textarea") &&
         (tag === "textarea" ? (el.textContent || "").trim() !== "" : (el.getAttribute("value") || "").trim() !== "") &&
         (el as HTMLInputElement).value === "";
-      const hpHint = `${name} ${htmlEl.id || ""} ${typeof htmlEl.className === "string" ? htmlEl.className : ""}`;
+      const hpHint = `${name} ${htmlEl.id || ""} ${typeof htmlEl.className === "string" ? htmlEl.className : ""}${ancestorHint}`;
       const groupLabel =
         type === "radio"
           ? (htmlEl.closest("fieldset")?.querySelector("legend")?.textContent || "").replace(/\s+/g, " ").trim()
@@ -173,8 +208,10 @@ export async function extractLiveFormData(
             }
           : {}),
         hpHint,
+        placeholder: el.getAttribute("placeholder") || "",
+        nearLabel: nearLabel.replace(/\s+/g, " ").trim(),
         offscreen,
-        styleHidden,
+        styleHidden: styleHidden || ancestorHidden,
         emptiedOnLoad,
         groupLabel,
       });
@@ -183,5 +220,6 @@ export async function extractLiveFormData(
   }, cfg);
 
   if (!found) return null;
-  return liveFormBlob(found, normalizeFormFields(found.descriptors), now);
+  const { fields, honeypots } = normalizeFormFieldsWithTraps(found.descriptors);
+  return liveFormBlob(found, fields, now, honeypots);
 }

@@ -19,6 +19,7 @@
     var method = (form.getAttribute('method') || 'GET').toUpperCase();
     var enctype = form.getAttribute('enctype');
     var fields = [];
+    var honeypots = [];
     var radios = {};
     var els = form.querySelectorAll('input, select, textarea');
     for (var i = 0; i < els.length; i++) {
@@ -29,7 +30,39 @@
       var name = el.getAttribute('name') || '';
       var style = (el.getAttribute('style') || '').toLowerCase();
       var isOffscreen = style.indexOf('-99999') !== -1 || style.indexOf('display:none !important') !== -1 || style.indexOf('display: none !important') !== -1;
-      var isHpName = /\b(hp[_-]|honeypot|maspik|nickname|malkodet)/i.test(name + ' ' + (el.id || '') + ' ' + (el.className || ''));
+      // The ancestors below the form: their classes and ids join the trap-word
+      // hint, and one that hides the field makes it style-hidden (R8: CallBiz's
+      // 1px clipped span.cf7apps-honeypot-wrap; worker/lib/formExtract.ts).
+      var ancestorHint = '';
+      var ancestorHidden = false;
+      for (var a = el.parentElement; a && a !== form; a = a.parentElement) {
+        ancestorHint += ' ' + (a.id || '') + ' ' + (typeof a.className === 'string' ? a.className : '');
+        if (ancestorHidden) continue;
+        var acs = window.getComputedStyle(a);
+        var apv = a.parentElement ? window.getComputedStyle(a.parentElement).visibility : 'visible';
+        var tiny = (/px$/.test(acs.width) && parseFloat(acs.width) <= 1) || (/px$/.test(acs.height) && parseFloat(acs.height) <= 1);
+        var aclip = (acs.clip || '').replace(/\s+/g, '');
+        var aclipPath = (acs.clipPath || '').replace(/\s+/g, '');
+        ancestorHidden =
+          acs.display === 'none' ||
+          (acs.visibility === 'hidden' && apv !== 'hidden') ||
+          (tiny && (acs.overflow || '').indexOf('hidden') !== -1) ||
+          aclip === 'rect(0px,0px,0px,0px)' ||
+          aclipPath === 'inset(50%)' ||
+          aclipPath === 'inset(100%)';
+      }
+      var isHpName = /\b(hp[_-]|honeypot|maspik|nickname|malkodet)/i.test(name + ' ' + (el.id || '') + ' ' + (el.className || '') + ancestorHint);
+      // A label beside the field, or its placeholder, asking that it be left
+      // empty marks a trap (R8: "Please leave this field empty.").
+      var nearLabel = '';
+      if (el.parentElement) {
+        var sibs = el.parentElement.children;
+        for (var si = 0; si < sibs.length; si++) if (sibs[si] !== el && sibs[si].tagName === 'LABEL') nearLabel += ' ' + (sibs[si].textContent || '');
+      }
+      var askText = (nearLabel + ' ' + (el.getAttribute('placeholder') || '')).replace(/\s+/g, ' ');
+      var asksEmpty =
+        /leave (this|the) field (empty|blank)|do not fill|don't fill/i.test(askText) ||
+        ['השאר שדה זה ריק', 'השאירו שדה זה ריק', 'יש להשאיר ריק', 'אין למלא', 'לא למלא', 'נא לא למלא'].some(function (h) { return askText.indexOf(h) !== -1; });
       // A text-like field hidden by its own style, or emptied by a script on
       // load, is a trap too (H4; worker/lib/formFields.ts TEXT_LIKE). One the
       // page gave a value carries the job: it is kept with the value, marked
@@ -52,9 +85,13 @@
           ((cs.position === 'absolute' || cs.position === 'fixed') &&
             ((parseFloat(cs.left) || 0) <= -1000 || (parseFloat(cs.top) || 0) <= -1000)) ||
           (el.getAttribute('aria-hidden') === 'true' && el.getAttribute('tabindex') === '-1');
-        isTrap = emptied || (styleHidden && !prefilled);
+        isTrap = emptied || ((styleHidden || ancestorHidden) && !prefilled) || asksEmpty;
       }
-      if ((isOffscreen || isHpName || isTrap) && type !== 'hidden') continue;
+      if ((isOffscreen || isHpName || isTrap) && type !== 'hidden') {
+        // Left out of fields, and named in honeypots (R8).
+        if (name && honeypots.indexOf(name) === -1) honeypots.push(name);
+        continue;
+      }
       var label = '';
       if (el.id) {
         var safeId = el.id.replace(/"/g, '\\"');
@@ -103,6 +140,7 @@
     var schema = { actionUrl: action, actionAttribute: actionAttribute, pageUrl: pageUrl, method: method };
     if (enctype) schema.enctype = enctype;
     schema.fields = fields;
+    schema.honeypots = honeypots;
     schema.capturedAt = new Date().toISOString();
     schema.captureSource = 'script';
     schema.extractorVersion = EXTRACTOR_VERSION;

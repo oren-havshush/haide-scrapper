@@ -15,19 +15,36 @@
 import { completeFormBlob } from "./formShape";
 
 /**
- * 4 = this shape, with required read from the attribute, aria-required or
- * data-validate, and the label fallback for shared ids and reused labels
- * (8ada1a1). 3 = the same shape before those rules, with actionAttribute,
+ * 5 = this shape, with a top-level honeypots array: the names of the trap
+ * fields left out of fields, so a consumer that reads the live form knows them
+ * (CallBiz's Contact Form 7 "email", 2026-10-18). Also the hidden-ancestor,
+ * wrapper-word and leave-empty label rules, and a text field the page filled
+ * kept with its value, marked prefilled. 4 = the shape before, with required
+ * read from the attribute, aria-required or data-validate, and the label
+ * fallback for shared ids and reused labels (8ada1a1). 3 = the same shape before those rules, with actionAttribute,
  * pageUrl, submitMechanism and shapeHash (worker/lib/formShape.ts). 2 = step
  * 2a without them. 1 = the shape before step 2a (no values, no stamps).
  */
-export const FORM_EXTRACTOR_VERSION = 4;
+export const FORM_EXTRACTOR_VERSION = 5;
 
 /**
  * The honeypot name rule, identical to the capture template's. "malkodet"
  * is Hebrew for a trap (מלכודת; Comblack's malkodetdvash, H4).
  */
 export const HONEYPOT_NAME = /\b(hp[_-]|honeypot|maspik|nickname|malkodet)/i;
+
+/**
+ * A label or placeholder telling a person to leave the field alone is a trap's
+ * (CallBiz: "Please leave this field empty."). The Hebrew forms are matched as
+ * substrings: \b does not fire after a Hebrew letter.
+ */
+const LEAVE_EMPTY_LATIN = /leave (this|the) field (empty|blank)|do not fill|don't fill/i;
+const LEAVE_EMPTY_HEBREW = ["השאר שדה זה ריק", "השאירו שדה זה ריק", "יש להשאיר ריק", "אין למלא", "לא למלא", "נא לא למלא"];
+
+export function asksToLeaveEmpty(text: string | null | undefined): boolean {
+  const t = (text ?? "").replace(/\s+/g, " ").trim();
+  return t !== "" && (LEAVE_EMPTY_LATIN.test(t) || LEAVE_EMPTY_HEBREW.some((h) => t.includes(h)));
+}
 
 const SKIPPED_TYPES = new Set(["submit", "button", "image", "reset"]);
 
@@ -50,15 +67,24 @@ export type RawFieldDescriptor = {
   accept?: string | null;
   multiple?: boolean;
   options?: Array<{ value: string; label: string }>;
-  /** name + id + class, for the honeypot name rule. */
+  /**
+   * name + id + class, and the classes and ids of its ancestors up to the form
+   * (CallBiz's span.cf7apps-honeypot-wrap), for the honeypot name rule.
+   */
   hpHint?: string;
+  /** The element's placeholder attribute, for the leave-empty rule. */
+  placeholder?: string;
+  /** The text of a <label> beside the element in its own parent, for the leave-empty rule. */
+  nearLabel?: string;
   /** Styled off-screen the way honeypots are. */
   offscreen?: boolean;
   /**
    * Hidden by its own style (H4): display none, visibility hidden while its
    * parent is visible, opacity 0, a width or height of 1px or less, placed far
    * off-screen, or aria-hidden with tabindex -1 (Prologic's message and
-   * emailHidden).
+   * emailHidden). Or by an ancestor below the form (R8, CallBiz's 1 px clipped
+   * wrapper): display none, visibility hidden, a box of 1px or less with
+   * overflow hidden, or clipped (clip rect(0,0,0,0), clip-path inset(50%|100%)).
    */
   styleHidden?: boolean;
   /** The markup gave it a value and a script emptied it before the capture (H4). */
@@ -82,7 +108,17 @@ export type FormField = {
 };
 
 export function normalizeFormFields(descriptors: RawFieldDescriptor[]): FormField[] {
+  return normalizeFormFieldsWithTraps(descriptors).fields;
+}
+
+/**
+ * The fields to fill, and the names of the traps left out of them. A blob
+ * carries both (honeypots): traps stay out of fields, but a consumer that
+ * reads the live form must know which of its fields are traps.
+ */
+export function normalizeFormFieldsWithTraps(descriptors: RawFieldDescriptor[]): { fields: FormField[]; honeypots: string[] } {
   const out: FormField[] = [];
+  const honeypots: string[] = [];
   const radioGroups = new Map<string, FormField>();
   for (const d of descriptors) {
     const type = (d.type || "").toLowerCase();
@@ -95,11 +131,17 @@ export function normalizeFormFields(descriptors: RawFieldDescriptor[]): FormFiel
     // fields to fill, as a honeypot always was. A hidden input never is. The
     // style rule (H4) judges only a text-like field with no value; one a
     // script emptied on load is a trap either way.
+    // A label or placeholder asking that the field be left empty is a trap's
+    // whatever its style (R8).
     const isHoneypot =
       d.offscreen === true ||
       HONEYPOT_NAME.test(d.hpHint ?? d.name) ||
+      (TEXT_LIKE.has(type) && (asksToLeaveEmpty(d.label) || asksToLeaveEmpty(d.placeholder) || asksToLeaveEmpty(d.nearLabel))) ||
       (TEXT_LIKE.has(type) && (d.emptiedOnLoad === true || (d.styleHidden === true && !prefilled)));
-    if (isHoneypot && type !== "hidden") continue;
+    if (isHoneypot && type !== "hidden") {
+      if (d.name && !honeypots.includes(d.name)) honeypots.push(d.name);
+      continue;
+    }
 
     if (type === "radio") {
       const group = radioGroups.get(d.name);
@@ -135,7 +177,7 @@ export function normalizeFormFields(descriptors: RawFieldDescriptor[]): FormFiel
     if (d.options) field.options = d.options;
     out.push(field);
   }
-  return out;
+  return { fields: out, honeypots };
 }
 
 /**
@@ -154,12 +196,15 @@ export function liveFormBlob(
   },
   fields: FormField[],
   now: Date,
+  /** The trap fields left out of `fields`, by name (normalizeFormFieldsWithTraps). */
+  honeypots: string[] = [],
 ): string {
   const blob = JSON.stringify({
     actionUrl: form.actionUrl,
     method: form.method,
     ...(form.enctype ? { enctype: form.enctype } : {}),
     fields,
+    honeypots,
     capturedAt: now.toISOString(),
     captureSource: "live",
     extractorVersion: FORM_EXTRACTOR_VERSION,
@@ -188,11 +233,14 @@ export function staticFormBlob(formCapture: unknown, savedAt: string | null): st
   const fields = Array.isArray(fc.fields) ? fc.fields : [];
   if (fields.length === 0) return null;
   const enctype = typeof fc.enctype === "string" && fc.enctype ? fc.enctype : null;
+  // The capture's trap names, passed through when it carries them (R8).
+  const honeypots = Array.isArray(fc.honeypots) ? fc.honeypots.filter((n): n is string => typeof n === "string" && n !== "") : null;
   return JSON.stringify({
     actionUrl: (fc.actionUrl as string) || "",
     method: (fc.method as string) || "GET",
     ...(enctype ? { enctype } : {}),
     fields,
+    ...(honeypots ? { honeypots } : {}),
     capturedAt: savedAt,
     captureSource: "static",
     extractorVersion: FORM_EXTRACTOR_VERSION,
