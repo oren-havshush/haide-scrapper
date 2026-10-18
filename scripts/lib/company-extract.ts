@@ -1117,9 +1117,15 @@ const WIDGET_TOKEN_PREFIXES = [
   "chatbot", "whatsapp", "facebook", "instagram", "linkedin", "tiktok",
   "youtube", "twitter", "social",
 ];
-/** A token starting with any of these is a carousel or a strip of other brands. */
+/**
+ * A token starting with any of these is a carousel or a strip of other brands.
+ * "brands", "customers" and "logos" (developer's report 2026-10-18, item 3: a
+ * customer's or a brand's logo from a strip won). "brands", not "brand": a
+ * header's own logo sits in "navbar-brand".
+ */
 const CAROUSEL_TOKEN_PREFIXES = [
   "swiper", "slick", "owl", "carousel", "slider", "gallery", "marquee", "clients", "partners",
+  "brands", "customers", "logos",
   "לקוחות", "שותפים",
 ];
 /** A token starting with any of these is a page control's icon. */
@@ -1206,6 +1212,11 @@ export function inlineLogoRejection(logo: InlineLogo, pageUrl: string): string |
 const SILHOUETTE_MIN_SHARE = 0.97;
 const SILHOUETTE_MAX_CHANNEL = 34;
 
+/** An <img> narrower than this (width / height) is a portrait, not a logo. */
+const IMG_MIN_ASPECT = 0.5;
+/** 6 + 2 (header) + 6 = 14 before the same-domain 3: above JSON-LD (10 + 3) and inline SVG (12). */
+const HEADER_HOME_BONUS = 6;
+
 export function collectLogoCandidates(
   harvest: PageHarvest,
   org: OrganizationLd | null,
@@ -1282,8 +1293,15 @@ export function collectLogoCandidates(
     // The same placement rules as an inline SVG: cellcom.co.il's TV-channel
     // carousel image had "logos" only in its file name and won.
     if (logoPlacementRejection(img, harvest.url) !== null) continue;
+    // Portrait, narrower than 1:2: a person's photo or a stock image, not a
+    // mark (developer's report 2026-10-18, item 3).
+    if (img.width > 0 && img.height > 0 && img.width / img.height < IMG_MIN_ASPECT) continue;
     let score = 6;
     if (img.inHeader) score += 2;
+    // The header or nav logo that links home is the page's own mark, and wins
+    // over every other candidate, the JSON-LD claim included (item 3: a
+    // group's logo and a brand's won).
+    if (img.inHeader && linksHome(img, harvest.url)) score += HEADER_HOME_BONUS;
     // Tracking pixels and spacers dressed up as logos.
     if (img.width > 0 && img.width < 32) score -= 6;
     add(img.src, "header-img", score);
