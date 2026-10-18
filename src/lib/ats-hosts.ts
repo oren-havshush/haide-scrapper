@@ -55,6 +55,10 @@ const ATS_HOSTS: readonly RegExp[] = [
   // hosts employers' Hunter boards. A vendor is never the employer.
   /(^|\.)niloos\.ai$/i,
   /(^|\.)hunter-edge\.me$/i,
+  // TalentFlow, a recruitment vendor whose boards employers embed (developer's
+  // report 2026-10-18, item 3: mega-talents). Unlisted, a TalentFlow board
+  // would have given TalentFlow's identity as the employer's.
+  /(^|\.)talentflow\.co\.il$/i,
 ];
 
 export function isAtsHost(host: string): boolean {

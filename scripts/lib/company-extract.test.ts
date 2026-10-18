@@ -106,6 +106,14 @@ function testHomepageDerivation() {
   for (const host of ["notniloos.ai", "niloos.ai.example.com", "hunter-edge.me.example.com", "nothunter-edge.me"]) {
     assert.equal(isAtsHost(host), false, `${host} is not the vendor`);
   }
+  // TalentFlow (developer's report 2026-10-18, item 3): a vendor, never the employer.
+  for (const host of ["talentflow.co.il", "www.talentflow.co.il", "mega.talentflow.co.il"]) {
+    assert.equal(isAtsHost(host), true, `${host} is a vendor host`);
+  }
+  assert.deepEqual(deriveHomepageCandidates("https://mega.talentflow.co.il/jobs"), [], "talentflow.co.il is the vendor's, not the employer's");
+  for (const host of ["nottalentflow.co.il", "talentflow.co.il.example.com"]) {
+    assert.equal(isAtsHost(host), false, `${host} is not the vendor`);
+  }
   assert.equal(
     homepageFromLinks([{ href: "https://www.smoove.io/he/", text: "smoove", inChrome: true }], "https://lp.vp4.me/foma"),
     null,
