@@ -10,7 +10,7 @@ import { capItems, MAX_EXTRACTED_ITEMS } from "../lib/itemCap";
 import { FLEET_LIMITS, pageCap, readSiteLimits, resolveLimits, type ResolvedLimits } from "../lib/siteLimits";
 import { CUT_OFF, cutOffMessage, cutOffWarning, readStopAt, runDeadline } from "../lib/bigLane";
 import { AJAX_MAX_CONCURRENCY, ajaxWalk, type AjaxPaginationConfig } from "../lib/ajaxWalk";
-import { fillRowFormTemplate, formTemplateWarnings } from "../lib/formTemplate";
+import { fillRowApplicationInfo, fillRowFormTemplate, formTemplateWarnings } from "../lib/formTemplate";
 import { fallbackApplyEmailOf, siteWideApplyEmails, siteWideApplyEmailWarnings } from "../lib/applyEmail";
 import { ITEM_CAP } from "../lib/sweepSelection";
 import { scriptCutOffRefusal } from "../lib/scriptCutOff";
@@ -3193,6 +3193,8 @@ function buildJobRows(args: {
     // row holds (worker/lib/contentHash.ts).
     const title = normalized.title || "Untitled";
     const description = normalized.description || null;
+    // The job this row's form templates are filled from: its persisted id, title and URL.
+    const templateJob = { externalJobId: persistedExternalJobId || null, title, url: normalized.url || null };
 
     return {
       title,
@@ -3205,7 +3207,13 @@ function buildJobRows(args: {
       publishDate: normalized.publishDate || null,
       deadline: normalized.deadline || null,
       ageBucket: computeAgeBucket(normalized.publishDate),
-      applicationInfo: normalized.applicationInfo || null,
+      // The same fill as _formData below, so no {{job.<token>}} reaches the column.
+      applicationInfo: fillRowApplicationInfo(
+        normalized.applicationInfo || null,
+        normalized.rawFields,
+        templateJob,
+        args.formTemplateTally,
+      ),
       detailUrl: normalized.url || null,
       // Step 2a: every stored _formData carries capturedAt, captureSource and
       // extractorVersion. One from an older setupScript's template, or carried

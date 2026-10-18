@@ -111,7 +111,7 @@ function runView(descriptions: string[]) {
   const start = src.indexOf("function buildJobRows(");
   const body = src.slice(start, src.indexOf("\n}\n", start));
   assert(/args\.applyEmailWarnings\.push\(\s*\.\.\.siteWideApplyEmailWarnings\(siteWideApplyEmails\(fallbackEmails\), args\.records\.length\),?\s*\)/.test(body), "buildJobRows warns on the run's fallback emails");
-  assert(/applicationInfo: normalized\.applicationInfo \|\| null,/.test(body), "and the row keeps the normalizer's value");
+  assert(/applicationInfo: fillRowApplicationInfo\(\s*normalized\.applicationInfo \|\| null,/.test(body), "and the row keeps the normalizer's value");
   assert(!/siteWide\.has\(/.test(body), "nothing nulls a site-wide address");
   assert(/applyEmailWarnings,\n\s*\}\);/.test(src.slice(src.indexOf("const rows = buildJobRows({"))), "the run passes its warning list");
   assert(/scrapeWarnings\.push\(\.\.\.applyEmailWarnings\);/.test(src), "the written run reports the warning");

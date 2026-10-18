@@ -144,6 +144,46 @@ export function fillRowFormTemplate(
   return blob === fd ? raw : { ...raw, _formData: blob };
 }
 
+/**
+ * The row's applicationInfo with the same fill (developer's report 2026-10-18,
+ * item 2): a script writes the same form blob there as in _formData, and the
+ * column used to keep {{job.title}} literally (shlomit, krausz, hafoz, iec,
+ * barangroup). A blob is filled as fillFormTemplate fills _formData. Plain
+ * text holding a token is filled too, and becomes null when a token does not
+ * resolve, so no template text reaches the column. Unfilled fields are
+ * counted here only when the row has no _formData, which already counted them.
+ */
+export function fillRowApplicationInfo(
+  applicationInfo: string | null,
+  raw: Record<string, string>,
+  job: TemplateJob,
+  tally: Map<string, number>,
+): string | null {
+  if (!applicationInfo || !hasTemplate(applicationInfo)) return applicationInfo;
+  let isJson = true;
+  try {
+    JSON.parse(applicationInfo);
+  } catch {
+    isJson = false;
+  }
+  if (!isJson) {
+    let missing = false;
+    WELL_FORMED.lastIndex = 0;
+    const text = applicationInfo.replace(WELL_FORMED, (_all, spec: string) => {
+      const [token, param] = spec.startsWith("urlParam:") ? ["urlParam", spec.slice("urlParam:".length)] : [spec, null];
+      const v = resolveTemplateToken(token, param, job);
+      if (v === null) missing = true;
+      return v ?? "";
+    });
+    return missing ? null : text;
+  }
+  const { blob, unfilled } = fillFormTemplate(applicationInfo, job);
+  if (typeof raw["_formData"] !== "string" || !raw["_formData"]) {
+    for (const u of unfilled) tally.set(u, (tally.get(u) ?? 0) + 1);
+  }
+  return blob;
+}
+
 /** The run warnings: one per unfilled field and token, with how many jobs. */
 export function formTemplateWarnings(tally: Map<string, number>): string[] {
   return [...tally.entries()].map(([what, n]) => `${FORM_TEMPLATE_UNFILLED_WARNING}: ${what} on ${n} job(s)`);
