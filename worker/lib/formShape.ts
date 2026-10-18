@@ -107,6 +107,19 @@ function actionNamesOtherPath(m: FormMarkup): boolean {
   }
 }
 
+/** A WordPress nonce field's name: _wpnonce, nonce, security, or one ending in _nonce. */
+const WP_NONCE_FIELD = /^(?:_wpnonce|nonce|security|.+_nonce)$/i;
+
+/** The action attribute is admin-ajax.php on the page's own host. */
+function postsToOwnAdminAjax(m: FormMarkup): boolean {
+  try {
+    const action = new URL(m.actionAttribute);
+    return action.host === new URL(m.pageUrl).host && action.pathname === ADMIN_AJAX;
+  } catch {
+    return false;
+  }
+}
+
 /**
  * How the form submits, read from its markup only. The frameworks are checked
  * before Elementor, whose markers (a hidden post_id) are the most generic.
@@ -160,11 +173,18 @@ export function detectSubmitMechanism(m: FormMarkup): Submission {
 
   // A WordPress form posting through admin-ajax.php by its own hidden "action"
   // (naamat's jobs plugin: action=jobslisting_apply_now, with a hidden
-  // post_id). The submitAction is that value. A hidden action without the
-  // WordPress post_id stays unknown (medulla's noo send-email form).
+  // post_id). The submitAction is that value. A WordPress nonce field is the
+  // same evidence without a post_id (developer's report 2026-10-18, item 2),
+  // when the form posts to admin-ajax.php on its own host or names no action.
+  // A hidden action with neither post_id nor nonce stays unknown (medulla's
+  // noo send-email form).
   const hiddenAction = m.fields.find((f) => f.fieldType === "hidden" && f.name === "action")?.value?.trim() ?? "";
   const wpPostId = m.fields.some((f) => f.fieldType === "hidden" && f.name === "post_id");
   if (hiddenAction && wpPostId && !otherPath) {
+    return ajaxTo(m.pageUrl, ADMIN_AJAX, hiddenAction);
+  }
+  const wpNonce = m.fields.some((f) => f.fieldType === "hidden" && WP_NONCE_FIELD.test(f.name));
+  if (hiddenAction && wpNonce && (!m.actionAttribute || postsToOwnAdminAjax(m))) {
     return ajaxTo(m.pageUrl, ADMIN_AJAX, hiddenAction);
   }
 
