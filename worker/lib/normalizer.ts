@@ -16,6 +16,7 @@ import {
 import { structureDescription } from "./descriptionStructure";
 import { LOCATION_FROM_MAP } from "./locationMap";
 import { stampScriptFormBlob, stampScriptFormData } from "./formShape";
+import { cueLineEmail } from "./applyEmail";
 
 /**
  * The extractorVersion of a form blob a setup script wrote without one. 0 means
@@ -470,9 +471,11 @@ export function cleanExternalJobId(value: string | null): string | null {
 }
 
 function extractApplicationInfoFallback(text: string): string | null {
-  // Prefer email; fall back to IL phone (03-..., 050-..., 02-...).
-  const email = /([A-Z0-9._%+\-]+@[A-Z0-9.\-]+\.[A-Z]{2,})/i.exec(text);
-  if (email) return email[1];
+  // Prefer email; fall back to IL phone (03-..., 050-..., 02-...). An email is
+  // taken only from a line with an apply cue: a privacy or inquiries paragraph
+  // is not the apply address (worker/lib/applyEmail.ts).
+  const email = cueLineEmail(text);
+  if (email) return email;
   const phone = /(\b0\d{1,2}[\s\-]?\d{3}[\s\-]?\d{4}\b)/.exec(text);
   return phone ? phone[1] : null;
 }

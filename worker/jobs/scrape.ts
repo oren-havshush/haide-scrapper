@@ -11,6 +11,7 @@ import { FLEET_LIMITS, pageCap, readSiteLimits, resolveLimits, type ResolvedLimi
 import { CUT_OFF, cutOffMessage, cutOffWarning, readStopAt, runDeadline } from "../lib/bigLane";
 import { AJAX_MAX_CONCURRENCY, ajaxWalk, type AjaxPaginationConfig } from "../lib/ajaxWalk";
 import { fillRowFormTemplate, formTemplateWarnings } from "../lib/formTemplate";
+import { fallbackApplyEmailOf, siteWideApplyEmails, siteWideApplyEmailWarnings } from "../lib/applyEmail";
 import { ITEM_CAP } from "../lib/sweepSelection";
 import { scriptCutOffRefusal } from "../lib/scriptCutOff";
 import {
@@ -3145,7 +3146,18 @@ function buildJobRows(args: {
   overrideWarnings: string[];
   /** Counts each "<field> (<token>)" a form template could not fill (worker/lib/formTemplate.ts). */
   formTemplateTally: Map<string, number>;
+  /** Collects one apply_email_site_wide warning per fallback email on most of the run's rows. */
+  applyEmailWarnings: string[];
 }): Prisma.JobCreateManyInput[] {
+  // A fallback email on more than half of the run's rows is named for a human
+  // to look at, and kept: a cue line repeated on every ad is a small employer's
+  // one HR mailbox (worker/lib/applyEmail.ts).
+  const fallbackEmails = args.records.map(({ normalized }) =>
+    fallbackApplyEmailOf(normalized.rawFields, normalized.applicationInfo),
+  );
+  args.applyEmailWarnings.push(
+    ...siteWideApplyEmailWarnings(siteWideApplyEmails(fallbackEmails), args.records.length),
+  );
   return args.records.map(({ normalized, validation }, idx) => {
     const persistedExternalJobId =
       args.synthesizedIds[idx] ?? normalized.externalJobId ?? null;
@@ -4670,6 +4682,7 @@ async function executeScrape(
   // Stored overrides the location gate skipped, added to the run's warnings below.
   const overrideWarnings: string[] = [];
   const formTemplateTally = new Map<string, number>();
+  const applyEmailWarnings: string[] = [];
   const rows = buildJobRows({
     records: recordsToPersist,
     synthesizedIds: idFallback.ids,
@@ -4682,6 +4695,7 @@ async function executeScrape(
     seenAt: new Date(),
     overrideWarnings,
     formTemplateTally,
+    applyEmailWarnings,
   });
 
   let savedCount = 0;
@@ -4989,6 +5003,8 @@ async function executeScrape(
     scrapeWarnings.push(...unmappedLabelWarnings(unmappedLabels));
     // Site-wide form fields a {{job.<token>}} template could not fill (worker/lib/formTemplate.ts).
     scrapeWarnings.push(...formTemplateWarnings(formTemplateTally));
+    // A fallback email on most of the run's jobs, named and kept (worker/lib/applyEmail.ts).
+    scrapeWarnings.push(...applyEmailWarnings);
     // What each listing page contributed, saved/seen. Only present on a site
     // that has more than one, and the only place a cross-page dedup collapse
     // is attributable to the page it happened on.
