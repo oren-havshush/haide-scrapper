@@ -1,0 +1,69 @@
+{
+  "_exportedAt": "2026-10-18T12:37:03.344Z",
+  "_note": "Mirror of the live config. The DB is authoritative; the worker never reads this file. setupScript lives alongside in <slug>.setup.js.",
+  "id": "cmvdsngcm009f01vujleukaub",
+  "siteUrl": "https://soglowek.co.il/%D7%9E%D7%A9%D7%A8%D7%95%D7%AA/",
+  "companyName": "זוגלובק",
+  "status": "ACTIVE",
+  "setupScriptFile": "soglowek--eukaub.setup.js",
+  "pageFlow": [],
+  "fieldMappings": {
+    "_meta": {
+      "lane": null,
+      "limits": null,
+      "savedAt": "2026-10-18T12:21:29.151Z",
+      "pagination": null,
+      "formCapture": null,
+      "listingUrls": null,
+      "locationMap": {
+        "חיפה": "חיפה",
+        "נהריה": "נהריה",
+        "שלומי": "שלומי",
+        "היברידי": null,
+        "פתח תקווה": "פתח תקווה"
+      },
+      "itemSelector": ".careers-list > .career.ac",
+      "acceptedGates": null,
+      "minPublishDate": null,
+      "minPublishDays": null,
+      "revealSelector": null,
+      "listingSelector": null,
+      "applyLoginReason": null,
+      "browserOverrides": null,
+      "loadMoreSelector": null,
+      "locationFallback": null,
+      "originalMappings": null,
+      "applyRequiresLogin": false
+    },
+    "title": {
+      "source": "MANUAL",
+      "selector": ".__ai-title",
+      "confidence": 0.95,
+      "capturedOnUrl": "https://soglowek.co.il/%D7%9E%D7%A9%D7%A8%D7%95%D7%AA/"
+    },
+    "location": {
+      "source": "MANUAL",
+      "selector": ".__ai-location",
+      "confidence": 0.9,
+      "capturedOnUrl": "https://soglowek.co.il/%D7%9E%D7%A9%D7%A8%D7%95%D7%AA/"
+    },
+    "description": {
+      "source": "MANUAL",
+      "selector": ".__ai-description",
+      "confidence": 0.9,
+      "capturedOnUrl": "https://soglowek.co.il/%D7%9E%D7%A9%D7%A8%D7%95%D7%AA/"
+    },
+    "requirements": {
+      "source": "MANUAL",
+      "selector": ".__ai-requirements",
+      "confidence": 0.9,
+      "capturedOnUrl": "https://soglowek.co.il/%D7%9E%D7%A9%D7%A8%D7%95%D7%AA/"
+    },
+    "applicationInfo": {
+      "source": "MANUAL",
+      "selector": ".__ai-applicationInfo",
+      "confidence": 0.9,
+      "capturedOnUrl": "https://soglowek.co.il/%D7%9E%D7%A9%D7%A8%D7%95%D7%AA/"
+    }
+  }
+}

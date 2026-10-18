@@ -1,0 +1,103 @@
+{
+  "_exportedAt": "2026-10-18T12:37:04.160Z",
+  "_note": "Mirror of the live config. The DB is authoritative; the worker never reads this file. setupScript lives alongside in <slug>.setup.js.",
+  "id": "cmvdsbvvq009101vubwwdwbc1",
+  "siteUrl": "https://www.bynet.co.il/career/open-positions/",
+  "companyName": "בינת תקשורת מחשבים",
+  "status": "ACTIVE",
+  "setupScriptFile": "bynet--wdwbc1.setup.js",
+  "pageFlow": [],
+  "fieldMappings": {
+    "_meta": {
+      "lane": null,
+      "limits": null,
+      "savedAt": "2026-10-18T12:15:34.420Z",
+      "pagination": null,
+      "formCapture": null,
+      "listingUrls": null,
+      "locationMap": {
+        "דרום": "אזור דרום",
+        "צפון": "אזור צפון",
+        "השפלה": "אזור שפלה",
+        "השרון": "אזור השרון",
+        "גוש דן": "אזור מרכז",
+        "עין כרמל": "עין כרמל",
+        "רמת החייל": "תל אביב-יפו",
+        "חיפה והקריות": "אזור צפון"
+      },
+      "itemSelector": "#haide-bynet > div.haide-job",
+      "acceptedGates": null,
+      "minPublishDate": null,
+      "minPublishDays": null,
+      "revealSelector": null,
+      "listingSelector": null,
+      "applyLoginReason": null,
+      "browserOverrides": null,
+      "loadMoreSelector": null,
+      "locationFallback": null,
+      "originalMappings": null,
+      "applyRequiresLogin": false
+    },
+    "title": {
+      "source": "MANUAL",
+      "selector": "span.haide-title",
+      "confidence": 0.95,
+      "capturedOnUrl": "https://www.bynet.co.il/career/open-positions/"
+    },
+    "location": {
+      "source": "MANUAL",
+      "selector": ".__ai-location",
+      "confidence": 0.9,
+      "capturedOnUrl": "https://www.bynet.co.il/career/open-positions/"
+    },
+    "_formData": {
+      "source": "MANUAL",
+      "selector": ".__ai-formData",
+      "confidence": 0.9,
+      "capturedOnUrl": "https://www.bynet.co.il/career/open-positions/"
+    },
+    "detailUrl": {
+      "source": "MANUAL",
+      "selector": "a.__ai-url",
+      "confidence": 0.9,
+      "extractAttr": "href",
+      "capturedOnUrl": "https://www.bynet.co.il/career/open-positions/"
+    },
+    "department": {
+      "source": "MANUAL",
+      "selector": ".__ai-department",
+      "confidence": 0.9,
+      "capturedOnUrl": "https://www.bynet.co.il/career/open-positions/"
+    },
+    "description": {
+      "source": "MANUAL",
+      "selector": ".__ai-description",
+      "confidence": 0.9,
+      "capturedOnUrl": "https://www.bynet.co.il/career/open-positions/"
+    },
+    "publishDate": {
+      "source": "MANUAL",
+      "selector": ".__ai-date",
+      "confidence": 0.9,
+      "capturedOnUrl": "https://www.bynet.co.il/career/open-positions/"
+    },
+    "requirements": {
+      "source": "MANUAL",
+      "selector": ".__ai-requirements",
+      "confidence": 0.9,
+      "capturedOnUrl": "https://www.bynet.co.il/career/open-positions/"
+    },
+    "externalJobId": {
+      "source": "MANUAL",
+      "selector": ".__ai-jobid",
+      "confidence": 0.95,
+      "capturedOnUrl": "https://www.bynet.co.il/career/open-positions/"
+    },
+    "applicationInfo": {
+      "source": "MANUAL",
+      "selector": ".__ai-applicationInfo",
+      "confidence": 0.9,
+      "capturedOnUrl": "https://www.bynet.co.il/career/open-positions/"
+    }
+  }
+}

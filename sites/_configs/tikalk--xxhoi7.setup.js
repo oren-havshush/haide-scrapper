@@ -2,7 +2,7 @@
    Listing-only. The cards are click-only <div>s inside 4 department tabs, so the script builds one hidden
    row per job in #haide-tikal and the worker reads those rows.
    - Set: Comeet careers-api positions list (one GET; the token is the page's own, read from __NEXT_DATA__).
-     Kept: department = one of the page's own tab titles (what a visitor can open), location.country = IL
+     Kept: department = one of the page's own tab titles (what a visitor can open), no Comeet location or location.country = IL
      (LRN-SPA-16), a title in Hebrew/Latin letters only, and not a row with no text whose page is the careers
      page itself (LRN-SPA-27: F2.633 "Tikal's", the "Let's Talk" form).
    - Id = the Comeet position UID (native, ASCII). Link = the URL the page's own card click opens.
@@ -97,7 +97,7 @@ if (!document.getElementById('haide-tikal')) {
       var uid = String(p.uid || '');
       if (!/^[0-9A-Z]{2}\.[0-9A-Z]{3}$/i.test(uid) || !title) continue;
       if (tabs.indexOf(String(p.department || '').trim()) === -1) continue;
-      if (!p.location || p.location.country !== 'IL') continue;
+      if (p.location && p.location.country && p.location.country !== 'IL') continue;
       if (!OK.test(title) || BAD.test(title)) continue;
       var hasText = (p.details || []).some(function (d) { return d && d.value && aiClean(String(d.value).replace(/<[^>]*>/g, ' ')); });
       if (!hasText && /tikalk\.com\/career\/?$/i.test(String(p.url_active_page || ''))) continue;

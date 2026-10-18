@@ -1,5 +1,5 @@
 {
-  "_exportedAt": "2026-10-15T13:56:50.193Z",
+  "_exportedAt": "2026-10-18T12:37:08.660Z",
   "_note": "Mirror of the live config. The DB is authoritative; the worker never reads this file. setupScript lives alongside in <slug>.setup.js.",
   "id": "cmv9kw7xc007d01sdnrxxhoi7",
   "siteUrl": "https://www.tikalk.com/career/",
@@ -11,7 +11,7 @@
     "_meta": {
       "lane": null,
       "limits": null,
-      "savedAt": "2026-10-15T13:41:17.956Z",
+      "savedAt": "2026-10-18T12:36:15.351Z",
       "pagination": null,
       "formCapture": null,
       "listingUrls": null,

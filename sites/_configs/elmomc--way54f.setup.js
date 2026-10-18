@@ -3,7 +3,7 @@
    on 2026-10-18, whose own page says "The position may have been closed"), so the script reads the live set from the
    Comeet careers-api (one GET, details=true) and builds one hidden row per job in #haide-elmo; the worker reads
    those rows.
-   - Kept: location.country = IL (LRN-SPA-16; Germany and USA rows dropped), a title in Hebrew/Latin letters only.
+   - Kept: no Comeet location, or location.country = IL (LRN-SPA-16; Germany and USA rows dropped), a title in Hebrew/Latin letters only.
    - Id = the Comeet position UID (native, ASCII).
    - Link = the page's own link for that UID (careers-new-2/co/<country>/<uid>/<slug>/all); if the cached page does
      not list it yet, Comeet's url_active_page without its query string (it can carry a gclid).
@@ -88,7 +88,7 @@ if (!document.getElementById('haide-elmo')) {
       var p = list[i] || {};
       var uid = String(p.uid || '');
       if (!/^[0-9A-Z]{2}\.[0-9A-Z]{3}(-[0-9A-Z]{2}\.[0-9A-Z]{3})?$/i.test(uid)) continue;
-      if (!p.location || p.location.country !== 'IL') continue;
+      if (p.location && p.location.country && p.location.country !== 'IL') continue;
       var title = String(p.name || '').replace(/\s+/g, ' ').trim();
       if (!title || !OK.test(title) || BAD.test(title)) continue;
       var det = {};

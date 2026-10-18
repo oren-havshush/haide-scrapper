@@ -2,7 +2,7 @@
    Listing-only. The page shows 7 rows and loads the rest by an admin-ajax POST, so the script does not page the
    listing: it reads the same jobs from the Comeet careers-api (one GET, details=true) and builds one hidden row per
    job in #haide-deloitte; the worker reads those rows.
-   - Kept: location.country = IL (LRN-SPA-16), a title in Hebrew/Latin letters only. Left out: the job-fair general
+   - Kept: no Comeet location, or location.country = IL (LRN-SPA-16), a title in Hebrew/Latin letters only. Left out: the job-fair general
      applications (Comeet name "יריד תעסוקה ..."), see the card.
    - Language, as the site's own Hebrew job page shows it: when Comeet has a Hebrew description, the Hebrew title
      ("Public Name (Hebrew)"), Hebrew description and Hebrew requirements; otherwise the English ones.
@@ -99,7 +99,7 @@ if (!document.getElementById('haide-deloitte')) {
       var p = list[i] || {};
       var uid = String(p.uid || '');
       if (!/^[0-9A-Z]{2}\.[0-9A-Z]{3}(-[0-9A-Z]{2}\.[0-9A-Z]{3})?$/i.test(uid)) continue;
-      if (!p.location || p.location.country !== 'IL') continue;
+      if (p.location && p.location.country && p.location.country !== 'IL') continue;
       if (DROP_NAME.test(String(p.name || ''))) continue;
       var det = {}, cat = {};
       for (var d = 0; d < (p.details || []).length; d++) det[String(p.details[d].name || '').trim()] = p.details[d].value;

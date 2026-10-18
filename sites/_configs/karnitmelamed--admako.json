@@ -1,0 +1,69 @@
+{
+  "_exportedAt": "2026-10-18T12:37:03.637Z",
+  "_note": "Mirror of the live config. The DB is authoritative; the worker never reads this file. setupScript lives alongside in <slug>.setup.js.",
+  "id": "cmvdsjxib009901vuvzadmako",
+  "siteUrl": "https://www.karnitmelamed.com/%D7%93%D7%A8%D7%95%D7%A9%D7%99%D7%9D/",
+  "companyName": "קרנית מלמד",
+  "status": "ACTIVE",
+  "setupScriptFile": "karnitmelamed--admako.setup.js",
+  "pageFlow": [],
+  "fieldMappings": {
+    "_meta": {
+      "lane": null,
+      "limits": null,
+      "savedAt": "2026-10-18T12:18:46.474Z",
+      "pagination": null,
+      "formCapture": null,
+      "listingUrls": null,
+      "locationMap": null,
+      "itemSelector": "#haide-km > div.haide-job",
+      "acceptedGates": null,
+      "minPublishDate": null,
+      "minPublishDays": null,
+      "revealSelector": null,
+      "listingSelector": null,
+      "applyLoginReason": null,
+      "browserOverrides": null,
+      "loadMoreSelector": null,
+      "locationFallback": null,
+      "originalMappings": null,
+      "applyRequiresLogin": false
+    },
+    "title": {
+      "source": "MANUAL",
+      "selector": ".__ai-title",
+      "confidence": 0.95,
+      "capturedOnUrl": "https://www.karnitmelamed.com/%D7%93%D7%A8%D7%95%D7%A9%D7%99%D7%9D/"
+    },
+    "location": {
+      "source": "MANUAL",
+      "selector": ".__ai-location",
+      "confidence": 0.9,
+      "capturedOnUrl": "https://www.karnitmelamed.com/%D7%93%D7%A8%D7%95%D7%A9%D7%99%D7%9D/"
+    },
+    "_formData": {
+      "source": "MANUAL",
+      "selector": ".__ai-formData",
+      "confidence": 0.9,
+      "capturedOnUrl": "https://www.karnitmelamed.com/%D7%93%D7%A8%D7%95%D7%A9%D7%99%D7%9D/"
+    },
+    "description": {
+      "source": "MANUAL",
+      "selector": ".__ai-description",
+      "confidence": 0.9,
+      "capturedOnUrl": "https://www.karnitmelamed.com/%D7%93%D7%A8%D7%95%D7%A9%D7%99%D7%9D/"
+    },
+    "requirements": {
+      "source": "MANUAL",
+      "selector": ".__ai-requirements",
+      "confidence": 0.9,
+      "capturedOnUrl": "https://www.karnitmelamed.com/%D7%93%D7%A8%D7%95%D7%A9%D7%99%D7%9D/"
+    },
+    "applicationInfo": {
+      "source": "MANUAL",
+      "selector": ".__ai-applicationInfo",
+      "confidence": 0.9,
+      "capturedOnUrl": "https://www.karnitmelamed.com/%D7%93%D7%A8%D7%95%D7%A9%D7%99%D7%9D/"
+    }
+  }
+}
