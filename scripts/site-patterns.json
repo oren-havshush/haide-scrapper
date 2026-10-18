@@ -3,26 +3,24 @@
   "patterns": {
     "workday": {
       "vendor": "workday",
-      "lastUpdated": "2026-06-14",
+      "lastUpdated": "2026-10-18",
       "successCount": 0,
-      "notes": "Workday uses a React SPA; UA override usually required. Department lives in a separate filter facet — map via setupScript if needed. detailUrl is absolute.",
+      "notes": "First choice: Workday's jobs API, POST /wday/cxs/<tenant>/<site>/jobs with a JSON body { limit, offset, appliedFacets: {}, searchText: '' } (tenant and site from the board URL, e.g. flextronics.wd1.myworkdayjobs.com/he-IL/Careers -> /wday/cxs/flextronics/Careers/jobs), paged by offset. This DOM skeleton is the fallback: each job is an li whose jobTitle link carries the title and the detail URL (the worker resolves a relative one). Department lives in a filter facet — map via setupScript if needed. browserOverrides only if blocked.",
       "skeleton": {
-        "itemSelector": "li[data-automation-id='jobItem']",
+        "itemSelector": "li[class*='css-']:has(a[data-automation-id='jobTitle'])",
         "fieldMappings": {
           "title": {
-            "selector": "a[data-automation-id='jobItem']"
+            "selector": "a[data-automation-id='jobTitle']"
           },
           "location": {
-            "selector": "dd[data-automation-id='subtitle']"
+            "selector": "[data-automation-id='locations'] dd, dd[data-automation-id='subtitle']"
           },
           "detailUrl": {
-            "selector": "a[data-automation-id='jobItem']",
+            "selector": "a[data-automation-id='jobTitle']",
             "attr": "href"
           }
         },
-        "browserOverrides": {
-          "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36"
-        }
+        "notes": "First choice: Workday's jobs API, POST /wday/cxs/<tenant>/<site>/jobs with a JSON body { limit, offset, appliedFacets: {}, searchText: '' } (tenant and site from the board URL, e.g. flextronics.wd1.myworkdayjobs.com/he-IL/Careers -> /wday/cxs/flextronics/Careers/jobs), paged by offset. This DOM skeleton is the fallback: each job is an li whose jobTitle link carries the title and the detail URL (the worker resolves a relative one). Department lives in a filter facet — map via setupScript if needed. browserOverrides only if blocked."
       }
     },
     "greenhouse": {

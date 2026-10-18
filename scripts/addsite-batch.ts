@@ -1462,16 +1462,19 @@ interface ConfigSkeleton {
 // Built-in skeletons sourced from hard-won incidents in docs/addsite-learnings.md.
 // These are STARTING POINTS — the agent dry-runs to confirm before PUT.
 const BUILT_IN_SKELETONS: Record<string, ConfigSkeleton> = {
+  // A current Workday board (developer's report 2026-10-18, item 6): the old
+  // li[data-automation-id='jobItem'] matched nothing (flextronics), and the
+  // UA override it called for was not needed. Kept in step with the workday
+  // entry of scripts/site-patterns.json, which resolveSkeletonForVendor reads first.
   workday: {
-    itemSelector: "li[data-automation-id='jobItem']",
+    itemSelector: "li[class*='css-']:has(a[data-automation-id='jobTitle'])",
     fieldMappings: {
-      title: { selector: "a[data-automation-id='jobItem']" },
-      location: { selector: "dd[data-automation-id='subtitle']" },
-      detailUrl: { selector: "a[data-automation-id='jobItem']", attr: "href" },
+      title: { selector: "a[data-automation-id='jobTitle']" },
+      location: { selector: "[data-automation-id='locations'] dd, dd[data-automation-id='subtitle']" },
+      detailUrl: { selector: "a[data-automation-id='jobTitle']", attr: "href" },
     },
-    browserOverrides: { userAgent: REAL_UA },
     notes:
-      "Workday uses a React SPA; UA override usually required. Department lives in a separate filter facet — map via setupScript if needed. detailUrl is absolute.",
+      "First choice: Workday's jobs API, POST /wday/cxs/<tenant>/<site>/jobs with a JSON body { limit, offset, appliedFacets: {}, searchText: '' } (tenant and site from the board URL, e.g. flextronics.wd1.myworkdayjobs.com/he-IL/Careers -> /wday/cxs/flextronics/Careers/jobs), paged by offset. This DOM skeleton is the fallback: each job is an li whose jobTitle link carries the title and the detail URL (the worker resolves a relative one). Department lives in a filter facet — map via setupScript if needed. browserOverrides only if blocked.",
   },
   greenhouse: {
     itemSelector: ".opening, tr.job-post",
