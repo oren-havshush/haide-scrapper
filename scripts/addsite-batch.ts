@@ -62,7 +62,17 @@
 import * as fs from "fs";
 import * as path from "path";
 import { classifyResponse } from "./lib/challenge-detect";
-import { reachWithRetry, wpJobPostType } from "./lib/triageRules";
+import {
+  embeddedBoardFrom,
+  jobLikeClusterSize,
+  LISTING_PROBE_JS,
+  reachWithRetry,
+  wpJobPostType,
+  wpTypesHaveJobType,
+  type EmbeddedBoard,
+  type ListingProbe,
+  type PageFrame,
+} from "./lib/triageRules";
 import { parseAcceptance, renderConfigDiff, sentKeysNotStored, type AcceptanceInput } from "./lib/fixPlan";
 import { scriptIdRules } from "./lib/verifyJobIds";
 import { compareSetupScript } from "./lib/verifyConfig";
@@ -1652,28 +1662,54 @@ const ATS_IFRAME_HOSTS: { re: RegExp; vendor: string; recipe: string }[] = [
 // page. The worker can't read into a cross-origin iframe, so the wrapper page
 // looks empty and gets falsely SKIPPED — surface the board URL so the onboarder
 // re-triages and onboards THAT (not the wrapper). See LRN-SPA-4 / addsite2 §2.1.
-function findEmbeddedBoardUrl(
-  html: string,
-  pageHost: string,
-): { url: string; vendor: string; recipe: string } | null {
+function findEmbeddedBoardUrl(html: string, pageHost: string): EmbeddedBoard | null {
   if (!html) return null;
-  const iframeSrcRe = /<iframe\b[^>]*\bsrc=["']([^"']+)["']/gi;
-  let m: RegExpExecArray | null;
-  while ((m = iframeSrcRe.exec(html))) {
-    let src = m[1];
-    if (src.startsWith("//")) src = "https:" + src;
-    let iframeHost = "";
-    try {
-      iframeHost = new URL(src).hostname.toLowerCase();
-    } catch {
-      continue;
-    }
-    if (iframeHost === pageHost.toLowerCase()) continue; // same-origin: not an embedded board
-    for (const a of ATS_IFRAME_HOSTS) {
-      if (a.re.test(iframeHost)) return { url: src, vendor: a.vendor, recipe: a.recipe };
-    }
+  // From the markup: each iframe's src and its height attribute (0 when it has
+  // none). A known ATS host is reported at any size; an unknown one only when
+  // its height says it is taller than 300 px — triage reads the rendered
+  // height too (embeddedBoardFrom, scripts/lib/triageRules.ts), and decodes
+  // the address's entities.
+  const frames: PageFrame[] = [];
+  for (const m of html.matchAll(/<iframe\b[^>]*>/gi)) {
+    const tag = m[0];
+    const src = /\bsrc=["']([^"']+)["']/i.exec(tag)?.[1];
+    if (!src) continue;
+    const height = Number(/\bheight=["']?(\d+)/i.exec(tag)?.[1] ?? 0);
+    frames.push({ src, height });
   }
-  return null;
+  return embeddedBoardFrom(frames, pageHost, knownIframeHost);
+}
+
+/** A host on ATS_IFRAME_HOSTS, with its vendor and recipe, or null. */
+function knownIframeHost(host: string): { vendor: string; recipe: string } | null {
+  const a = ATS_IFRAME_HOSTS.find((x) => x.re.test(host));
+  return a ? { vendor: a.vendor, recipe: a.recipe } : null;
+}
+
+/**
+ * A WordPress job post type confirmed by the site's own REST index: GET
+ * <origin>/wp-json/wp/v2/types lists a type whose slug or name carries a job
+ * word (wpTypesHaveJobType). Word-list evidence on the page alone labelled
+ * bynet wordpress-job-cpt with no such type. GET only; null when the index
+ * cannot be read (blocked, not JSON), which counts as not confirmed.
+ */
+async function wpJobTypeConfirmed(pageUrl: string): Promise<boolean | null> {
+  let origin: string;
+  try {
+    origin = new URL(normalizeUrl(pageUrl)).origin;
+  } catch {
+    return null;
+  }
+  try {
+    const r = await fetch(`${origin}/wp-json/wp/v2/types`, {
+      headers: { "user-agent": REAL_UA, accept: "application/json" },
+      signal: AbortSignal.timeout(10_000),
+    });
+    if (!r.ok) return null;
+    return wpTypesHaveJobType(await r.json());
+  } catch {
+    return null;
+  }
 }
 
 async function cmdFingerprint(argv: string[]): Promise<void> {
@@ -1715,7 +1751,7 @@ async function cmdFingerprint(argv: string[]): Promise<void> {
   let vendor = "unknown";
   let recipe: string | null = null;
   let lane: "GREEN" | "YELLOW" = "YELLOW";
-  let embedded: { url: string; vendor: string; recipe: string } | null = null;
+  let embedded: EmbeddedBoard | null = null;
   const chromium = await getChromium();
   if (chromium) {
     const nav = await tryNav(chromium, url, {
@@ -1745,14 +1781,17 @@ async function cmdFingerprint(argv: string[]): Promise<void> {
       lane = "YELLOW";
       signals.push("Elementor detected");
     } else if (/wp-content|wp-json|name="generator" content="WordPress/i.test(html)) {
-      // A job post type by its word list, not "job" alone (H5; TOP BIT's vacancies).
+      // A job post type by its word list, not "job" alone (H5; TOP BIT's vacancies),
+      // and only once the REST index lists it (report 2026-10-18, item 5).
       const jobCpt = wpJobPostType(html);
-      if (jobCpt) {
+      const confirmed = jobCpt ? await wpJobTypeConfirmed(url) : null;
+      if (jobCpt && confirmed) {
         vendor = "wordpress-job-cpt";
         recipe = null;
         lane = "GREEN";
-        signals.push(`WordPress with job custom post type "${jobCpt}" (links or body classes)`);
+        signals.push(`WordPress with job custom post type "${jobCpt}" (links or body classes; listed in /wp-json/wp/v2/types)`);
       } else {
+        if (jobCpt) signals.push(`note: word-list evidence for a job post type "${jobCpt}", but /wp-json/wp/v2/types does not list one`);
         vendor = "wordpress";
         recipe = null;
         lane = "YELLOW";
@@ -1849,7 +1888,9 @@ async function cmdTriage(argv: string[]): Promise<void> {
   const cache = readPatterns();
   const byHost = fingerprintByHost(host);
   let vendor = byHost?.vendor ?? "unknown";
-  let recipe = byHost?.recipe ?? null;
+  let recipe: string | null = byHost?.recipe ?? null;
+  /** What triage saw but did not act on, for the onboarder. */
+  const notes: string[] = [];
   if (!byHost && listingHtml) {
     if (/grnhse_app|boards\.greenhouse|greenhouse\.io\/embed/i.test(listingHtml)) {
       vendor = "greenhouse";
@@ -1857,27 +1898,30 @@ async function cmdTriage(argv: string[]): Promise<void> {
     } else if (/positionItem|data-qa="position/i.test(listingHtml)) {
       vendor = "comeet";
       recipe = "recipes/spa-frameworks.md#comeet";
-    } else if (
-      /wp-content|wp-json|name="generator" content="WordPress/i.test(listingHtml) &&
-      wpJobPostType(listingHtml) !== null
-    ) {
-      // A job post type by its word list, not "job" alone (H5; TOP BIT's vacancies).
-      vendor = "wordpress-job-cpt";
+    } else if (/wp-content|wp-json|name="generator" content="WordPress/i.test(listingHtml)) {
+      // A job post type by its word list, not "job" alone (H5; TOP BIT's
+      // vacancies), and only once the REST index lists it (report 2026-10-18,
+      // item 5: bynet had none). Otherwise the word list is a note.
+      const jobCpt = wpJobPostType(listingHtml);
+      if (jobCpt) {
+        if (await wpJobTypeConfirmed(url)) vendor = "wordpress-job-cpt";
+        else notes.push(`word-list evidence for a job post type "${jobCpt}", but /wp-json/wp/v2/types does not list one`);
+      }
     }
   }
 
   // 2b. Embedded ATS board in a cross-origin <iframe>? (LRN-SPA-4 / §2.1)
   //     The wrapper page looks empty to the worker; onboard the board URL instead.
-  const embedded = !byHost ? findEmbeddedBoardUrl(listingHtml || "", host) : null;
-  if (embedded) {
-    if (vendor === "unknown") vendor = embedded.vendor;
-    if (!recipe) recipe = embedded.recipe;
-  }
-  const skeleton = resolveSkeletonForVendor(vendor, cache);
+  //     From the markup here; an unknown vendor's tall iframe is read from the
+  //     rendered page below.
+  let embedded = !byHost ? findEmbeddedBoardUrl(listingHtml || "", host) : null;
 
   // 3. Quick listing-structure probe: largest cluster of similarly-classed
-  //    siblings (same heuristic as Step 3b) — a proxy for "is this a listing?"
+  //    siblings (same signature as Step 3b) — a proxy for "is this a listing?".
+  //    Since 2026-10-18 a cluster counts only when most of its members look
+  //    like jobs (jobLikeClusterSize): menus, carousels and grids did not.
   let topCluster = 0;
+  let frames: PageFrame[] = [];
   try {
     const b = await chromium.launch({ headless: true });
     try {
@@ -1889,23 +1933,25 @@ async function cmdTriage(argv: string[]): Promise<void> {
       const p = await ctx.newPage();
       await p.goto(url, { waitUntil: "domcontentloaded", timeout: 20000 });
       await p.waitForLoadState("networkidle", { timeout: 8000 }).catch(() => {});
-      topCluster = await p.evaluate(() => {
-        const stats: Record<string, number> = {};
-        for (const el of Array.from(document.querySelectorAll("*"))) {
-          if (!el.parentElement || !el.classList.length) continue;
-          const sig =
-            el.parentElement.tagName + ">" + el.tagName + "." + Array.from(el.classList).sort().join(".");
-          stats[sig] = (stats[sig] ?? 0) + 1;
-        }
-        const counts = Object.values(stats).filter((c) => c >= 2 && c <= 500);
-        return counts.length ? Math.max(...counts) : 0;
-      });
+      const probe = (await p.evaluate(LISTING_PROBE_JS)) as ListingProbe;
+      topCluster = jobLikeClusterSize(probe.clusters);
+      frames = probe.frames;
     } finally {
       await b.close().catch(() => {});
     }
   } catch {
     /* leave topCluster=0 */
   }
+
+  // Any cross-origin iframe taller than 300 px is an embedded board, its
+  // vendor "unknown-iframe" when the host is not a known ATS (TalentFlow on
+  // mega-talents was missed).
+  if (!byHost && !embedded) embedded = embeddedBoardFrom(frames, host, knownIframeHost);
+  if (embedded) {
+    if (vendor === "unknown") vendor = embedded.vendor;
+    if (!recipe) recipe = embedded.recipe;
+  }
+  const skeleton = resolveSkeletonForVendor(vendor, cache);
 
   // 4. Decide the lane.
   let lane: "GREEN" | "YELLOW" | "GRAY";
@@ -1939,6 +1985,7 @@ async function cmdTriage(argv: string[]): Promise<void> {
     topCluster,
     ...(embedded ? { embeddedBoardUrl: embedded.url } : {}),
     ...(needsUaOverride ? { browserOverrides: { userAgent: REAL_UA, extraHeaders: HE_HEADERS } } : {}),
+    ...(notes.length ? { notes } : {}),
   };
   console.log(JSON.stringify(out, null, 2));
   console.error(
