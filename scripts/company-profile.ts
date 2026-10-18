@@ -77,6 +77,7 @@ import {
   extractCompactAddressLines,
   extractLabelledAddress,
   extractOfficeListRuns,
+  headOfficeBlock,
   homepageFromLinks,
   homepageFromOgUrl,
   isBotChallengePage,
@@ -1821,6 +1822,17 @@ async function writeProfile(
  * no such gate because a street noun plus a house number is already specific.
  */
 function addressFrom(text: string, cities: CityList): string | null {
+  // Among several office blocks, the one headed מטה or הנהלה first
+  // (headOfficeBlock; brooks-keret's דרום block won over its מטה block).
+  const head = headOfficeBlock(text);
+  if (head) {
+    const fromHead = addressFromText(head, cities);
+    if (fromHead) return fromHead;
+  }
+  return addressFromText(text, cities);
+}
+
+function addressFromText(text: string, cities: CityList): string | null {
   // A SCANNED address must name a city.csv city, or it is not an address.
   //
   // "רחוב"/"דרך" are ordinary Hebrew words as well as street nouns, so the

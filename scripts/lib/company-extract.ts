@@ -827,7 +827,7 @@ export function extractLabelledAddress(text: string, maxCandidates = 5): string[
   const out: string[] = [];
   for (const rawLine of text.split(/\n+/)) {
     const line = rawLine.replace(/\s+/g, " ").trim();
-    if (!line) continue;
+    if (!line || startsWithYear(line)) continue;
 
     const hit = ADDRESS_LABEL.exec(line);
     if (!hit) continue;
@@ -844,7 +844,7 @@ export function extractLabelledAddress(text: string, maxCandidates = 5): string[
     const tail = CONTACT_TAIL.exec(value);
     if (tail && tail.index > 0) value = value.slice(0, tail.index).trim();
 
-    value = value.replace(/[.,;\s]+$/, "").trim();
+    value = stripPoBox(value.replace(/[.,;\s]+$/, "").trim());
 
     if (value.length < 4 || value.length > 300) continue;
     if (NOT_AN_ADDRESS.test(value)) continue;
@@ -905,6 +905,7 @@ export function extractCompactAddressLines(text: string, maxCandidates = 6): str
   const out: string[] = [];
   for (const rawLine of text.split(/\n+/)) {
     const whole = rawLine.replace(/\s+/g, " ").trim();
+    if (startsWithYear(whole)) continue;
     // Round 3: a contact tail is CUT, not a reason to drop the line. A line
     // that is all tail ("טל. 03-…") is still dropped. The required digit is
     // looked for in the whole line, since ness-tech's only digits were in its
@@ -926,7 +927,9 @@ export function extractCompactAddressLines(text: string, maxCandidates = 6): str
     if (!/\p{L}/u.test(line)) continue;
     if (BRANCH_LINE.test(line)) continue;
 
-    if (!out.includes(line)) out.push(line);
+    // A PO box is not where a company is, on every path (item 3).
+    const kept = stripPoBox(line);
+    if (kept && !out.includes(kept)) out.push(kept);
     if (out.length >= maxCandidates) break;
   }
   return out;
@@ -996,10 +999,31 @@ export function extractOfficeListRuns(text: string, minRun = 3): string[][] {
   return runs;
 }
 
+/**
+ * A line that opens with a year or a year range ("1998", "2005-2012") is a
+ * history timeline's entry, never an address (developer's report 2026-10-18,
+ * item 3: m-pines.com stored a timeline line as its HQ address).
+ */
+const YEAR_LED_LINE = /^\s*(?:19|20)\d{2}(?:\s*[-–—]\s*(?:19|20)\d{2})?(?![\d])/;
+
+export function startsWithYear(line: string): boolean {
+  return YEAR_LED_LINE.test(line);
+}
+
+/** The first match of `re` in `flat` whose line does not open with a year. */
+function firstNotYearLed(re: RegExp, flat: string): RegExpExecArray | null {
+  const all = new RegExp(re.source, re.flags.includes("g") ? re.flags : re.flags + "g");
+  for (let m = all.exec(flat); m; m = all.exec(flat)) {
+    const lineStart = flat.lastIndexOf("\n", m.index) + 1;
+    if (!startsWithYear(flat.slice(lineStart))) return m;
+  }
+  return null;
+}
+
 export function extractAddressLine(text: string): string | null {
   if (!text) return null;
   const flat = text.replace(/[ \t]+/g, " ");
-  const hit = ADDRESS_LINE.exec(flat) ?? ADDRESS_LINE_EN.exec(flat);
+  const hit = firstNotYearLed(ADDRESS_LINE, flat) ?? firstNotYearLed(ADDRESS_LINE_EN, flat);
   if (!hit) return null;
 
   let value = hit[1].replace(/\s+/g, " ").trim();
@@ -1009,8 +1033,44 @@ export function extractAddressLine(text: string): string | null {
 
   // Trailing separators left behind by the cut.
   value = value.replace(/[\s,;|.–—-]+$/, "").trim();
+  // A PO box is not where a company is, on every path (item 3).
+  value = stripPoBox(value);
 
   return value.length > 0 ? value.slice(0, 300) : null;
+}
+
+/**
+ * The words that head an office block for the head office, and those that
+ * head a regional or branch one (item 3: brooks-keret's דרום block was taken
+ * over its מטה block). Compared as the heading line's first word, whole.
+ */
+const HEAD_OFFICE_HEADING = new Set(["מטה", "המטה", "הנהלה", "ההנהלה", "headquarters", "hq"]);
+/** How many lines after the heading belong to its block. */
+const OFFICE_BLOCK_LINES = 5;
+
+/**
+ * The block of text under a head-office heading (מטה, הנהלה), the heading line
+ * included, or null when the text has none. A heading is a short line (at most
+ * four words) whose first word is one of HEAD_OFFICE_HEADING; "מטה החברה:" and
+ * "משרדי ההנהלה" qualify, "למטה" does not. The caller tries this block before
+ * the whole text, so a מטה address wins over a דרום, צפון or branch one.
+ */
+export function headOfficeBlock(text: string): string | null {
+  if (!text) return null;
+  const lines = text.split("\n");
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i].replace(/\s+/g, " ").trim();
+    if (!line) continue;
+    const head = line.split(":")[0].trim();
+    const words = head.split(" ").filter(Boolean);
+    if (words.length === 0 || words.length > 4) continue;
+    const lead = words[0].replace(/[^\p{L}]/gu, "").toLowerCase();
+    const second = (words[1] ?? "").replace(/[^\p{L}]/gu, "").toLowerCase();
+    const isHead = HEAD_OFFICE_HEADING.has(lead) || (lead === "משרדי" && HEAD_OFFICE_HEADING.has(second)) || (lead === "head" && second === "office");
+    if (!isHead) continue;
+    return lines.slice(i, i + 1 + OFFICE_BLOCK_LINES).join("\n");
+  }
+  return null;
 }
 
 /**
@@ -1023,7 +1083,9 @@ export function addressFromJsonLd(org: OrganizationLd | null): string | null {
   const parts = [org.streetAddress, org.addressLocality, org.postalCode].filter(
     (p): p is string => typeof p === "string" && p.trim().length > 0,
   );
-  return parts.length > 0 ? parts.join(", ").slice(0, 300) : null;
+  // A PO box is not where a company is, even in its own JSON-LD (item 3: cet.ac.il).
+  const joined = stripPoBox(parts.join(", "));
+  return joined.length > 0 ? joined.slice(0, 300) : null;
 }
 
 // ---------------------------------------------------------------------------
