@@ -117,6 +117,24 @@ const BUILDING_NOUN = /^(מגדלי?|בניין|בנין|בית|קומה|קומ�
  */
 const LANDMARK_TAIL = /(?:^|\s)(?:ב?צומת|ב?מחלף|ליד|סמוך|בסמוך|מול|בקרבת)(?:\s.*)?$/;
 
+/**
+ * A segment that opens with a street word keeps only what follows its house
+ * number; with nothing there, or no number, it is dropped (null). The street's
+ * own name is never read as the city: "רחוב המגשימים 20" gave מגשימים, a real
+ * moshav on city.csv, as storenext's HQ city (developer's report 2026-10-18,
+ * item 3). "רחוב המגשימים 20 פתח תקווה" keeps "פתח תקווה". Any other segment
+ * comes back as it is.
+ */
+const HOUSE_NUMBER = /\s\d{1,4}[א-ת]?(?=\s|$)/;
+function afterStreetAndNumber(segment: string): string | null {
+  const s = segment.replace(/\s+/g, " ").trim();
+  if (!STREET_NOUN.test(s)) return segment;
+  const n = HOUSE_NUMBER.exec(s);
+  if (!n) return null;
+  const rest = s.slice(n.index + n[0].length).trim();
+  return rest || null;
+}
+
 /** Strip postal code, house number, PO-box noise and a trailing country name. */
 function cleanAddressSegment(segment: string): string | null {
   let s = segment.trim();
@@ -224,6 +242,8 @@ export function matchCityInAddress(address: string, cities: CityList): string | 
 
   const segments = address
     .split(/[,|;\n•]|\s{2,}/)
+    .map((s) => afterStreetAndNumber(s))
+    .filter((s): s is string => s !== null)
     .map((s) => cleanAddressSegment(s))
     .filter((s): s is string => s !== null && s.length >= 2 && /\p{L}/u.test(s));
 
