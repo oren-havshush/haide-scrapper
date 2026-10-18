@@ -1,0 +1,94 @@
+{
+  "_exportedAt": "2026-10-18T10:17:24.298Z",
+  "_note": "Mirror of the live config. The DB is authoritative; the worker never reads this file. setupScript lives alongside in <slug>.setup.js.",
+  "id": "cmvdnf0sq008701vuw7csrkyb",
+  "siteUrl": "https://www.omnitelecom.co.il/join-the-team/",
+  "companyName": "אומניטלקום",
+  "status": "ACTIVE",
+  "setupScriptFile": "omnitelecom--csrkyb.setup.js",
+  "pageFlow": [],
+  "fieldMappings": {
+    "_meta": {
+      "lane": null,
+      "limits": null,
+      "savedAt": "2026-10-18T09:56:02.709Z",
+      "pagination": null,
+      "formCapture": null,
+      "listingUrls": null,
+      "locationMap": null,
+      "itemSelector": "#haide-omni > div.haide-job",
+      "acceptedGates": null,
+      "minPublishDate": null,
+      "minPublishDays": null,
+      "revealSelector": null,
+      "listingSelector": null,
+      "applyLoginReason": null,
+      "browserOverrides": null,
+      "loadMoreSelector": null,
+      "locationFallback": null,
+      "originalMappings": null,
+      "applyRequiresLogin": false
+    },
+    "title": {
+      "source": "MANUAL",
+      "selector": "a.haide-link",
+      "confidence": 0.95,
+      "capturedOnUrl": "https://www.omnitelecom.co.il/join-the-team/"
+    },
+    "location": {
+      "source": "MANUAL",
+      "selector": ".__ai-location",
+      "confidence": 0.9,
+      "capturedOnUrl": "https://www.omnitelecom.co.il/join-the-team/"
+    },
+    "_formData": {
+      "source": "MANUAL",
+      "selector": ".__ai-formData",
+      "confidence": 0.9,
+      "capturedOnUrl": "https://www.omnitelecom.co.il/join-the-team/"
+    },
+    "detailUrl": {
+      "source": "MANUAL",
+      "selector": "a.haide-link",
+      "confidence": 0.95,
+      "extractAttr": "href",
+      "capturedOnUrl": "https://www.omnitelecom.co.il/join-the-team/"
+    },
+    "department": {
+      "source": "MANUAL",
+      "selector": ".__ai-department",
+      "confidence": 0.8,
+      "capturedOnUrl": "https://www.omnitelecom.co.il/join-the-team/"
+    },
+    "description": {
+      "source": "MANUAL",
+      "selector": ".__ai-description",
+      "confidence": 0.9,
+      "capturedOnUrl": "https://www.omnitelecom.co.il/join-the-team/"
+    },
+    "publishDate": {
+      "source": "MANUAL",
+      "selector": ".__ai-publishDate",
+      "confidence": 0.85,
+      "capturedOnUrl": "https://www.omnitelecom.co.il/join-the-team/"
+    },
+    "requirements": {
+      "source": "MANUAL",
+      "selector": ".__ai-requirements",
+      "confidence": 0.9,
+      "capturedOnUrl": "https://www.omnitelecom.co.il/join-the-team/"
+    },
+    "externalJobId": {
+      "source": "MANUAL",
+      "selector": ".__ai-externalJobId",
+      "confidence": 0.9,
+      "capturedOnUrl": "https://www.omnitelecom.co.il/join-the-team/"
+    },
+    "applicationInfo": {
+      "source": "MANUAL",
+      "selector": ".__ai-applicationInfo",
+      "confidence": 0.9,
+      "capturedOnUrl": "https://www.omnitelecom.co.il/join-the-team/"
+    }
+  }
+}

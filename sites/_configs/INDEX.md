@@ -40,14 +40,17 @@ refused. This is how `listingUrls` gets back too: on a site whose Pages column i
 | CodeOasis | ACTIVE | 5 | 5082 | 2 | `codeoasis--yb2y8w` |
 | Comblack | ACTIVE | 8 | 11668 | 1 | `comblack--lfh3rc` |
 | DHL Express | ACTIVE | 7 | 3442 | 1 | `dhl--mwqiig` |
+| Deloitte | ACTIVE | 9 | 11704 | 1 | `deloitte--fqgsfu` |
 | ERN | ACTIVE | 6 | 7423 | 1 | `ern--tcdrkt` |
 | ESO Group | ACTIVE | 4 | 577 | 1 | `eso-group--mgz38v` |
 | Eimsys | ACTIVE | 4 | 302 | 1 | `eimsys--an8gzs` |
 | Eitan Medical | ACTIVE | 8 | 6738 | 1 | `comeet--kp1dtz` |
 | Elipse Engineering | ACTIVE | 8 | 6698 | 1 | `elbatech--i1i2eb` |
+| Elmo Motion Control | ACTIVE | 10 | 9526 | 1 | `elmomc--way54f` |
 | Experis Israel | ACTIVE | 10 | 10073 | 1 | `experis--hdksz3` |
 | Exyte Israel | ACTIVE | 8 | 4512 | 1 | `exyte--go206o` |
 | Femi | ACTIVE | 6 | 6082 | 1 | `adamtotal--x0aqxh` |
+| Flex | ACTIVE | 9 | 6932 | 1 | `flextronics-wd1-myworkdayjobs--9xrjw5` |
 | Fritz | ACTIVE | 5 | 5110 | 1 | `fritz--wafrzk` |
 | G STAT | ACTIVE | 5 | 1682 | 1 | `g-stat--yvpgzk` |
 | Gtech | ACTIVE | 6 | 4590 | 1 | `gtech--7udl8v` |
@@ -87,6 +90,7 @@ refused. This is how `listingUrls` gets back too: on a site whose Pages column i
 | ToTali | ACTIVE | 6 | 3739 | 1 | `totali--duk823` |
 | Top Match | ACTIVE | 6 | 759 | 1 | `topmatch--f67z41` |
 | Top Sky Line | ACTIVE | 5 | 3497 | 1 | `topskyline--wp6an1` |
+| Tower Semiconductor | ACTIVE | 9 | 8278 | 1 | `towersemi--zgzl8l` |
 | Tri-Logical Technologies | ACTIVE | 6 | 5563 | 1 | `trilogical--9qx1ei` |
 | UCL | ACTIVE | 6 | 4482 | 7 | `ucl-group--zflbp2` |
 | Unitask | ACTIVE | 6 | 6543 | 1 | `unitask-inc--wsxup8` |
@@ -102,11 +106,13 @@ refused. This is how `listingUrls` gets back too: on a site whose Pages column i
 | אגד | ACTIVE | 7 | 5669 | 1 | `egged--4qc6cy` |
 | אדוויס | ACTIVE | 6 | 2334 | 1 | `advice--eq0sxw` |
 | אוורסט טכנולוגיות בע"מ | ACTIVE | 8 | 5555 | 1 | `everest-t--fb9tm0` |
+| אומניטלקום | ACTIVE | 10 | 8484 | 1 | `omnitelecom--csrkyb` |
 | אופרייט | ACTIVE | 6 | 7093 | 1 | `opl--u03od8` |
 | איי פורס בע"מ | ACTIVE | 9 | 7966 | 1 | `iforc--jtz6km` |
 | אינטרטול מכונות לעיבוד שבבי בע"מ | ACTIVE | 5 | 3234 | 1 | `intertool--77txdy` |
 | אלביט מערכות | ACTIVE | 9 | 7741 | 1 | `elbitsystemscareer--kjk1e7` |
 | אלגרונט | ACTIVE | 5 | 3883 | 1 | `allegronet--lv0a9y` |
+| אלבר | ACTIVE | 3 | 3056 | 1 | `albar--vsl7bq` |
 | אלו"ט | ACTIVE | 7 | 7994 | 1 | `app-civi--rl8rui` |
 | אלובין תעשייות אלומיניום בע״מ | ACTIVE | 6 | 2373 | 1 | `alubin--r73xau` |
 | אליקטרוניקס בע''מ | ACTIVE | 4 | 722 | 1 | `eliktronics--erhzvq` |
@@ -116,6 +122,7 @@ refused. This is how `listingUrls` gets back too: on a site whose Pages column i
 | אמנת ניהול ומערכות בע"מ | ACTIVE | 8 | 4952 | 1 | `amanet--zknvec` |
 | אנשים ומחשבים | ACTIVE | 5 | 2645 | 1 | `pc--51eg8t` |
 | אפטר סקול | ACTIVE | 5 | 5946 | 1 | `etgarim2000--zsyc2z` |
+| אפקה – המכללה האקדמית להנדסה בתל־אביב | ACTIVE | 6 | 5743 | 1 | `afeka--8elfei` |
 | אפשר אחרת | ACTIVE | 9 | 15710 | 1 | `efshar-a--haqido` |
 | אשטרום | ACTIVE | 8 | 1341 | 1 | `ashtrom--9nr6ww` |
 | באדג'ט | ACTIVE | 6 | 5566 | 1 | `budget--yutag5` |
@@ -126,6 +133,7 @@ refused. This is how `listingUrls` gets back too: on a site whose Pages column i
 | בן & ג’ריס | ACTIVE | 5 | 1215 | 1 | `benjerry--12brnw` |
 | בנדא מגנטיק | ACTIVE | 9 | 7579 | 1 | `benda--vzie40` |
 | בנק הפועלים | ACTIVE | 6 | 4172 | 1 | `bankhapoalim--39tiof` |
+| בנק לאומי | ACTIVE | 7 | 7605 | 1 | `leumi--epc6re` |
 | בנק מזרחי טפחות | ACTIVE | 8 | 7119 | 1 | `mizrahi-tefahot--868pbk` |
 | ברק לעסקים | ACTIVE | 9 | 7945 | 1 | `barakl--145jlf` |
 | גולדברג פרושן ושות' רואי חשבון | ACTIVE | 5 | 4236 | 1 | `goldpro--1pf5j6` |
@@ -181,6 +189,7 @@ refused. This is how `listingUrls` gets back too: on a site whose Pages column i
 | לב אביר הנדסת חשמל | ACTIVE | 4 | 3001 | 1 | `levabir--rhd1zy` |
 | לילית קוסמטיקה | ACTIVE | 4 | 1091 | 1 | `lilit--jrzaf3` |
 | לין ביכלר משאבי אנוש | ACTIVE | 7 | 7909 | 1 | `l-b--w90lqh` |
+| מ.פינס | ACTIVE | 6 | 6248 | 1 | `m-pines--vz1rrp` |
 | מגדל חברה לביטוח | ACTIVE | 6 | 3094 | 1 | `my-migdal--6mdmh5` |
 | מגדל שוקי הון | ACTIVE | 4 | 3372 | 1 | `msh--fdohdt` |
 | מדנס סוכנות לביטוח | ACTIVE | 7 | 4379 | 1 | `madanes--1wzqn7` |
@@ -250,6 +259,7 @@ refused. This is how `listingUrls` gets back too: on a site whose Pages column i
 | קופת חולים מכבי | ACTIVE | 6 | 2407 | 1 | `maccabi4u--eazu8j` |
 | קורטק פתרונות קירור | ACTIVE | 5 | 4258 | 1 | `kortec--pdfonl` |
 | קידום | ACTIVE | 8 | 6139 | 1 | `kidum--wb3q8e` |
+| קידר רואי חשבון | ACTIVE | 5 | 4825 | 1 | `kedarcpa--psuu0u` |
 | קימאמה | ACTIVE | 6 | 2719 | 1 | `campkimama--lz6kls` |
 | קישורית | ACTIVE | 3 | 370 | 1 | `kishurit--gjuja3` |
 | קראוס תעשיות | ACTIVE | 5 | 5995 | 2 | `krausz--w08edq` |

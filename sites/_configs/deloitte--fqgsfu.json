@@ -1,0 +1,94 @@
+{
+  "_exportedAt": "2026-10-18T10:17:23.920Z",
+  "_note": "Mirror of the live config. The DB is authoritative; the worker never reads this file. setupScript lives alongside in <slug>.setup.js.",
+  "id": "cmvdnrxex008i01vuxzfqgsfu",
+  "siteUrl": "https://careers.deloitte.co.il/he/positions-he/",
+  "companyName": "Deloitte",
+  "status": "ACTIVE",
+  "setupScriptFile": "deloitte--fqgsfu.setup.js",
+  "pageFlow": [],
+  "fieldMappings": {
+    "_meta": {
+      "lane": null,
+      "limits": null,
+      "savedAt": "2026-10-18T10:05:12.571Z",
+      "pagination": null,
+      "formCapture": null,
+      "listingUrls": null,
+      "locationMap": {
+        "Haifa": "חיפה",
+        "Nazareth": "נצרת",
+        "Tel Aviv": "תל אביב-יפו",
+        "Jerusalem": "ירושלים",
+        "Beit Shemesh": "בית שמש"
+      },
+      "itemSelector": "#haide-deloitte > div.haide-job",
+      "acceptedGates": null,
+      "minPublishDate": null,
+      "minPublishDays": null,
+      "revealSelector": null,
+      "listingSelector": null,
+      "applyLoginReason": null,
+      "browserOverrides": null,
+      "loadMoreSelector": null,
+      "locationFallback": null,
+      "originalMappings": null,
+      "applyRequiresLogin": false
+    },
+    "title": {
+      "source": "MANUAL",
+      "selector": "a.haide-link",
+      "confidence": 0.95,
+      "capturedOnUrl": "https://careers.deloitte.co.il/he/positions-he/"
+    },
+    "location": {
+      "source": "MANUAL",
+      "selector": ".__ai-location",
+      "confidence": 0.9,
+      "capturedOnUrl": "https://careers.deloitte.co.il/he/positions-he/"
+    },
+    "_formData": {
+      "source": "MANUAL",
+      "selector": ".__ai-formData",
+      "confidence": 0.9,
+      "capturedOnUrl": "https://careers.deloitte.co.il/he/positions-he/"
+    },
+    "detailUrl": {
+      "source": "MANUAL",
+      "selector": "a.haide-link",
+      "confidence": 0.95,
+      "extractAttr": "href",
+      "capturedOnUrl": "https://careers.deloitte.co.il/he/positions-he/"
+    },
+    "department": {
+      "source": "MANUAL",
+      "selector": ".__ai-department",
+      "confidence": 0.8,
+      "capturedOnUrl": "https://careers.deloitte.co.il/he/positions-he/"
+    },
+    "description": {
+      "source": "MANUAL",
+      "selector": ".__ai-description",
+      "confidence": 0.9,
+      "capturedOnUrl": "https://careers.deloitte.co.il/he/positions-he/"
+    },
+    "requirements": {
+      "source": "MANUAL",
+      "selector": ".__ai-requirements",
+      "confidence": 0.9,
+      "capturedOnUrl": "https://careers.deloitte.co.il/he/positions-he/"
+    },
+    "externalJobId": {
+      "source": "MANUAL",
+      "selector": ".__ai-externalJobId",
+      "confidence": 0.95,
+      "capturedOnUrl": "https://careers.deloitte.co.il/he/positions-he/"
+    },
+    "applicationInfo": {
+      "source": "MANUAL",
+      "selector": ".__ai-applicationInfo",
+      "confidence": 0.9,
+      "capturedOnUrl": "https://careers.deloitte.co.il/he/positions-he/"
+    }
+  }
+}
