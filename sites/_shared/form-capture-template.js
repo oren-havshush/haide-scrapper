@@ -31,12 +31,19 @@
       var isOffscreen = style.indexOf('-99999') !== -1 || style.indexOf('display:none !important') !== -1 || style.indexOf('display: none !important') !== -1;
       var isHpName = /\b(hp[_-]|honeypot|maspik|nickname|malkodet)/i.test(name + ' ' + (el.id || '') + ' ' + (el.className || ''));
       // A text-like field hidden by its own style, or emptied by a script on
-      // load, is a trap too (H4; worker/lib/formFields.ts TEXT_LIKE).
+      // load, is a trap too (H4; worker/lib/formFields.ts TEXT_LIKE). One the
+      // page gave a value carries the job: it is kept with the value, marked
+      // prefilled, and the style rule does not judge it; emptied is a trap.
       var isTrap = false;
-      if (/^(text|email|tel|url|number|search|password|textarea)$/.test(type)) {
+      var isTextLike = /^(text|email|tel|url|number|search|password|textarea)$/.test(type);
+      var emptied = false;
+      var prefilled = false;
+      if (isTextLike) {
         var cs = window.getComputedStyle(el);
         var pv = el.parentElement ? window.getComputedStyle(el.parentElement).visibility : 'visible';
-        isTrap =
+        emptied = (tag === 'textarea' ? (el.textContent || '').trim() !== '' : (el.getAttribute('value') || '').trim() !== '') && el.value === '';
+        prefilled = !emptied && (el.value || '').trim() !== '';
+        var styleHidden =
           cs.display === 'none' ||
           (cs.visibility === 'hidden' && pv !== 'hidden') ||
           cs.opacity === '0' ||
@@ -44,8 +51,8 @@
           (/px$/.test(cs.height) && parseFloat(cs.height) <= 1) ||
           ((cs.position === 'absolute' || cs.position === 'fixed') &&
             ((parseFloat(cs.left) || 0) <= -1000 || (parseFloat(cs.top) || 0) <= -1000)) ||
-          (el.getAttribute('aria-hidden') === 'true' && el.getAttribute('tabindex') === '-1') ||
-          ((tag === 'textarea' ? (el.textContent || '').trim() !== '' : (el.getAttribute('value') || '').trim() !== '') && el.value === '');
+          (el.getAttribute('aria-hidden') === 'true' && el.getAttribute('tabindex') === '-1');
+        isTrap = emptied || (styleHidden && !prefilled);
       }
       if ((isOffscreen || isHpName || isTrap) && type !== 'hidden') continue;
       var label = '';
@@ -78,6 +85,7 @@
       var rec = { name: name, fieldType: type, label: label, required: required, tagName: tag };
       // The value as the page holds it now: a script may have set it.
       if (type === 'hidden') rec.value = el.value || '';
+      if (prefilled) { rec.value = el.value; rec.prefilled = true; }
       if (type === 'file') {
         var accept = el.getAttribute('accept');
         if (accept) rec.accept = accept;

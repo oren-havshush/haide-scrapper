@@ -45,7 +45,7 @@ export type RawFieldDescriptor = {
   name: string;
   label: string;
   required: boolean;
-  /** The element's current value; kept only for hidden inputs and radios. */
+  /** The element's current value; reported for hidden inputs, radios and text-like fields. */
   value?: string;
   accept?: string | null;
   multiple?: boolean;
@@ -74,6 +74,8 @@ export type FormField = {
   required: boolean;
   tagName: string;
   value?: string;
+  /** A text-like field the page gave a value; `value` is that value. */
+  prefilled?: boolean;
   accept?: string;
   multiple?: boolean;
   options?: Array<{ value: string; label: string }>;
@@ -85,12 +87,18 @@ export function normalizeFormFields(descriptors: RawFieldDescriptor[]): FormFiel
   for (const d of descriptors) {
     const type = (d.type || "").toLowerCase();
     if (SKIPPED_TYPES.has(type)) continue;
+    // A text-like field the page gave a value carries the job (Super-Pharm's
+    // style-hidden title, towersemi's per-job fields): it is kept with that
+    // value and marked prefilled (developer's report 2026-10-18, item 2).
+    const prefilled = TEXT_LIKE.has(type) && (d.value ?? "").trim() !== "" && d.emptiedOnLoad !== true;
     // A trap is captured by the page and never filled: it is left out of the
-    // fields to fill, as a honeypot always was. A hidden input never is.
+    // fields to fill, as a honeypot always was. A hidden input never is. The
+    // style rule (H4) judges only a text-like field with no value; one a
+    // script emptied on load is a trap either way.
     const isHoneypot =
       d.offscreen === true ||
       HONEYPOT_NAME.test(d.hpHint ?? d.name) ||
-      (TEXT_LIKE.has(type) && (d.styleHidden === true || d.emptiedOnLoad === true));
+      (TEXT_LIKE.has(type) && (d.emptiedOnLoad === true || (d.styleHidden === true && !prefilled)));
     if (isHoneypot && type !== "hidden") continue;
 
     if (type === "radio") {
@@ -116,6 +124,10 @@ export function normalizeFormFields(descriptors: RawFieldDescriptor[]): FormFiel
 
     const field: FormField = { name: d.name, label: d.label, fieldType: type, required: d.required, tagName: d.tag };
     if (type === "hidden") field.value = d.value ?? "";
+    if (prefilled) {
+      field.value = d.value!;
+      field.prefilled = true;
+    }
     if (type === "file") {
       if (d.accept) field.accept = d.accept;
       if (d.multiple) field.multiple = true;

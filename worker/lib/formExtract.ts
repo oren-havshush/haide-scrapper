@@ -155,8 +155,12 @@ export async function extractLiveFormData(
           el.hasAttribute("required") ||
           (el.getAttribute("aria-required") || "").trim().toLowerCase() === "true" ||
           /(^|[{,\s'"])required['"]?\s*:\s*true\b/.test(el.getAttribute("data-validate") || ""),
-        // The value as the page holds it NOW — a script may have set it.
-        ...(type === "hidden" || type === "radio" ? { value: (el as HTMLInputElement).value } : {}),
+        // The value as the page holds it NOW — a script may have set it. A
+        // text-like field's too: one the page filled carries the job
+        // (formFields.ts keeps it, marked prefilled). Inline test: keepNames.
+        ...(type === "hidden" || type === "radio" || /^(text|email|tel|url|number|search|password|textarea)$/.test(type)
+          ? { value: (el as HTMLInputElement).value }
+          : {}),
         ...(type === "file"
           ? { accept: el.getAttribute("accept"), multiple: (el as HTMLInputElement).multiple }
           : {}),
