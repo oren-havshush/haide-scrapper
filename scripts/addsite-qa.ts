@@ -46,6 +46,8 @@ import * as fs from "fs";
 import * as path from "path";
 import { fileURLToPath } from "url";
 import { DEPARTMENT_LABELS, PUBLISH_DATE_LABELS, hasLabel } from "./lib/qaLabels";
+import { CITY_ABBREVIATIONS, LOCATION_ALIAS } from "../worker/lib/locationNormalize";
+import { readLocationMap } from "../worker/lib/locationMap";
 
 const BASE = "https://scrapper.haide-jobs.co.il";
 const UA_DEFAULT =
@@ -244,6 +246,34 @@ function slugify(s: string): string {
 }
 
 /**
+ * The stored location is on the page when the page text holds it, or a
+ * spelling that leads to it (developer's report 2026-10-18, item 4: bynet,
+ * brooks-keret and elmomc were sent to REVIEW for a correct location):
+ *   - the stored value itself, with a space for each hyphen and the reverse;
+ *   - a key of the site's locationMap that maps to it ("קדימה" -> "קדימה צורן");
+ *   - a short form in the location alias tables (LOCATION_ALIAS,
+ *     CITY_ABBREVIATIONS) that maps to it ('פ"ת' -> פתח תקווה).
+ * `bodyLower` is the page text, lower-cased.
+ */
+export function locationOnPage(stored: string, bodyLower: string, locationMap: Record<string, string | null> | null): boolean {
+  const city = stored.trim();
+  const same = (v: string | null | undefined) => {
+    if (!v) return false;
+    const a = v.replace(/-/g, " ").trim().toLowerCase();
+    return a === city.replace(/-/g, " ").toLowerCase();
+  };
+  const forms = new Set<string>([city, city.replace(/-/g, " "), city.replace(/ /g, "-")]);
+  for (const [key, value] of Object.entries(locationMap ?? {})) {
+    // A map value may list several places, comma-separated.
+    if ((value ?? "").split(",").some((v) => same(v))) forms.add(key);
+  }
+  for (const table of [LOCATION_ALIAS, CITY_ABBREVIATIONS]) {
+    for (const [short, full] of Object.entries(table)) if (same(full)) forms.add(short);
+  }
+  return [...forms].some((f) => f.trim().length > 1 && bodyLower.includes(f.trim().toLowerCase()));
+}
+
+/**
  * Compute correctness suspects for a sampled job set + optional probe result.
  * Returns an array of human-readable strings describing each suspect.
  *
@@ -267,6 +297,8 @@ function slugify(s: string): string {
 export function computeCorrectnessSuspects(
   jobs: any[],
   probe: { fieldsOnPage: Record<string, boolean>; detailBodyText?: string } | null,
+  /** The site's locationMap (_meta.locationMap), for the location check. */
+  opts: { locationMap?: Record<string, string | null> | null } = {},
 ): string[] {
   const suspects: string[] = [];
   const n = jobs.length;
@@ -328,8 +360,9 @@ export function computeCorrectnessSuspects(
       .map((j) => String(fieldValue(j, "location") ?? "").trim())
       .filter((l) => l.length > 3);
     if (locValues.length > 0) {
-      // Check if majority of locations appear in the probed detail page body.
-      const mismatches = locValues.filter((loc) => !bodyLower.includes(loc.toLowerCase()));
+      // Check if majority of locations appear in the probed detail page body,
+      // in any spelling that leads to the stored city (locationOnPage).
+      const mismatches = locValues.filter((loc) => !locationOnPage(loc, bodyLower, opts.locationMap ?? null));
       if (mismatches.length > locValues.length * 0.7) {
         suspects.push(
           `location "${locValues[0]}" (and ${mismatches.length - 1} others) not found in detail page body — ` +
@@ -395,7 +428,20 @@ export async function probeDetail(
         description: (document.body?.innerText || "").length > 400,
       };
       const APPLY = /apply|הגש|שלח|מועמד|קורות|cv|resume|הגשת מועמדות|להגשה|צרף/i;
-      const forms = Array.from(document.querySelectorAll("form")).map((f) => {
+      // A cookie or consent panel's button and form are not the job's apply
+      // path (developer's report 2026-10-18, item 4: תן ביס's "Apply").
+      const CONSENT = /cookie|consent|gdpr|\bcmp\b|cmp[-_]|privacy-banner/i;
+      // The walk stops below <body>: a plugin's body class ("cookies-not-set")
+      // would otherwise put the whole page inside the panel.
+      const inConsent = (el: Element): boolean => {
+        for (let n: Element | null = el; n && n !== document.body && n !== document.documentElement; n = n.parentElement) {
+          const words = `${typeof (n as HTMLElement).className === "string" ? (n as HTMLElement).className : ""} ${n.id || ""}`;
+          if (CONSENT.test(words)) return true;
+          if (n.getAttribute("role") === "dialog" && CONSENT.test(`${words} ${n.getAttribute("aria-label") || ""}`)) return true;
+        }
+        return false;
+      };
+      const forms = Array.from(document.querySelectorAll("form")).filter((f) => !inConsent(f)).map((f) => {
         const fields = Array.from(f.querySelectorAll("input,select,textarea")).filter(
           (el) => !["hidden", "submit", "button", "reset", "image"].includes(el.getAttribute("type") || ""),
         );
@@ -403,8 +449,10 @@ export async function probeDetail(
       });
       const formCount = forms.length;
       const maxFormFields = forms.length ? Math.max(...forms) : 0;
-      const applyEls = Array.from(document.querySelectorAll("a,button")).filter((el) =>
-        APPLY.test((el.textContent || "") + " " + (el.getAttribute("aria-label") || "") + " " + (el.className || "")),
+      const applyEls = Array.from(document.querySelectorAll("a,button")).filter(
+        (el) =>
+          !inConsent(el) &&
+          APPLY.test((el.textContent || "") + " " + (el.getAttribute("aria-label") || "") + " " + (el.className || "")),
       );
       const modalApplyButton = applyEls.some((el) => {
         const href = el.getAttribute("href") || "";
@@ -431,6 +479,30 @@ export async function probeDetail(
   } finally {
     await b.close().catch(() => {});
   }
+}
+
+/**
+ * The apply path, in order: a captured form; then, when EVERY sampled job has
+ * its own apply link or mailto, that (developer's report 2026-10-18, item 4:
+ * afeka's and leumi's page-level lead form won over the jobs' own links and
+ * emails, and sent them to REVIEW); then an on-page form or modal button
+ * (NEEDS_MANUAL); then an email or URL anywhere in the sample.
+ */
+export function classifyFormStatus(args: {
+  hasFormCapture: boolean;
+  /** Each sampled job's applicationInfo. */
+  jobApply: unknown[];
+  probe: { maxFormFields: number; modalApplyButton: boolean; externalApply: boolean } | null;
+  anyEmail: boolean;
+  anyUrlApply: boolean;
+}): FormStatus {
+  if (args.hasFormCapture) return "CAPTURED";
+  const own = args.jobApply.map((v) => (looksLikeEmail(v) ? "EMAIL" : looksLikeUrl(v) ? "URL" : null));
+  if (own.length > 0 && own.every((k) => k !== null)) return own.includes("EMAIL") ? "EMAIL" : "URL";
+  if (args.probe && (args.probe.maxFormFields >= 3 || args.probe.modalApplyButton)) return "NEEDS_MANUAL";
+  if (args.anyEmail) return "EMAIL";
+  if (args.anyUrlApply || (args.probe && args.probe.externalApply)) return "URL";
+  return "NONE";
 }
 
 // ---------------------------------------------------------------------------
@@ -566,27 +638,21 @@ export async function runQa(siteId: string, opts: RunQaOptions): Promise<QaRecor
   const probeInconclusive = !noProbe && !probe;
 
   // --- B-guardrail: correctness suspects ---
-  const correctnessSuspects = computeCorrectnessSuspects(jobs, probe);
+  const correctnessSuspects = computeCorrectnessSuspects(jobs, probe, { locationMap: readLocationMap(cfgData?.fieldMappings) });
   if (correctnessSuspects.length) {
     notes.push(...correctnessSuspects.map((s) => `correctness suspect: ${s}`));
   }
 
   // --- classify apply path / formStatus ---
-  let formStatus: FormStatus;
-  let manualFormUrl: string | undefined;
   const formFields = formCapture?.fields?.length || formDataFields || appFormFields || 0;
-  if (hasFormCapture) {
-    formStatus = "CAPTURED";
-  } else if (probe && (probe.maxFormFields >= 3 || probe.modalApplyButton)) {
-    formStatus = "NEEDS_MANUAL";
-    manualFormUrl = probedUrl;
-  } else if (anyEmail) {
-    formStatus = "EMAIL";
-  } else if (anyUrlApply || (probe && probe.externalApply)) {
-    formStatus = "URL";
-  } else {
-    formStatus = "NONE";
-  }
+  const formStatus = classifyFormStatus({
+    hasFormCapture,
+    jobApply: jobs.map((j) => fieldValue(j, "applicationInfo")),
+    probe,
+    anyEmail,
+    anyUrlApply,
+  });
+  const manualFormUrl = formStatus === "NEEDS_MANUAL" ? probedUrl : undefined;
   const applyResolution = formStatus.toLowerCase();
 
   // --- Tier-A verdict ---
