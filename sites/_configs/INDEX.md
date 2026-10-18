@@ -158,6 +158,7 @@ refused. This is how `listingUrls` gets back too: on a site whose Pages column i
 | חיותא | ACTIVE | 6 | 4532 | 1 | `chayuta--wve8pb` |
 | חלילית | ACTIVE | 6 | 4757 | 1 | `halilit--0vwgee` |
 | חמת | ACTIVE | 7 | 3390 | 1 | `hamat-group--4ris60` |
+| חפוז שליחויות | ACTIVE | 4 | 3996 | 1 | `hafoz--dictuc` |
 | טלכלל | ACTIVE | 6 | 4062 | 1 | `teleclalcc--n6k1yl` |
 | טמבור | ACTIVE | 5 | 2580 | 1 | `tambour--2nwjvz` |
 | טמפו משקאות | ACTIVE | 9 | 9016 | 1 | `adamtotal--ipuvxm` |
@@ -175,6 +176,7 @@ refused. This is how `listingUrls` gets back too: on a site whose Pages column i
 | כפיר מעליות | ACTIVE | 7 | 1979 | 1 | `app-civi--buhdfj` |
 | כפר המכביה | ACTIVE | 7 | 5238 | 1 | `app-civi--fdmziu` |
 | לדיקו בע"מ | ACTIVE | 8 | 5918 | 1 | `ledico--6op8qs` |
+| כרמל דיירקט | ACTIVE | 8 | 12474 | 1 | `carmeldirect--ehozci` |
 | ל.מ. עולם של כוח אדם | ACTIVE | 10 | 10764 | 1 | `l-m--yg3dno` |
 | לב אביר הנדסת חשמל | ACTIVE | 4 | 3001 | 1 | `levabir--rhd1zy` |
 | לילית קוסמטיקה | ACTIVE | 4 | 1091 | 1 | `lilit--jrzaf3` |
@@ -271,6 +273,7 @@ refused. This is how `listingUrls` gets back too: on a site whose Pages column i
 | תמה גרופ | ACTIVE | 4 | 2240 | 1 | `tama--rwlfxm` |
 | תמורה | ACTIVE | 4 | 6170 | 1 | `tmuralife--m6phhu` |
 | תנובה | ACTIVE | 5 | 1994 | 1 | `tnuva--7145ri` |
+| תן ביס | ACTIVE | 10 | 4779 | 1 | `justeattakeaway--6gu9li` |
 | תפקיד פלוס | ACTIVE | 6 | 967 | 1 | `tafkid-plus--ioqkzw` |
 | תקשוב | ACTIVE | 6 | 5841 | 1 | `tikshoov--bo7eqx` |
 | תשתיות אנרגיה בע"מ | ACTIVE | 6 | 3189 | 1 | `pei--qj171a` |

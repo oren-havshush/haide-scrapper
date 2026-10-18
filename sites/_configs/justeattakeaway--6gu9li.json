@@ -1,0 +1,108 @@
+{
+  "_exportedAt": "2026-10-18T07:22:51.181Z",
+  "_note": "Mirror of the live config. The DB is authoritative; the worker never reads this file. setupScript lives alongside in <slug>.setup.js.",
+  "id": "cmvdhdegf000901vu8e6gu9li",
+  "siteUrl": "https://careers.justeattakeaway.com/il/he/israel",
+  "companyName": "תן ביס",
+  "status": "ACTIVE",
+  "setupScriptFile": "justeattakeaway--6gu9li.setup.js",
+  "pageFlow": [
+    {
+      "url": "https://careers.justeattakeaway.com/il/he/israel",
+      "action": "navigate"
+    },
+    {
+      "url": "https://careers.justeattakeaway.com/il/he/job/*",
+      "action": "a.__haide-link",
+      "waitFor": "a[data-ph-at-id=\"apply-link\"]"
+    }
+  ],
+  "fieldMappings": {
+    "_meta": {
+      "lane": null,
+      "limits": null,
+      "savedAt": "2026-10-18T07:05:51.822Z",
+      "pagination": null,
+      "formCapture": null,
+      "listingUrls": null,
+      "locationMap": {
+        "Tel Aviv Azrieli Office": "תל אביב-יפו",
+        "Tel Aviv Midtown Office": "תל אביב-יפו"
+      },
+      "itemSelector": ".__haide-job",
+      "acceptedGates": null,
+      "minPublishDate": null,
+      "minPublishDays": null,
+      "revealSelector": null,
+      "listingSelector": null,
+      "applyLoginReason": null,
+      "browserOverrides": null,
+      "loadMoreSelector": null,
+      "locationFallback": null,
+      "originalMappings": null,
+      "applyRequiresLogin": false
+    },
+    "title": {
+      "source": "manual",
+      "selector": ".__ai-title",
+      "confidence": 0.95,
+      "capturedOnUrl": "https://careers.justeattakeaway.com/il/he/israel"
+    },
+    "location": {
+      "source": "manual",
+      "selector": ".__ai-location",
+      "confidence": 0.9,
+      "capturedOnUrl": "https://careers.justeattakeaway.com/il/he/israel"
+    },
+    "detailUrl": {
+      "source": "manual",
+      "selector": "a.__haide-link",
+      "confidence": 0.95,
+      "extractAttr": "href",
+      "capturedOnUrl": "https://careers.justeattakeaway.com/il/he/israel"
+    },
+    "department": {
+      "source": "manual",
+      "selector": ".__ai-dept",
+      "confidence": 0.9,
+      "capturedOnUrl": "https://careers.justeattakeaway.com/il/he/israel"
+    },
+    "description": {
+      "source": "manual",
+      "selector": "#haide-detail .__ai-description",
+      "confidence": 0.9,
+      "capturedOnUrl": "https://careers.justeattakeaway.com/il/he/job/R_026058"
+    },
+    "publishDate": {
+      "source": "manual",
+      "selector": ".__ai-date",
+      "confidence": 0.9,
+      "capturedOnUrl": "https://careers.justeattakeaway.com/il/he/israel"
+    },
+    "requirements": {
+      "source": "manual",
+      "selector": "#haide-detail .__ai-requirements",
+      "confidence": 0.85,
+      "capturedOnUrl": "https://careers.justeattakeaway.com/il/he/job/R_026058"
+    },
+    "externalJobId": {
+      "source": "manual",
+      "selector": ".__ai-eid",
+      "confidence": 0.95,
+      "capturedOnUrl": "https://careers.justeattakeaway.com/il/he/israel"
+    },
+    "employmentType": {
+      "source": "manual",
+      "selector": ".__ai-type",
+      "confidence": 0.9,
+      "capturedOnUrl": "https://careers.justeattakeaway.com/il/he/israel"
+    },
+    "applicationInfo": {
+      "source": "manual",
+      "selector": "a[data-ph-at-id=\"apply-link\"]",
+      "confidence": 0.9,
+      "extractAttr": "href",
+      "capturedOnUrl": "https://careers.justeattakeaway.com/il/he/job/R_026058"
+    }
+  }
+}

@@ -1,0 +1,147 @@
+{
+  "_exportedAt": "2026-10-18T07:22:51.014Z",
+  "_note": "Mirror of the live config. The DB is authoritative; the worker never reads this file. setupScript lives alongside in <slug>.setup.js.",
+  "id": "cmvdhjh66000e01vuc8dictuc",
+  "siteUrl": "https://www.hafoz.co.il/%D7%93%D7%A8%D7%95%D7%A9%D7%99%D7%9D/",
+  "companyName": "חפוז שליחויות",
+  "status": "ACTIVE",
+  "setupScriptFile": "hafoz--dictuc.setup.js",
+  "pageFlow": [],
+  "fieldMappings": {
+    "_meta": {
+      "lane": null,
+      "limits": null,
+      "savedAt": "2026-10-18T07:10:25.928Z",
+      "pagination": null,
+      "formCapture": {
+        "fields": [
+          {
+            "name": "post_id",
+            "label": "post_id",
+            "value": "32",
+            "tagName": "input",
+            "required": false,
+            "fieldType": "hidden"
+          },
+          {
+            "name": "form_id",
+            "label": "form_id",
+            "value": "3e80012",
+            "tagName": "input",
+            "required": false,
+            "fieldType": "hidden"
+          },
+          {
+            "name": "referer_title",
+            "label": "referer_title",
+            "value": "בוא לעבוד עם חפוז שליחויות",
+            "tagName": "input",
+            "required": false,
+            "fieldType": "hidden"
+          },
+          {
+            "name": "queried_id",
+            "label": "queried_id",
+            "value": "32",
+            "tagName": "input",
+            "required": false,
+            "fieldType": "hidden"
+          },
+          {
+            "name": "form_fields[name]",
+            "label": "שם מלא",
+            "tagName": "input",
+            "required": true,
+            "fieldType": "text"
+          },
+          {
+            "name": "form_fields[email]",
+            "label": "דואר אלקטרוני",
+            "tagName": "input",
+            "required": true,
+            "fieldType": "email"
+          },
+          {
+            "name": "form_fields[phone]",
+            "label": "טלפון",
+            "tagName": "input",
+            "required": true,
+            "fieldType": "tel"
+          },
+          {
+            "name": "form_fields[message]",
+            "label": "השאירו הודעה",
+            "value": "{{job.title}}",
+            "tagName": "textarea",
+            "required": false,
+            "fieldType": "textarea"
+          },
+          {
+            "name": "form_fields[file][]",
+            "label": "צרף קובץ של הקורות חיים",
+            "tagName": "input",
+            "multiple": true,
+            "required": false,
+            "fieldType": "file"
+          },
+          {
+            "name": "maspik_spam_key",
+            "label": "maspik_spam_key",
+            "value": "xPxSfuvuwi3kJMKtuMBY7zYHv4Y50JzDqBpuriMZtfjz3xVKkk6KaUr194w2leU0",
+            "tagName": "input",
+            "required": false,
+            "fieldType": "hidden"
+          },
+          {
+            "name": "maspik_signals",
+            "label": "maspik_signals",
+            "tagName": "input",
+            "required": false,
+            "fieldType": "hidden"
+          }
+        ],
+        "method": "POST",
+        "actionUrl": "https://www.hafoz.co.il/%D7%93%D7%A8%D7%95%D7%A9%D7%99%D7%9D/",
+        "formSelector": "form.elementor-form:has(input[name=\"form_id\"][value=\"3e80012\"])"
+      },
+      "listingUrls": null,
+      "locationMap": null,
+      "itemSelector": "#haide-hafoz > div.haide-job",
+      "acceptedGates": null,
+      "minPublishDate": null,
+      "minPublishDays": null,
+      "revealSelector": null,
+      "listingSelector": null,
+      "applyLoginReason": null,
+      "browserOverrides": null,
+      "loadMoreSelector": null,
+      "locationFallback": null,
+      "originalMappings": null,
+      "applyRequiresLogin": false
+    },
+    "title": {
+      "source": "MANUAL",
+      "selector": ".__ai-title",
+      "confidence": 0.95,
+      "capturedOnUrl": "https://www.hafoz.co.il/%D7%93%D7%A8%D7%95%D7%A9%D7%99%D7%9D/"
+    },
+    "location": {
+      "source": "MANUAL",
+      "selector": ".__ai-location",
+      "confidence": 0.9,
+      "capturedOnUrl": "https://www.hafoz.co.il/%D7%93%D7%A8%D7%95%D7%A9%D7%99%D7%9D/"
+    },
+    "description": {
+      "source": "MANUAL",
+      "selector": ".__ai-description",
+      "confidence": 0.9,
+      "capturedOnUrl": "https://www.hafoz.co.il/%D7%93%D7%A8%D7%95%D7%A9%D7%99%D7%9D/"
+    },
+    "requirements": {
+      "source": "MANUAL",
+      "selector": ".__ai-requirements",
+      "confidence": 0.9,
+      "capturedOnUrl": "https://www.hafoz.co.il/%D7%93%D7%A8%D7%95%D7%A9%D7%99%D7%9D/"
+    }
+  }
+}
