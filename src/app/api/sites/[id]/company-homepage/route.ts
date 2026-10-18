@@ -3,7 +3,7 @@ import { successResponse } from "@/lib/api-utils";
 import { formatErrorResponse, ValidationError } from "@/lib/errors";
 import { updateSiteCompanyHomepageSchema } from "@/lib/validators";
 import { recordOperatorFields, saveCompanyHomepage } from "@/services/siteService";
-import { homepageOrigin } from "@/lib/companyHomepage";
+import { companyHomepageValue } from "@/lib/companyHomepage";
 import { applyAutoFix, companySnapshotOf, isDashboardRequest, siteStatusOf } from "@/services/autoFixService";
 
 // Operator-supplied company homepage, for a site whose jobs live on a
@@ -36,9 +36,10 @@ export async function PUT(
       );
     }
 
-    // The origin, as the capture stores it (m): a path here was rewritten at
-    // capture and read as a change (diplomat's /he/).
-    const site = await saveCompanyHomepage(id, homepageOrigin(parsed.data.companyHomepageUrl));
+    // With its path, unless the path is a language prefix alone (diplomat's
+    // /he/ stays the origin): a subsidiary's homepage is a path on its group's
+    // host. The capture keeps this value (capturedHomepage), so it is no change.
+    const site = await saveCompanyHomepage(id, companyHomepageValue(parsed.data.companyHomepageUrl));
     // The dashboard's edit dialog marks the homepage as set by hand (or unmarks
     // it on a clear), so a recapture keeps it (src/lib/operatorFields.ts).
     if (isDashboardRequest(request)) await recordOperatorFields(id, { companyHomepageUrl: site.companyHomepageUrl });

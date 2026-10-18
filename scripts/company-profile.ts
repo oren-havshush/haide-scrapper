@@ -107,6 +107,7 @@ import {
 import { rasteriseSvgImgLogos } from "./lib/svg-img-logos";
 import { keepStoredLogo } from "./lib/logo-keep";
 import { keepOperatorFields, parseReplaceFields } from "../src/lib/operatorFields";
+import { capturedHomepage } from "../src/lib/companyHomepage";
 import { fetchImage, ImageRejected, type FetchedImage } from "./lib/fetch-image";
 import { inspectImage } from "../src/lib/image-validate";
 
@@ -1489,7 +1490,10 @@ async function captureSite(
       return result;
     }
 
-    result.fields.companyHomepageUrl = originOf(homepage.url);
+    // The supplied homepage, path kept, when the page loaded on its origin; else
+    // the harvested origin (src/lib/companyHomepage.ts capturedHomepage). A
+    // subsidiary's path on its group's host is not rewritten to the group's.
+    result.fields.companyHomepageUrl = capturedHomepage(supplied, homepage.url);
 
     // --- 2. Deterministic extraction --------------------------------------
     const org: OrganizationLd | null = parseJsonLdOrganization(homepage.jsonLd);
@@ -1904,17 +1908,6 @@ function officeListCity(text: string, cities: CityList): string | null {
 
 function isThinCapture(fields: CaptureResult["fields"]): boolean {
   return !fields.companyAbout && !fields.companyLogoPath && !fields.companyHqAddress;
-}
-
-function originOf(url: string | undefined | null): string | null {
-  if (!url) return null;
-  try {
-    const parsed = new URL(url);
-    if (parsed.protocol !== "http:" && parsed.protocol !== "https:") return null;
-    return parsed.origin;
-  } catch {
-    return null;
-  }
 }
 
 // ---------------------------------------------------------------------------

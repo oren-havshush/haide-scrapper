@@ -39,7 +39,9 @@ eq(
 );
 
 const route = readFileSync(join(__dirname, "..", "app", "api", "sites", "[id]", "company-homepage", "route.ts"), "utf8");
-eq(/saveCompanyHomepage\(id, homepageOrigin\(parsed\.data\.companyHomepageUrl\)\)/.test(route), true, "the route stores homepageOrigin(...)");
+// Since 2026-10-18 (developer's report, item 3) the route keeps a path that is
+// not a language prefix alone: companyHomepagePath.test.ts.
+eq(/saveCompanyHomepage\(id, companyHomepageValue\(parsed\.data\.companyHomepageUrl\)\)/.test(route), true, "the route stores companyHomepageValue(...)");
 
 if (failures > 0) {
   console.error(`\n${failures} assertion(s) failed`);
