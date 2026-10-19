@@ -30,7 +30,7 @@ platform: 'windows-powershell'
 | `companyAbout` | JSON-LD `description` → about page → homepage prose | boilerplate / promo / error-page filters, then **longest paragraph of the lede only** (§7.8) |
 | `companyLogoPath` | JSON-LD logo → rasterised header `<svg>`, inline or `<img src="*.svg">` → `<img>` candidates | magic bytes, size, not a favicon; an SVG reaches the server only as a rasterised PNG |
 | `companyHqAddress` | JSON-LD `PostalAddress` → labelled address → street line → compact line | a scanned address must name a `city.csv` city |
-| `companyHqCity` | operator-authored (§4.4) → JSON-LD `addressLocality` → address line → office list → web lookup (§5) | **`CSV files/city.csv` — always** |
+| `companyHqCity` | operator-authored (§4.4) → JSON-LD `addressLocality` → address line → office list; the company's own site only, never a web lookup (§5) | **`CSV files/city.csv` — always** |
 
 The deterministic rules live in `scripts/lib/company-extract.ts` (pure, covered by
 `scripts/lib/company-extract.test.ts`). The LLM is a **fallback for fields the rules
@@ -132,7 +132,10 @@ Two questions, both answered by eye:
    phone area code. A JSON-LD `addressLocality` with no `streetAddress`, or an `llm` address
    that is only a city name, is weak: a printed street address beats it. On a conflict, ask
    the owner. ipvsecurity.com stored `תל אביב-יפו` from a bare locality while its jobs
-   subdomain printed `זרחין 10, רעננה` (`LRN-HQ-1`).
+   subdomain printed `זרחין 10, רעננה` (`LRN-HQ-1`). **An address that is a street line
+   with no city** ("רחוב המגשימים 20") gets its city set by hand, from the site, through
+   `PUT /company-hq-city` (§4.4) before the real run: the capture reads the street's name as
+   the city, and `מגשימים` passes the gate (decided 2026-10-18).
 
 **Resolve any doubt BEFORE the real run.** `companyAbout`, `companyLogoPath` and
 `companyProfileAt` are write-once (§1.1): noting a reservation and shipping anyway
@@ -156,7 +159,10 @@ and starts there. This usually unlocks the address, about copy and logo at once.
 — no title, no links, no text. `imj.org.il` serves the same ~101 KB obfuscated JS
 challenge for every URL. Confirm with `--probe`; if the DOM is empty there is nothing
 to extract and no keyword will ever reach it.
-→ Operator-supplied city (§4.4).
+→ Operator-supplied city (§4.4), from the company's own pages only (§5).
+
+An **age gate** in front of the site (tempo) stops the capture the same way and has no
+fix in the extractor: set the profile by hand, from the site (2026-10-18 reply).
 
 **4.3 The company simply publishes no address.** Common and legitimate. Check the
 contact page, the directions page (`כתובת ותחבורה` / `דרכי הגעה` / `מפת הגעה`), the
@@ -224,7 +230,7 @@ find the sites whose address was corrected by hand and re-apply it afterwards
 |---|---|
 | `operator` | a human established this city |
 | `operator:none` | a human looked; this company publishes no HQ city. City stays NULL and the dashboard stops asking |
-| `skill <url>` | §5 auto-accepted it, citing the evidence |
+| `skill <url>` | written by the former §5 web lookup, before 2026-10-18; no longer written |
 
 `operator:none` is worth using. Without it a company that genuinely publishes no
 city is indistinguishable from one nobody has checked, and the dashboard's warning
@@ -238,90 +244,29 @@ for anything new: the DB value wins, and it needs no commit or deploy.
 
 ---
 
-## 5. Looking a city up on the web
+## 5. The HQ comes only from the company's own site (decided 2026-10-18)
 
-The capture takes a city only from an address the company published. When there is
-no such address (§4.3), the answer usually still exists — on a page the capture
-cannot read, or in the corporate registry. Finding it is your job; deciding whether
-it is trustworthy is what this section is for.
+The capture looks only at the company's own site. There is **no web lookup**: no
+corporate registry, LinkedIn, maps or business listings, press, Wikipedia or
+directory is a source for the HQ address or city, however plausible.
 
 **The gate does not protect you here.** `city.csv` checks a city is *real*. It has
-no opinion on whether it is *this company's*. Every safeguard below exists because
-that distinction is the entire risk.
+no opinion on whether it is *this company's*, and an outside listing is exactly where a
+real city for the wrong company comes from.
 
-**When.** Only after a capture completed with no city AND the §4 diagnosis shows the
-company publishes no address. Never as a first resort — if the address is on the
-company's own site and we missed it, that is a capture bug worth fixing in the
-extractor, and fixing it helps every site.
+**What still counts.** A page of the company's own domain the capture could not use —
+a PDF, a bot-walled or JS-only page, the privacy or terms page, the Hebrew version of
+the site. Its own statement about itself, entered by hand through §4.4.
+
+**When the site does not settle it,** the city stays empty until set by hand, and
+`operator:none` is written as before (§4.4) once the site's pages have been checked.
+
+**A hand-set HQ taken from an outside source** waits for a decision that has not been
+made yet. Do not enter one, and do not change one already stored, until it is
+decided.
 
 **Never overwrite.** If `companyHqCity` or `companyHqCitySource` is already set,
-stop. A human's answer is not second-guessed by a search.
-
-### 5.1 Source order
-
-1. **The company's own domain**, on a page the capture could not use — a PDF, a
-   bot-walled or JS-only page. Its own statement about itself.
-2. **The Israeli corporate registry** (data.gov.il), looked up by **ח.פ. number,
-   never by name**. Treat it as a *confirmer*: a registered address is often the
-   company's accountant or lawyer, and is frequently years stale.
-3. **LinkedIn** — self-declared and decent, but often reports a district rather than
-   a city (which the gate refuses anyway), and the page may belong to a different
-   legal entity than the employer.
-4. **Maps / business listings** — good evidence that a building exists, poor evidence
-   that it is the head office. Franchise branches carry the brand.
-5. **Press, Wikipedia, directories** — tie-breakers only. Aggregators re-scrape each
-   other, so two of them are **one** source, not two.
-
-Get the ח.פ. from the company's own footer, terms or privacy page. That number is
-also the strongest identity binding available.
-
-### 5.2 Auto-accept — all five, or ask
-
-1. **Identity is bound to this site.** The evidence sits on the eTLD+1 of
-   `companyHomepageUrl`, or names a ח.פ. that also appears on that domain. This is
-   the guard against the failure this codebase has hit three separate times: נטלי
-   stored wearing its accessibility vendor's identity; another company's logo and
-   press releases captured for כלמוביל; Comeet's homepage, prose and logo stored as
-   מנועי בית שמש's until the `og:url` gate landed. A plausible address for the wrong
-   company is the specific thing to fear.
-2. **Two independent sources agree** — different eTLD+1, neither quoting the other.
-3. **It is the head office**: the text says `משרד ראשי` / `הנהלה` / `מטה` /
-   "head office", or it is the only address the company publishes anywhere.
-4. **Gate-clean** — canonicalises to exactly one `city.csv` entry, and is not a
-   region.
-5. **Nothing better disagrees.**
-
-Then write it with `evidence: {"kind":"skill","url":"<the primary source>"}` and
-report the city and that URL in your summary. An auto-accepted value must never be
-unattributable.
-
-### 5.3 Ask the human on any of these
-
-- One source only, or every source tracing back to one origin.
-- The address belongs to a staffing agency, an ATS vendor, an accessibility widget
-  or a marketing host — check `src/lib/ats-hosts.ts` before believing an address.
-- The site's own URL is an ATS board and `companyName` is the only identity signal.
-  TADIRAN on `careers.topmatch.co.il` is the worked example; the wrong-legal-entity
-  risk is highest here.
-- **The company name is an ordinary Hebrew word** — מסוף, פריץ, תמונה. The search may
-  have matched a different business entirely. This is the same hazard that made
-  משמרות ("shifts") look like a kibbutz and found כנות inside הסוכנות.
-- **A branch network** — clinics, chains, service networks. ש.ל.ה lists branch
-  clinics and no head office; a branch city must never become the HQ.
-- A group, holding company, importer or franchise, where the search surfaces the
-  brands rather than the employer.
-- The registry city and the company's own site disagree. Do not silently prefer one.
-- Only a region is available.
-
-When you ask, give the proposed city, the source URL, and what specifically is
-uncertain. Do not store anything until answered.
-
-### 5.4 Before trusting this at scale
-
-Calibrate first. The sites already carrying a hand-verified city are a free labelled
-set: run the lookup over them **propose-only** and compare. Enable auto-accept only
-if it reproduces every one with **zero** wrong cities. Missing a few is fine —
-coverage was never the goal (see the header). Getting one wrong is not.
+stop. A human's answer is not second-guessed.
 
 ---
 
@@ -405,11 +350,13 @@ still gets wrong. Each is a known extractor limit, left as an operator check by 
   city through `PUT /company-hq-city` (the only route that runs the `city.csv` gate and records
   operator evidence) and the address and about through `PUT /company-profile?force=1`, sending
   only those keys.
-- **An HQ from outside the employer's site needs its provenance in `adminNote`**
-  (`LRN-HQ-7`): the operator route keeps `evidence.kind` and drops `evidence.url`, so write the
-  registry name, record number and URL into `adminNote` in the same session, saying which part
-  was verified.
+- **A hand-set HQ needs its provenance in `adminNote`** (`LRN-HQ-7`): the operator route keeps
+  `evidence.kind` and drops `evidence.url`, so write which page of the company's own site gave the
+  address into `adminNote` in the same session. Since 2026-10-18 the capture never takes an HQ
+  from outside the employer's site (§5), and entering one by hand from an outside source waits
+  for a decision.
 - **A street named after a person is not a city** (`LRN-HQ-9`): when the captured city is a word
-  inside the street name (`שד' אריאל שרון` → `אריאל`), read the next line. Where several
+  inside the street name (`שד' אריאל שרון` → `אריאל`), read the next line. A street line with no
+  city at all gets its city set by hand, from the site (§3.1). Where several
   addresses are printed, the HQ is the one labelled as offices (`המשרדים`, `משרדי החברה`,
   `הנהלה`), never a training site, warehouse or branch.

@@ -3736,6 +3736,10 @@
   carried when it was written — the call has been made once, for the fleet, and it is no longer a
   per-site question. Russian, Arabic, Amharic, French: dropped, whatever the counts say.
   `addsite2.md` §6.2 carries the rule; this entry is the evidence behind it.
+  - **Amended 2026-10-18: Arabic-only postings go in** (cet.ac.il, 2 Arabic-only postings): they
+    are jobs in Israel and the public site serves Arabic speakers too. The title test accepts the
+    Arabic script alongside Hebrew and Latin (`addsite3.md` §6.2). Russian, Amharic and French stay
+    out until decided. A place named only in Arabic is not a `city.csv` row: a tag, or Unknown.
   - **Filter on positive evidence, never a blacklist — tightened 2026-09-28 (owner):** keep a card
     only if its title has at least one Hebrew or Latin letter AND no letter from any other script
     (digits, punctuation, emoji, niqqud and Common/Inherited letters such as U+02BC are neutral).
@@ -3761,7 +3765,8 @@
     was kept by owner decision on 2026-09-27. Counts there are 45 Hebrew-only / 1 Arabic-only /
     0 paired, so nothing is duplicated by keeping it and no Hebrew row covers חורה. Noted in that
     site's `adminNote`. The site carries **no language filter**, so a future non-Hebrew posting on
-    that board would also ship — a known gap, not a second exception.
+    that board would also ship — a known gap, not a second exception. Since 2026-10-18 this posting
+    is inside the rule, no longer an exception; the gap remains for Russian, Amharic and French.
 - **Two traps while extracting locations from such a board:**
   - A pin line that is a **sentence** must never be fed to `normalizeLocations` whole:
     `📍המרכז הרובוטי ממוקם בקרית חיים` returns **`אזור מרכז`**, because `המרכז` hits the region alias —
@@ -3806,6 +3811,11 @@
 - **Generalizes to:** every HQ that does not come from the company's own pages — registries, news
   articles, LinkedIn, a manager's say-so — and to any operator write whose justification lives
   outside the value being written.
+- **Amended 2026-10-18:** the profile capture takes the HQ only from the company's own site; no web
+  lookup, no directory or registry (`company-profile.md` §5). If the site does not settle it, the
+  city stays empty until set by hand (`operator:none` as before). Entering an HQ by hand from an
+  outside source waits for a decision. The provenance half still applies to any hand-set HQ: the
+  adminNote names the page of the site it came from.
 
 ## LRN-LOC-16 — `normalizeLocations()` gating the value is not the worker gating the value: when EVERY part fails to resolve, the raw injected string ships as the location
 
@@ -4318,7 +4328,11 @@ is added that the citing text does not say. Their status rows are in
   number the id is mapped to is not unique, so rows collapse in dedup.
 - **Rule:** switch `externalJobId` to the record's unique internal id (a CMS `_id`, a
   DB row id, the detail URL path) and re-scrape. On a WordPress board, prefer the WP
-  post id over a printed or hidden "job number".
+  post id over a printed or hidden "job number" that collides or is reused.
+- **Scoped 2026-10-18** (leumi.co.il, a Drupal node id): a usable printed number still comes
+  first. The CMS record id (a CMS `_id`, a WordPress post id, a Drupal node id) is allowed when
+  the printed number is unusable: it collides, it is reused for another job, or some jobs lack
+  it. The one-time re-key that follows is accepted.
 
 ### LRN-SETUP-1 — Never append to an element another field selector already reads
 
@@ -4604,7 +4618,7 @@ is added that the citing text does not say. Their status rows are in
   final-list note `משרות בתמונה בלבד` (approved 2026-10-15). Reading text out of images is not done.
 - **Generalizes to:** every Phase 0. **Becomes:** `addsite3.md` §19.
 
-## LRN-LOC-20 — no place in the ad and one printed company address: that address's city
+## LRN-LOC-20 — no place in the ad and a single printed company city: that city
 
 - **Date / site:** 2026-10-12 · codeoasis.com (`cmv52w36o002i01n30ryb2y8w`, הרצליה), sinopia.co.il
   (`cmv53r1o5003a01n3lipw5yyh`, כפר סבא), rs-cpa.co.il (`cmv53vzlb003g01n3kr84e5da`, תל אביב-יפו),
@@ -4621,6 +4635,8 @@ is added that the citing text does not say. Their status rows are in
   one untagged job stays Unknown, not the agency's חדרה). A P.O. box is not an address; a second branch, a
   branches page or a "סניפים" line means more than one address. Replaces the 2026-10-07 practice "a single office
   does not place the jobs".
+- **Reworded 2026-10-18:** the rule reads "a single printed company **city**". Several addresses in one city
+  qualify (afeka.ac.il); a branch or office in a second city means more than one city.
 - **Generalizes to:** small employers whose ads name no place. **Becomes:** `addsite3.md` §19.
 
 ## LRN-LOC-21 — area tags: the city in the tag is the value; its region only when the tag names no city

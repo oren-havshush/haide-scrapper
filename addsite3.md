@@ -476,7 +476,7 @@ curl -s -A "$REAL_UA" "$URL" -o listing.html
 | Field | Strategy |
 |---|---|
 | `title` | Direct text selector inside item. **Never publish a bare job number as the title** (`LRN-SETUP-26`): when a card's title is only "משרה #N", take the first line of the ad that names the role (a role cue: דרוש…, מחפש…, מגייס…, "לתפקיד"), else the first line, and say on the card which jobs fell back. Hebrew needs explicit start/space boundaries, not `\b` (setupScript §2). |
-| `externalJobId` | **One rule: native id first; with no native id, emit no id at all.** (1) A **native id**: an attribute (`data-job-id`, `data-id`), **a req number printed on the card or in the title** (`"משרה 231: …"` → regex it out), a **CMS record id** (`_id`), or a **Latin/ASCII slug** from `detailUrl`. (2) **No native id → the setupScript emits no `externalJobId` at all.** The worker synthesises `h-<haideHash(title\|department\|url)>` itself (`worker/lib/synthesizeJobId.ts`), so the id equals the worker's by construction, and a collision is counted (the run warns `synthesised_external_job_id`), never silently skipped. **No in-page `haideHash`, no `seen[…]` skip** — `verify-jobids` exits 2 on either for an addsite3 site. **A Hebrew (non-Latin) slug is not a native id**, neither percent-encoded (`%d7%a0…`, a 200-char blob) nor decoded (raw Hebrew): emit nothing, and the worker hashes the job through its url (`LRN-ID-6`; iforc.co.il shipped a raw Hebrew slug on 2026-09-17 and had to be re-keyed). **Never index-based.** **CAUTION:** a printed "job number" field (e.g. `numberJob`) can be reused across distinct postings by the same recruiter — verify uniqueness. Prefer the unique record ID (e.g. CMS `_id`) when a printed number collides. If `saved jobs < API count` after scraping, the id field is non-unique. **NAMESPACE a bare numeric req number** (`LRN-ID-11`): `verify-jobids` rejects any id matching `/^(item[-_]?)?\d{1,4}$/` as index-based, and it cannot tell the employer's own `4907` from a row index. Store `<site>-4907`, not `4907` — same stable native key, self-describing, and it clears the gate. Do it on the FIRST config: the id is the dedup key, so prefixing later re-keys every job. Expect `addsite-qa` to then flag the mirror-image suspect (`looks like URL/title slug`) because the code also appears in the detail URL — settle that with evidence (all ids match `^<site>-\d+$`, each code equals its own detail-URL segment, distinct == total) and record it in `adminNote`. (`LRN-ID-12`) |
+| `externalJobId` | **One rule: native id first; with no native id, emit no id at all.** (1) A **native id**: an attribute (`data-job-id`, `data-id`), **a req number printed on the card or in the title** (`"משרה 231: …"` → regex it out), a **CMS record id** (`_id`), or a **Latin/ASCII slug** from `detailUrl`. (2) **No native id → the setupScript emits no `externalJobId` at all.** The worker synthesises `h-<haideHash(title\|department\|url)>` itself (`worker/lib/synthesizeJobId.ts`), so the id equals the worker's by construction, and a collision is counted (the run warns `synthesised_external_job_id`), never silently skipped. **No in-page `haideHash`, no `seen[…]` skip** — `verify-jobids` exits 2 on either for an addsite3 site. **A Hebrew (non-Latin) slug is not a native id**, neither percent-encoded (`%d7%a0…`, a 200-char blob) nor decoded (raw Hebrew): emit nothing, and the worker hashes the job through its url (`LRN-ID-6`; iforc.co.il shipped a raw Hebrew slug on 2026-09-17 and had to be re-keyed). **Never index-based.** **CAUTION:** a printed "job number" field (e.g. `numberJob`) can be reused across distinct postings by the same recruiter — verify uniqueness. A usable printed number comes first; when it is unusable (it collides, it is reused for another job, or some jobs lack it), switch to the record's unique CMS id — a CMS `_id`, a WordPress post id, a Drupal node id (`LRN-ID-5`, decided 2026-10-18). If `saved jobs < API count` after scraping, the id field is non-unique. **NAMESPACE a bare numeric req number** (`LRN-ID-11`): `verify-jobids` rejects any id matching `/^(item[-_]?)?\d{1,4}$/` as index-based, and it cannot tell the employer's own `4907` from a row index. Store `<site>-4907`, not `4907` — same stable native key, self-describing, and it clears the gate. Do it on the FIRST config: the id is the dedup key, so prefixing later re-keys every job. Expect `addsite-qa` to then flag the mirror-image suspect (`looks like URL/title slug`) because the code also appears in the detail URL — settle that with evidence (all ids match `^<site>-\d+$`, each code equals its own detail-URL segment, distinct == total) and record it in `adminNote`. (`LRN-ID-12`) |
 | `description` | Often only on the detail page — map `detailUrl` and let worker fetch it. **Locate the body by dumping the FULL visible text** of a detail page (render it, print `innerText`) and finding the prose container — do NOT guess semantic selectors (`.order_description`) and give up when they're absent; the real body may live in a differently-named block (`.job_desc`). **Never substitute metadata (category/area/clinic/department) for a real description** — a 1–2 line metadata string that trips the QA correctness suspect "description present but avg N chars while detail body is >X chars" is a BLOCKER, not shippable (`LRN-SETUP-4`). **If the detail page splits the body into labeled sections (תיאור / דרישות / כישורים / תנאים), the analyzer maps only ONE — capture them all**, but split them: requirements-class sections go to `requirements`, the rest merge into `description` (setupScript §8, *Job body rules* below). **If the text comes back as one run-on line, preserve block line breaks** via the `structuredText` helper — NEVER `.replace(/\s+/g,' ')` (setupScript §7). **Capture the COMPLETE body — never cherry-pick only the headings you recognise.** A detail-fetch that grabs only `description`+`requirements` silently drops the meta block (employment type, hours, **division/department**) and intro lines that the site shows per job. Route typed meta into its own field, fold the rest into `description` (setupScript §11, `LRN-SETUP-3`). (`LRN-WRK-6`) |
 | `detailUrl` | Anchor `href` inside item; must be stable (not JS-generated blob). **Cards with no http href are silently DROPPED** — Navigate Mode builds its output only from collected detail URLs, so a `mailto:`/`tel:`/JS apply target means that job never becomes a row (pac.ac.il: 7 cards, 6 jobs). On a site with mixed apply paths this loses only the odd ones out. Decide deliberately and record it in `adminNote` (`LRN-WRK-16`). |
 | `location` | Direct selector; `setupScript` if embedded in a formatted string or in the title (split on dash); or **hardcode a constant** (inject `.__ai-location`) for a confirmed single-office / nationwide employer — this **overrides the gazetteer** (`locationFallback` only fills when extraction is empty, so it can't fix a wrong gazetteer guess) (`LRN-LOC-1`). (`LRN-LOC-3`) |
@@ -487,7 +487,8 @@ curl -s -A "$REAL_UA" "$URL" -o listing.html
 **Job body rules — the owner's, apply them on the FIRST config (don't wait to be asked):**
 These were each raised as a correction on a live site (heara.co.il, news.ipvsecurity.com,
 enviro-services.co.il — 2026-09-15/16) and confirmed as fleet-wide. They decide *which field*
-text lands in; they never rewrite the employer's words (publish content as-is).
+text lands in; they never rewrite the employer's words (publish content as-is). An age limit in
+the ad (hafoz: 24+) is copied as printed too (decided 2026-10-18).
 1. **Requirements live only in `requirements`.** A דרישות / כישורים / Qualifications line is (`LRN-SETUP-7`)
    moved, not copied — the description must not repeat it. **A requirement line with no heading
    is still a requirement** ("ניסיון-חובה"); the intro/role line, hours and pay stay put —
@@ -542,18 +543,25 @@ text lands in; they never rewrite the employer's words (publish content as-is).
 
 Recipe for a page that prints every job as one block of prose: setupScript §13, `LRN-SETUP-16`.
 
-**Language gate — Hebrew and English only (owner, 2026-09-27):**
-Onboard a posting only when it is written in **Hebrew or English**. Every other language —
-Russian, Arabic, Amharic, French — is **dropped**. This is a fleet rule, not a per-site call.
+**Language gate — Hebrew, English and Arabic (decided 2026-09-27; Arabic added 2026-10-18):**
+Onboard a posting only when it is written in **Hebrew, English or Arabic**. Arabic-only postings
+go in: they are jobs in Israel, and the public site serves Arabic speakers too. Every other
+language — Russian, Amharic, French — is **dropped until it is decided** (the 2026-10-18 reply
+did not decide them). This is a fleet rule, not a per-site call.
 
-- **The test, on the TITLE: keep a posting only if it has at least one Hebrew or Latin letter AND no
-  letter from any other script.** Letters only — digits, punctuation (`׳` `״`), emoji, niqqud and
-  Common/Inherited-script letters (e.g. U+02BC `ʼ`) are neutral. A third script you did not
-  anticipate drops by default. In a setupScript:
-  `/(?=\p{L})[\p{sc=Hebrew}\p{sc=Latin}]/u` must match and
-  `/(?![\p{sc=Hebrew}\p{sc=Latin}\p{sc=Common}\p{sc=Inherited}])\p{L}/u` must not.
+- **The test, on the TITLE: keep a posting only if it has at least one Hebrew, Latin or Arabic
+  letter AND no letter from any other script.** Letters only — digits, punctuation (`׳` `״`), emoji,
+  niqqud, Arabic diacritics and Common/Inherited-script letters (e.g. U+02BC `ʼ`) are neutral. A
+  script you did not anticipate drops by default. In a setupScript:
+  `/(?=\p{L})[\p{sc=Hebrew}\p{sc=Latin}\p{sc=Arabic}]/u` must match and
+  `/(?![\p{sc=Hebrew}\p{sc=Latin}\p{sc=Arabic}\p{sc=Common}\p{sc=Inherited}])\p{L}/u` must not.
   "Carries Hebrew or Latin" alone is not enough: it passes `Кассир в Payro` (a Latin brand name in a
-  Russian title) and `גננת / معلمة`; a Hebrew-range/Cyrillic-range pair of checks passes the Arabic one.
+  Russian title) and `קופאי/ת – Кассир`; a Hebrew-range/Cyrillic-range pair of checks misses any
+  third script.
+- **Persian and Urdu share the Arabic script** and pass the test, as French passes in Latin script:
+  a reviewer's call per posting.
+- **A place named only in Arabic is not a `city.csv` row** (`LRN-LOC-4`): read it through a tag or
+  `locationMap`, otherwise the job stays Unknown. Never a transliterated guess.
 - **Store styled "mathematical" letters as plain letters, then test (owner, 2026-09-28).** Titles
   pasted from LinkedIn often use the Mathematical Alphanumeric Symbols block, U+1D400–U+1D7FF
   (`𝐃𝐞𝐯𝐎𝐩𝐬 𝐄𝐧𝐠𝐢𝐧𝐞𝐞𝐫`). Those code points are letters of the Common script, so the test above
@@ -574,8 +582,8 @@ Russian, Arabic, Amharic, French — is **dropped**. This is a fleet rule, not a
   nothing links them (no translation-group id). Dropping the non-Hebrew one loses whatever it said
   that its pair did not. The rule accepts that loss; say so in the note rather than implying the
   records were equivalent.
-- Cite `LRN-LANG-1`, which holds the measurements. Standing exception: alut's `alut-915276`
-  (Arabic, Hura) predates the rule and was kept by owner decision.
+- Cite `LRN-LANG-1`, which holds the measurements. alut's `alut-915276` (Arabic, Hura), kept as an
+  exception before 2026-10-18, is now inside the rule.
 
 **Coverage gate — MANDATORY:** (`LRN-COV-1`)
 Establish the true total before submitting. Never silently ship only page 1.
@@ -595,6 +603,9 @@ button, infinite scroll. Follow that paging; never paging the page does not offe
   query parameter with no link on the page, a REST route, a feed, a sitemap — is **not** a
   coverage source. The extra jobs are hidden, and they are usually the ones the employer
   retired. Such a source may still supply a *field* (a body, a date) for a job the page shows.
+- **A site map or a category page nothing on the site links to is not a listing** (decided
+  2026-10-18): a visitor never sees it, so jobs reachable only that way stay out, even when they
+  are real (8 recruitment jobs on brooks-keret).
 - Prove the paging is reachable before building on it: render the page and find the control
   (a link, a button, a scroll trigger that loads more), not just a URL that answers 200.
 - Filters and search do not count as paging: a filtered view is a subset of the same listing.
@@ -758,6 +769,12 @@ The fix is a per-job blob from the setupScript that fills a field of the form wi
 static `{{job.title}}` template in a free-text field (`worker/lib/formTemplate.ts`) is filled only in
 `rawData._formData`, not in `applicationInfo`, until the applicationInfo template fix deploys: until
 then, prefer the per-job blob, and treat this line as temporary.
+
+**Naming the job is not a gate** (decided 2026-10-14, restated 2026-10-18). A form that cannot carry
+the job, or a mailto with no subject, still goes in: the public site builds the subject from the
+job title. **A required, pre-checked marketing-consent box is captured as it is**, checked and
+required. Note it in the setupScript's header comment and in the adminNote's apply line; the
+public site decides whether to show the job.
 
 **Open every vendor apply link once in preparation** (`LRN-APPLY-17`). A vendor campaign page can
 answer 200 with "המשרה אינה פעילה" and no form while the employer still lists the job (an AdamTotal
@@ -1051,8 +1068,8 @@ Exit 2 → do **not** mark ACTIVE: fix the `externalJobId` mapping — a native 
 no id at all so the worker synthesises it (§6.2; `addsite3-recipes/setupscript-patterns.md`
 §3) — re-PUT, re-scrape, re-run the gate. Cite: `LRN-ID-4`.
 Exit 0 but `saved jobs < API/DOM total` → the id field has collisions (non-unique
-native number). Switch to the record's unique internal id (CMS `_id`, DB row id,
-detail URL path) and re-scrape. Cite: `LRN-ID-5`.
+native number). Switch to the record's unique internal id (CMS `_id`, a WordPress post id,
+a Drupal node id, DB row id, detail URL path) and re-scrape. Cite: `LRN-ID-5`.
 
 **location gate (MANDATORY before ACTIVE) — values, not fill rate:**
 ```bash
@@ -1118,7 +1135,9 @@ its jobs belong to. Hand off to the `/company-profile` skill — dry run, look, 
 # 1) Dry run: scrapes and prints, writes nothing
 npx tsx scripts/company-profile.ts --site $SITE_ID --dry-run --no-llm --out profile.jsonl
 # 2) LOOK, per company-profile.md §3.1: open the would-be logo, read the about text,
-#    check the city against every street address the company prints (`LRN-HQ-1`)
+#    check the city against every street address the company prints (`LRN-HQ-1`);
+#    a street-only address gets its city set by hand, from the site; the HQ comes
+#    only from the company's own site, never an outside source (company-profile.md §5)
 # 3) Only then, the real run
 npx tsx scripts/company-profile.ts --site $SITE_ID
 ```
@@ -1292,10 +1311,10 @@ One line each, where it applies; the archive entry has the evidence.
   night run, check, set ACTIVE. Never a manual first scrape, from the dashboard or the fix command.
 
 **Location (§6.2)**
-- **No place in the ad and one printed company address → that address's city** (`LRN-LOC-20`), a
-  verbatim `city.csv` row. Not when the ad hints at field work or names another place, and never for
-  a recruitment agency. A P.O. box is not an address; a branches page or a second branch means more
-  than one address.
+- **No place in the ad and a single printed company city → that city** (`LRN-LOC-20`, worded as a
+  city since 2026-10-18: several addresses in one city qualify), a verbatim `city.csv` row. Not when
+  the ad hints at field work or names another place, and never for a recruitment agency. A P.O. box
+  is not an address; a branch or office in a second city means more than one city.
 - **Area tags are read through `locationMap`** (`LRN-LOC-21`): a top-level config key mapping each
   tag to a verbatim `city.csv` row or null; an unmapped tag is dropped with a warning. A city alone or
   "<city> והסביבה" is the city; joined cities are each city; a city plus a region is both; a tag with
@@ -1361,3 +1380,25 @@ One line each, where it applies; the archive entry has the evidence.
 **Company profile (§14)**
 - **About text is never composed:** copy a sentence verbatim from the company's own pages, or leave
   it empty.
+
+## 20. Decided 2026-10-18 (the 2026-10-18 reply to the 2026-10-14 to 18 report)
+
+One line each; the rule itself lives where the pointer says.
+
+- **Arabic-only postings go in** (§6.2 language gate, `LRN-LANG-1`): the title test accepts the
+  Arabic script. Russian, Amharic and French stay out until decided. A place named only in Arabic is
+  read through a tag or stays Unknown.
+- **`LRN-LOC-20` reads "a single printed company city"** (§19): several addresses in one city qualify.
+- **The HQ comes only from the company's own site** (§14, company-profile.md §5): no web lookup, no
+  directory or registry. If the site does not settle it, the city stays empty until set by hand;
+  `operator:none` is used as before. A street-only address gets its city set by hand, from the site.
+- **A required, pre-checked consent box is captured as it is** (§8), noted in the setupScript's header
+  comment and the adminNote's apply line. Naming the job is not a gate.
+- **Terms never stop a scrape or a link on their own.** The site is onboarded as usual; the policy
+  sweep records the terms and sets RESTRICTED where it applies, and consent is sought separately.
+- **A CMS record id is allowed when the printed number is unusable** (§6.2 `externalJobId` row, §12,
+  `LRN-ID-5`): a usable printed number still comes first.
+- **A site map or an unlinked category page is not a listing** (§6.2 coverage): jobs reachable only
+  that way stay out.
+- **An age limit in an ad is copied as printed** (§6.2 Job body rules): the employer's text is not
+  edited.
