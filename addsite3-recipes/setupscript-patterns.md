@@ -61,6 +61,14 @@ Then in `fieldMappings`:
 **Use case:** location, department, or date is packed into a single text string:
 `"תל אביב | משרה מלאה | הנדסה"` — need only the first segment.
 
+**A title that is only the job number** (`LRN-SETUP-26`): when a card's title is only "משרה #N",
+take the first line of the ad that names the role, else the first line. On aman.co.il the first line
+gave a client intro ("לארגון פיננסי גדול ומוביל באזור המרכז") and a 130-character duty sentence. A
+role cue is a word such as דרוש/דרושה/דרושים/דרושות, מחפש…, מגייס… (with the .ה, /ה, /ת, /ים
+suffixes) or "לתפקיד ", matched with explicit start/space boundaries, because `\b` does not fire after
+a Hebrew letter. Run it only on number-only titles ("דרושות שעות נוספות" also matches), and say on the
+card which jobs fall back.
+
 **Option A: setupScript to split and inject**
 ```js
 for (const item of document.querySelectorAll('.job-item')) {
@@ -152,6 +160,10 @@ function haideJobId(title, department, url) {
 ---
 
 ## 4. Elementor popups
+
+**Custom-skin cards are not links** (`LRN-WP-9`): an Elementor Custom Skin card is a
+`div.ecs-link-wrapper[data-href]` with no `<a>` (brooks-keret.co.il). Read the job URL from
+`data-href`, and count those cards when you count job links.
 
 **Use case:** job details hidden inside an Elementor popup/modal triggered by clicking a job card.
 
@@ -461,6 +473,13 @@ per-job apply email, `הרצליה` hardcoded (single-city municipal employer); 
 ---
 
 ## 11. Detail-page fetch from the listing — `description`/`requirements` only on detail pages
+
+**On a long WordPress board, try the post type's feed first** (`LRN-WP-8`). aman.co.il runs
+Wordfence: about 150 job-page requests in a minute got 503 "Exceeded the maximum global requests per
+minute", which would empty a nightly run. Its feed `/feed/?post_type=<type>&paged=N` (16 pages)
+matched each job page's body on 153 of 153; a job the feed lacks is read from its own page, and the
+run stays all-or-nothing. Before writing a fetch per job page, check the feed (and LRN-WP-7: read the
+bodies, a count proves nothing).
 
 **Signal (`LRN-SETUP-2`):** the listing page has title/location/id but the
 `description` (and/or `requirements`) live **only on each job's detail page**, and

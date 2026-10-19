@@ -48,6 +48,7 @@ AUTH="Authorization: Bearer $TOKEN"
 - Never skip the `verify-config` gate after a PUT — the analyzer overwrites configs.
 - Never run parallel prod scrapes — the worker is single-threaded FIFO; parallel scrapes queue, not parallelise. (`LRN-WRK-3`)
 - Never send an `adminNote` longer than **2,000 characters** — the PATCH returns a bare `400` and the note is not updated. Check the length first and re-read after; rewrite a long note compactly rather than truncating it (`LRN-API-9`).
+- **Never click or open anything during ranking or preparation before you know what it sends** (`LRN-COV-15`, `LRN-APPLY-15`, `LRN-APPLY-16`). Read the control's handler first, or watch its first request with POSTs blocked. A "load more" button can be a POST to the employer, and opening a Workday `/apply` route creates a draft application at the employer: never open `/apply` or any later route, and route-abort them in every browser context on a Workday host.
 
 ### 0.3 Inputs
 ```
@@ -229,6 +230,14 @@ If an ATS iframe is found:
 Only after this probe comes back empty should a `GRAY`/`RED` page be SKIPPED/REVIEWed.
 Reference: bsel.co.il (Comeet board embedded; onboarded `betshemeshengines`, 35 jobs).
 
+**An ATS can hide behind the employer's own page with no iframe on the listing** (`LRN-SPA-29`).
+On careers.deloitte.co.il, cet.ac.il and storenext.co.il the jobs come from Comeet, but triage said
+`wordpress-job-cpt` or `unknown`: Comeet's script and apply iframe load only on the job pages, or the
+Comeet WordPress plugin renders the list and links to `/comeet-inner/` pages. On a WordPress or
+`unknown` listing, open one job page and look for an ATS script or iframe (or `/comeet-inner/` links)
+before choosing the lane. An ATS found there replaces the WordPress lane; build from the ATS's API
+(`addsite3-recipes/spa-frameworks.md` §Comeet).
+
 ### 2.2 WordPress job CPT gate — check BEFORE accepting GRAY (`LRN-WP-1`)
 
 A `GRAY` verdict on a WordPress site is frequently a **false negative**. Many Israeli
@@ -239,9 +248,12 @@ heuristic can miss them when the listing has few items (≤ 3 jobs).
 
 **`triage` now auto-detects this:** when it sees WordPress markers (`wp-content`,
 `wp-json`, generator meta) **plus** job CPT signals (`/job/` link hrefs, `single-job`
-/ `job-template` / `type-job` body classes), it emits `vendor: "wordpress-job-cpt"`
-and classifies GREEN. If triage still reports GRAY on a WordPress-looking page, do a
-manual check before accepting:
+/ `job-template` / `type-job` body classes), it asks the site's own REST index
+(`GET /wp-json/wp/v2/types`). Only when that index lists a job type does it emit
+`vendor: "wordpress-job-cpt"` and classify GREEN; when the index does not list one, or
+cannot be read, the word-list evidence is printed as a note instead (since 2026-10-18;
+bynet.co.il had the words but no job type, and its jobs are an inline JSON block). If
+triage still reports GRAY on a WordPress-looking page, do a manual check before accepting:
 
 ```js
 // in the browser on the listing page:
@@ -255,6 +267,13 @@ If links point to individual job pages (e.g. `/job/analytical-chemist-al3`) → 
 
 Reference: labs-eco.com (WordPress `job` CPT, 3 jobs, falsely GRAY'd due to small
 cluster size; straightforwardly scrapable with `li.item` + `/job/<slug>` detail pages).
+
+**A REST count is not proof of bodies, or of jobs** (`LRN-WP-7`). Before naming a REST route
+(`/wp-json/wp/v2/<type>`) as the data endpoint, check that `content.rendered` holds the full body,
+and read the bodies before counting them as jobs. On 2026-10-14 four routes reported totals that were
+not usable: no content field at all (mega-talents, X-WP-Total 96), the intro only (shlomit), an empty
+`content.rendered` with `acf: []` (benda), and a vendor's test records (globus). Also open one job
+page for an embedded ATS (§2.1, `LRN-SPA-29`).
 
 ### 2.3 Careers-hub gate — ONE employer is ONE site (`LRN-CO-2`)
 
@@ -307,6 +326,15 @@ Then:
 - All pages normally share one config (same template, same `itemSelector`). If they
   genuinely differ, route to REVIEW: per-page config overrides do not exist yet.
 - Cite `LRN-CO-2`; the worker contract is `LRN-WRK-21`.
+- **The reverse case: one host, several employers behind a company filter** (`LRN-CO-6`). A group
+  careers page can serve several companies through a filter (elbatech.co.il, `?company-name=<x>`:
+  three companies, each with its own address and form; the unfiltered page lists 0 jobs). Onboard one
+  site per employer filter, each with its own profile set by hand, and never the group as the
+  employer: the capture derives the group's homepage from any filter URL.
+- **Count Elementor custom-skin cards too** (`LRN-WP-9`): a card can be a
+  `div.ecs-link-wrapper[data-href]` with no `<a>`, so a count of `a[href]` job links reads 0 on a
+  page that shows jobs (brooks-keret.co.il, 4 jobs). Count `[data-href]` on `ecs-link-wrapper`
+  elements as well, and take the job URL from that attribute.
 
 Reference: renuar.co.il — hub `/pages/דרושים` (0 jobs, but triages `YELLOW`
 `topCluster: 28` off the storefront nav) linking `/pages/stores-and-points-of-sale` (28),
@@ -447,7 +475,7 @@ curl -s -A "$REAL_UA" "$URL" -o listing.html
 
 | Field | Strategy |
 |---|---|
-| `title` | Direct text selector inside item. |
+| `title` | Direct text selector inside item. **Never publish a bare job number as the title** (`LRN-SETUP-26`): when a card's title is only "משרה #N", take the first line of the ad that names the role (a role cue: דרוש…, מחפש…, מגייס…, "לתפקיד"), else the first line, and say on the card which jobs fell back. Hebrew needs explicit start/space boundaries, not `\b` (setupScript §2). |
 | `externalJobId` | **One rule: native id first; with no native id, emit no id at all.** (1) A **native id**: an attribute (`data-job-id`, `data-id`), **a req number printed on the card or in the title** (`"משרה 231: …"` → regex it out), a **CMS record id** (`_id`), or a **Latin/ASCII slug** from `detailUrl`. (2) **No native id → the setupScript emits no `externalJobId` at all.** The worker synthesises `h-<haideHash(title\|department\|url)>` itself (`worker/lib/synthesizeJobId.ts`), so the id equals the worker's by construction, and a collision is counted (the run warns `synthesised_external_job_id`), never silently skipped. **No in-page `haideHash`, no `seen[…]` skip** — `verify-jobids` exits 2 on either for an addsite3 site. **A Hebrew (non-Latin) slug is not a native id**, neither percent-encoded (`%d7%a0…`, a 200-char blob) nor decoded (raw Hebrew): emit nothing, and the worker hashes the job through its url (`LRN-ID-6`; iforc.co.il shipped a raw Hebrew slug on 2026-09-17 and had to be re-keyed). **Never index-based.** **CAUTION:** a printed "job number" field (e.g. `numberJob`) can be reused across distinct postings by the same recruiter — verify uniqueness. Prefer the unique record ID (e.g. CMS `_id`) when a printed number collides. If `saved jobs < API count` after scraping, the id field is non-unique. **NAMESPACE a bare numeric req number** (`LRN-ID-11`): `verify-jobids` rejects any id matching `/^(item[-_]?)?\d{1,4}$/` as index-based, and it cannot tell the employer's own `4907` from a row index. Store `<site>-4907`, not `4907` — same stable native key, self-describing, and it clears the gate. Do it on the FIRST config: the id is the dedup key, so prefixing later re-keys every job. Expect `addsite-qa` to then flag the mirror-image suspect (`looks like URL/title slug`) because the code also appears in the detail URL — settle that with evidence (all ids match `^<site>-\d+$`, each code equals its own detail-URL segment, distinct == total) and record it in `adminNote`. (`LRN-ID-12`) |
 | `description` | Often only on the detail page — map `detailUrl` and let worker fetch it. **Locate the body by dumping the FULL visible text** of a detail page (render it, print `innerText`) and finding the prose container — do NOT guess semantic selectors (`.order_description`) and give up when they're absent; the real body may live in a differently-named block (`.job_desc`). **Never substitute metadata (category/area/clinic/department) for a real description** — a 1–2 line metadata string that trips the QA correctness suspect "description present but avg N chars while detail body is >X chars" is a BLOCKER, not shippable (`LRN-SETUP-4`). **If the detail page splits the body into labeled sections (תיאור / דרישות / כישורים / תנאים), the analyzer maps only ONE — capture them all**, but split them: requirements-class sections go to `requirements`, the rest merge into `description` (setupScript §8, *Job body rules* below). **If the text comes back as one run-on line, preserve block line breaks** via the `structuredText` helper — NEVER `.replace(/\s+/g,' ')` (setupScript §7). **Capture the COMPLETE body — never cherry-pick only the headings you recognise.** A detail-fetch that grabs only `description`+`requirements` silently drops the meta block (employment type, hours, **division/department**) and intro lines that the site shows per job. Route typed meta into its own field, fold the rest into `description` (setupScript §11, `LRN-SETUP-3`). (`LRN-WRK-6`) |
 | `detailUrl` | Anchor `href` inside item; must be stable (not JS-generated blob). **Cards with no http href are silently DROPPED** — Navigate Mode builds its output only from collected detail URLs, so a `mailto:`/`tel:`/JS apply target means that job never becomes a row (pac.ac.il: 7 cards, 6 jobs). On a site with mixed apply paths this loses only the odd ones out. Decide deliberately and record it in `adminNote` (`LRN-WRK-16`). |
@@ -572,6 +600,16 @@ button, infinite scroll. Follow that paging; never paging the page does not offe
 - Filters and search do not count as paging: a filtered view is a subset of the same listing.
 Reference: medulla.co.il shows its newest 200 with no pagination control; `?jsf=epro-posts&pagenum=2..4`
 returned 460 more, all over a year old. They were shipped, then removed (`LRN-COV-9`).
+
+**Count jobs, not cards** (`LRN-COV-14`). A chain can post one ad per branch: Super-Pharm's 378 cards
+were 11 distinct jobs (21 with full and part time), and the ranking had scored 378. Group rows by
+title + description before scoring and print both numbers ("378 cards = 11 jobs"); whether branch
+cards ship as one job or many is a card question. **Count a per-job field across all jobs, never off
+one card** (`LRN-LOC-25`): one efshar-a card listed about 30 cities, but across the endpoint 9 of 120
+jobs carried that list, 62 carried one city and 16 none. **A board whose pages reorder between loads**
+(`LRN-CO-7`, AdamTotal) can repeat one job and miss another during a page walk: emit every row
+(`LRN-ID-15`) and check the union of ids against the board's total before trusting coverage;
+re-fetch when it falls short.
 
 **LANDMINE:** `externalJobId` must survive a re-scrape unchanged. Test: scrape twice, compare ids.
 
@@ -709,6 +747,23 @@ Reference: medulla.co.il (Elementor popup form: `post_id=18642`, `form_id=723b7d
 > before PUT — not after QA flags `description=0`. Cite: `LRN-SETUP-2` (madanes.com).
 
 **Login gate:** if the apply requires login → `formStatus: NONE`, mark SKIPPED. Do not attempt to log in.
+On Workday, decide this from the tenant's settings, never by opening an apply page (`LRN-APPLY-16`,
+`LRN-APPLY-15`): `GET /wday/cxs/<tenant>/<site>/approot` returns `requireCandidateAccounts`
+(`false` for flextronics; `true` for KLA, NVIDIA and CIS, all skipped for login-to-apply). Opening
+`/apply/applyManually` creates a draft application with no click (§0.2).
+
+**Check that the job reaches an input inside the `<form>`** (`LRN-FORM-19`). A modal can write the
+job title into its header, outside the form, so the submitted form names no job (krausz.com, CF7).
+The fix is a per-job blob from the setupScript that fills a field of the form with the title. The
+static `{{job.title}}` template in a free-text field (`worker/lib/formTemplate.ts`) is filled only in
+`rawData._formData`, not in `applicationInfo`, until the applicationInfo template fix deploys: until
+then, prefer the per-job blob, and treat this line as temporary.
+
+**Open every vendor apply link once in preparation** (`LRN-APPLY-17`). A vendor campaign page can
+answer 200 with "המשרה אינה פעילה" and no form while the employer still lists the job (an AdamTotal
+link on afeka.ac.il), and a cross-origin page cannot be checked by the setupScript on a run. A dead
+link on one row: leave that row out and name it in the adminNote. A dead apply path for the whole
+site keeps the site out (`LRN-APPLY-14`, §19).
 **Turnstile/CAPTCHA gate — classify the captcha BEFORE skipping (`LRN-APPLY-10`):**
 "has a captcha" is NOT one verdict. Two distinct cases:
 - **Blocking challenge** (Cloudflare Turnstile, reCAPTCHA **v2** checkbox/challenge):
@@ -873,6 +928,14 @@ a site gives no job dates, spend one request on a staleness signal — WordPress
 **tell the owner before activating**. It is the owner's decision, not a SKIP rule; record
 it in `adminNote`. news.ipvsecurity.com: feed last built 2020-04-01, all gates passed,
 owner chose ACTIVE with a note to confirm the roles (`LRN-AGE-1`).
+
+**A post date can belong to an older, reused post** (`LRN-AGE-6`). An employer can retitle an old
+WordPress post for a new job, so the post date is the old ad's: shlomit post 3042 (its slug names a
+general ad), carmeldirect `/career/02072024cd/`, an omnitelecom post whose slug `רצ-פיתוח` names
+another job. Before storing a post date, compare the slug with the title; a slug that names another
+posting means the job ships undated. Losing a date is acceptable; a wrong date is not.
+**Yoast's JobPosting `datePosted` can carry a wrong offset** (`LRN-WP-8`): on aman.co.il it labels old
+posts +03:00, 3 hours off. Take the date from the feed or from `datePublished`.
 
 Existing sites that already have `minPublishDate` or `minPublishDays` in their
 config are unaffected — those keys are **silently ignored** at scrape time.
@@ -1274,7 +1337,7 @@ One line each, where it applies; the archive entry has the evidence.
 - **Civi: pace every request, 3 at a time, 200 ms apart** (`LRN-WAF-10`), in preparation too.
 - **Civi: a locked job page gets one openPromo POST** (`LRN-SPA-22`), only while it is still locked,
   never more than one per job, nothing else. Allowed by Shay for Civi boards only; say so in the
-  site's adminNote. A page that redirects to `&fallback=1` is closed and gets no POST. If an opened
+  site's adminNote. A page that redirects to `&fallback=1` is closed and gets no POST (`LRN-SPA-26`). If an opened
   page locks again, stop and tell Shay.
 
 **Apply forms (§8)**

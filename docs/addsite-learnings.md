@@ -4898,3 +4898,219 @@ is added that the citing text does not say. Their status rows are in
   will name a big-lane site that has never run and refuse manual scrapes on big-lane sites. Big-lane work is paused
   until the CTO decides on Maof's reCAPTCHA apply form.
 - **Generalizes to:** big-lane sites. **Becomes:** `addsite3.md` §19.
+
+## LRN-APPLY-15 — opening a Workday "apply manually" page creates a draft application
+
+- **Date / site:** 2026-10-15 · careers.justeattakeaway.com/il/he/israel → wd3.myworkdaysite.com (ranking check; not
+  onboarded). 2026-10-18 · flextronics.wd1.myworkdayjobs.com (`cmvdnx918008n01vusw9xrjw5`), once for WD225049.
+- **Signal:** loading `/apply/applyManually` sends `POST /wday/cxs/<tenant>/jobpostings/<job>/jobapplications` and then
+  POSTs to that draft with no click. Read-only renders left empty drafts at the employer's Workday.
+- **Rule:** never open `/apply` or any later route in a check (`LRN-APPLY-16` answers the account question without it).
+- **Generalizes to:** every Workday board, ranking checks included. **Becomes:** `addsite3.md` §0.2 and §8.
+
+## LRN-APPLY-16 — Workday: read the account requirement from `approot`, never from an apply page
+
+- **Date / site:** 2026-10-18 · flextronics.wd1.myworkdayjobs.com, tenant flextronics/Careers (`cmvdnx918008n01vusw9xrjw5`)
+- **Signal:** whether applying needs an account is readable without starting an application:
+  `GET /wday/cxs/<tenant>/<site>/approot` returns `requireCandidateAccounts`. It is `false` for Flex and `true` for KLA,
+  NVIDIA and CIS, the three Workday tenants already skipped for login-to-apply.
+- **Rule:** decide login-to-apply from `requireCandidateAccounts`; never open `/apply` or a later route, and route-abort
+  those routes in every browser context on a Workday host.
+- **Generalizes to:** every Workday site. **Becomes:** `addsite3.md` §0.2 and §8.
+
+## LRN-APPLY-17 — a vendor apply link can be dead while the employer still lists the job
+
+- **Date / site:** 2026-10-18 · afeka.ac.il (`cmvdmuaay007l01vube8elfei`)
+- **Signal:** the "נציג.ת שירות ומידע" row links to an AdamTotal campaign page that answers 200 with "המשרה אינה פעילה"
+  and no form, while Afeka's own page still lists the job. AdamTotal is cross-origin, so the setupScript cannot see it.
+- **Rule:** open every vendor apply link once in preparation; a dead one leaves its row out, named in the adminNote. A
+  dead apply path for the whole site keeps the site out (`LRN-APPLY-14`).
+- **Generalizes to:** sites that apply through AdamTotal or a similar campaign host. **Becomes:** `addsite3.md` §8,
+  `addsite3-recipes/form-capture.md` §0.
+
+## LRN-COV-14 — the same job posted at every branch: count jobs by title and text, not by cards
+
+- **Date / site:** 2026-10-15 · jobs.super-pharm.co.il/careers/ (ranking check)
+- **Signal:** the ranking counted 378 job-like rows and put the site first. The cards carry 11 distinct description
+  texts, one per title; inside a title only city, branch and scope change. By title + text the board is 11 jobs (21
+  with scope).
+- **Rule:** group rows by title + description before scoring and print both numbers; whether branch cards ship as one
+  job or many is a card question.
+- **Generalizes to:** retail and chain employers. **Becomes:** `addsite3.md` §6.2 (coverage gate).
+
+## LRN-COV-15 — a "load more" control can be a POST to the employer
+
+- **Date / site:** 2026-10-18 · careers.deloitte.co.il (`cmvdnrxex008i01vuxzfqgsfu`)
+- **Signal:** the listing shows 7 of 59 rows plus a "Load More" that sends an admin-ajax POST
+  (`deloitte_careers_load_more_positions_ajax`). A read-only check clicked it before the request type was known.
+  Coverage was then taken from the page's counter, the sitemap and the Comeet API.
+- **Rule:** before any click during ranking or preparation, read the control's handler or watch its first request with
+  POSTs blocked. A POST pager gets no `loadMoreSelector` and no click loop; it is counted from the page's total, the
+  sitemap or the data endpoint.
+- **Generalizes to:** every listing with a load-more control, most often WordPress admin-ajax pagers. **Becomes:**
+  `addsite3.md` §0.2, `addsite3-recipes/pagination-and-loading.md` §2.
+
+## LRN-FORM-19 — a CF7 "job" modal that only restyles its header names no job
+
+- **Date / site:** 2026-10-14 · krausz.com/he/join-us-2/ (`cmv88865k000a01lvtpw08edq`)
+- **Signal:** the apply button copies the job title into the modal's `h3`/`h4`, outside the `<form>`; CF7 8254 submits
+  no job field (`_wpcf7_container_post` 0).
+- **Fix:** a static formCapture whose free-text field is `{{job.title}}` (`worker/lib/formTemplate.ts`). That template
+  is filled only in `rawData._formData` until the applicationInfo template fix deploys, so meanwhile a per-job blob
+  from the setupScript is preferred.
+- **Generalizes to:** CF7 and Bootstrap modal careers pages. **Becomes:** `addsite3.md` §8,
+  `addsite3-recipes/form-capture.md` §4.
+
+## LRN-SPA-25 — TalentFlow boards: one public call returns every job
+
+- **Date / site:** 2026-10-14 · Mega Talents on talentflow.co.il (`cmv7zfz4r006s01t8amww2ief`)
+- **Signal:** TalentFlow (a recruiting CRM/ATS, a React SPA on Supabase, one tenant per `by=` account id) renders
+  the board client-side; a job page per job would take about 410 s on the server. One GET to
+  `rest/v1/rpc/get_public_jobs_safe?_owner_user_id=<by>` returns every job with its HTML description, cities, form
+  fields and the printed job number, using the anon key the page ships in its bundle.
+- **Fix:** read that one call; find the key in the bundle on each run; fail closed (0 items) if the key is not found or
+  the call stops answering. The printed `#N` becomes `<site>-<n>`.
+- **Generalizes to:** recruiters on TalentFlow. **Becomes:** `addsite3-recipes/spa-frameworks.md` §TalentFlow.
+
+## LRN-SPA-26 — Civi: a closed job redirects to the board with `&fallback=1`
+
+- **Date / site:** 2026-10-14 · or-ganize on Civi (`cmv7zps4p006z01t8xzsrua7c`)
+- **Signal:** three jobs closed during the preparation (804047, 806903, 877932). A closed job's page redirects to the
+  board with `&fallback=1`, not to `?ERROR 404` (a page not yet opened). Treated as locked, it would get an openPromo
+  POST and be retried.
+- **Rule:** `&fallback=1` means closed: no POST, and the card is dropped. Only a locked page gets the one openPromo POST
+  (`LRN-SPA-22`).
+- **Generalizes to:** all Civi boards. **Becomes:** `addsite3.md` §19, `addsite3-recipes/spa-frameworks.md` §Civi.
+
+## LRN-SPA-27 — a Comeet careers-api row that is not a job
+
+- **Date / site:** 2026-10-14 · tikalk.com/career/ (`cmv9kw7xc007d01sdnrxxhoi7`)
+- **Signal:** the feed (`68.00C`) returns 6 rows for 5 jobs; F2.633 "Tikal's" is the general "Let's Talk" apply widget:
+  no details, URL = the careers page itself.
+- **Rule:** drop a Comeet row with no description whose URL is the careers page; name it in the adminNote.
+- **Generalizes to:** Comeet boards whose careers page embeds a general apply widget. **Becomes:**
+  `addsite3-recipes/spa-frameworks.md` §Comeet.
+
+## LRN-SPA-28 — Comeet rendered by the employer's own page (no iframe)
+
+- **Date / site:** 2026-10-15 · tikalk.com/career/ (`cmv9kw7xc007d01sdnrxxhoi7`). 2026-10-18 · careers.deloitte.co.il,
+  elmomc.com; 2026-10-18 · storenext.co.il, cet.ac.il.
+- **Signal:** the page builds the Comeet cards itself (Next.js, token in `__NEXT_DATA__`) or through a WordPress plugin,
+  so "onboard the board URL" does not fit. Comeet's `url_active_page` was stale for 2 of 4 tikalk jobs, and for one cet
+  job it was the careers hub itself.
+- **Rule:** keep the employer page as siteUrl, read the careers API with the page's token, take each job link from the
+  employer's card, and name the hosted board in the adminNote so it is never onboarded twice.
+- **Generalizes to:** employer pages that render Comeet themselves. **Becomes:** `addsite3-recipes/spa-frameworks.md`
+  §Comeet.
+
+## LRN-SPA-29 — Comeet behind a WordPress page: open one job page before choosing the lane
+
+- **Date / site:** 2026-10-18 · careers.deloitte.co.il (`cmvdnrxex008i01vuxzfqgsfu`), cet.ac.il
+  (`cmvdt0599009v01vutl2lnh73`), storenext.co.il (`cmvdsv66h009q01vuagrgl0lu`)
+- **Signal:** triage called Deloitte GREEN `wordpress-job-cpt`, and cet and storenext YELLOW `unknown`. All three take
+  their jobs from Comeet, whose script and apply iframe load only on job pages, or whose WordPress plugin links to
+  `/comeet-inner/` pages. On Deloitte the triage lane meant about 9 load-more requests and 59 job pages at about 19 s
+  each; the careers API returns every job in one call.
+- **Rule:** on a WordPress or `unknown` listing, open one job page and look for an ATS before choosing the lane; an ATS
+  found there replaces the WordPress lane.
+- **Generalizes to:** careers sites that wrap an ATS in their own WordPress page. **Becomes:** `addsite3.md` §2.1 and
+  §2.2, `addsite3-recipes/spa-frameworks.md` §Comeet.
+
+## LRN-SPA-30 — the Comeet plugin's page cache can still list a closed job
+
+- **Date / site:** 2026-10-18 · elmomc.com/careers/ (`cmvdnmhwy008d01vum9way54f`)
+- **Signal:** the page without a query string is served from a cache that still lists 49.34A "SQA Engineer"; that job's
+  own page says the position may have been closed, and Comeet no longer has it. The same URL with any parameter gets the
+  live list.
+- **Rule:** on a Comeet plugin page, take the job set from the careers API, not from the rendered rows.
+- **Generalizes to:** employer pages that render Comeet through the WordPress plugin. **Becomes:**
+  `addsite3-recipes/spa-frameworks.md` §Comeet.
+
+## LRN-SPA-31 — a Comeet position in several offices returns rows with suffixed ids
+
+- **Date / site:** 2026-10-18 · careers.deloitte.co.il (`cmvdnrxex008i01vuxzfqgsfu`)
+- **Signal:** "יועצ/ת לניהול סיכוני IT ומערכות מידע" is one position published in 6 offices. Comeet returns 6 rows whose
+  ids carry a suffix (`10.F6C-92.301`), each with its own page and form. An existing fleet id test
+  (`^[0-9A-Z]{2}\.[0-9A-Z]{3}$`) would drop 5 of the 6.
+- **Rule:** the suffix is part of the native id and stays; accept it in the id test, and ship one job per office, with
+  a card question when two copies share a city.
+- **Generalizes to:** Comeet employers with multi-office positions. **Becomes:** `addsite3-recipes/spa-frameworks.md`
+  §Comeet.
+
+## LRN-WP-7 — a REST count is not proof of bodies, or of jobs
+
+- **Date / site:** 2026-10-14 · mega-talents (`cmv7zfz4r006s01t8amww2ief`), shlomit.org.il, benda.co.il, globus
+- **Signal:** four WordPress routes reported totals that were not usable job data: `/wp-json/wp/v2/hr` with X-WP-Total
+  96 and no content field (mega-talents); the intro only (shlomit); an empty `content.rendered` with `acf: []` (benda);
+  7 records that read as test entries (globus).
+- **Rule:** before naming a REST route as the data endpoint, check that `content.rendered` holds the full body, and
+  read the bodies before counting them as jobs.
+- **Generalizes to:** WordPress job post types. **Becomes:** `addsite3.md` §2.2.
+
+## LRN-WP-8 — Wordfence rate limit: read bodies from the WordPress feed, not job pages
+
+- **Date / site:** 2026-10-14 · aman.co.il (`cmv7zvgk2007501t8d4izwxqy`)
+- **Signal:** about 150 requests in a minute (153 job pages) got 503 "Exceeded the maximum global requests per minute"
+  from Wordfence. The feed `/feed/?post_type=aman_careers&paged=N` (16 pages) matched each job page's body on 153 of
+  153, and its date equals the page's JSON-LD `datePublished`. Yoast's JobPosting `datePosted` labels old posts +03:00
+  wrongly (3 hours off).
+- **Fix:** bodies and dates from the feed; a job the feed lacks from its own page; all-or-nothing per run. Dates from the
+  feed or `datePublished`, never `datePosted`.
+- **Generalizes to:** long WordPress boards, especially behind Wordfence. **Becomes:** `addsite3.md` §10,
+  `addsite3-recipes/setupscript-patterns.md` §11, `addsite3-recipes/waf-bypasses.md` §9.
+
+## LRN-WP-9 — Elementor custom-skin job cards are not links
+
+- **Date / site:** 2026-10-18 · brooks-keret.co.il/join-the-team/ (`cmvdsrc5d009k01vuyo05nyfu`)
+- **Signal:** the careers page shows 4 job cards, each a `div.ecs-link-wrapper[data-href]` (Elementor Custom Skin) with
+  no `<a>`. A count of `a[href]` job links read 0 on that page; a menu crawl and the first dry run both missed the jobs.
+- **Rule:** count `[data-href]` on `ecs-link-wrapper` elements as job links, and take the job URL from that attribute.
+- **Generalizes to:** Elementor sites built with the Custom Skin loop. **Becomes:** `addsite3.md` §2.3,
+  `addsite3-recipes/setupscript-patterns.md` §4.
+
+## LRN-AGE-6 — a WordPress post date can belong to an older posting the employer retitled
+
+- **Date / site:** 2026-10-15 · shlomit.org.il, carmeldirect. 2026-10-18 · omnitelecom.co.il.
+- **Signal:** shlomit post 3042 has REST date 2026-03-24, but its slug `דרושים-רכזים-ברחבי-הארץ-3` and an archived copy
+  show the date belongs to a general ad later retitled into this job. carmeldirect's `/career/02072024cd/` reads
+  02.07.2024 while its post date is 2024-01-07. An omnitelecom post sits at `רצ-פיתוח`, the address of another job.
+- **Rule:** before storing a post date, compare the slug with the title; a slug that names another posting means the
+  job ships undated. Losing a date is acceptable; a wrong date is not.
+- **Generalizes to:** WordPress boards that reuse posts. **Becomes:** `addsite3.md` §10.
+
+## LRN-LOC-25 — count a location taxonomy per job before calling it a site default
+
+- **Date / site:** 2026-10-14 · efshar-a.co.il (`cmv88d8mh000f01lvothaqido`)
+- **Signal:** one card listed about 30 cities, and the ranking reported "every job carries the list". Across REST, 9 of
+  120 jobs carried that list, 62 one city, 33 between 2 and 10, and 16 none.
+- **Rule:** a claim of the form "every job has X" is counted across the endpoint, never read off one card.
+- **Generalizes to:** every quick check. **Becomes:** `addsite3.md` §6.2 (coverage gate).
+
+## LRN-CO-6 — one host, several employers behind a company filter
+
+- **Date / site:** 2026-10-14 · elbatech.co.il/careers/?company-name=<x> (`cmv874u8b000001lviti1i2eb`, Elipse only)
+- **Signal:** three group companies, each with its own address and form, on one careers page; the unfiltered page lists
+  0 jobs; the profile capture derives the group's homepage from any filter URL.
+- **Rule:** one site per employer filter, each with its own profile set by hand; never the group as the employer.
+- **Generalizes to:** group careers pages filtered by company. **Becomes:** `addsite3.md` §2.3.
+
+## LRN-CO-7 — AdamTotal listing pages reorder between loads
+
+- **Date / site:** 2026-10-15 · career.adamtotal.co.il, Tempo token (`cmv9jzouw006y01sdp8ipuvxm`)
+- **Signal:** between two loads job 178282 moved from page 1 to page 2, and a saved page 2 was a copy of page 1, so a
+  page walk can repeat one job and miss another.
+- **Rule:** emit every row (`LRN-ID-15`) and check the union of ids against the board's total before trusting
+  coverage; re-fetch when the union falls short.
+- **Generalizes to:** all AdamTotal boards. **Becomes:** `addsite3.md` §6.2,
+  `addsite3-recipes/pagination-and-loading.md` §0.
+
+## LRN-SETUP-26 — a title that is only the job number: take the first line that names the role
+
+- **Date / site:** 2026-10-14 · aman.co.il/careers/ (`cmv7zvgk2007501t8d4izwxqy`)
+- **Signal:** two cards carry only "משרה #N" as their title (aman-59556, aman-59728). Taking the ad's first line gave a
+  client intro ("לארגון פיננסי גדול ומוביל באזור המרכז") and a 130-character duty sentence.
+- **Fix:** take the first line with a role cue (דרוש…, מחפש…, מגייס…, "לתפקיד ") with explicit start/space boundaries,
+  because `\b` does not fire after a Hebrew letter; else the first line. aman-59556 → "דרוש.ה ר"צ פיתוח"; aman-59728
+  names no role anywhere and keeps its first line.
+- **Generalizes to:** boards that print a bare job number as the title. **Becomes:** `addsite3.md` §6.2 (field table),
+  `addsite3-recipes/setupscript-patterns.md` §2.

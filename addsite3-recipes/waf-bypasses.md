@@ -189,6 +189,15 @@ search for the employer's own board on another host (aggregators are not the emp
 
 ---
 
+## 9. Wordfence rate limit on a WordPress board (`LRN-WP-8`)
+
+Wordfence answers 503 "Exceeded the maximum global requests per minute" once a run asks for too
+many pages: about 150 job-page requests in a minute on aman.co.il. This is not a UA or a challenge
+problem, so no override fixes it. Ask for fewer pages: read the bodies from the post type's feed
+(`/feed/?post_type=<type>&paged=N`) instead of every job page (`setupscript-patterns.md` §11).
+
+---
+
 ## Quick-reference: browserOverrides shape
 
 ```json

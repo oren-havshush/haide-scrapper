@@ -207,6 +207,29 @@ has **no jobs** (cross-origin iframe — the worker can't read into it), so it g
 and onboard **that comeet board URL** as the `siteUrl`. Set `companyName` to the real
 employer. (LRN-SPA-4: betshemeshengines, embedded on bsel.co.il.)
 
+This is for an **iframe** embed only. When the employer's own page renders the jobs, the next
+subsection applies instead.
+
+### Rendered by the employer's page or plugin (no iframe) — onboard the employer page
+- **The employer page is the siteUrl** (`LRN-SPA-28`). tikalk.com builds the Comeet cards itself
+  (Next.js, token in `__NEXT_DATA__`); careers.deloitte.co.il, elmomc.com and storenext.co.il use a
+  WordPress plugin; cet.ac.il is a WordPress jobs archive fed by Comeet. Read the careers API
+  (`/careers-api/2.0/company/<uid>/positions?token=<page token>&details=true`, GET) and build the job
+  links the way the page's own click does. Take each link from the employer's card, never from
+  Comeet's `url_active_page`: it was stale for 2 of 4 tikalk jobs, and for one cet job it was the
+  careers hub itself. Name the hosted board in the adminNote so it is never onboarded twice.
+- **Triage may not see Comeet at all** (`LRN-SPA-29`): it loads only on the job pages, or through the
+  plugin's `/comeet-inner/` links. Open one job page before choosing the lane (`addsite3.md` §2.1).
+- **Take the job set from the careers API, not from the rendered rows** (`LRN-SPA-30`): the plugin's
+  page cache on elmomc.com (no query string) still listed a closed job, 49.34A "SQA Engineer".
+- **Drop a row that is not a job** (`LRN-SPA-27`): tikalk's feed returns a "Let's Talk" apply widget
+  as a row (F2.633: no details, URL = the careers page). Drop it and name it in the adminNote.
+- **An id can carry an office suffix** (`LRN-SPA-31`): one Deloitte position in 6 offices comes back as
+  6 rows, `10.F6C-92.301` and so on, each with its own page and form. The suffix is part of the native
+  id and stays; an id test of `^[0-9A-Z]{2}\.[0-9A-Z]{3}$` would drop 5 of the 6. Accept
+  `(-[0-9A-Z]{2}\.[0-9A-Z]{3})?` and ship one job per office, with a card question when two copies
+  share a city.
+
 ### formCapture — static template (cross-origin apply iframe)
 The apply form opens in a cross-origin iframe (`comeet.co/jobs/<uid>/<pos>/apply`) that
 can't be probed live, and is identical across all positions. Ship a **static
@@ -545,6 +568,26 @@ so the two fields never duplicate. Two rules make the match reliable:
 `formSelector: "form.Form"` matches nothing there and correctly forces the static captured
 fields (`LRN-APPLY-7`). The visible file input carries no `name`; Civi uploads asynchronously
 and posts a hidden `input[name=cv]`, which is why `cv` is advertised as the file field.
+
+**A closed job redirects to the board with `&fallback=1`** (`LRN-SPA-26`), not to `?ERROR 404`
+(a page not yet opened). On or-ganize three jobs closed during preparation (804047, 806903,
+877932). `&fallback=1` means closed: no openPromo POST, and the card is dropped. Only a locked page
+gets the one POST Civi boards allow (`addsite3.md` §19).
+
+---
+
+## TalentFlow (recruiter boards on talentflow.co.il)
+
+**One public call returns every job** (`LRN-SPA-25`). TalentFlow is a recruiting CRM/ATS (a React SPA
+on Supabase, one tenant per `by=` account id) that renders the board client-side; a job page
+per job would take about 410 s on the server (Mega Talents, 2026-10-14). One GET to
+`rest/v1/rpc/get_public_jobs_safe?_owner_user_id=<by>` returns every job with its HTML description,
+cities, form fields and the printed job number, using the anon key the page ships in its bundle.
+- Find the key in the bundle on every run; never hardcode it.
+- Fail closed (0 items) when the key is not found or the call stops answering.
+- The printed `#N` becomes `<site>-<n>` (`LRN-ID-11`).
+- TalentFlow is a vendor: `talentflow.co.il` is in `src/lib/ats-hosts.ts`, so the company profile
+  comes from the recruiter's own site, never from the board's host.
 
 ---
 

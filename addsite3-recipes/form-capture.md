@@ -164,6 +164,7 @@ Cite: `LRN-FORM-3`.
 | ↳ a Turnstile **inside** a form whose fields all render (AdamTotal tenants: `div.cf-turnstile` + a hidden `cf-turnstile-response`, no interstitial) | **Owner decision: ACTIVE** (`LRN-APPLY-11`). Capture the form statically, keep the hidden `cf-turnstile-response` field (required) so the gate shows in `_formData`, and say in `adminNote` that submission is behind Turnstile, with the real endpoint. |
 | ↳ invisible, score-based (reCAPTCHA **v3**: `api.js?render=<sitekey>`, a hidden `g-recaptcha-response`, no visible widget): the form renders in full | **Run this recipe** — the captcha gates submission, not capture. Keep the email / apply URL in `applicationInfo` as a fallback. The nightly warns `apply_replay_token` for the token field; that is expected. |
 | ↳ several forms, the prominent one captcha-gated | Enumerate every form and rank (`LRN-FORM-7`): captcha-free CV upload, then captcha-free contact form. SKIP only when every form is blocking-gated. |
+| Apply goes to a vendor campaign page (AdamTotal and similar) | **Open every apply link once in preparation** (`LRN-APPLY-17`): a page can answer 200 with "המשרה אינה פעילה" and no form while the employer still lists the job (afeka.ac.il). A dead link on one row: leave the row out and name it in `adminNote`. A dead apply path for the whole site keeps the site out (`LRN-APPLY-14`). |
 
 ---
 
@@ -330,6 +331,13 @@ path (a `mailto:` or an apply URL); it happily coexists with `_formData`.
 Signal that no further action is needed: `addsite-qa` reports `formStatus: CAPTURED` and
 `formFields > 0`. Verify by confirming a sampled job's `rawData._formData` lists the
 expected fields — not by looking at `applicationInfo`.
+
+**Check that the job reaches an input inside the `<form>`** (`LRN-FORM-19`). On krausz.com the apply
+button copies the job title into the modal's `h3`/`h4`, outside the `<form>`, so CF7 submits no job
+field (`_wpcf7_container_post` 0). Fill a field of the form with the job, per job, from the
+setupScript. A static `{{job.title}}` template in a free-text field (`worker/lib/formTemplate.ts`)
+is filled only in `rawData._formData`, not in `applicationInfo`, until the applicationInfo template
+fix deploys: until then, prefer the per-job blob (temporary line, revisit after that deploy).
 
 ---
 

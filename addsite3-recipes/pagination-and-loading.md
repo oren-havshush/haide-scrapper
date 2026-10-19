@@ -20,6 +20,10 @@ If `extracted === total` → no pagination needed, proceed.
 
 **LANDMINE:** never silently ship page-1-only. If coverage is unclear, instrument it.
 
+**A board whose pages reorder between loads** (`LRN-CO-7`): on an AdamTotal board job 178282 moved
+from page 1 to page 2 between two loads, so a page walk can repeat one job and miss another. Emit
+every row and check the union of ids against the board's total; re-fetch when the union falls short.
+
 **Custom CMS sites are often API-backed too** — not just named SPA frameworks. (`LRN-SPA-1`)
 If DOM scraping returns a suspiciously low or round count (10, 20…) and
 scroll/load-more does nothing, open the Network tab before concluding the site
@@ -145,6 +149,13 @@ Then map `itemSelector: .__ai-job`.
 
 **Pattern:** clicking a button appends more items to the list (e.g. one1.co.il "טען עוד").
 
+**First, find out what the button sends — before any click** (`LRN-COV-15`, `addsite3.md` §0.2).
+Read its handler, or watch its first request with POSTs blocked. On careers.deloitte.co.il "Load
+More" is an admin-ajax POST (`deloitte_careers_load_more_positions_ajax`). A POST pager gets **no**
+`loadMoreSelector` (Strategy A would make the worker send that POST to the employer on every run)
+and no click loop (Strategy C): count it from the page's own total, the sitemap or a data endpoint,
+and read the jobs from that endpoint. Strategies A to C below are for a button that loads with GET.
+
 **Strategy A (PREFERRED): native `loadMoreSelector` config.** The worker has a
 built-in load-more clicker — you do NOT need a setupScript loop. Add the button
 selector under `fieldMappings._meta.loadMoreSelector`:
@@ -173,7 +184,7 @@ plain `page.$(selector)`.
 > count; if it stopped after 1 click, switch to Strategy C** and wait for the button
 > to reappear before each click. Cite: `LRN-WRK-13` (l-w.ac.il, 9 of 60 jobs).
 
-**Strategy B: find the underlying API** — open Network tab, click "Load more", find the XHR call. Then use the `setupScript` fetch approach from §1 Strategy C.
+**Strategy B: find the underlying API** — open Network tab, click "Load more" (only once you know it sends a GET, see above), find the XHR call. Then use the `setupScript` fetch approach from §1 Strategy C.
 
 **Strategy C: inject click loop** — only if `loadMoreSelector` can't target the
 button (e.g. text-only match needed) and there's no API:
