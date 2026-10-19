@@ -1,5 +1,5 @@
 {
-  "_exportedAt": "2026-10-15T09:04:18.320Z",
+  "_exportedAt": "2026-10-19T12:09:45.449Z",
   "_note": "Mirror of the live config. The DB is authoritative; the worker never reads this file. setupScript lives alongside in <slug>.setup.js.",
   "id": "cmv6ef5ng000001p3rv6s1sxo",
   "siteUrl": "https://www.prologic.co.il/High-tech-jobs",
@@ -10,8 +10,10 @@
   "fieldMappings": {
     "_meta": {
       "lane": null,
-      "limits": null,
-      "savedAt": "2026-10-15T08:56:30.867Z",
+      "limits": {
+        "setupScriptSeconds": 300
+      },
+      "savedAt": "2026-10-19T11:49:43.309Z",
       "pagination": null,
       "formCapture": null,
       "listingUrls": null,

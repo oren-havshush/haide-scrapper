@@ -2,6 +2,12 @@
 // its jobs in full, one job may sit on several pages. Over 10 pages, so this script fetches every page the hub links and
 // builds one list, all-or-nothing (LRN-CO-4): any failed/redirected page, or one without the listing
 // frame, empties the list -> empty_results, nothing deleted. A page with 0 jobs is normal here (ruby, php...).
+// Time (2026-10-19 nightly reply): 6 fetches in flight, 60 s per attempt (a Cloudflare 524 comes at ~100 s; pages took
+// up to 50 s under load on 2026-10-19), 2 attempts per page, no new attempt after 220 s, so the last one ends by 280 s,
+// inside the stored 300 s limit: the script ends by itself instead of being cut off. Each page is parsed as it
+// answers into a hidden box per page (#haide-jobs-staging, outside the item selector); the boxes move under
+// #haide-jobs-root, in hub order (the first row per job is the one the worker keeps), only when every page answered.
+// The job text comes from the category pages themselves: the script reads no job page.
 // externalJobId: the CMS record id the job's own form sends (cmsId) -> prologic-<cmsId>. No id -> none (worker hashes).
 // Body: after a requirements heading -> requirements; headless lines classified by LRN-SETUP-18; labels dropped.
 // Location: no tags on this site, so only a work-location line in the ad (LRN-LOC-21 case 4), mapped through a closed
@@ -18,28 +24,44 @@ if (HUB && !document.getElementById('haide-jobs-root')) {
     var u = new URL(a.getAttribute('href'), location.href).href;
     if (urls.indexOf(u) < 0) urls.push(u);
   });
-  var BAD = urls.length < 10, PAGES = [], HOME = 0;
+  var STAGE = document.createElement('div');
+  STAGE.id = 'haide-jobs-staging';
+  STAGE.style.display = 'none';
+  document.body.appendChild(STAGE);
+  var BOX = urls.map(function () { var b = document.createElement('div'); STAGE.appendChild(b); return b; });
+  var BAD = urls.length < 10, HOME = 0, ROWS = 0, T0 = Date.now();
+  var IN_FLIGHT = 6, ATTEMPT_MS = 60000, ATTEMPTS = 2, LAST_START_MS = 220000;
+  var fail = function (why) { if (!BAD) console.warn('[prologic] ' + why + '; list emptied, nothing written'); BAD = true; };
   var queue = urls.map(function (u, i) { return i; });
   var worker = async function () {
     while (queue.length && !BAD) {
-      var i = queue.shift(), d = null;
-      for (var t = 0; t < 3 && !d; t++) {
+      var i = queue.shift(), d = null, why = '';
+      for (var t = 0; t < ATTEMPTS && !d && !BAD; t++) {
+        if (Date.now() - T0 > LAST_START_MS) { why = 'out of time (' + LAST_START_MS / 1000 + ' s)'; break; }
+        if (t) await new Promise(function (ok) { setTimeout(ok, 1000); });
+        var ctl = new AbortController(), timer = setTimeout(function () { ctl.abort(); }, ATTEMPT_MS);
         try {
-          var r = await fetch(urls[i], { credentials: 'same-origin' });
+          // no cookies: the site's ASP.NET session lock serves one request per session at a time, so with the
+          // browser's session cookie 6 parallel fetches queued behind each other (9 to 39 s; without it 4 s each,
+          // 2026-10-19). The pages are the same for every visitor.
+          var r = await fetch(urls[i], { credentials: 'omit', signal: ctl.signal });
           // a removed category answers 301 -> the homepage (help-desk, 2026-10-13): no jobs, not a failure,
           // unless half or more of the pages do (then the board has moved: fail, below)
           if (r.ok && r.redirected && /^\/+$/.test(new URL(r.url).pathname)) { HOME++; d = document.implementation.createHTMLDocument(''); break; }
-          if (!r.ok || r.redirected) continue;
+          if (!r.ok || r.redirected) { why = 'HTTP ' + r.status + (r.redirected ? ' (redirected)' : ''); continue; }
           var x = new DOMParser().parseFromString(await r.text(), 'text/html');
-          if (x.querySelector('.SubCategoriesFilterHolder')) d = x;
-        } catch (e) { }
+          if (x.querySelector('.SubCategoriesFilterHolder')) d = x; else why = 'no listing frame';
+        } catch (e) {
+          why = e && e.name === 'AbortError' ? 'no answer within ' + ATTEMPT_MS / 1000 + ' s' : 'network error';
+        } finally {
+          clearTimeout(timer);
+        }
       }
-      if (!d) { BAD = true; console.warn('[prologic] page failed: ' + urls[i]); return; }
-      PAGES[i] = d;
+      if (BAD) return;
+      if (!d) { fail('page failed (' + why + '): ' + urls[i]); return; }
+      addPage(i, d);
     }
   };
-  await Promise.all([1, 2, 3, 4, 5, 6, 7, 8].map(worker));
-  if (HOME * 2 >= urls.length) { BAD = true; console.warn('[prologic] ' + HOME + ' of ' + urls.length + ' pages redirect home'); }
   var MATH = new RegExp('[' + String.fromCodePoint(0x1D400) + '-' + String.fromCodePoint(0x1D7FF) + ']', 'gu');
   var WS = new RegExp('[ \\t' + String.fromCharCode(160) + ']+', 'g');
   var lines = function (el) {
@@ -73,17 +95,16 @@ if (HUB && !document.getElementById('haide-jobs-root')) {
   ];
   var TITLE_CUE = new RegExp('\\s[לב]' + PL + '\\s*$');
   // a job listed on several pages appears once per page; the worker keeps the first row per job address
-  var cards = [];
-  if (!BAD) PAGES.forEach(function (d) {
+  var addPage = function (i, d) {
     d.querySelectorAll('.allJobsContentHolder').forEach(function (h) {
       var a = h.querySelector('a[href]'), fm = h.querySelector('form.allJobsSendCVForm'), body = h.querySelector('.allJobsDescription');
       var url = a ? new URL(a.getAttribute('href'), location.href).href : '';
       if (!url) return;
-      cards.push({ url: url, h: h, fm: fm, body: body });
+      ROWS++;
+      build({ url: url, h: h, fm: fm, body: body }, BOX[i]);
     });
-  });
-  if (!BAD && !cards.length) BAD = true;
-  if (!BAD) cards.forEach(function (c) {
+  };
+  var build = function (c, box) {
     var t = c.h.querySelector('.allJobsTitle');
     var title = (t ? t.textContent : '').replace(MATH, function (ch) { return ch.normalize('NFKC'); }).replace(/\s+/g, ' ').trim();
     if (!title || !/(?=\p{L})[\p{sc=Hebrew}\p{sc=Latin}]/u.test(title) || /(?![\p{sc=Hebrew}\p{sc=Latin}\p{sc=Common}\p{sc=Inherited}])\p{L}/u.test(title)) return;
@@ -141,7 +162,19 @@ if (HUB && !document.getElementById('haide-jobs-root')) {
       add('__ai-applicationInfo', blob);
       add('__ai-formData', blob);
     }
-    ROOT.appendChild(item);
+    box.appendChild(item);
+  };
+  await Promise.all(BOX.slice(0, IN_FLIGHT).map(worker));
+  if (!BAD && HOME * 2 >= urls.length) fail(HOME + ' of ' + urls.length + ' pages redirect home');
+  if (!BAD && !ROWS) fail('no job on any page');
+  // one row per job: the first in hub order, the row the worker kept when every copy was emitted (298 rows for 97 jobs
+  // made the listing_vs_saved_gap check fire on every run, 2026-10-19)
+  var SEEN = {};
+  if (!BAD) BOX.forEach(function (b) {
+    Array.prototype.slice.call(b.children).forEach(function (item) {
+      var k = item.querySelector('a.haide-link').href;
+      if (!SEEN[k]) { SEEN[k] = 1; ROOT.appendChild(item); }
+    });
   });
-  if (BAD) ROOT.innerHTML = '';
+  else ROOT.innerHTML = '';
 }
