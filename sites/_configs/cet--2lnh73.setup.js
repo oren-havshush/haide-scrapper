@@ -1,31 +1,19 @@
-/* CET (מטח), cet.ac.il/jobs/ - a WordPress jobs archive whose positions come from Comeet (company 2A.00B).
-   Listing-only. The page shows every job as a .job-card (title, full text in a collapse, and an apply link
-   /jobs/<slug>//?form=1&external=<uid> that opens Comeet's apply form in an iframe). The script keeps exactly
-   the cards the page shows and reads each one's data from the Comeet careers-api (one GET, details=true), then
-   builds one hidden row per job in #haide-cet; the worker reads those rows.
-   - Kept: a card on the page whose Comeet UID is in the API list, location.country = IL (LRN-SPA-16), a title
-     in Hebrew/Latin letters only. A card with no UID, or a UID Comeet no longer lists, is left out (logged).
-   - Id = the Comeet position UID (native, ASCII).
-   - Link = the card's own job page (/jobs/<slug>/), read from the page, never Comeet's url_active_page (it is
-     the careers page itself for C2.479 on 2026-10-18).
-   - Body: Comeet "Description" -> description, a bare "תיאור התפקיד:" label line dropped; "Requirements"
-     -> requirements, a short lead label line before the list dropped, the closing lines after the list -> end
-     of description (a line that starts with "יתרון" or ends "- חובה / - יתרון" stays a requirement).
-   - Location: the Comeet city; the config locationMap turns it into a city.csv row.
-   - Apply: this job's own Comeet form (careers-api apply route, multipart) with the fields the site's embedded
-     form shows, plus its questionnaire (one GET per job); the reCAPTCHA v3 token is browser-made: empty field.
-   - Date: each job page's JSON-LD datePublished (one GET per job page, 6 at a time), as an Israel-time date.
-   ALL-OR-NOTHING: a failed Comeet GET, or no card on the page, builds no row (a scheduled run then refuses).
-   The date alone is exempt: a failed date read leaves that job undated (owner, 2026-10-18). */
+/* CET (מטח), cet.ac.il/jobs/: WordPress job cards fed by Comeet (2A.00B); one hidden row per job in #haide-cet.
+   Comeet jobs: the cards' UIDs, data from the careers-api, id = UID, apply = the job's Comeet form (blob).
+   Arabic-only jobs (/jobs/?lang=ar, decided 2026-10-18): body from the card, id cet-<n>, apply = CF7 1603 on
+   the job page; "كل/جميع مناطق البلاد" in the title or the first body line -> פריסה ארצית.
+   Dates: each job page's JSON-LD (LRN-AGE-6). All-or-nothing, except the date.
+   Full description: the 2026-10-18 card (.scratch/batch-flow/2026-10-18-b/sites/cet/card.md). */
 
 var NL = String.fromCharCode(10);
-/* fromCharCode: invisible chars in a regex literal have disabled a guard before (CLAUDE.md). */
+/* fromCharCode, never invisible chars in a literal (CLAUDE.md). */
 var ZW = new RegExp('[' + String.fromCharCode(0xFEFF, 0x200B, 0x200C, 0x200D, 0x2060, 0x200E, 0x200F) + ']', 'g');
 var NBSP = new RegExp(String.fromCharCode(0x00A0), 'g');
 var QUOTES = new RegExp('["\'' + String.fromCharCode(0x201D, 0x2019, 0x05F4, 0x05F3) + ']', 'g');
 var BULLETS = [String.fromCharCode(0x2022), String.fromCharCode(0x00B7)];
-var OK = /(?=\p{L})[\p{sc=Hebrew}\p{sc=Latin}]/u;
-var BAD = /(?![\p{sc=Hebrew}\p{sc=Latin}\p{sc=Common}\p{sc=Inherited}])\p{L}/u;
+var OK = /(?=\p{L})[\p{sc=Hebrew}\p{sc=Latin}\p{sc=Arabic}]/u;
+var BAD = /(?![\p{sc=Hebrew}\p{sc=Latin}\p{sc=Arabic}\p{sc=Common}\p{sc=Inherited}])\p{L}/u;
+var DIA = new RegExp('[' + String.fromCharCode(0x064B) + '-' + String.fromCharCode(0x0652) + ']', 'g');
 var COMP = '2A.00B', TOKEN = 'A2B472D1E815B833D025B83472D1456A2B0';
 var REQ_TAIL = /^יתרון|[-–]\s*(חובה|יתרון|mandatory|an advantage|advantage)\s*\.?$/i;
 var DESC_LABEL = /^(תיאור התפקיד|תיאור משרה|description|job description)\s*:?$/i;
@@ -44,8 +32,7 @@ function aiClean(t) {
 
 function isBullet(t) { return BULLETS.indexOf(t.charAt(0)) !== -1; }
 
-/* Comeet HTML -> lines, in an inert document (nothing in it runs or loads). A line knows whether it is a list
-   item: an <li>, or a paragraph that starts with a bullet sign. */
+/* HTML -> lines, parsed inert; li = a list item or a bulleted paragraph. */
 function htmlLines(html) {
   var doc = new DOMParser().parseFromString('<div>' + String(html || '') + '</div>', 'text/html');
   var root = doc.body.firstChild, out = [];
@@ -68,6 +55,32 @@ function htmlLines(html) {
     for (var m = 0; m < all.length; m++) if (all[m]) out.push({ t: all[m], li: isBullet(all[m]) });
   }
   return out;
+}
+
+/* JSON-LD WebPage datePublished of this url, Israel date, or ''. */
+function ldDate(doc, href) {
+  var ld = doc.querySelectorAll('script[type="application/ld+json"]');
+  for (var s = 0; s < ld.length; s++) {
+    var j = null;
+    try { j = JSON.parse(ld[s].textContent); } catch (e) { continue; }
+    var gr = (j && j['@graph']) || [j];
+    for (var t = 0; t < gr.length; t++) {
+      var o = gr[t] || {};
+      if (o['@type'] !== 'WebPage' || !o.datePublished) continue;
+      if (decodeURI(String(o.url || '')).toLowerCase().replace(/^https?:/, '') !== decodeURI(href).toLowerCase().replace(/^https?:/, '')) continue;
+      var dt = new Date(o.datePublished);
+      if (isNaN(dt)) continue;
+      return dt.toLocaleDateString('en-CA', { timeZone: 'Asia/Jerusalem' });
+    }
+  }
+  return '';
+}
+
+/* The slug must name the title, else an older post (LRN-AGE-6). */
+function slugNames(href, title) {
+  var slug = decodeURI(href.split('/jobs/')[1] || '').split('?')[0].replace(/\/$/, '').toLowerCase().replace(/-\d+$/, '');
+  var tslug = title.toLowerCase().replace(QUOTES, '').replace(/[^\p{L}\p{N}]+/gu, '-').replace(/^-+|-+$/g, '');
+  return !!slug && tslug.indexOf(slug) === 0;
 }
 
 function aiInject(host, cls, val, tag) {
@@ -125,41 +138,19 @@ if (!document.getElementById('haide-cet')) {
         return r.json();
       });
     }));
-    /* Dates: the job page's own JSON-LD WebPage datePublished (the job's WordPress post), 6 pages at a time.
-       EXCEPTION to all-or-nothing, for this field only: any failure (fetch, redirect, no JSON-LD, another
-       page's url, unparsable) leaves that job undated; it never drops the job or fails the run. LRN-AGE-6:
-       the slug (minus a -2/-3 suffix) must name this job's title, else the post may be an older one -> undated. */
+    /* Dates, 6 pages at a time; any failure leaves that job undated. */
     var dates = [];
     for (var g = 0; g < keep.length; g += 6) {
       var part = await Promise.all(keep.slice(g, g + 6).map(function (k) {
         return fetch(k.href, { cache: 'no-store', credentials: 'omit' }).then(function (r) {
           if (!r.ok || r.redirected) return '';
-          return r.text().then(function (h) {
-            var doc = new DOMParser().parseFromString(h, 'text/html'), ld = doc.querySelectorAll('script[type="application/ld+json"]');
-            for (var s = 0; s < ld.length; s++) {
-              var j = null;
-              try { j = JSON.parse(ld[s].textContent); } catch (e) { continue; }
-              var gr = (j && j['@graph']) || [j];
-              for (var t = 0; t < gr.length; t++) {
-                var o = gr[t] || {};
-                if (o['@type'] !== 'WebPage' || !o.datePublished) continue;
-                /* scheme ignored: some job pages print http:// in their JSON-LD */
-                if (decodeURI(String(o.url || '')).toLowerCase().replace(/^https?:/, '') !== decodeURI(k.href).toLowerCase().replace(/^https?:/, '')) continue;
-                var dt = new Date(o.datePublished);
-                if (isNaN(dt)) continue;
-                return dt.toLocaleDateString('en-CA', { timeZone: 'Asia/Jerusalem' });
-              }
-            }
-            return '';
-          });
+          return r.text().then(function (h) { return ldDate(new DOMParser().parseFromString(h, 'text/html'), k.href); });
         }).catch(function () { return ''; });
       }));
       dates = dates.concat(part);
     }
     for (var z = 0; z < keep.length; z++) {
-      var slug = decodeURI(keep[z].href.split('/jobs/')[1] || '').replace(/\/$/, '').toLowerCase().replace(/-\d+$/, '');
-      var tslug = keep[z].title.toLowerCase().replace(QUOTES, '').replace(/[^\p{L}\p{N}]+/gu, '-').replace(/^-+|-+$/g, '');
-      if (!/^\d{4}-\d{2}-\d{2}$/.test(dates[z] || '') || !slug || tslug.indexOf(slug) !== 0) {
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(dates[z] || '') || !slugNames(keep[z].href, keep[z].title)) {
         if (dates[z]) console.log('[cet] ' + keep[z].p.uid + ' slug does not name the title: left undated');
         dates[z] = '';
       }
@@ -198,6 +189,44 @@ if (!document.getElementById('haide-cet')) {
         emp: job.employment_type ? String(job.employment_type).trim() : '',
         desc: aiClean(desc.join(NL + NL)), req: aiClean(req.join(NL)),
         blob: JSON.stringify({ actionUrl: act, actionAttribute: act, method: 'POST', enctype: 'multipart/form-data', fields: fields })
+      });
+    }
+    /* Arabic-only postings (header). */
+    var ar = await fetch('/jobs/?lang=ar', { cache: 'no-store' });
+    if (!ar.ok) throw new Error('Arabic listing ' + ar.status);
+    var ac = new DOMParser().parseFromString(await ar.text(), 'text/html').querySelectorAll('.job-card');
+    var CF7 = 'https://cet.ac.il/wp-json/contact-form-7/v1/contact-forms/1603/feedback';
+    for (var e = 0; e < ac.length; e++) {
+      if (ac[e].querySelector('a.apply-btn[href*="external="]')) continue;
+      var sp = ac[e].querySelectorAll('.job-header span');
+      var at = sp.length ? aiClean(sp[0].textContent) : '', nm = sp.length > 1 ? /#(\d+)/.exec(sp[1].textContent) : null;
+      if (!at || !nm || !OK.test(at) || BAD.test(at)) continue;
+      var cp = ac[e].querySelector('[data-clipboard-text*="/jobs/"]');
+      var ah = cp ? new URL(cp.getAttribute('data-clipboard-text').trim(), location.href).href : '';
+      if (!/^https:\/\/cet\.ac\.il\/jobs\/[^/?]+\/\?lang=ar$/.test(ah)) throw new Error('no job page for #' + nm[1]);
+      var pr = await fetch(ah, { cache: 'no-store', credentials: 'omit' });
+      if (!pr.ok || pr.redirected) throw new Error('job page #' + nm[1] + ' ' + pr.status);
+      var pd = new DOMParser().parseFromString(await pr.text(), 'text/html');
+      var adt = slugNames(ah, at) ? ldDate(pd, ah) : '';
+      var bl = htmlLines((ac[e].querySelector('.job-details') || {}).innerHTML), ad = [], aq = [], inq = false;
+      for (var f = 0; f < bl.length; f++) {
+        var tx = bl[f].t.replace(/[\s:]+$/, '');
+        if (/^متطلبات/.test(tx) && tx.length < 25) { inq = true; continue; }
+        if (tx === 'وصف الوظيفة') { inq = false; continue; }
+        (inq ? aq : ad).push(bl[f].t);
+      }
+      var hv = { _wpcf7: '1603', _wpcf7_version: '5.8.2', _wpcf7_locale: 'he_IL', _wpcf7_unit_tag: 'wpcf7-f1603-o1',
+        _wpcf7_container_post: '0', _wpcf7_posted_data_hash: '', _wpcf7_recaptcha_response: '', 'job-name-and-number': at + ' / #' + nm[1] };
+      var af = Object.keys(hv).map(function (k) { return { name: k, label: '', fieldType: 'hidden', required: false, tagName: 'INPUT', value: hv[k] }; });
+      [['first-name', 'الاسم الشخصيّ', 'text', 1], ['last-name', 'العائلة', 'text', 1], ['phone-number', 'رقم الهاتف', 'tel', 1],
+        ['email', 'البريد الإلكترونيّ', 'email', 1], ['message', 'هل ترغب في التواصل معنا?', 'textarea', 0], ['file-1', 'رفع السيرة الذاتيّة', 'file', 1]
+      ].forEach(function (x) { af.push({ name: x[0], label: x[1], fieldType: x[2], required: !!x[3], tagName: x[2] === 'textarea' ? 'TEXTAREA' : 'INPUT' }); });
+      built.push({
+        uid: 'cet-' + nm[1], title: at, href: ah, date: adt,
+        dept: aiClean((pd.querySelector('.like-bread a[href*="jobs_categories"]') || {}).textContent),
+        city: /(كل|جميع) مناطق البلاد/.test((at + ' ' + (bl.length ? bl[0].t : '')).replace(DIA, '')) ? 'פריסה ארצית' : '', emp: '',
+        desc: aiClean(ad.join(NL)), req: aiClean(aq.join(NL)),
+        blob: JSON.stringify({ actionUrl: CF7, actionAttribute: ah + '&form=1#wpcf7-f1603-o1', method: 'POST', enctype: 'multipart/form-data', fields: af })
       });
     }
   } catch (err) {

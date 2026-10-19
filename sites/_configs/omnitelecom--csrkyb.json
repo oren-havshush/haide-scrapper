@@ -1,5 +1,5 @@
 {
-  "_exportedAt": "2026-10-18T10:17:24.298Z",
+  "_exportedAt": "2026-10-19T09:36:15.954Z",
   "_note": "Mirror of the live config. The DB is authoritative; the worker never reads this file. setupScript lives alongside in <slug>.setup.js.",
   "id": "cmvdnf0sq008701vuw7csrkyb",
   "siteUrl": "https://www.omnitelecom.co.il/join-the-team/",
@@ -11,7 +11,7 @@
     "_meta": {
       "lane": null,
       "limits": null,
-      "savedAt": "2026-10-18T09:56:02.709Z",
+      "savedAt": "2026-10-19T09:35:44.041Z",
       "pagination": null,
       "formCapture": null,
       "listingUrls": null,

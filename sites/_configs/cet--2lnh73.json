@@ -1,5 +1,5 @@
 {
-  "_exportedAt": "2026-10-18T12:37:02.036Z",
+  "_exportedAt": "2026-10-19T09:36:12.380Z",
   "_note": "Mirror of the live config. The DB is authoritative; the worker never reads this file. setupScript lives alongside in <slug>.setup.js.",
   "id": "cmvdt0599009v01vutl2lnh73",
   "siteUrl": "https://cet.ac.il/career/",
@@ -11,14 +11,15 @@
     "_meta": {
       "lane": null,
       "limits": null,
-      "savedAt": "2026-10-18T12:31:19.663Z",
+      "savedAt": "2026-10-19T09:33:41.415Z",
       "pagination": null,
       "formCapture": null,
       "listingUrls": [
         "https://cet.ac.il/jobs/"
       ],
       "locationMap": {
-        "Tel Aviv-Yafo": "תל אביב-יפו"
+        "Tel Aviv-Yafo": "תל אביב-יפו",
+        "פריסה ארצית": "פריסה ארצית"
       },
       "itemSelector": "#haide-cet > div.haide-job",
       "acceptedGates": null,

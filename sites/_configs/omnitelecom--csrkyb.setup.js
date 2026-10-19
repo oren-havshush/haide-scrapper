@@ -12,7 +12,9 @@
 //   whose text names no city and no field work takes the company's city (SITE_CITY, LRN-LOC-20).
 // - date: the job post's publish date (WP REST date_gmt); the page prints none.
 // - apply: the job page's own Elementor form, one blob per job; the hidden job-title field is filled
-//   with the job's title, as the page's own script does.
+//   with the job's title, as the page's own script does. The form has a REQUIRED marketing-consent box
+//   (form_fields[promotional_accept]), pre-checked on the page; captured as it is (decided 2026-10-18),
+//   and the public site decides whether to show the job.
 if (document.getElementById('haide-omni')) return;
 if (!document.querySelector('article.ee-post.type-jobs')) return;
 var T0 = Date.now();

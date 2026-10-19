@@ -3,8 +3,8 @@
 // input#job_data_<nid> = the apply token) followed by its sibling div.full-job (full body inline).
 // This script reads the sibling and injects hidden .__ai-* fields into the row.
 //
-// - externalJobId: NOT emitted (owner 2026-10-18: a CMS post id is never a job id; the printed number
-//   repeats across jobs). The worker builds an h- id from title, department and url itself.
+// - externalJobId: the Drupal node id as leumi-<nid> (LRN-ID-5, decided 2026-10-18: the printed number
+//   repeats across jobs, so the CMS record id is used; re-keyed from h- ids on 2026-10-19).
 // - detailUrl: the job page /he/about/career/Job/<nid>.
 // - title: as printed, minus the printed number phrase at the end (job body rule 7).
 // - description: div.job-description-text without its display:none block; label-only lines
@@ -139,6 +139,7 @@ for (var r = 0; r < rows.length; r++) {
   var tok = document.getElementById('job_data_' + nid);
   var tokVal = tok ? (tok.getAttribute('value') || '').trim() : '';
 
+  put(row, '__ai-id', 'leumi-' + nid);
   put(row, '__ai-title', title);
   put(row, '__ai-url', 'https://www.leumi.co.il/he/about/career/Job/' + nid, 'a');
   if (description) put(row, '__ai-description', description);
