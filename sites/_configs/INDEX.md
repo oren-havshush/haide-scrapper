@@ -39,6 +39,7 @@ refused. This is how `listingUrls` gets back too: on a site whose Pages column i
 | Ceragon | ACTIVE | 8 | 7483 | 1 | `comeet--ty14e5` |
 | CodeOasis | ACTIVE | 5 | 5082 | 2 | `codeoasis--yb2y8w` |
 | Comblack | ACTIVE | 8 | 11668 | 1 | `comblack--lfh3rc` |
+| CommIT | ACTIVE | 10 | 12365 | 1 | `comeet--5fork1` |
 | DHL Express | ACTIVE | 7 | 3442 | 1 | `dhl--mwqiig` |
 | Deloitte | ACTIVE | 9 | 11748 | 1 | `deloitte--fqgsfu` |
 | ERN | ACTIVE | 6 | 7423 | 1 | `ern--tcdrkt` |
@@ -53,6 +54,7 @@ refused. This is how `listingUrls` gets back too: on a site whose Pages column i
 | Flex | ACTIVE | 9 | 6932 | 1 | `flextronics-wd1-myworkdayjobs--9xrjw5` |
 | Fritz | ACTIVE | 5 | 5110 | 1 | `fritz--wafrzk` |
 | G STAT | ACTIVE | 5 | 1682 | 1 | `g-stat--yvpgzk` |
+| Gal HR \| גל אייץ׳ אר | ACTIVE | 8 | 14138 | 1 | `gal-hr--rtt4e5` |
 | Gtech | ACTIVE | 6 | 4590 | 1 | `gtech--7udl8v` |
 | HOLO/OR | ACTIVE | 5 | 4393 | 1 | `holoor--q060ns` |
 | Hylabs | ACTIVE | 4 | 502 | 1 | `hylabs--gyocvt` |
@@ -145,6 +147,7 @@ refused. This is how `listingUrls` gets back too: on a site whose Pages column i
 | גלוברנדס | ACTIVE | 6 | 1635 | 1 | `globrands--5akm6u` |
 | דומיסיל יבוא וייצוא בע"מ | ACTIVE | 6 | 5566 | 1 | `domicile--chpkcu` |
 | דיוטי פרי ג'יימס ריצ'רדסון | ACTIVE | 6 | 4985 | 1 | `adamtotal--dj7gwo` |
+| דלקו יבואנים | ACTIVE | 6 | 4709 | 1 | `delco--jot0bp` |
 | האקדמית רמת גן | ACTIVE | 5 | 1124 | 1 | `landing-iac--3cdlhs` |
 | הארה תוכניות העשרה בע"מ | ACTIVE | 6 | 6423 | 1 | `heara--xhar00` |
 | הבנק הבינלאומי | ACTIVE | 6 | 4541 | 1 | `fibi--4j7v1x` |
@@ -160,6 +163,7 @@ refused. This is how `listingUrls` gets back too: on a site whose Pages column i
 | המרכז הרפואי מעיני הישועה | ACTIVE | 8 | 4838 | 1 | `mymc--gqg49g` |
 | הספארי | ACTIVE | 5 | 1599 | 1 | `safari--6r81oc` |
 | הפניקס בית השקעות | ACTIVE | 8 | 4646 | 1 | `xnes--z0huih` |
+| הפניקס חברה לביטוח | ACTIVE | 10 | 6158 | 1 | `fnx--evkvnb` |
 | הקריה האקדמית אונו | ACTIVE | 6 | 4051 | 1 | `ono--o8qwd8` |
 | הראל ביטוח ופיננסים | ACTIVE | 7 | 5527 | 1 | `adamtotal--cemdht` |
 | וילי פוד | ACTIVE | 8 | 2768 | 1 | `willi-food--tsircs` |
@@ -205,6 +209,7 @@ refused. This is how `listingUrls` gets back too: on a site whose Pages column i
 | מי אביבים | ACTIVE | 9 | 7970 | 1 | `mei-avivim--5afgkc` |
 | מי עדן | ACTIVE | 5 | 4162 | 1 | `campaigns-meyeden--6u5xb3` |
 | מי שבע | ACTIVE | 5 | 1645 | 1 | `mey7--scshwy` |
+| מידרג | ACTIVE | 10 | 10311 | 1 | `topmatch--ewcoih` |
 | מיטב משאבי אנוש ותוכנה בע"מ | ACTIVE | 8 | 9053 | 1 | `meitavjob--9xtfdr` |
 | מילואות | ACTIVE | 7 | 7931 | 1 | `milouot--dbfy4p` |
 | מינט טכנולוגיות | ACTIVE | 8 | 4291 | 1 | `minet--ho0kc8` |
@@ -216,9 +221,11 @@ refused. This is how `listingUrls` gets back too: on a site whose Pages column i
 | מנרב | ACTIVE | 5 | 3145 | 1 | `minrav--hkk5r9` |
 | מסוף שירותי לוגיסטיקה | ACTIVE | 3 | 534 | 1 | `masof--2bfcz7` |
 | מערך אופק | ACTIVE | 7 | 4554 | 1 | `ofeksec--sihfn2` |
+| מפטגון | ACTIVE | 7 | 11106 | 1 | `meptagon--5f7rml` |
 | מקדונלד'ס | ACTIVE | 6 | 3156 | 1 | `mcdonalds--vq8zrd` |
 | מרטנס הופמן יועצים לניהול בע"מ | ACTIVE | 5 | 3696 | 1 | `mertens-hoffman--7hyv4n` |
 | מרכז האקדמי פרס | ACTIVE | 4 | 2397 | 1 | `pac--4xvfi9` |
+| משרד הנדסי - גיל שגיא | ACTIVE | 6 | 6167 | 1 | `handasi--ntvbnd` |
 | מתן שירותי בריאות וסיעוד מתקדמים | ACTIVE | 7 | 5796 | 1 | `app-civi--cc1wag` |
 | נאות המושבה - גולדנקייר | ACTIVE | 3 | 700 | 1 | `gcare--2uvz1w` |
 | נגבה – ילדים ונוער בונים עתיד | ACTIVE | 5 | 4249 | 1 | `negba--9vi55x` |
@@ -237,6 +244,7 @@ refused. This is how `listingUrls` gets back too: on a site whose Pages column i
 | סנו | ACTIVE | 6 | 5045 | 1 | `sano--mh8veb` |
 | עמותת איכות בשיקום | ACTIVE | 4 | 686 | 1 | `eychut--6336w9` |
 | עמותת שלומית | ACTIVE | 6 | 4968 | 1 | `shlomit--tk5xop` |
+| עמית לוגיסטיקה ושילוח בינלאומי | ACTIVE | 8 | 11926 | 1 | `amit--zckr5h` |
 | עמיתים | ACTIVE | 9 | 6461 | 1 | `amitim--cjmqz5` |
 | ענבי ציון | ACTIVE | 7 | 4070 | 1 | `anvei-zion--o0cjxq` |
 | פוליכד | ACTIVE | 3 | 315 | 1 | `polycad--is4jw2` |
@@ -282,6 +290,7 @@ refused. This is how `listingUrls` gets back too: on a site whose Pages column i
 | שטראוס | ACTIVE | 7 | 7935 | 1 | `strauss-group--zjricu` |
 | שמעוני מיכאל מפעלי מתכת בע"מ | ACTIVE | 6 | 4075 | 1 | `m-work--6gsmp3` |
 | שמרד אלקטרוניקה | ACTIVE | 4 | 1536 | 1 | `shamrad--dv1p94` |
+| תדיראן טלקום | ACTIVE | 5 | 6135 | 1 | `tbsi--ozn2n1` |
 | תחבורה לירושלים | ACTIVE | 8 | 7310 | 1 | `j-t--lcp0q6` |
 | תיגבור כח אדם | ACTIVE | 9 | 8000 | 1 | `tigbur--iobe0d` |
 | תייקום תקשורת | ACTIVE | 5 | 1351 | 1 | `tiecom--uy0ibi` |

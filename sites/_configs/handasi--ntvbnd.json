@@ -1,0 +1,75 @@
+{
+  "_exportedAt": "2026-10-20T08:26:41.107Z",
+  "_note": "Mirror of the live config. The DB is authoritative; the worker never reads this file. setupScript lives alongside in <slug>.setup.js.",
+  "id": "cmvged6jp000x01ox9kntvbnd",
+  "siteUrl": "http://www.handasi.co.il/html5/?_id=14811&did=9507&G=14811",
+  "companyName": "משרד הנדסי - גיל שגיא",
+  "status": "ACTIVE",
+  "setupScriptFile": "handasi--ntvbnd.setup.js",
+  "pageFlow": [],
+  "fieldMappings": {
+    "_meta": {
+      "lane": null,
+      "limits": null,
+      "savedAt": "2026-10-20T08:05:20.720Z",
+      "pagination": null,
+      "formCapture": null,
+      "listingUrls": null,
+      "locationMap": {
+        "אייל": "אייל",
+        "טירת כרמל": "טירת הכרמל",
+        "טירת הכרמל": "טירת הכרמל",
+        "קיבוץ אייל": "אייל"
+      },
+      "itemSelector": "#haide-handasi > div.__ai-job",
+      "acceptedGates": null,
+      "minPublishDate": null,
+      "minPublishDays": null,
+      "revealSelector": null,
+      "listingSelector": null,
+      "applyLoginReason": null,
+      "browserOverrides": null,
+      "loadMoreSelector": null,
+      "locationFallback": null,
+      "originalMappings": null,
+      "applyRequiresLogin": false
+    },
+    "title": {
+      "source": "MANUAL",
+      "selector": ".__ai-title",
+      "confidence": 0.95,
+      "capturedOnUrl": "http://www.handasi.co.il/html5/?_id=14811&did=9507&G=14811"
+    },
+    "location": {
+      "source": "MANUAL",
+      "selector": ".__ai-location",
+      "confidence": 0.9,
+      "capturedOnUrl": "http://www.handasi.co.il/html5/?_id=14811&did=9507&G=14811"
+    },
+    "detailUrl": {
+      "source": "MANUAL",
+      "selector": "a.__ai-link",
+      "confidence": 0.9,
+      "extractAttr": "href",
+      "capturedOnUrl": "http://www.handasi.co.il/html5/?_id=14811&did=9507&G=14811"
+    },
+    "description": {
+      "source": "MANUAL",
+      "selector": ".__ai-description",
+      "confidence": 0.9,
+      "capturedOnUrl": "http://www.handasi.co.il/html5/?_id=14811&did=9507&G=14811"
+    },
+    "requirements": {
+      "source": "MANUAL",
+      "selector": ".__ai-requirements",
+      "confidence": 0.9,
+      "capturedOnUrl": "http://www.handasi.co.il/html5/?_id=14811&did=9507&G=14811"
+    },
+    "applicationInfo": {
+      "source": "MANUAL",
+      "selector": ".__ai-apply",
+      "confidence": 0.9,
+      "capturedOnUrl": "http://www.handasi.co.il/html5/?_id=14811&did=9507&G=14811"
+    }
+  }
+}
