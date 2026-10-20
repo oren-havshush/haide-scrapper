@@ -6,8 +6,9 @@
 //   "תיאור המשרה" open the description, "דרישות" / "כישורים" the requirements, and the labels are dropped.
 //   A "למה (כדאי) להצטרף" block goes back to the description. Line breaks kept, text as printed.
 // - department: the job page's category heading (שירות לקוחות / פיתוח).
-// - id: two job addresses are ASCII (emitted as omnitelecom-<slug>); the others are Hebrew, so no id is
-//   emitted for them and the worker builds an h- id from title, department and url. No post ids.
+// - id: none emitted; the site prints no job number, so the worker builds an h- id for every job from
+//   title, department and url. Some job addresses are ASCII, others Hebrew; one site has one id rule,
+//   so no slug id for the ASCII ones (note of 2026-10-20). No post ids.
 // - location: only a work-location line of the ad names the place (closed list, city.csv rows). A job
 //   whose text names no city and no field work takes the company's city (SITE_CITY, LRN-LOC-20).
 // - date: the job post's publish date (WP REST date_gmt); the page prints none.
@@ -124,7 +125,6 @@ cards.forEach(function (c, k) {
   var cat = clean((d.querySelector('h1.elementor-heading-title a[rel="tag"]') || {}).textContent);
   var loc = placeOf(s.lines);
   var slug = (/\/jobs\/([^\/?#]+)\/?$/.exec(c.url) || [])[1] || '';
-  var id = /^[a-z0-9-]+$/.test(slug) ? 'omnitelecom-' + slug : '';
   var blob = blobOf(d, c.url, clean((d.querySelector('#name-job') || {}).textContent) || title);
   var it = document.createElement('div');
   it.className = 'haide-job';
@@ -132,7 +132,6 @@ cards.forEach(function (c, k) {
   var a = document.createElement('a');
   a.className = 'haide-link wp-exclude-emoji'; a.href = c.url; a.textContent = title;
   it.appendChild(a);
-  if (id) add('__ai-externalJobId', id);
   if (cat) add('__ai-department', cat);
   if (s.d) add('__ai-description', s.d);
   if (s.r) add('__ai-requirements', s.r);
