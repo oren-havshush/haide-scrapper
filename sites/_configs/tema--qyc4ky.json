@@ -1,0 +1,117 @@
+{
+  "_exportedAt": "2026-10-20T14:55:39.785Z",
+  "_note": "Mirror of the live config. The DB is authoritative; the worker never reads this file. setupScript lives alongside in <slug>.setup.js.",
+  "id": "cmvgs6jos009p01oxaaqyc4ky",
+  "siteUrl": "https://www.tema.co.il/%D7%93%D7%A8%D7%95%D7%A9%D7%99%D7%9D",
+  "companyName": "TEMA מכון תימה",
+  "status": "ACTIVE",
+  "setupScriptFile": "tema--qyc4ky.setup.js",
+  "pageFlow": [],
+  "fieldMappings": {
+    "_meta": {
+      "lane": null,
+      "limits": null,
+      "savedAt": "2026-10-20T14:34:21.042Z",
+      "pagination": null,
+      "formCapture": null,
+      "listingUrls": null,
+      "locationMap": {
+        "ת\"א": "תל אביב-יפו",
+        "דרום": "אזור דרום",
+        "חדרה": "חדרה",
+        "חיפה": "חיפה",
+        "מרכז": "אזור מרכז",
+        "צפון": "אזור צפון",
+        "שפלה": "אזור שפלה",
+        "בת ים": "בת-ים",
+        "המרכז": "אזור מרכז",
+        "השפלה": "אזור שפלה",
+        "חולון": "חולון",
+        "שלומי": "שלומי",
+        "כל הארץ": "פריסה ארצית",
+        "תל אביב": "תל אביב-יפו",
+        "ירושלים": "ירושלים",
+        "מודיעין": "מודיעין",
+        "באר יעקב": "באר יעקב",
+        "נווה אילן": "נווה אילן",
+        "פתח תקווה": "פתח תקווה",
+        "פריסה ארצית": "פריסה ארצית",
+        "קריית שמונה": "קריית שמונה",
+        "מישור אדומים": null
+      },
+      "itemSelector": "#haide-tema > div.haide-job",
+      "acceptedGates": null,
+      "minPublishDate": null,
+      "minPublishDays": null,
+      "revealSelector": null,
+      "listingSelector": null,
+      "applyLoginReason": null,
+      "browserOverrides": null,
+      "loadMoreSelector": null,
+      "locationFallback": null,
+      "originalMappings": null,
+      "applyRequiresLogin": false
+    },
+    "title": {
+      "source": "MANUAL",
+      "selector": "a.haide-link",
+      "confidence": 0.95,
+      "capturedOnUrl": "https://www.tema.co.il/%D7%93%D7%A8%D7%95%D7%A9%D7%99%D7%9D"
+    },
+    "location": {
+      "source": "MANUAL",
+      "selector": ".__ai-location",
+      "confidence": 0.9,
+      "capturedOnUrl": "https://www.tema.co.il/%D7%93%D7%A8%D7%95%D7%A9%D7%99%D7%9D"
+    },
+    "_formData": {
+      "source": "MANUAL",
+      "selector": ".__ai-formData",
+      "confidence": 0.9,
+      "capturedOnUrl": "https://www.tema.co.il/%D7%93%D7%A8%D7%95%D7%A9%D7%99%D7%9D"
+    },
+    "detailUrl": {
+      "source": "MANUAL",
+      "selector": "a.haide-link",
+      "confidence": 0.95,
+      "extractAttr": "href",
+      "capturedOnUrl": "https://www.tema.co.il/%D7%93%D7%A8%D7%95%D7%A9%D7%99%D7%9D"
+    },
+    "department": {
+      "source": "MANUAL",
+      "selector": ".__ai-department",
+      "confidence": 0.8,
+      "capturedOnUrl": "https://www.tema.co.il/%D7%93%D7%A8%D7%95%D7%A9%D7%99%D7%9D"
+    },
+    "description": {
+      "source": "MANUAL",
+      "selector": ".__ai-description",
+      "confidence": 0.9,
+      "capturedOnUrl": "https://www.tema.co.il/%D7%93%D7%A8%D7%95%D7%A9%D7%99%D7%9D"
+    },
+    "publishDate": {
+      "source": "MANUAL",
+      "selector": ".__ai-publishDate",
+      "confidence": 0.8,
+      "capturedOnUrl": "https://www.tema.co.il/%D7%93%D7%A8%D7%95%D7%A9%D7%99%D7%9D"
+    },
+    "requirements": {
+      "source": "MANUAL",
+      "selector": ".__ai-requirements",
+      "confidence": 0.9,
+      "capturedOnUrl": "https://www.tema.co.il/%D7%93%D7%A8%D7%95%D7%A9%D7%99%D7%9D"
+    },
+    "externalJobId": {
+      "source": "MANUAL",
+      "selector": ".__ai-externalJobId",
+      "confidence": 0.95,
+      "capturedOnUrl": "https://www.tema.co.il/%D7%93%D7%A8%D7%95%D7%A9%D7%99%D7%9D"
+    },
+    "applicationInfo": {
+      "source": "MANUAL",
+      "selector": ".__ai-applicationInfo",
+      "confidence": 0.9,
+      "capturedOnUrl": "https://www.tema.co.il/%D7%93%D7%A8%D7%95%D7%A9%D7%99%D7%9D"
+    }
+  }
+}

@@ -1,0 +1,89 @@
+{
+  "_exportedAt": "2026-10-20T14:55:40.163Z",
+  "_note": "Mirror of the live config. The DB is authoritative; the worker never reads this file. setupScript lives alongside in <slug>.setup.js.",
+  "id": "cmvgryb0f009f01oxykcnb9n1",
+  "siteUrl": "https://career.adamtotal.co.il/?token=1EB6B34D-8783-4AD3-8SS80-7FA0CFA5DFC8",
+  "companyName": "אלטשולר שחם בית השקעות",
+  "status": "ACTIVE",
+  "setupScriptFile": "adamtotal--cnb9n1.setup.js",
+  "pageFlow": [],
+  "fieldMappings": {
+    "_meta": {
+      "lane": null,
+      "limits": null,
+      "savedAt": "2026-10-20T14:26:19.583Z",
+      "pagination": null,
+      "formCapture": null,
+      "listingUrls": null,
+      "locationMap": {
+        "חיפה": "חיפה",
+        "מרכז": "אזור מרכז",
+        "צפון": "אזור צפון",
+        "גוש דן": "אזור מרכז",
+        "כל הארץ": "פריסה ארצית",
+        "תל אביב-יפו": "תל אביב-יפו"
+      },
+      "itemSelector": "article.job-card",
+      "acceptedGates": null,
+      "minPublishDate": null,
+      "minPublishDays": null,
+      "revealSelector": null,
+      "listingSelector": null,
+      "applyLoginReason": null,
+      "browserOverrides": null,
+      "loadMoreSelector": null,
+      "locationFallback": null,
+      "originalMappings": null,
+      "applyRequiresLogin": false
+    },
+    "title": {
+      "source": "MANUAL",
+      "selector": "h4.job-title-button",
+      "confidence": 0.9,
+      "capturedOnUrl": "https://career.adamtotal.co.il/?token=1EB6B34D-8783-4AD3-8SS80-7FA0CFA5DFC8"
+    },
+    "location": {
+      "source": "MANUAL",
+      "selector": ".__ai-location",
+      "confidence": 0.9,
+      "capturedOnUrl": "https://career.adamtotal.co.il/?token=1EB6B34D-8783-4AD3-8SS80-7FA0CFA5DFC8"
+    },
+    "_formData": {
+      "source": "MANUAL",
+      "selector": ".__ai-formData",
+      "confidence": 0.9,
+      "capturedOnUrl": "https://career.adamtotal.co.il/?token=1EB6B34D-8783-4AD3-8SS80-7FA0CFA5DFC8"
+    },
+    "detailUrl": {
+      "source": "MANUAL",
+      "selector": "a.job-detail-link",
+      "confidence": 0.9,
+      "extractAttr": "href",
+      "capturedOnUrl": "https://career.adamtotal.co.il/?token=1EB6B34D-8783-4AD3-8SS80-7FA0CFA5DFC8"
+    },
+    "description": {
+      "source": "MANUAL",
+      "selector": ".__ai-description",
+      "confidence": 0.9,
+      "capturedOnUrl": "https://career.adamtotal.co.il/?token=1EB6B34D-8783-4AD3-8SS80-7FA0CFA5DFC8"
+    },
+    "requirements": {
+      "source": "MANUAL",
+      "selector": ".__ai-requirements",
+      "confidence": 0.9,
+      "capturedOnUrl": "https://career.adamtotal.co.il/?token=1EB6B34D-8783-4AD3-8SS80-7FA0CFA5DFC8"
+    },
+    "externalJobId": {
+      "source": "MANUAL",
+      "selector": ".__ai-jobid",
+      "confidence": 0.9,
+      "capturedOnUrl": "https://career.adamtotal.co.il/?token=1EB6B34D-8783-4AD3-8SS80-7FA0CFA5DFC8"
+    },
+    "applicationInfo": {
+      "source": "MANUAL",
+      "selector": ".__ai-applicationInfo",
+      "confidence": 0.9,
+      "capturedOnUrl": "https://career.adamtotal.co.il/?token=1EB6B34D-8783-4AD3-8SS80-7FA0CFA5DFC8"
+    }
+  }
+}

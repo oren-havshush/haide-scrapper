@@ -1,0 +1,119 @@
+{
+  "_exportedAt": "2026-10-20T14:55:39.433Z",
+  "_note": "Mirror of the live config. The DB is authoritative; the worker never reads this file. setupScript lives alongside in <slug>.setup.js.",
+  "id": "cmvgshvxv00a101ox0p45qznp",
+  "siteUrl": "https://www.shlomo.co.il/careers?workCategories=&workLocations=",
+  "companyName": "קבוצת שלמה",
+  "status": "ACTIVE",
+  "setupScriptFile": "shlomo--45qznp.setup.js",
+  "pageFlow": [],
+  "fieldMappings": {
+    "_meta": {
+      "lane": null,
+      "limits": null,
+      "savedAt": "2026-10-20T14:42:09.099Z",
+      "pagination": null,
+      "formCapture": null,
+      "listingUrls": null,
+      "locationMap": {
+        "פ\"ת": "פתח תקווה",
+        "ת\"א": "תל אביב-יפו",
+        "דרום": "אזור דרום",
+        "חדרה": "חדרה",
+        "חיפה": "חיפה",
+        "מרכז": "אזור מרכז",
+        "צפון": "אזור צפון",
+        "שילת": "שילת",
+        "נתב\"ג": "נתב\"ג",
+        "אשדוד": "אשדוד",
+        "השפלה": "אזור שפלה",
+        "השרון": "אזור השרון",
+        "חולון": "חולון",
+        "נהריה": "נהריה",
+        "נתניה": "נתניה",
+        "עפולה": "עפולה",
+        "גוש דן": "אזור מרכז",
+        "ראשל\"צ": "ראשון לציון",
+        "הרצליה": "הרצליה",
+        "תל אביב": "תל אביב-יפו",
+        "פתח תקוה": "פתח תקווה",
+        "סגולה פ\"ת": "פתח תקווה",
+        "אור יהודה": "אור יהודה",
+        "באר יעקוב": "באר יעקב",
+        "פתח תקווה": "פתח תקווה",
+        "צומת שילת": "שילת",
+        "קרית עקרון": "קרית עקרון",
+        "חבל מודיעין": "חבל מודיעין",
+        "ראשון לציון": "ראשון לציון",
+        "חיפה והקריות": "אזור צפון"
+      },
+      "itemSelector": "#haide-shlomo > div.haide-job",
+      "acceptedGates": null,
+      "minPublishDate": null,
+      "minPublishDays": null,
+      "revealSelector": null,
+      "listingSelector": null,
+      "applyLoginReason": null,
+      "browserOverrides": null,
+      "loadMoreSelector": null,
+      "locationFallback": null,
+      "originalMappings": null,
+      "applyRequiresLogin": false
+    },
+    "title": {
+      "source": "MANUAL",
+      "selector": "a.haide-link",
+      "confidence": 0.95,
+      "capturedOnUrl": "https://www.shlomo.co.il/careers?workCategories=&workLocations="
+    },
+    "location": {
+      "source": "MANUAL",
+      "selector": ".__ai-location",
+      "confidence": 0.9,
+      "capturedOnUrl": "https://www.shlomo.co.il/careers?workCategories=&workLocations="
+    },
+    "_formData": {
+      "source": "MANUAL",
+      "selector": ".__ai-formData",
+      "confidence": 0.9,
+      "capturedOnUrl": "https://www.shlomo.co.il/careers?workCategories=&workLocations="
+    },
+    "detailUrl": {
+      "source": "MANUAL",
+      "selector": "a.haide-link",
+      "confidence": 0.95,
+      "extractAttr": "href",
+      "capturedOnUrl": "https://www.shlomo.co.il/careers?workCategories=&workLocations="
+    },
+    "department": {
+      "source": "MANUAL",
+      "selector": ".__ai-department",
+      "confidence": 0.8,
+      "capturedOnUrl": "https://www.shlomo.co.il/careers?workCategories=&workLocations="
+    },
+    "description": {
+      "source": "MANUAL",
+      "selector": ".__ai-description",
+      "confidence": 0.9,
+      "capturedOnUrl": "https://www.shlomo.co.il/careers?workCategories=&workLocations="
+    },
+    "requirements": {
+      "source": "MANUAL",
+      "selector": ".__ai-requirements",
+      "confidence": 0.9,
+      "capturedOnUrl": "https://www.shlomo.co.il/careers?workCategories=&workLocations="
+    },
+    "externalJobId": {
+      "source": "MANUAL",
+      "selector": ".__ai-externalJobId",
+      "confidence": 0.95,
+      "capturedOnUrl": "https://www.shlomo.co.il/careers?workCategories=&workLocations="
+    },
+    "applicationInfo": {
+      "source": "MANUAL",
+      "selector": ".__ai-applicationInfo",
+      "confidence": 0.9,
+      "capturedOnUrl": "https://www.shlomo.co.il/careers?workCategories=&workLocations="
+    }
+  }
+}

@@ -41,6 +41,7 @@ refused. This is how `listingUrls` gets back too: on a site whose Pages column i
 | Comblack | ACTIVE | 8 | 11668 | 1 | `comblack--lfh3rc` |
 | CommIT | ACTIVE | 10 | 12365 | 1 | `comeet--5fork1` |
 | DHL Express | ACTIVE | 7 | 3442 | 1 | `dhl--mwqiig` |
+| DSIT Solutions | ACTIVE | 10 | 9693 | 1 | `dsit--6da408` |
 | Deloitte | ACTIVE | 9 | 11748 | 1 | `deloitte--fqgsfu` |
 | ERN | ACTIVE | 6 | 7423 | 1 | `ern--tcdrkt` |
 | ESO Group | ACTIVE | 4 | 577 | 1 | `eso-group--mgz38v` |
@@ -87,6 +88,7 @@ refused. This is how `listingUrls` gets back too: on a site whose Pages column i
 | TADIRAN GROUP | ACTIVE | 7 | 2620 | 1 | `topmatch--1z5jpw` |
 | TCMCAREER | ACTIVE | 7 | 3387 | 1 | `tcmcareer--7zncwp` |
 | TECH | ACTIVE | 9 | 6772 | 1 | `tech--mwc4v8` |
+| TEMA מכון תימה | ACTIVE | 10 | 14384 | 1 | `tema--qyc4ky` |
 | TOP BIT | ACTIVE | 9 | 5438 | 1 | `topbit--4nqve0` |
 | Tender Loving Care | ACTIVE | 4 | 1240 | 1 | `tl-care--cylsu8` |
 | Tikal | ACTIVE | 10 | 10100 | 1 | `tikalk--xxhoi7` |
@@ -118,11 +120,13 @@ refused. This is how `listingUrls` gets back too: on a site whose Pages column i
 | אלבר | ACTIVE | 3 | 3056 | 1 | `albar--vsl7bq` |
 | אלו"ט | ACTIVE | 7 | 7994 | 1 | `app-civi--rl8rui` |
 | אלובין תעשייות אלומיניום בע״מ | ACTIVE | 6 | 2373 | 1 | `alubin--r73xau` |
+| אלטשולר שחם בית השקעות | ACTIVE | 8 | 9065 | 1 | `adamtotal--cnb9n1` |
 | אליקטרוניקס בע''מ | ACTIVE | 4 | 722 | 1 | `eliktronics--erhzvq` |
 | אלקטרה | ACTIVE | 7 | 1823 | 1 | `electra--cgkf66` |
 | אמביאנס קוסמטיקה רפואית | ACTIVE | 3 | 505 | 1 | `yafa-maximov--v1max5` |
 | אמי טכנולוגיות | ACTIVE | 7 | 7247 | 1 | `ami--8kp6tf` |
 | אמנת ניהול ומערכות בע"מ | ACTIVE | 8 | 4952 | 1 | `amanet--zknvec` |
+| אנליסט | ACTIVE | 10 | 9918 | 1 | `topmatch--uek51r` |
 | אנשים ומחשבים | ACTIVE | 5 | 2645 | 1 | `pc--51eg8t` |
 | אפטר סקול | ACTIVE | 5 | 5946 | 1 | `etgarim2000--zsyc2z` |
 | אפקה – המכללה האקדמית להנדסה בתל־אביב | ACTIVE | 6 | 5743 | 1 | `afeka--8elfei` |
@@ -136,6 +140,7 @@ refused. This is how `listingUrls` gets back too: on a site whose Pages column i
 | בית חולים אורטופדי אליון | ACTIVE | 4 | 1576 | 1 | `alyn--el7arg` |
 | בן & ג’ריס | ACTIVE | 5 | 1215 | 1 | `benjerry--12brnw` |
 | בנדא מגנטיק | ACTIVE | 9 | 7579 | 1 | `benda--vzie40` |
+| בנטב | ACTIVE | 7 | 12671 | 1 | `app-civi--jvsczc` |
 | בנק הפועלים | ACTIVE | 6 | 4172 | 1 | `bankhapoalim--39tiof` |
 | בנק לאומי | ACTIVE | 7 | 7605 | 1 | `leumi--epc6re` |
 | בנק מזרחי טפחות | ACTIVE | 8 | 7119 | 1 | `mizrahi-tefahot--868pbk` |
@@ -172,6 +177,7 @@ refused. This is how `listingUrls` gets back too: on a site whose Pages column i
 | זיגזג | ACTIVE | 5 | 2627 | 1 | `zig-zag--8ogbov` |
 | חברת החשמל | ACTIVE | 8 | 3910 | 1 | `iec--7d28yg` |
 | חיותא | ACTIVE | 6 | 4532 | 1 | `chayuta--wve8pb` |
+| חילן | ACTIVE | 8 | 11375 | 1 | `hilan--itc13r` |
 | חלילית | ACTIVE | 6 | 4757 | 1 | `halilit--0vwgee` |
 | חמת | ACTIVE | 7 | 3390 | 1 | `hamat-group--4ris60` |
 | חפוז שליחויות | ACTIVE | 4 | 3996 | 1 | `hafoz--dictuc` |
@@ -265,7 +271,10 @@ refused. This is how `listingUrls` gets back too: on a site whose Pages column i
 | קבוצת יוניון | ACTIVE | 8 | 5649 | 1 | `unioncareer--mhsr2v` |
 | קבוצת כהנא | ACTIVE | 6 | 2074 | 1 | `kahane--8cvjyo` |
 | קבוצת כלמוביל | ACTIVE | 6 | 5430 | 1 | `colmobil--39frf6` |
+| קבוצת לאופר | ACTIVE | 9 | 7440 | 1 | `laufer-group--m2z877` |
+| קבוצת קאופמן | ACTIVE | 6 | 9286 | 1 | `kaufman-group--u65nim` |
 | קבוצת שגריר שרותי רכב בעמ | ACTIVE | 6 | 2367 | 1 | `shagrir--i3nkhe` |
+| קבוצת שלמה | ACTIVE | 9 | 13868 | 1 | `shlomo--45qznp` |
 | קבוצת שפיר | ACTIVE | 6 | 7952 | 1 | `shapir--fp8081` |
 | קדמי ביטוח | ACTIVE | 5 | 1209 | 1 | `kedmi770--e2pnpm` |
 | קולמקס ישראל | ACTIVE | 10 | 7948 | 1 | `comeet--9r8npm` |
@@ -285,6 +294,7 @@ refused. This is how `listingUrls` gets back too: on a site whose Pages column i
 | רנואר | ACTIVE | 7 | 7879 | 3 | `renuar--vjy3cn` |
 | רפאל-שיטרוק | ACTIVE | 4 | 3932 | 1 | `rs-cpa--84e5da` |
 | רשות שדות התעופה | ACTIVE | 5 | 761 | 1 | `iaa--676m0e` |
+| רשת מלונות אפריקה ישראל | ACTIVE | 6 | 6020 | 1 | `afi-hotels--ck8j74` |
 | ש.ב שמירה וביטחון | ACTIVE | 3 | — | 1 | `sbisrael--u0j3bu` |
 | ש.ל.ה שירותי רפואה | ACTIVE | 6 | 2199 | 1 | `clalitsmile--xsxv25` |
 | שטראוס | ACTIVE | 7 | 7935 | 1 | `strauss-group--zjricu` |
