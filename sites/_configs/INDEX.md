@@ -122,6 +122,7 @@ refused. This is how `listingUrls` gets back too: on a site whose Pages column i
 | אלובין תעשייות אלומיניום בע״מ | ACTIVE | 6 | 2373 | 1 | `alubin--r73xau` |
 | אלטשולר שחם בית השקעות | ACTIVE | 8 | 9065 | 1 | `adamtotal--cnb9n1` |
 | אליקטרוניקס בע''מ | ACTIVE | 4 | 722 | 1 | `eliktronics--erhzvq` |
+| אלעד מערכות | ACTIVE | 9 | 16000 | 1 | `eladsoft--9wjsy5` |
 | אלקטרה | ACTIVE | 7 | 1823 | 1 | `electra--cgkf66` |
 | אמביאנס קוסמטיקה רפואית | ACTIVE | 3 | 505 | 1 | `yafa-maximov--v1max5` |
 | אמי טכנולוגיות | ACTIVE | 7 | 7247 | 1 | `ami--8kp6tf` |
