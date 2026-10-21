@@ -238,8 +238,89 @@ function cityFromLatinNearMatch(segment: string): string | null {
 export { isRegionLocation };
 const isRegion = isRegionLocation;
 
+/**
+ * English names of city.csv rows, for an address printed in Latin script only
+ * (report fixes 3, item 16a; the developer's 2026-10-21 report, item 8:
+ * il.att.com's "2 Negev Street, Airport City 7010000, Israel" gave no city).
+ * Each value is VERBATIM on city.csv (scripts/lib/englishCities.test.ts).
+ * Used by matchCityInAddress alone, and on a Latin-script address only this
+ * table is read: a name not in it is not matched — "Yokneam Illit" used to
+ * come out as יוקנעם, another place. Seeded with the reports' names (Airport
+ * City, Tel Aviv, Givat Shmuel), the twenty largest cities, and every city of
+ * the vocabulary's English list (LOCATION_EN, its nationwide entry aside), so
+ * an address that resolved before still does; add a name with its city.csv
+ * value when an address needs it.
+ */
+export const ADDRESS_CITY_EN: Readonly<Record<string, string>> = {
+  ...Object.fromEntries(Object.entries(LOCATION_EN).filter(([, he]) => !isRegionLocation(he))),
+  "airport city": "איירפורט סיטי",
+  "tel aviv": "תל אביב-יפו",
+  "tel-aviv": "תל אביב-יפו",
+  "tel aviv-yafo": "תל אביב-יפו",
+  "tel aviv-jaffa": "תל אביב-יפו",
+  "givat shmuel": "גבעת שמואל",
+  jerusalem: "ירושלים",
+  haifa: "חיפה",
+  "rishon lezion": "ראשון לציון",
+  "rishon le zion": "ראשון לציון",
+  "rishon letzion": "ראשון לציון",
+  "petah tikva": "פתח תקווה",
+  "petach tikva": "פתח תקווה",
+  "petah tiqva": "פתח תקווה",
+  ashdod: "אשדוד",
+  netanya: "נתניה",
+  "beer sheva": "באר שבע",
+  "be'er sheva": "באר שבע",
+  beersheba: "באר שבע",
+  "bnei brak": "בני ברק",
+  "bnei-brak": "בני ברק",
+  holon: "חולון",
+  "ramat gan": "רמת גן",
+  "ramat-gan": "רמת גן",
+  rehovot: "רחובות",
+  ashkelon: "אשקלון",
+  "bat yam": "בת-ים",
+  "bat-yam": "בת-ים",
+  "beit shemesh": "בית שמש",
+  "kfar saba": "כפר סבא",
+  "kfar-saba": "כפר סבא",
+  herzliya: "הרצליה",
+  herzlia: "הרצליה",
+  hadera: "חדרה",
+  modiin: "מודיעין",
+  "modi'in": "מודיעין",
+  nazareth: "נצרת",
+};
+
+/** Street words after a name: "Haifa Road" is a street, not Haifa. */
+const LATIN_STREET_AFTER = /^(?:st|st\.|street|rd|rd\.|road|ave|ave\.|avenue|blvd|blvd\.|boulevard|way|lane|sq|square)$/i;
+/** A word after a name that makes it another place: "Modiin Illit", "Nazareth Illit". */
+const LATIN_LONGER_PLACE = /^(?:illit|ilit|elit)$/i;
+
+/** The city of a Latin-script address, from ADDRESS_CITY_EN only, or null. */
+function cityFromEnglishTable(address: string, cities: CityList): string | null {
+  const keys = Object.keys(ADDRESS_CITY_EN).sort((a, b) => b.length - a.length);
+  const segments = address.split(/[,|;\n•]/).map((s) => s.replace(/[’‘`]/g, "'").replace(/\s+/g, " ").trim().toLowerCase());
+  for (let i = segments.length - 1; i >= 0; i--) {
+    const words = segments[i]!.split(" ").filter(Boolean);
+    for (const key of keys) {
+      const kw = key.split(" ");
+      for (let at = 0; at + kw.length <= words.length; at++) {
+        if (!kw.every((w, j) => words[at + j]!.replace(/[.,]$/, "") === w)) continue;
+        const after = (words[at + kw.length] ?? "").replace(/[,]$/, "");
+        if (LATIN_STREET_AFTER.test(after) || LATIN_LONGER_PLACE.test(after)) continue;
+        const city = canonicalCity(ADDRESS_CITY_EN[key]!, cities);
+        if (city && !isRegion(city)) return city;
+      }
+    }
+  }
+  return null;
+}
+
 export function matchCityInAddress(address: string, cities: CityList): string | null {
   if (!address || !address.trim()) return null;
+  // Latin script only, no Hebrew letter: the English table and nothing else.
+  if (/[A-Za-z]/.test(address) && !/[א-ת]/.test(address)) return cityFromEnglishTable(address, cities);
 
   const segments = address
     .split(/[,|;\n•]|\s{2,}/)
