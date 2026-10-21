@@ -57,6 +57,16 @@ console.log("# the new one: a block lifting does not cost the config");
 }
 
 // ---------------------------------------------------------------------------
+console.log("# a site that fails at onboarding waits for a look (report fixes 3, item 3)");
+// ---------------------------------------------------------------------------
+{
+  // hcsra.co.il, 2026-10-19: failed twice with 0 jobs, and the only ways out
+  // were SKIPPED, ANALYZING (the config thrown away) or ACTIVE.
+  assert(canTransition("FAILED", "REVIEW"), "FAILED -> REVIEW is allowed");
+  assert(!isDestructiveStatus("REVIEW"), "and costs nothing: FAILED has no jobs to lose, REVIEW deletes none");
+}
+
+// ---------------------------------------------------------------------------
 console.log("# the rest of the table is unchanged");
 // ---------------------------------------------------------------------------
 {
@@ -64,7 +74,7 @@ console.log("# the rest of the table is unchanged");
     ANALYZING: ["REVIEW", "ACTIVE", "FAILED"],
     REVIEW: ["SKIPPED", "ACTIVE", "FAILED", "ANALYZING"],
     ACTIVE: ["SKIPPED", "FAILED", "REVIEW", "ANALYZING"],
-    FAILED: ["SKIPPED", "ANALYZING", "ACTIVE"],
+    FAILED: ["SKIPPED", "ANALYZING", "ACTIVE", "REVIEW"],
     SKIPPED: ["ANALYZING", "FAILED", "REVIEW"],
   };
   for (const [from, tos] of Object.entries(expected)) {

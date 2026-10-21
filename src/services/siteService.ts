@@ -646,7 +646,7 @@ export async function getLatestScrapeRun(siteId: string) {
   const scrapeRun = await prisma.scrapeRun.findFirst({
     where: { siteId },
     orderBy: { createdAt: "desc" },
-    select: { id: true, siteId: true, status: true, jobCount: true, createdAt: true, completedAt: true },
+    select: { id: true, siteId: true, status: true, jobCount: true, createdAt: true, completedAt: true, error: true, failureCategory: true, warnings: true },
   });
 
   return scrapeRun;
@@ -659,7 +659,7 @@ export async function getLatestScrapeRunsBySiteIds(siteIds: string[]) {
   const scrapeRuns = await prisma.scrapeRun.findMany({
     where: { siteId: { in: siteIds } },
     orderBy: { createdAt: "desc" },
-    select: { id: true, siteId: true, status: true, jobCount: true, createdAt: true, completedAt: true },
+    select: { id: true, siteId: true, status: true, jobCount: true, createdAt: true, completedAt: true, error: true, failureCategory: true, warnings: true },
   });
 
   // Build map of siteId -> latest ScrapeRun (first occurrence per siteId since ordered desc)

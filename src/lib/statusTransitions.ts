@@ -25,7 +25,10 @@ export const VALID_STATUS_TRANSITIONS: Record<string, string[]> = {
   ANALYZING: ["REVIEW", "ACTIVE", "FAILED"],
   REVIEW: ["SKIPPED", "ACTIVE", "FAILED", "ANALYZING"],
   ACTIVE: ["SKIPPED", "FAILED", "REVIEW", "ANALYZING"],
-  FAILED: ["SKIPPED", "ANALYZING", "ACTIVE"],
+  FAILED: ["SKIPPED", "ANALYZING", "ACTIVE", "REVIEW"],
+  // REVIEW is reachable from FAILED too: a site that fails at onboarding waits
+  // for a look with its config intact, and FAILED has no jobs to lose.
+  //
   // REVIEW is reachable from SKIPPED directly. A site is SKIPPED for a reason
   // outside its config — a WAF block, a login-gated apply flow, a policy — and
   // when that reason lifts the config is usually intact and wants checking, not
