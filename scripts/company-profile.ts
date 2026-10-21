@@ -81,7 +81,7 @@ import {
   collectLogoCandidates,
   deriveHomepageCandidates,
   emptyHarvest,
-  extractAboutText,
+  chooseAboutText,
   extractCompactAddressLines,
   extractOfficeListRuns,
   homepageFromLinks,
@@ -1549,24 +1549,26 @@ async function captureSite(
     // --- 2. Deterministic extraction --------------------------------------
     const org: OrganizationLd | null = parseJsonLdOrganization(homepage.jsonLd);
 
-    let about = extractAboutText(homepage.bodyText);
-    if (about) result.provenance.about = "homepage prose";
-
-    // An explicit about page beats homepage marketing copy, so it is fetched
-    // even when the homepage already yielded something usable.
+    // The about page is fetched whenever there is one: its first paragraph
+    // that names the company with a business verb comes before the homepage's
+    // (chooseAboutText; report fixes 3, item 15). It also serves the address.
     const aboutUrl = pickAboutUrl(homepage.links, homepage.url);
     let aboutPage: PageHarvest | null = null;
-    if (aboutUrl) {
-      aboutPage = await harvest(page, aboutUrl, opts.patient);
-      const fromAboutPage = aboutPage ? extractAboutText(aboutPage.bodyText) : null;
-      if (fromAboutPage) {
-        about = fromAboutPage;
-        result.provenance.about = `about page (${aboutUrl})`;
-      }
-    }
-    if (!about && org?.description) {
-      about = org.description.slice(0, 1_200);
-      result.provenance.about = "JSON-LD description";
+    if (aboutUrl) aboutPage = await harvest(page, aboutUrl, opts.patient);
+
+    // The company named as the paragraph's subject, with a business verb, from
+    // the about page, the homepage, its meta description or the JSON-LD
+    // description; none qualifies, no about text.
+    const aboutChoice = chooseAboutText({
+      aboutText: aboutPage?.bodyText ?? null,
+      homeText: homepage.bodyText,
+      metaDescription: homepage.metas["description"] ?? null,
+      jsonLdDescription: org?.description ?? null,
+      names: [site.companyName, homepage.metas["og:site_name"] ?? null, org?.name ?? null],
+    });
+    let about = aboutChoice?.text ?? null;
+    if (aboutChoice) {
+      result.provenance.about = aboutChoice.source === "about page" ? `about page (${aboutUrl})` : aboutChoice.source;
     }
 
     let address = addressFromJsonLd(org);

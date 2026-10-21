@@ -1,0 +1,19 @@
+{
+ "slug": "att",
+ "takenAt": "2026-10-21T19:03:37.668Z",
+ "how": "headless Chromium, GET only, no click; the capture page read (innerText, main/article narrowing), the about page by pickAboutUrl",
+ "site": {
+  "siteId": "cmvi2l80d00io01oxzmqc7yjo",
+  "companyName": "AT&T Israel R&D Center",
+  "storedAbout": "We are a global R&D team, integrating creativity and tech expertise to impact AT&T's business and its customer experience."
+ },
+ "homepage": {
+  "url": "https://il.att.com/",
+  "title": "AT&T Israel R&D Center",
+  "metas": {},
+  "jsonLd": [],
+  "bodyText": "What\nTechnologies\nHow\nCulture\nCareers\nContact\nTDP\nDare.\nCreate.\nImpact.\n\nWe are a global R&D team, integrating creativity and tech expertise to impact AT&T's business and its customer experience.\n\nLaunch your career journey at AT&T TDP \nClick here\nWhat we create makes an impact.\nNetwork\n\nPresent solutions to AT&T business customers to operate and manage large-scale text campaigns through 3rd party aggregators.\n\nConsumer Solutions\n\nProvide our customers a state-of-the-art mobile experience, allowing them to buy and operate their account with ease.\n\nCenter Of Excellence\n\nDrive AT&T to become a more productive company by adopting advanced engineering principles, practices & tools, leveraging GenAI to boost the software delivery lifecycle, and maintaining cost-efficiency.\n\nSecurity Products\n\nPosition AT&T as a leader in cybersecurity, with advanced capabilities and tailored solutions for various industries, leveraging our network capabilities and insights.\n\nField Operation\n\nOrchestrate, translate and process all channels supporting field dispatch to meet nationwide customer commitments.\n\nBusiness Solutions\n\nCater solutions for AT&T Business customers, allowing them to learn,\nbuy and manage through digital channels in a self-serve mode.\n\nTechnologies\nHow we bring ideas to life.\nFocusing On Personal Growth\n\nEvery employee builds a unique personal growth plan, including a diverse array of opportunities such as specialized courses, skill development workshops, conferences, personal goals and more.\n\nDriving Excellence Through Community\n\nWe enhance our skills with cross-team initiatives: enriching guild sessions, innovation-focused hackathons, tech fests, professional growth activities, and more – all while having fun.\n\nLeading In The Ecosystem\n\nWe love sharing our expertise with the tech world - hosting meetups at AT&T’s ‘Stage 26,’ speaking at top conferences, and leading exclusive training sessions – our people are there.\n\nLife at AT&T Israel\nCareers\nJoin Us\nAT&T\nIsrael R&D Center\nContact us\nAT&T Israel R&D Center\n2 Negev Street, Airport City 7010000, Israel\nToha TLV\nEmail us @ ATT Israel\n+972 3 976 7676\nLegal\nATT.com\nLegal policy center\nPrivacy policy\nTerms of use\n©2024 AT&T Intellectual Property. All rights reserved"
+ },
+ "aboutUrl": null,
+ "aboutPage": null
+}

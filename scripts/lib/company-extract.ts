@@ -18,6 +18,8 @@
 
 import { isAtsHost } from "../../src/lib/ats-hosts";
 import { matchCityInAddress, type CityList } from "./city-csv";
+// The developer's about cues, copied from her report by script (report fixes 3, item 15).
+import ABOUT_CUES from "./aboutCues.json";
 import {
   getPolicyDocumentType,
   isPolicyLinkText,
@@ -775,6 +777,126 @@ export function extractAboutText(text: string, maxChars = 1_200): string | null 
     .slice(0, ABOUT_LEDE_PARAGRAPHS)
     .sort((a, b) => b.length - a.length)[0];
   return best.length > maxChars ? `${best.slice(0, maxChars).trimEnd()}…` : best;
+}
+
+/**
+ * The about text, by the rule of report fixes 3, item 15 (the developer's
+ * 2026-10-19 to 20 report, item 2): on 13 of 20 sites the paragraph above was
+ * wrong — a person's biography, a brand's text, a product line, a sister
+ * company, one division, an article, a values text — and it was published.
+ *
+ * The first paragraph that NAMES THE COMPANY AS ITS SUBJECT (one of its names
+ * in the paragraph's first three words) WITH A BUSINESS VERB, looked for in
+ * the about page, then the homepage, then the homepage's meta description,
+ * then the JSON-LD description; never one about a person, a brand, a product
+ * (or a bullet), or a sister company. The cue words are the developer's,
+ * copied from her report into scripts/lib/aboutCues.json. None qualifies: no
+ * about text — a wrong value is worse than a missing one.
+ *
+ * names: the site's companyName, og:site_name, the JSON-LD name. Each word of
+ * four letters or more of the company name is a key (a generic word such as
+ * "קבוצת" or "group" aside); a name of short words only ("Gal HR") is a key as
+ * a phrase; of the other two, only the first distinctive word. A Latin key
+ * followed by another capitalised word is a longer name, a division
+ * ("Gal HR Finance"), not the company.
+ */
+export function chooseAboutText(input: {
+  aboutText: string | null;
+  homeText: string | null;
+  metaDescription: string | null;
+  jsonLdDescription: string | null;
+  names: Array<string | null | undefined>;
+  maxChars?: number;
+}): { text: string; source: "about page" | "homepage prose" | "meta description" | "JSON-LD description" } | null {
+  const keys = aboutNameKeys(input.names);
+  if (keys.length === 0) return null;
+  const nameWords = allNameWords(input.names);
+  const candidates: Array<[NonNullable<ReturnType<typeof chooseAboutText>>["source"], string]> = [
+    ...aboutParagraphs(input.aboutText).map((p) => ["about page", p] as const),
+    ...aboutParagraphs(input.homeText).map((p) => ["homepage prose", p] as const),
+    ...(input.metaDescription ? [["meta description", input.metaDescription] as const] : []),
+    ...(input.jsonLdDescription ? [["JSON-LD description", input.jsonLdDescription] as const] : []),
+  ].map(([s, p]) => [s, p.replace(/\s+/g, " ").trim()] as [typeof s, string]);
+  for (const [source, p] of candidates) {
+    if (!p || BOILERPLATE.test(p) || ERROR_PAGE.test(p) || PROMO_COPY.test(p)) continue;
+    if (aboutCueRefused(p)) continue;
+    if (!hasBusinessVerb(p)) continue;
+    if (!opensWithName(p, keys, nameWords)) continue;
+    const max = input.maxChars ?? 1_200;
+    return { text: p.length > max ? `${p.slice(0, max).trimEnd()}…` : p, source };
+  }
+  return null;
+}
+
+/** Shorter than this, a line is a heading or a menu, not a description. */
+const ABOUT_MIN_CHARS = 80;
+/** Not a name of its own: the word for group, company, the. */
+const GENERIC_NAME_WORDS = new Set(["קבוצת", "קבוצה", "חברת", "חברה", "החברה", "group", "the", "ltd", "inc"]);
+const ENGLISH_BUSINESS = /\b(?:is|are) an? [^.]{0,60}\b(?:company|firm|provider|manufacturer|developer)\b/i;
+
+function aboutParagraphs(text: string | null): string[] {
+  return (text ?? "")
+    .split(/\n+/)
+    .map((p) => p.replace(/\s+/g, " ").trim())
+    .filter((p) => p.length >= ABOUT_MIN_CHARS && /[.!?׃]/.test(p));
+}
+
+function nameWord(w: string): string {
+  return w.replace(/[^\p{L}\p{N}&]/gu, "").toLowerCase();
+}
+
+function aboutNameKeys(names: Array<string | null | undefined>): string[] {
+  const keys = new Set<string>();
+  const segments = (raw: string) => raw.split(/\s+[|\-–]\s+|\|/).map((s) => s.trim()).filter(Boolean);
+  const [companyName, ...others] = names;
+  for (const seg of segments(companyName ?? "")) {
+    const words = seg.split(/\s+/).map(nameWord).filter(Boolean);
+    const distinctive = words.filter((w) => w.length >= 4 && !GENERIC_NAME_WORDS.has(w));
+    if (distinctive.length === 0 && words.length > 0) keys.add(words.join(" "));
+    for (const w of distinctive) keys.add(w);
+  }
+  for (const raw of others) {
+    for (const seg of segments(raw ?? "")) {
+      const first = seg.split(/\s+/).map(nameWord).find((w) => w && !GENERIC_NAME_WORDS.has(w));
+      if (first && first.length >= 4) keys.add(first);
+    }
+  }
+  return [...keys];
+}
+
+function aboutCueRefused(p: string): boolean {
+  if (/^[-–•·*]/.test(p)) return true;
+  const refusing = [...ABOUT_CUES.person, ...ABOUT_CUES.brand, ...ABOUT_CUES.product, ...ABOUT_CUES.sisterCompany];
+  return refusing.some((cue) => p.includes(cue));
+}
+
+function hasBusinessVerb(p: string): boolean {
+  return ABOUT_CUES.businessVerbs.some((cue) => p.includes(cue)) || ENGLISH_BUSINESS.test(p);
+}
+
+function opensWithName(p: string, keys: string[], nameWords: ReadonlySet<string>): boolean {
+  const words = p.split(/\s+/);
+  const head = words.slice(0, 3).map(nameWord);
+  for (const key of keys) {
+    const kw = key.split(" ");
+    for (let i = 0; i + kw.length <= head.length; i++) {
+      if (!kw.every((w, j) => head[i + j] === w)) continue;
+      // Past the company's own name ("Acme Industries", "DSIT Solutions"), a
+      // further capitalised Latin word makes a longer name: a division.
+      let next = i + kw.length;
+      while (next < words.length && nameWords.has(nameWord(words[next]!))) next++;
+      if (/^[a-z]/.test(kw[0]!) && /^[A-Z][a-z]/.test(words[next] ?? "")) return false;
+      return true;
+    }
+  }
+  return false;
+}
+
+/** Every word of every name, for opensWithName's longer-name test. */
+function allNameWords(names: Array<string | null | undefined>): Set<string> {
+  const out = new Set<string>();
+  for (const raw of names) for (const w of (raw ?? "").split(/\s+/)) if (nameWord(w)) out.add(nameWord(w));
+  return out;
 }
 
 // ---------------------------------------------------------------------------

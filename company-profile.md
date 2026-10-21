@@ -27,7 +27,7 @@ platform: 'windows-powershell'
 | Field | Source, in order of preference | Gate |
 |---|---|---|
 | `companyHomepageUrl` | operator-supplied → derived from siteUrl → careers-page link → `og:url` | must not be an ATS/vendor/social host |
-| `companyAbout` | JSON-LD `description` → about page → homepage prose | boilerplate / promo / error-page filters, then **longest paragraph of the lede only** (§7.8) |
+| `companyAbout` | about page → homepage prose → homepage meta description → JSON-LD `description` | boilerplate / promo / error-page filters; then **the first paragraph that names the company as its subject (its name in the first three words) with a business verb**, never one about a person, a brand, a product (or a bullet) or a sister company (`chooseAboutText`, cues in `scripts/lib/aboutCues.json`); none qualifies, **no about text** (§7.8) |
 | `companyLogoPath` | JSON-LD logo → rasterised header `<svg>`, inline or `<img src="*.svg">` → `<img>` candidates | magic bytes, size, not a favicon; an SVG reaches the server only as a rasterised PNG |
 | `companyHqAddress` | JSON-LD `PostalAddress` → labelled address → street line → compact line | a scanned address must name a `city.csv` city |
 | `companyHqCity` | operator-authored (§4.4) → JSON-LD `addressLocality` → address line → office list; the company's own site only, never a web lookup (§5) | **`CSV files/city.csv` — always** |
