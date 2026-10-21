@@ -275,7 +275,14 @@ export const updateSiteConfigSchema = z.object({
       // form + a contact form) can render its fields under separate subheaders
       // on the dashboard. Worker passes it through verbatim in the static blob.
       group: z.string().optional(),
+      // The page gave this text-like field its value (R2b): kept with it, and
+      // the hidden-style rule did not judge it. Same meaning as the live capture.
+      prefilled: z.boolean().optional(),
     }).strict()),
+    // The trap fields the capture left out of fields, by name (R8): a submit
+    // must leave each empty. Written by the shared template; passed to the job
+    // blob by worker/lib/formFields.ts staticFormBlob (report fixes 3, item 4).
+    honeypots: z.array(z.string().max(200)).max(50).optional(),
   }).strict().nullable(),
   originalMappings: z.record(z.string(), z.unknown()).optional(),
   // Listing-page pagination. Stored under fieldMappings._meta in the DB.
