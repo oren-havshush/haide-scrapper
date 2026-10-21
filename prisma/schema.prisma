@@ -270,6 +270,10 @@ model Job {
   locations        String[] @default([])
   department       String?
   externalJobId    String?
+  /// Where externalJobId came from: "synthesised" when the worker made it
+  /// (worker/lib/synthesizeJobId.ts, the h- id), "native" for every id the
+  /// site gave, a setupScript's own hash included. Written on every row.
+  idKind           String    @default("native")
   publishDate      String?
   deadline         String?
   ageBucket        String?

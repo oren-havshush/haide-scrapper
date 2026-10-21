@@ -123,3 +123,16 @@ export function applyJobIdFallback(
 
   return { ids, synthesized, unresolved, collisions };
 }
+
+/** Job.idKind (report fixes 3, item 1). */
+export type JobIdKind = "native" | "synthesised";
+
+/**
+ * The rule is the prefix, not the maker: an id starting "h-" is a hash, the
+ * worker's (above) or a setupScript's own, and no number printed on the page
+ * went into it. That prefix is the signal the public site reads. Every other
+ * id, and no id at all (the column's default), is native.
+ */
+export function jobIdKind(externalJobId: string | null | undefined): JobIdKind {
+  return typeof externalJobId === "string" && externalJobId.startsWith("h-") ? "synthesised" : "native";
+}

@@ -65,7 +65,7 @@ import { emitWorkerEvent } from "../lib/emitEvent";
 import { DOM_FIELD_EXTRACT_SOURCE } from "../lib/domFieldExtract";
 import { applyLocationMap, LOCATION_FROM_MAP, readAllMatches, readLocationMap, unmappedLabelWarnings } from "../lib/locationMap";
 import { APPLY_LOGIN_SKIP_NOTE, APPLY_LOGIN_FAILURE_CATEGORY } from "../lib/applyGate";
-import { applyJobIdFallback } from "../lib/synthesizeJobId";
+import { applyJobIdFallback, jobIdKind } from "../lib/synthesizeJobId";
 import { getApplyRequiresLogin, isUsableMappingEntry } from "../lib/fieldMappings";
 import {
   BUDGET_EXHAUSTED,
@@ -3204,6 +3204,8 @@ function buildJobRows(args: {
       locations: resolved.locations,
       department: normalized.department || null,
       externalJobId: persistedExternalJobId || null,
+      // By the prefix of the id stored: the worker's h- id and a script's own both read synthesised.
+      idKind: jobIdKind(persistedExternalJobId),
       publishDate: normalized.publishDate || null,
       deadline: normalized.deadline || null,
       ageBucket: computeAgeBucket(normalized.publishDate),
