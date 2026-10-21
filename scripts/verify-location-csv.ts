@@ -11,11 +11,17 @@
  * condition that every city is an exact city.csv entry. This checks both `location`
  * and each element of `locations[]`.
  *
+ * Every job of the site, page by page (report fixes 3, item 10): it prints
+ * "checked N of <meta.total>", and fewer than the total is a failure. The rule
+ * lives in scripts/lib/locationGate.ts, which the fix command runs too.
+ *
  *   npx tsx scripts/verify-location-csv.ts --site-id <id>
- *   exit 0 = all values in city.csv · exit 2 = at least one is not
+ *   exit 0 = every job read, all values in city.csv · exit 2 = a value is not, or a job went unread
  */
 import { readFileSync } from "fs";
-import { isKnownCity, loadCityList, type CityList } from "./lib/city-csv";
+import { loadCityList } from "./lib/city-csv";
+import { pageAllJobs, siteJobsPageReader } from "./lib/jobPager";
+import { verifyLocationsGate, type LocationJob } from "./lib/locationGate";
 
 const BASE = process.env.SCRAP_BASE ?? "https://scrapper.haide-jobs.co.il";
 const TOKEN = readFileSync(".claude/scrap-token", "utf8").trim();
@@ -25,65 +31,32 @@ function arg(name: string): string | undefined {
   return i === -1 ? undefined : process.argv[i + 1];
 }
 
-/**
- * city.csv parsing lives in scripts/lib/city-csv.ts so this gate and the
- * company-profile capture can never drift onto two different readers. See that
- * file for why a naive split(",") is wrong (quoted gershayim names, header row).
- */
-function loadCities(): CityList {
-  return loadCityList();
-}
-
 async function main() {
   const siteId = arg("site-id");
   if (!siteId) throw new Error("--site-id is required");
 
-  const cities = loadCities();
-  const res = await fetch(`${BASE}/api/jobs?siteId=${siteId}&pageSize=100`, {
-    headers: { Authorization: `Bearer ${TOKEN}` },
-  });
-  const jobs = ((await res.json()) as any).data ?? [];
-
-  // "Unknown" is the accepted sentinel for a job that states no location.
-  const offenders: { id: string; value: string }[] = [];
-  const seen = new Set<string>();
-  for (const j of jobs) {
-    const values: string[] = j.locations?.length ? j.locations : j.location ? [j.location] : [];
-    for (const v of values) {
-      if (!v || v === "Unknown") continue;
-      seen.add(v);
-      if (!isKnownCity(v, cities))
-        offenders.push({ id: j.externalJobId ?? j.id, value: v });
-    }
-  }
-
-  const multi = jobs.filter((j: any) => (j.locations?.length ?? 0) > 1).length;
+  // city.csv parsing lives in scripts/lib/city-csv.ts so this gate and the
+  // company-profile capture can never drift onto two different readers.
+  const cities = loadCityList();
+  const paged = await pageAllJobs<LocationJob>(siteJobsPageReader(BASE, siteId, { Authorization: `Bearer ${TOKEN}` }));
+  const gate = verifyLocationsGate(paged, cities);
   console.log(
     JSON.stringify(
       {
         siteId,
-        jobs: jobs.length,
-        distinctValues: [...seen],
-        multiLocationJobs: multi,
-        offenders,
-        ok: offenders.length === 0,
+        jobs: paged.jobs.length,
+        total: paged.total,
+        distinctValues: gate.distinctValues,
+        multiLocationJobs: gate.multiLocationJobs,
+        offenders: gate.offenders,
+        ok: gate.ok,
       },
       null,
       2,
     ),
   );
-
-  if (offenders.length) {
-    console.log(
-      `[verify-location-csv] FAIL: ${offenders.length} value(s) absent from city.csv — ` +
-        offenders.map((o) => `"${o.value}" (${o.id})`).join(", "),
-    );
-    process.exit(2);
-  }
-  console.log(
-    `[verify-location-csv] OK: ${seen.size} distinct value(s) across ${jobs.length} job(s) ` +
-      `all in city.csv (${multi} multi-location)`,
-  );
+  console.log(`[verify-location-csv] ${gate.line}`);
+  if (!gate.ok) process.exit(2);
 }
 
 main().catch((e) => {

@@ -75,6 +75,9 @@ import {
 } from "./lib/triageRules";
 import { parseAcceptance, renderConfigDiff, sentKeysNotStored, type AcceptanceInput } from "./lib/fixPlan";
 import { scriptIdRules } from "./lib/verifyJobIds";
+import { checkedLine, pageAllJobs, siteJobsPageReader } from "./lib/jobPager";
+import { verifyLocationsGate, type LocationJob } from "./lib/locationGate";
+import { loadCityList } from "./lib/city-csv";
 import { compareSetupScript } from "./lib/verifyConfig";
 import { flattenStoredConfig, mergeConfigPatch, type StoredConfig } from "../src/lib/configPatch";
 import { FIX_FIELDS } from "../src/lib/fixFields";
@@ -1129,21 +1132,19 @@ async function siteOnboardingSkill(siteId: string, headers: Record<string, strin
   return r?.data?.onboardingSkill ?? null;
 }
 
-async function cmdVerifyJobIds(argv: string[]): Promise<void> {
-  const { flags } = parseArgs(argv);
-  const siteId = flagStr(flags, "site-id");
-  if (!siteId) throw new Error("--site-id is required");
-  const minFill = flagStr(flags, "min-fill")
-    ? Number(flagStr(flags, "min-fill"))
-    : 0.9;
-  const requirePrefix = flagStr(flags, "require-prefix");
-
-  const headers = authHeaders(readToken());
-  const r = (await apiGet(
-    `/api/jobs?siteId=${encodeURIComponent(siteId)}&pageSize=100`,
-    headers,
-  )) as { data?: ApiJob[] };
-  const jobs = Array.isArray(r?.data) ? r.data : [];
+/**
+ * The job-id gate on every job of the site, page by page (report fixes 3,
+ * item 10): verify-jobids prints it, and the fix command runs it after its
+ * guarded run. Fewer jobs read than meta.total is a hard fail.
+ */
+async function verifyJobIdsGate(
+  siteId: string,
+  headers: Record<string, string>,
+  opts: { minFill: number; requirePrefix?: string },
+): Promise<{ ok: boolean; line: string; verdict: Record<string, unknown> }> {
+  const { minFill, requirePrefix } = opts;
+  const paged = await pageAllJobs<ApiJob & { id?: string }>(siteJobsPageReader(BASE_URL, siteId, headers));
+  const jobs = paged.jobs;
   const total = jobs.length;
 
   // The stored setupScript and the cohort tag (step 4): on an addsite3 site a
@@ -1179,6 +1180,7 @@ async function cmdVerifyJobIds(argv: string[]): Promise<void> {
   const collapsed = total > 1 && distinct.size === 1; // all rows dedup into one
 
   const hardFails: string[] = [];
+  if (!paged.complete) hardFails.push(`${checkedLine(paged)}: not every job was read`);
   if (total === 0) hardFails.push("no jobs scraped");
   if (fillRate < minFill)
     hardFails.push(`fill ${fillRate.toFixed(2)} < ${minFill}`);
@@ -1202,6 +1204,7 @@ async function cmdVerifyJobIds(argv: string[]): Promise<void> {
     onboardingSkill,
     ok,
     total,
+    metaTotal: paged.total,
     fillRate: Number(fillRate.toFixed(3)),
     distinctRate: Number(distinctRate.toFixed(3)),
     idEqualsTitle,
@@ -1211,20 +1214,32 @@ async function cmdVerifyJobIds(argv: string[]): Promise<void> {
     hardFails,
     warnings,
   };
-  console.log(JSON.stringify(verdict, null, 2));
+  const line = ok
+    ? `${checkedLine(paged)}: OK, fill=${fillRate.toFixed(2)}, distinct=${distinct.size}` +
+      (warnings.length ? ` (warnings: ${warnings.join("; ")})` : "")
+    : `${checkedLine(paged)}: BAD IDS: ${hardFails.join("; ")}`;
+  return { ok, line, verdict };
+}
 
-  if (!ok) {
-    console.error(`[verify-jobids] BAD IDS: ${hardFails.join("; ")}`);
+async function cmdVerifyJobIds(argv: string[]): Promise<void> {
+  const { flags } = parseArgs(argv);
+  const siteId = flagStr(flags, "site-id");
+  if (!siteId) throw new Error("--site-id is required");
+  const minFill = flagStr(flags, "min-fill")
+    ? Number(flagStr(flags, "min-fill"))
+    : 0.9;
+  const requirePrefix = flagStr(flags, "require-prefix");
+
+  const headers = authHeaders(readToken());
+  const gate = await verifyJobIdsGate(siteId, headers, { minFill, requirePrefix });
+  console.log(JSON.stringify(gate.verdict, null, 2));
+  console.error(`[verify-jobids] ${gate.line}`);
+  if (!gate.ok) {
     // Use exitCode (not process.exit) so a pending fetch handle can't trigger
     // the libuv UV_HANDLE_CLOSING assertion crash on Windows, which would
     // clobber the intended exit-2 with a crash code and break callers.
     process.exitCode = 2;
-    return;
   }
-  console.error(
-    `[verify-jobids] OK: ${total} jobs, fill=${fillRate.toFixed(2)}, distinct=${distinct.size}` +
-      (warnings.length ? ` (warnings: ${warnings.join("; ")})` : ""),
-  );
 }
 
 // ---------------------------------------------------------------------------
@@ -2108,6 +2123,21 @@ async function cmdFix(argv: string[]): Promise<void> {
   if (!verdict.accept) {
     console.log("[fix] not accepted; the site stays REVIEW:");
     for (const r of verdict.reasons) console.log(`  - ${r}`);
+    process.exit(1);
+  }
+
+  // 4b. The two mandatory gates, on every job the guarded run wrote (report
+  // fixes 3, item 10; the developer's open question 22): a fix re-scrapes a
+  // live site, and nothing else re-checks its ids or its city.csv values.
+  const idGate = await verifyJobIdsGate(siteId, headers, { minFill: 0.9 });
+  console.log(`[fix] verify-jobids: ${idGate.line}`);
+  const locGate = verifyLocationsGate(
+    await pageAllJobs<LocationJob>(siteJobsPageReader(BASE_URL, siteId, headers)),
+    loadCityList(),
+  );
+  console.log(`[fix] verify-location-csv: ${locGate.line}`);
+  if (!idGate.ok || !locGate.ok) {
+    console.log("[fix] not promoted; a gate failed. The site stays REVIEW.");
     process.exit(1);
   }
 

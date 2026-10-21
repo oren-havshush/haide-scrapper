@@ -59,7 +59,9 @@ eq(scriptIdRules("", false), { fail: [], warn: [] }, "an empty one: nothing");
 // Wiring: the command applies it, and its failures are hard (exit 2).
 {
   const src = readFileSync(join(__dirname, "..", "addsite-batch.ts"), "utf8");
-  const body = src.slice(src.indexOf("async function cmdVerifyJobIds"), src.indexOf("// Playwright-backed probes"));
+  // The gate's body is verifyJobIdsGate (report fixes 3, item 10), which
+  // cmdVerifyJobIds and the fix command both call.
+  const body = src.slice(src.indexOf("async function verifyJobIdsGate"), src.indexOf("// Playwright-backed probes"));
   assert(/scriptIdRules\(/.test(body), "verify-jobids calls scriptIdRules");
   assert(/hardFails\.push\(\.\.\.scriptRules\.fail\)/.test(body), "its failures are hard failures");
   assert(/warnings\.push\(\.\.\.scriptRules\.warn\)/.test(body), "its warnings are warnings");
