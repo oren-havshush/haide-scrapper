@@ -102,7 +102,9 @@
         var parentLabel = el.closest('label');
         if (parentLabel) label = (parentLabel.textContent || '').replace(/\s+/g, ' ').trim();
       }
-      var required = el.hasAttribute('required') || el.getAttribute('aria-required') === 'true';
+      // A CF7 acceptance box not marked optional is required: CF7 refuses the
+      // submit without it, and the box carries no attribute (LRN-FORM-21).
+      var required = el.hasAttribute('required') || el.getAttribute('aria-required') === 'true' || !!el.closest('.wpcf7-acceptance:not(.optional)');
       if (type === 'radio') {
         var option = { value: el.value, label: label };
         if (name && radios[name]) {

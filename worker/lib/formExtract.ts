@@ -185,11 +185,15 @@ export async function extractLiveFormData(
         name,
         label,
         // Required the HTML way, the ARIA way, or the Magento way
-        // (data-validate="{required:true}"; lighting, owner 2026-10-08).
+        // (data-validate="{required:true}"; lighting, owner 2026-10-08), or
+        // Contact Form 7's: CF7 refuses an unticked acceptance box unless it
+        // is marked optional, and the box carries no attribute that says so
+        // (LRN-FORM-21; the template has the same rule).
         required:
           el.hasAttribute("required") ||
           (el.getAttribute("aria-required") || "").trim().toLowerCase() === "true" ||
-          /(^|[{,\s'"])required['"]?\s*:\s*true\b/.test(el.getAttribute("data-validate") || ""),
+          /(^|[{,\s'"])required['"]?\s*:\s*true\b/.test(el.getAttribute("data-validate") || "") ||
+          !!el.closest(".wpcf7-acceptance:not(.optional)"),
         // The value as the page holds it NOW — a script may have set it. A
         // text-like field's too: one the page filled carries the job
         // (formFields.ts keeps it, marked prefilled). Inline test: keepNames.
