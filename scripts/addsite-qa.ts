@@ -48,6 +48,18 @@ import { fileURLToPath } from "url";
 import { DEPARTMENT_LABELS, PUBLISH_DATE_LABELS, hasLabel } from "./lib/qaLabels";
 import { CITY_ABBREVIATIONS, LOCATION_ALIAS } from "../worker/lib/locationNormalize";
 import { readLocationMap } from "../worker/lib/locationMap";
+import { isAtsHost } from "../src/lib/ats-hosts";
+
+/**
+ * _meta.externalJobIdNativeSlug (report fixes 3, item 9e): true when the
+ * site's native job id IS a slug (dsit.co.il's ASCII slug is the only id it
+ * has), so QA does not raise "externalJobId looks like a slug". Set through
+ * the config like any _meta key: externalJobIdNativeSlug: true.
+ */
+export function readNativeSlugId(fieldMappings: unknown): boolean {
+  const meta = fieldMappings && typeof fieldMappings === "object" ? (fieldMappings as Record<string, unknown>)._meta : null;
+  return !!meta && typeof meta === "object" && (meta as Record<string, unknown>).externalJobIdNativeSlug === true;
+}
 
 const BASE = "https://scrapper.haide-jobs.co.il";
 const UA_DEFAULT =
@@ -124,11 +136,17 @@ export function decideVerdict(args: {
   if (args.tierAComplete) {
     if (args.formStatus === "NEEDS_MANUAL")
       return { verdict: "REVIEW", reason: "apply form exists on page but isn't captured — run Step 5b / arbitrate" };
-    if (args.availableButUnmapped.length)
-      return { verdict: "REVIEW", reason: `Tier-B exposed but unmapped: ${args.availableButUnmapped.join(", ")}` };
     // B-guardrail: presence-passing but data smells wrong
     if (args.correctnessSuspects.length)
       return { verdict: "REVIEW", reason: `correctness suspect (present but may be wrong): ${args.correctnessSuspects.join("; ")}` };
+    // A Tier-B gap with Tier-A complete is shippable (the skill's rule): ACTIVE,
+    // the gap named in the note (report fixes 3, item 9a; fnx, gal-hr, whose
+    // only date is a "last updated" one, not stored by decision).
+    if (args.availableButUnmapped.length)
+      return {
+        verdict: "ACTIVE",
+        reason: `Tier-A complete + usable apply path; Tier-B exposed but unmapped: ${args.availableButUnmapped.join(", ")}`,
+      };
     return { verdict: "ACTIVE", reason: "Tier-A complete + usable apply path" };
   }
 
@@ -297,8 +315,16 @@ export function locationOnPage(stored: string, bodyLower: string, locationMap: R
 export function computeCorrectnessSuspects(
   jobs: any[],
   probe: { fieldsOnPage: Record<string, boolean>; detailBodyText?: string } | null,
-  /** The site's locationMap (_meta.locationMap), for the location check. */
-  opts: { locationMap?: Record<string, string | null> | null } = {},
+  opts: {
+    /** The site's locationMap (_meta.locationMap), for the location check. */
+    locationMap?: Record<string, string | null> | null;
+    /** The detail page the probe read: on a vendor's host the location check is skipped. */
+    probedUrl?: string;
+    /** _meta.externalJobIdNativeSlug: the slug is the site's native id. */
+    nativeSlugId?: boolean;
+    /** Where a skipped check says so. */
+    notes?: string[];
+  } = {},
 ): string[] {
   const suspects: string[] = [];
   const n = jobs.length;
@@ -309,7 +335,9 @@ export function computeCorrectnessSuspects(
   const titles = jobs.map((j) => String(fieldValue(j, "title") ?? "").trim());
   const detailUrls = jobs.map((j) => String(fieldValue(j, "detailUrl") ?? "").trim());
   const nonEmptyIds = ids.filter(Boolean);
-  if (nonEmptyIds.length > 0) {
+  // Not when the config says the slug IS the site's native id
+  // (_meta.externalJobIdNativeSlug; dsit.co.il, report fixes 3, item 9e).
+  if (nonEmptyIds.length > 0 && !opts.nativeSlugId) {
     // IDs that are already numeric or hash-prefixed are always fine.
     const numericOrHash = nonEmptyIds.filter((id) => /^\d+$/.test(id) || /^h-[0-9a-f]{6,}$/i.test(id));
     if (numericOrHash.length < nonEmptyIds.length * 0.8) {
@@ -337,8 +365,15 @@ export function computeCorrectnessSuspects(
   }
 
   // --- 2. Truncated description ---
+  // The ad's text is description plus requirements: a site that moves most
+  // of each ad into requirements is not truncated (amit.co.il; report fixes
+  // 3, item 9b).
   const descValues = jobs
-    .map((j) => String(fieldValue(j, "description") ?? "").trim())
+    .map((j) => {
+      const d = String(fieldValue(j, "description") ?? "").trim();
+      const r = String(fieldValue(j, "requirements") ?? "").trim();
+      return d ? (r ? `${d}\n${r}` : d) : "";
+    })
     .filter(Boolean);
   if (descValues.length > 0) {
     const avgLen = descValues.reduce((s, d) => s + d.length, 0) / descValues.length;
@@ -354,7 +389,18 @@ export function computeCorrectnessSuspects(
   }
 
   // --- 3. Location not found on detail page ---
-  if (probe && probe.detailBodyText) {
+  // A vendor's detail page (an apply page on an ATS host) never prints the
+  // card's place, so it proves nothing (meptagon's Niloos page; report fixes 3,
+  // item 9c). src/lib/ats-hosts.ts is the one vendor list.
+  const onVendor = (() => {
+    try {
+      return !!opts.probedUrl && isAtsHost(new URL(opts.probedUrl).hostname);
+    } catch {
+      return false;
+    }
+  })();
+  if (onVendor && probe && probe.detailBodyText) opts.notes?.push("vendor detail page, location not checked");
+  if (probe && probe.detailBodyText && !onVendor) {
     const bodyLower = probe.detailBodyText.toLowerCase();
     const locValues = jobs
       .map((j) => String(fieldValue(j, "location") ?? "").trim())
@@ -638,7 +684,12 @@ export async function runQa(siteId: string, opts: RunQaOptions): Promise<QaRecor
   const probeInconclusive = !noProbe && !probe;
 
   // --- B-guardrail: correctness suspects ---
-  const correctnessSuspects = computeCorrectnessSuspects(jobs, probe, { locationMap: readLocationMap(cfgData?.fieldMappings) });
+  const correctnessSuspects = computeCorrectnessSuspects(jobs, probe, {
+    locationMap: readLocationMap(cfgData?.fieldMappings),
+    probedUrl,
+    nativeSlugId: readNativeSlugId(cfgData?.fieldMappings),
+    notes,
+  });
   if (correctnessSuspects.length) {
     notes.push(...correctnessSuspects.map((s) => `correctness suspect: ${s}`));
   }

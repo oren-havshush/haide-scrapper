@@ -475,6 +475,7 @@ export async function saveSiteConfig(
     limits?: SiteLimits;
     locationMap?: Record<string, string | null>;
     acceptedGates?: AcceptedGates;
+    externalJobIdNativeSlug?: boolean;
   }
 ) {
   const site = await prisma.site.findUnique({ where: { id: siteId } });
@@ -514,6 +515,8 @@ export async function saveSiteConfig(
         typeof config.minPublishDays === "number" ? config.minPublishDays : null,
       locationFallback: config.locationFallback || null,
       acceptedGates: config.acceptedGates || null,
+      // QA reads it (scripts/addsite-qa.ts readNativeSlugId); absent, null.
+      externalJobIdNativeSlug: config.externalJobIdNativeSlug === true ? true : null,
       savedAt: new Date().toISOString(),
     },
   };

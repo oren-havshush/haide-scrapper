@@ -487,6 +487,10 @@ export const updateSiteConfigSchema = z.object({
       }
     })
     .optional(),
+  // The site's native job id is a slug (report fixes 3, item 9e; dsit.co.il):
+  // QA (scripts/addsite-qa.ts) then does not raise "externalJobId looks like
+  // a slug". Stored under fieldMappings._meta.externalJobIdNativeSlug.
+  externalJobIdNativeSlug: z.boolean().optional(),
   // Owner-accepted activation gates (src/lib/acceptedGates.ts): the nightly
   // reports such a site apart, with its fill, instead of under Needs
   // attention. Keyed by gate; `fill` is the level it was accepted at, and the

@@ -42,6 +42,16 @@ assert(/fieldsOnPage\.department = hasLabel\(labelText, DEPARTMENT_LABELS\)/.tes
 assert(!/publishDate: has\(/.test(qa) && !/department: has\(/.test(qa), "the anywhere-in-the-text matches are gone");
 assert(/const labelText = document\.body\?\.innerText \|\| ""/.test(qa), "the labels are read from innerText with its lines, not the collapsed body text");
 
+// Report fixes 3, item 9d (the developer's 2026-10-21 report, isracard): the
+// bare date word is a publish date only when a date follows it, a day-month
+// pair or a full date; a course start date is not one.
+assert(!date("תאריך התחלת קורס 24.11"), "a course start date is not a publish date");
+assert(!date("תאריך תחילת עבודה: מיידי"), "nor a start-of-work date with no date");
+assert(date("תאריך: 24.11"), "the bare word before a day-month pair is");
+assert(date("תאריך 12/10/2026"), "and before a full date");
+assert(date("תאריך: 3-9-26"), "with dashes too");
+assert(date("תאריך פרסום: 12/10/2026") && date("פורסם: 01.10.2026"), "the specific labels are unchanged");
+
 if (failures > 0) {
   console.error(`\n${failures} failure(s)`);
   process.exit(1);

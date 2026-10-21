@@ -11,6 +11,14 @@
 export const PUBLISH_DATE_LABELS = ["תאריך פרסום", "פורסם", "תאריך", "publish", "published", "posted on", "date posted"] as const;
 export const DEPARTMENT_LABELS = ["מחלקה", "תחום", "אגף", "department", "team", "division"] as const;
 
+/**
+ * The bare date word counts only before a date: a day-month pair or a full
+ * date, after an optional colon (report fixes 3, item 9d). isracard's
+ * "תאריך התחלת קורס 24.11" is a course start date, not a publish date.
+ */
+const BARE_DATE_WORDS: ReadonlySet<string> = new Set(["תאריך"]);
+const DATE_FOLLOWS = /^\s*[:：]?\s*\d{1,2}[./-]\d{1,2}(?:[./-]\d{2,4})?(?!\d)/;
+
 const LETTER = /[A-Za-zא-ת]/;
 /** Bullets and dashes a line may open with before its label. */
 const LINE_LEAD = /^[\s•·*\-–—]+/;
@@ -27,7 +35,9 @@ export function hasLabel(text: string, labels: readonly string[]): boolean {
         const before = at > 0 ? line[at - 1] : "";
         const after = line[at + l.length] ?? "";
         const whole = !LETTER.test(before) && !LETTER.test(after);
-        if (whole && (at === 0 || /^\s*[:：]/.test(line.slice(at + l.length)))) return true;
+        const rest = line.slice(at + l.length);
+        const dated = !BARE_DATE_WORDS.has(l) || DATE_FOLLOWS.test(rest);
+        if (whole && dated && (at === 0 || /^\s*[:：]/.test(rest))) return true;
         at = line.indexOf(l, at + 1);
       }
     }
