@@ -803,6 +803,11 @@ export function extractAnchoredPlaces(text: string): string[] {
   return out;
 }
 
+/** The text with every http(s):// and www. address replaced by a space. */
+function withoutUrls(text: string): string {
+  return text.replace(/(?:https?:\/\/|\bwww\.)[^\s<>"']+/gi, " ");
+}
+
 /**
  * Scan a chunk of text (typically description, optionally + requirements)
  * for label-value pairs and return any standard fields it can recover.
@@ -837,8 +842,10 @@ export function extractFieldsFromText(text: string): ExtractedFromText {
       // Labeled capture can sweep trailing form text into the value; reduce it
       // to the bare job-ID token. The fallback already returns clean IDs (bare
       // digits / codes), and cleanExternalJobId is idempotent on those.
-      cleanExternalJobId(matchLabeled(t, LABELS.externalJobId)) ??
-      extractExternalJobIdFallback(t),
+      // Both read the text with its links taken out: an id inside a URL is
+      // some other system's (nisha's JOB-164845 was the apply link's).
+      cleanExternalJobId(matchLabeled(withoutUrls(t), LABELS.externalJobId)) ??
+      extractExternalJobIdFallback(withoutUrls(t)),
     publishDate: extractPublishDate(t),
     requirements: extractRequirementsBlock(t),
     applicationInfo: extractApplicationInfoFallback(t),
@@ -863,7 +870,13 @@ export function extractFieldsFromText(text: string): ExtractedFromText {
  */
 export function normalizeJobRecord(
   rawFields: Record<string, string>,
-  opts: { at?: Date } = {},
+  /**
+   * configMapsId: the site's config maps externalJobId (fieldMappings.ts
+   * mapsExternalJobId). Then no text fallback guesses an id: an empty mapped
+   * id stays empty and the worker's synthesizeJobId gives the h- id (report
+   * fixes 3, item 5), so a site has one id rule.
+   */
+  opts: { at?: Date; configMapsId?: boolean } = {},
 ): NormalizedJobRecord {
   const rawOut: Record<string, string> = { ...rawFields };
 
@@ -966,7 +979,7 @@ export function normalizeJobRecord(
     };
     if (!locationFromMap) location = applyFallback("location", location);
     department = applyFallback("department", department);
-    externalJobId = applyFallback("externalJobId", externalJobId);
+    if (!opts.configMapsId) externalJobId = applyFallback("externalJobId", externalJobId);
     publishDate = applyFallback("publishDate", publishDate);
     if (!requirements && recovered.requirements) {
       requirements = recovered.requirements;
@@ -993,7 +1006,8 @@ export function normalizeJobRecord(
   // this never overrides a dedicated selector or a labeled/description match,
   // and the bracket requirement keeps title prose numbers (e.g. "5+ years",
   // "B2C") from being mistaken for an ID.
-  if (!externalJobId || externalJobId.trim().length === 0) {
+  // Like the description fallback, only where the config maps no id.
+  if (!opts.configMapsId && (!externalJobId || externalJobId.trim().length === 0)) {
     const titleCode = extractBracketedJobCode(title);
     if (titleCode) {
       externalJobId = titleCode;

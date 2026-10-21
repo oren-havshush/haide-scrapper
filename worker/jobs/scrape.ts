@@ -66,7 +66,7 @@ import { DOM_FIELD_EXTRACT_SOURCE } from "../lib/domFieldExtract";
 import { applyLocationMap, LOCATION_FROM_MAP, readAllMatches, readLocationMap, unmappedLabelWarnings } from "../lib/locationMap";
 import { APPLY_LOGIN_SKIP_NOTE, APPLY_LOGIN_FAILURE_CATEGORY } from "../lib/applyGate";
 import { applyJobIdFallback, jobIdKind } from "../lib/synthesizeJobId";
-import { getApplyRequiresLogin, isUsableMappingEntry } from "../lib/fieldMappings";
+import { getApplyRequiresLogin, isUsableMappingEntry, mapsExternalJobId } from "../lib/fieldMappings";
 import {
   BUDGET_EXHAUSTED,
   LISTING_URL_TAG,
@@ -4531,6 +4531,10 @@ async function executeScrape(
   // never scanned for a place; the mapped value is final.
   const locationMap = readLocationMap(site.fieldMappings);
   const unmappedLabels = new Map<string, number>();
+  // A config that maps an id (or a run where the script emitted one) gets no
+  // text-guessed id: an empty one is the worker's h- id (report fixes 3, item 5).
+  const configMapsId =
+    mapsExternalJobId(site.fieldMappings) || rawFieldsList.some((r) => (r["externalJobId"] ?? "").trim() !== "");
   const validatedRecords: ValidatedRecord[] = rawFieldsList.map((raw) => {
     let rawFields = raw;
     if (locationMap) {
@@ -4538,7 +4542,7 @@ async function executeScrape(
       for (const label of new Set(mapped.unmapped)) unmappedLabels.set(label, (unmappedLabels.get(label) ?? 0) + 1);
       rawFields = { ...raw, location: mapped.value, [LOCATION_FROM_MAP]: "1" };
     }
-    const normalized = normalizeJobRecord(rawFields, { at: normalizedAt });
+    const normalized = normalizeJobRecord(rawFields, { at: normalizedAt, configMapsId });
     const validation = validateJobRecord(normalized);
     return { normalized, validation };
   });

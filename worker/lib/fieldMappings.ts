@@ -34,6 +34,18 @@ export function isUsableMappingEntry(key: string, value: unknown): boolean {
 }
 
 /**
+ * True when the config maps externalJobId: a usable entry with a selector that
+ * is not blank (a setupScript's id reaches the worker through one). Where it
+ * does, no text fallback guesses an id (worker/lib/normalizer.ts; report fixes
+ * 3, item 5).
+ */
+export function mapsExternalJobId(fieldMappingsRaw: unknown): boolean {
+  if (!fieldMappingsRaw || typeof fieldMappingsRaw !== "object" || Array.isArray(fieldMappingsRaw)) return false;
+  const entry = (fieldMappingsRaw as Record<string, unknown>).externalJobId;
+  return isUsableMappingEntry("externalJobId", entry) && ((entry as { selector: string }).selector.trim() !== "");
+}
+
+/**
  * How many usable mappings a site has. Zero means `handleScrapeJob` would
  * refuse it, so sweep selection must exclude it.
  */
