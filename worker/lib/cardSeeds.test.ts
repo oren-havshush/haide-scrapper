@@ -26,7 +26,7 @@ const PENDING = "_pendingDetail";
 const VACANCY = "https://meptagon.niloos.test/vacancy/4471";
 const cards = [
   { url: VACANCY, fields: { title: "מהנדס/ת חשמל", location: "אזור מרכז", _listingUrl: "https://meptagon.test/careers" } },
-  { url: VACANCY, fields: { title: "מהנדס/ת חשמל בכיר/ה", location: "אזור מרכז", _listingUrl: "https://meptagon.test/careers" } },
+  { url: VACANCY, fields: { title: "הנדסאי/ת חשמל", location: "אזור מרכז", _listingUrl: "https://meptagon.test/careers" } },
   // The first card listed again (a second listing page): one card.
   { url: VACANCY, fields: { title: "מהנדס/ת חשמל", location: "אזור מרכז", _listingUrl: "https://meptagon.test/careers" } },
   { url: "https://meptagon.niloos.test/vacancy/4472", fields: { title: "טכנאי/ת", location: "חיפה", _listingUrl: "https://meptagon.test/careers" } },
@@ -51,7 +51,7 @@ const visited = addresses.map((u) => visit(seeds.find((s) => s._detailUrl === u)
 // --- the join, by card ------------------------------------------------------------------------
 const records = recordsForSeeds(seeds, visited);
 assert(records.length === 3 && records.every((r) => r !== null), "one record per seed");
-assert(records[1]?.title === "מהנדס/ת חשמל בכיר/ה", `the second card keeps its own title (got ${records[1]?.title})`);
+assert(records[1]?.title === "הנדסאי/ת חשמל", `the second card keeps its own title (got ${records[1]?.title})`);
 assert(records[1]?.description === records[0]?.description, "and shares the page's description");
 assert(records[0]?.[CARD_KEY] !== records[1]?.[CARD_KEY], "each record carries its own card identity");
 
@@ -90,6 +90,30 @@ assert(new Set(ids).size === ids.length, `with distinct ids (got ${JSON.stringif
   // A card whose fields failed to read, beside a titled card for the same address: one seed, the titled one.
   const t = seedsFromCards([{ url: VACANCY, fields: {} }, { url: VACANCY, fields: { title: "מהנדס/ת" } }], PENDING);
   assert(t.length === 1 && t[0]?.title === "מהנדס/ת", `an unread card does not become a second job (got ${JSON.stringify(t.map((x) => x.title))})`);
+}
+
+// --- 8b: a truncated copy of a card is the same card ------------------------------------------------
+{
+  const JOB = "https://x.test/jobs/77";
+  const full = "מהנדס/ת תוכנה בכיר/ה לצוות התשתיות";
+  // A hot-jobs strip that cuts the title and adds an ellipsis, before or after the full card.
+  for (const cut of ["מהנדס/ת תוכנה בכיר/ה לצ...", "מהנדס/ת תוכנה בכיר/ה…", "מהנדס/ת תוכנה בכיר/ה -", "מהנדס/ת תוכנה"]) {
+    for (const order of [[cut, full], [full, cut]]) {
+      const s = seedsFromCards(order.map((title) => ({ url: JOB, fields: { title } })), PENDING);
+      assert(s.length === 1 && s[0]?.title === full, `"${cut}" beside the full title is one card, the long title kept (got ${JSON.stringify(s.map((x) => x.title))})`);
+    }
+  }
+  // Through the whole chain: one job, with the long title.
+  const tSeeds = seedsFromCards([{ url: JOB, fields: { title: "מהנדס/ת תוכנה בכיר/ה לצ..." } }, { url: JOB, fields: { title: full } }], PENDING);
+  const tRecs = recordsForSeeds(tSeeds, tSeeds.map(visit)).filter((r): r is Record<string, string> => r !== null);
+  const tJobs = new Set(tRecs.map((r) => normalizedDedupKey(normalizeJobRecord(r, { at: new Date("2026-10-21T00:00:00Z") }))));
+  assert(tRecs.length === 1 && tJobs.size === 1 && tRecs[0]?.title === full, `the truncated pair is one job with the long title (got ${JSON.stringify(tRecs.map((r) => r.title))})`);
+  // meptagon: different titles, neither a prefix of the other, stay two.
+  const m = seedsFromCards([{ url: VACANCY, fields: { title: "מהנדס/ת חשמל" } }, { url: VACANCY, fields: { title: "מהנדס/ת מכונות" } }], PENDING);
+  assert(m.length === 2, "different titles that are not prefixes of each other stay two cards");
+  // A prefix on ANOTHER address is another job.
+  const other = seedsFromCards([{ url: JOB, fields: { title: full } }, { url: VACANCY, fields: { title: "מהנדס/ת תוכנה" } }], PENDING);
+  assert(other.length === 2, "the rule is per address");
 }
 
 // --- the wiring ------------------------------------------------------------------------------------

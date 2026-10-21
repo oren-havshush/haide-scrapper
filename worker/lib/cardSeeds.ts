@@ -44,10 +44,41 @@ export function seedsFromCards(
     const key = cardKeyOf(url, fields);
     if (key === url && titled.has(url)) continue;
     if (seen.has(key)) continue;
+    // A truncated copy of a card already seen for this address (a carousel or
+    // hot-jobs strip that cuts the title), or the full card after its cut
+    // copy: one card, the longer title's (report fixes 3, item 8b).
+    const cut = truncationBase(fields["title"] ?? "");
+    const same = cut ? seeds.findIndex((s) => s._detailUrl === url && prefixRelated(truncationBase(s["title"] ?? ""), cut)) : -1;
     seen.add(key);
+    if (same >= 0) {
+      if (cut.length > truncationBase(seeds[same]!["title"] ?? "").length) {
+        seeds[same] = { ...fields, _detailUrl: url, [CARD_KEY]: key, [pendingKey]: "1" };
+      }
+      continue;
+    }
     seeds.push({ ...fields, _detailUrl: url, [CARD_KEY]: key, [pendingKey]: "1" });
   }
   return seeds;
+}
+
+/**
+ * A title as a truncation compares it: squashed, lower case, a trailing
+ * ellipsis (three dots or the one-character one) and trailing punctuation
+ * removed.
+ */
+function truncationBase(title: string): string {
+  return title
+    .replace(/\s+/g, " ")
+    .trim()
+    .toLowerCase()
+    .replace(/(?:\.{3}|…)+$/, "")
+    .replace(/[\s.,;:!?|\-–—]+$/, "")
+    .trim();
+}
+
+/** One title is a prefix of the other: the same card, one copy cut. */
+function prefixRelated(a: string, b: string): boolean {
+  return !!a && !!b && (a.startsWith(b) || b.startsWith(a));
 }
 
 /**
