@@ -68,11 +68,12 @@ Flags worth knowing:
 | `--site <id\|url>` | one site — accepts a cuid or the exact `siteUrl` |
 | `--all [--limit N]` | every site with `companyProfileAt = NULL` (backfill) |
 | `--dry-run` | scrape and print, **write nothing** — safe to run any time |
-| `--no-llm` | deterministic only, never call OpenAI (free, and what CI uses) |
+| `--llm` | ask the model for an about text or HQ address the page did not give. Off unless passed, on the dry run and the real run alike, so a dry run with `--llm` shows what the real run would write; each model value is printed `MODEL about` / `MODEL address`. Without it the run is deterministic (`--no-llm` is the default and still accepted) |
 | `--force` | overwrite an existing profile — only for a deliberate re-capture |
 | `--replace-logo` | a stored logo is **kept** (the logo step is skipped) unless this is given; `--force` alone never replaces it |
 | `--replace-field <name>` | repeatable; overwrite a profile field the operator set by hand in the dashboard (`companyAbout`, `companyHqAddress`, `companyHomepageUrl`). Without it, every field listed in `Site.companyOperatorFields` is left out of the write and keeps its value, with `--force` too; the run prints which fields it kept |
-| `--probe <url>` | scrape an arbitrary URL, no DB and no token, to debug extraction |
+| `--probe <url>` | scrape an arbitrary URL, no DB and no token, to debug extraction; refused (403, a challenge page), it tries once more as desktop Chrome |
+| `--probe-ua <ua>` | the user agent `--probe` tries first |
 | `--out <path>` | append one JSON result per site, for inspection |
 
 **Always dry-run first on a site you have not seen before:**

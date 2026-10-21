@@ -24,7 +24,12 @@
  *                     Site.companyOperatorFields is left out of the write and
  *                     keeps its value, with --force too (src/lib/operatorFields.ts,
  *                     owner 2026-10-09). The run prints which fields it kept.
- *   --no-llm          Deterministic extraction only, never call OpenAI.
+ *   --llm             Ask the language model for an about text or HQ address the
+ *                     page did not give. Off unless passed, on the dry run and
+ *                     the real run alike, so a dry run with --llm shows what the
+ *                     real run would write; the model's values are printed as
+ *                     the model's (report fixes 3, item 13). --no-llm is the
+ *                     default and still accepted.
  *   --out <path>      Append one JSON result per site to this file.
  *   --write-empty     Record a capture that found nothing. Off by default: an
  *                     empty result is usually a slow page, and writing it makes
@@ -32,6 +37,9 @@
  *   --probe <url>     Scrape an arbitrary URL and print what WOULD be captured.
  *                     No database, no token, no writes — implies --dry-run.
  *                     Use it to debug extraction before onboarding a site.
+ *                     When the identity it used is refused (403, a challenge
+ *                     page) it tries once more as desktop Chrome.
+ *   --probe-ua <ua>   The user agent --probe tries first.
  *
  * WHAT THIS IS: company data is captured ONCE per site, at onboarding, and is
  * never refreshed by the weekly scrape. Job rows churn; a company's name, logo
@@ -106,6 +114,7 @@ import {
 } from "./lib/city-csv";
 import { rasteriseSvgImgLogos } from "./lib/svg-img-logos";
 import { keepStoredLogo } from "./lib/logo-keep";
+import { isRefusedNav, llmRequested, probeWithIdentityRetry, retryOnce, type NavNote } from "./lib/profileRun";
 import { captureQuery, keepOperatorFields, parseReplaceFields, withoutHumanHqAnswer } from "../src/lib/operatorFields";
 import { capturedHomepage } from "../src/lib/companyHomepage";
 import { fetchImage, ImageRejected, type FetchedImage } from "./lib/fetch-image";
@@ -470,7 +479,13 @@ async function settle(page: Page, patient = false): Promise<void> {
   }
 }
 
-async function harvest(page: Page, url: string, patient = false): Promise<PageHarvest | null> {
+async function harvest(
+  page: Page,
+  url: string,
+  patient = false,
+  /** Filled with what the load said (status, title), for the probe's refusal test. */
+  nav?: NavNote,
+): Promise<PageHarvest | null> {
   try {
     // Two attempts, the second more patient. A nav timeout is a TRANSIENT
     // failure and worth retrying: biopharmax.com times out on roughly one load
@@ -497,6 +512,7 @@ async function harvest(page: Page, url: string, patient = false): Promise<PageHa
     // has a <title>, a body and an <img> — enough to look like a successful
     // capture and to put the block notice itself into companyAbout.
     // A null response means a same-document navigation, which is fine.
+    if (nav && response) nav.status = response.status();
     if (response && !response.ok()) {
       // ...unless it is a bot-check interstitial, which is transient: the
       // challenge sets a clearance cookie on this context and the NEXT request
@@ -504,6 +520,7 @@ async function harvest(page: Page, url: string, patient = false): Promise<PageHa
       // rather than the status, and for the fritz.co.il ordering that made the
       // homepage — always fetched first — the one page that ate the challenge.
       const challengeTitle = await page.title().catch(() => "");
+      if (nav) nav.title = challengeTitle;
       if (!isBotChallengePage(response.status(), challengeTitle)) return null;
 
       console.info(`[company-profile] bot-challenge retry: ${url}`);
@@ -511,6 +528,7 @@ async function harvest(page: Page, url: string, patient = false): Promise<PageHa
         waitUntil: "domcontentloaded",
         timeout: NAV_TIMEOUT_RETRY_MS,
       });
+      if (nav && response) nav.status = response.status();
       if (response && !response.ok()) return null;
     }
 
@@ -1209,10 +1227,12 @@ async function captureLogo(
       // http(s) only. It still goes through inspectImage(), the same gate the
       // server re-applies, so a logo that came from the page's own DOM is
       // validated exactly as strictly as one downloaded from a URL.
+      // A fetch that failed in transit is tried once more; a logo the gate
+      // rejected is an answer (scripts/lib/profileRun.ts retryOnce).
       const image =
         candidate.source === "inline-svg"
           ? decodeDataUrlImage(candidate.url)
-          : await fetchImage(candidate.url, referer);
+          : await retryOnce(() => fetchImage(candidate.url, referer), (e) => !(e instanceof ImageRejected));
 
       if (dryRun) {
         attempts.push({
@@ -1286,6 +1306,8 @@ interface CaptureResult {
   provenance: Record<string, string>;
   logoAttempts: LogoOutcome["attempts"];
   error?: string;
+  /** What the homepage load said: the probe's refusal test (scripts/lib/profileRun.ts). */
+  homeNav?: NavNote;
 }
 
 /**
@@ -1313,6 +1335,8 @@ async function captureSite(
     replaceFields: string[];
     patient?: boolean;
     writeEmpty?: boolean;
+    /** --probe only: the user agent to load the pages as (none: the default). */
+    probeUserAgent?: string;
   },
 ): Promise<CaptureResult> {
   const result: CaptureResult = {
@@ -1338,8 +1362,14 @@ async function captureSite(
     return result;
   }
 
-  // --probe has no site row behind it, so it always runs with defaults.
-  const overrides = site.status === "PROBE" ? undefined : await browserOverridesFor(site.id);
+  // --probe has no site row behind it: defaults, or the user agent it was
+  // given (or retries with, scripts/lib/profileRun.ts).
+  const overrides =
+    site.status === "PROBE"
+      ? opts.probeUserAgent
+        ? { userAgent: opts.probeUserAgent }
+        : undefined
+      : await browserOverridesFor(site.id);
   if (overrides) result.provenance.browserOverrides = "site config";
 
   const { context, page } = await (
@@ -1385,6 +1415,9 @@ async function captureSite(
   try {
     // --- 1. Homepage ------------------------------------------------------
     let homepage: PageHarvest | null = null;
+    // What the homepage loads said, for the probe's refusal test.
+    const homeNav: NavNote = {};
+    result.homeNav = homeNav;
 
     // An operator-supplied homepage is AUTHORITATIVE and tried first. It exists
     // precisely for the sites where derivation cannot work — an ATS board whose
@@ -1398,7 +1431,7 @@ async function captureSite(
     // hardcoded copy with no further edit.
     const supplied = site.companyHomepageUrl?.trim() || MANUAL_PROFILE[site.id]?.homepage;
     if (supplied) {
-      homepage = await harvest(page, supplied, opts.patient);
+      homepage = await harvest(page, supplied, opts.patient, homeNav);
       if (homepage) {
         result.provenance.homepage = `operator-supplied (${supplied})`;
       } else {
@@ -1410,12 +1443,14 @@ async function captureSite(
 
     // Only guess when no usable homepage was supplied.
     for (const candidate of homepage ? [] : deriveHomepageCandidates(site.siteUrl)) {
-      homepage = await harvest(page, candidate, opts.patient);
+      homepage = await harvest(page, candidate, opts.patient, homeNav);
       if (homepage) {
         result.provenance.homepage = `derived from siteUrl (${candidate})`;
         break;
       }
     }
+    // A refusal page served with 200 ("Request Rejected") is a refusal too.
+    if (homepage) homeNav.bodyText = homepage.bodyText.slice(0, 200);
 
     // An ATS-hosted careers page, or a homepage that would not load: fall back
     // to what the careers page itself points at.
@@ -1936,7 +1971,8 @@ async function main() {
   // (src/lib/operatorFields.ts): kept, unless named here. Checked before
   // anything runs, so a misspelt name stops the run.
   const replaceFields = parseReplaceFields(process.argv);
-  const useLlm = !flag("no-llm");
+  // The model only on --llm, dry run and real run alike (scripts/lib/profileRun.ts).
+  const useLlm = llmRequested(process.argv);
   const concurrency = intArg("concurrency", 3);
   const outFile = arg("out");
   // Records an attempt that found nothing, stamping companyProfileAt and so
@@ -1970,14 +2006,25 @@ async function main() {
         const site = sites[index];
         let result: CaptureResult;
         try {
-          result = await captureSite(browser, site, cities, {
-            dryRun,
-            force,
-            useLlm,
-            replaceLogo,
-            replaceFields,
-            writeEmpty,
-          });
+          const capture = (probeUserAgent?: string) =>
+            captureSite(browser, site, cities, {
+              dryRun,
+              force,
+              useLlm,
+              replaceLogo,
+              replaceFields,
+              writeEmpty,
+              probeUserAgent,
+            });
+          if (site.status === "PROBE") {
+            // The probe's identity: --probe-ua or the default, then once more
+            // as desktop Chrome when refused (scripts/lib/profileRun.ts).
+            const probed = await probeWithIdentityRetry(capture, (r) => isRefusedNav(r.homeNav), arg("probe-ua"));
+            result = probed.result;
+            if (probed.retried) (result.notes ??= []).push("the first identity was refused; this result is desktop Chrome's");
+          } else {
+            result = await capture();
+          }
 
           // One retry, more patient, for a capture that came back empty. The
           // first attempt wrote nothing (see isThinCapture), so this cannot
@@ -2053,6 +2100,13 @@ function logResult(r: CaptureResult): void {
   }
   for (const note of r.notes ?? []) {
     console.log(`[company-profile]   NOTE ${note}`);
+  }
+  // A value the model gave, printed whole and marked, on the dry run too, so
+  // the look before a capture sees what the capture would write.
+  for (const [field, value] of [["about", f.companyAbout], ["address", f.companyHqAddress]] as const) {
+    if (r.provenance[field] === "llm" && value) {
+      console.log(`[company-profile]   MODEL ${field} (the model's, not the page's): ${value}`);
+    }
   }
 
   // Only worth printing when it failed — a successful upload is self-evident.
