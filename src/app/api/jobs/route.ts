@@ -126,7 +126,10 @@ export async function GET(request: NextRequest) {
         where,
         skip,
         take: pagination.pageSize,
-        orderBy: { createdAt: "desc" },
+        // A site's rows share one or two createdAt values, so createdAt alone
+        // leaves their order open and pages overlap and skip (report fixes 3,
+        // item 2): the id makes it total.
+        orderBy: [{ createdAt: "desc" }, { id: "desc" }],
         include: {
           site: {
             select: { id: true, siteUrl: true },
