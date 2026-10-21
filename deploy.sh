@@ -194,6 +194,17 @@ docker run --rm --network "$NETWORK" \
   -e DATABASE_URL="postgresql://postgres:${POSTGRES_PASSWORD}@db:5432/scrapnew" \
   "${COMPOSE_PROJECT}-worker" node_modules/.bin/prisma migrate deploy
 
+# The Place table from "CSV files/city.csv", for the public site (report fixes
+# 3, item 18; scripts/sync-places.ts). The worker image carries neither scripts/
+# nor the CSV, so both are mounted read-only from the tree this deploy shipped.
+# Deliberately NOT `|| true`: a sync that fails fails the deploy.
+echo "==> Syncing the Place table from city.csv..."
+docker run --rm --network "$NETWORK" \
+  -e DATABASE_URL="postgresql://postgres:${POSTGRES_PASSWORD}@db:5432/scrapnew" \
+  -v "$REMOTE_DIR/scripts:/app/scripts:ro" \
+  -v "$REMOTE_DIR/CSV files:/app/CSV files:ro" \
+  "${COMPOSE_PROJECT}-worker" node_modules/.bin/tsx scripts/sync-places.ts
+
 echo "==> Starting services..."
 docker compose up -d
 

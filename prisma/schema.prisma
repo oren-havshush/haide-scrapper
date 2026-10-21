@@ -578,3 +578,21 @@ model GuardedRunRequest {
   @@index([status, requestedAt])
   @@index([siteId])
 }
+
+/// Every place in "CSV files/city.csv", for the public site (report fixes 3,
+/// item 18): it keeps its own city list and reads this table nightly, so a row
+/// added to the CSV reaches it without a note. Filled by scripts/sync-places.ts,
+/// which deploy.sh runs right after the migrations; nothing of ours reads it.
+/// Upserted by name, never deleted: a row gone from the CSV stays here,
+/// reported, for the owner (the public site's filter may still point at it).
+model Place {
+  /// The verbatim city.csv value.
+  name      String   @id
+  /// The region row's name for a town, kibbutz, moshav, zone or base; null for
+  /// the nine region rows themselves and for the nationwide row.
+  region    String?
+  /// The CSV's kind: town, kibbutz, moshav, zone, base, region or nationwide.
+  kind      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
