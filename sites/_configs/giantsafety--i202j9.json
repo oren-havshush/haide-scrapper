@@ -1,0 +1,66 @@
+{
+  "_exportedAt": "2026-10-21T12:55:40.757Z",
+  "_note": "Mirror of the live config. The DB is authoritative; the worker never reads this file. setupScript lives alongside in <slug>.setup.js.",
+  "id": "cmvi2q47r00iu01ox8mi202j9",
+  "siteUrl": "http://www.giantsafety.co.il/page/3/%D7%93%D7%A8%D7%95%D7%A9%D7%99%D7%9D.aspx",
+  "companyName": "ענק הבטיחות בע\"מ",
+  "status": "ACTIVE",
+  "setupScriptFile": "giantsafety--i202j9.setup.js",
+  "pageFlow": [],
+  "fieldMappings": {
+    "_meta": {
+      "lane": null,
+      "limits": null,
+      "savedAt": "2026-10-21T12:16:10.436Z",
+      "pagination": null,
+      "formCapture": null,
+      "listingUrls": null,
+      "locationMap": {
+        "Unknown": null,
+        "יבנה": "יבנה"
+      },
+      "itemSelector": "#haide-jobs-root [data-haide-job]",
+      "acceptedGates": null,
+      "minPublishDate": null,
+      "minPublishDays": null,
+      "revealSelector": null,
+      "listingSelector": null,
+      "applyLoginReason": null,
+      "browserOverrides": null,
+      "loadMoreSelector": null,
+      "locationFallback": null,
+      "originalMappings": null,
+      "applyRequiresLogin": false
+    },
+    "title": {
+      "source": "MANUAL",
+      "selector": ".__ai-title",
+      "confidence": 1,
+      "capturedOnUrl": "http://www.giantsafety.co.il/page/3/%D7%93%D7%A8%D7%95%D7%A9%D7%99%D7%9D.aspx"
+    },
+    "location": {
+      "source": "MANUAL",
+      "selector": ".__ai-location",
+      "confidence": 1,
+      "capturedOnUrl": "http://www.giantsafety.co.il/page/3/%D7%93%D7%A8%D7%95%D7%A9%D7%99%D7%9D.aspx"
+    },
+    "description": {
+      "source": "MANUAL",
+      "selector": ".__ai-description",
+      "confidence": 1,
+      "capturedOnUrl": "http://www.giantsafety.co.il/page/3/%D7%93%D7%A8%D7%95%D7%A9%D7%99%D7%9D.aspx"
+    },
+    "requirements": {
+      "source": "MANUAL",
+      "selector": ".__ai-requirements",
+      "confidence": 1,
+      "capturedOnUrl": "http://www.giantsafety.co.il/page/3/%D7%93%D7%A8%D7%95%D7%A9%D7%99%D7%9D.aspx"
+    },
+    "applicationInfo": {
+      "source": "MANUAL",
+      "selector": ".__ai-apply-email",
+      "confidence": 1,
+      "capturedOnUrl": "http://www.giantsafety.co.il/page/3/%D7%93%D7%A8%D7%95%D7%A9%D7%99%D7%9D.aspx"
+    }
+  }
+}

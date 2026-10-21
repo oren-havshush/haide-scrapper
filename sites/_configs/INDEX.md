@@ -30,6 +30,7 @@ refused. This is how `listingUrls` gets back too: on a site whose Pages column i
 | A-One Legal Recruitment | ACTIVE | 9 | 12716 | 1 | `a-one--g9b9ce` |
 | AGAS 3K | ACTIVE | 4 | 1049 | 1 | `agas--vfl5da` |
 | AIG | ACTIVE | 5 | 2625 | 1 | `aig--7dete3` |
+| AT&T Israel R&D Center | ACTIVE | 10 | 12787 | 1 | `comeet--qc7yjo` |
 | Aerohandling | ACTIVE | 7 | 3693 | 1 | `aerohandling--jp4y4x` |
 | AudioCodes | ACTIVE | 8 | 6346 | 1 | `audiocodes--llp8dl` |
 | BDO | ACTIVE | 10 | 2810 | 1 | `bdo-career-hunterhrms--dgrgrm` |
@@ -56,6 +57,7 @@ refused. This is how `listingUrls` gets back too: on a site whose Pages column i
 | Fritz | ACTIVE | 5 | 5110 | 1 | `fritz--wafrzk` |
 | G STAT | ACTIVE | 5 | 1682 | 1 | `g-stat--yvpgzk` |
 | Gal HR \| גל אייץ׳ אר | ACTIVE | 8 | 14138 | 1 | `gal-hr--rtt4e5` |
+| GSB GROUP | ACTIVE | 6 | 13249 | 1 | `gsbgroup--fqnzk4` |
 | Gtech | ACTIVE | 6 | 4590 | 1 | `gtech--7udl8v` |
 | HOLO/OR | ACTIVE | 5 | 4393 | 1 | `holoor--q060ns` |
 | Hylabs | ACTIVE | 4 | 502 | 1 | `hylabs--gyocvt` |
@@ -154,11 +156,13 @@ refused. This is how `listingUrls` gets back too: on a site whose Pages column i
 | דומיסיל יבוא וייצוא בע"מ | ACTIVE | 6 | 5566 | 1 | `domicile--chpkcu` |
 | דיוטי פרי ג'יימס ריצ'רדסון | ACTIVE | 6 | 4985 | 1 | `adamtotal--dj7gwo` |
 | דלקו יבואנים | ACTIVE | 6 | 4709 | 1 | `delco--jot0bp` |
+| דלתות פנדור | ACTIVE | 7 | 13600 | 1 | `app-civi--5u2rbo` |
 | האקדמית רמת גן | ACTIVE | 5 | 1124 | 1 | `landing-iac--3cdlhs` |
 | הארה תוכניות העשרה בע"מ | ACTIVE | 6 | 6423 | 1 | `heara--xhar00` |
 | הבנק הבינלאומי | ACTIVE | 6 | 4541 | 1 | `fibi--4j7v1x` |
 | הד סינמה | ACTIVE | 6 | 3769 | 1 | `hedcinema--zq1d0i` |
 | הוגן, גינזבורג, יודלביץ' ושות' | ACTIVE | 6 | 4677 | 1 | `hgj--p5fawk` |
+| הולמס פלייס | ACTIVE | 5 | 4953 | 1 | `holmesplace--dnjp27` |
 | הורייזן טכנולוגיות | ACTIVE | 7 | 7395 | 1 | `horizontech--54azfy` |
 | החברה לאמנות ותרבות | ACTIVE | 5 | 1559 | 1 | `tarbut-herzliya--zvh6d2` |
 | החברה לשירותי איכות הסביבה | ACTIVE | 8 | 6846 | 1 | `enviro-services--4z2yxo` |
@@ -191,7 +195,9 @@ refused. This is how `listingUrls` gets back too: on a site whose Pages column i
 | יפאורה תבורי בע"מ | ACTIVE | 6 | 5295 | 1 | `jafora--zoe4h3` |
 | יקב טפרברג | ACTIVE | 3 | 889 | 1 | `teperbergwinery--unqlym` |
 | יקב סוכנויות ביטוח | ACTIVE | 6 | 2609 | 1 | `yekev--r6r2a9` |
+| ישקר | ACTIVE | 10 | 15896 | 1 | `iscar--4sv61r` |
 | ישראייר | ACTIVE | 5 | 363 | 1 | `lp-vp4-me--qo0him` |
+| ישראכרט | ACTIVE | 9 | 9012 | 1 | `isracard--1z9muq` |
 | ישרוטל | ACTIVE | 6 | 7421 | 1 | `isrotel--dkz1ac` |
 | כלי זמר | ACTIVE | 6 | 5974 | 1 | `kley-zemer--t2o5co` |
 | כלל | ACTIVE | 7 | 1460 | 1 | `clalbit--tz9kd4` |
@@ -254,6 +260,7 @@ refused. This is how `listingUrls` gets back too: on a site whose Pages column i
 | עמית לוגיסטיקה ושילוח בינלאומי | ACTIVE | 8 | 11926 | 1 | `amit--zckr5h` |
 | עמיתים | ACTIVE | 9 | 6461 | 1 | `amitim--cjmqz5` |
 | ענבי ציון | ACTIVE | 7 | 4070 | 1 | `anvei-zion--o0cjxq` |
+| ענק הבטיחות בע"מ | ACTIVE | 5 | 5920 | 1 | `giantsafety--i202j9` |
 | פוליכד | ACTIVE | 3 | 315 | 1 | `polycad--is4jw2` |
 | פלאפון | ACTIVE | 9 | 7981 | 1 | `adamtotal--4fg0y7` |
 | פליינג קרגו | ACTIVE | 9 | 7325 | 1 | `flying-cargo--pyuhhh` |
@@ -273,6 +280,7 @@ refused. This is how `listingUrls` gets back too: on a site whose Pages column i
 | קבוצת כהנא | ACTIVE | 6 | 2074 | 1 | `kahane--8cvjyo` |
 | קבוצת כלמוביל | ACTIVE | 6 | 5430 | 1 | `colmobil--39frf6` |
 | קבוצת לאופר | ACTIVE | 9 | 7440 | 1 | `laufer-group--m2z877` |
+| קבוצת לובינסקי | ACTIVE | 9 | 15940 | 1 | `lubinski--3ljddy` |
 | קבוצת קאופמן | ACTIVE | 6 | 9286 | 1 | `kaufman-group--u65nim` |
 | קבוצת שגריר שרותי רכב בעמ | ACTIVE | 6 | 2367 | 1 | `shagrir--i3nkhe` |
 | קבוצת שלמה | ACTIVE | 9 | 13868 | 1 | `shlomo--45qznp` |
