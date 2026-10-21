@@ -106,7 +106,7 @@ import {
 } from "./lib/city-csv";
 import { rasteriseSvgImgLogos } from "./lib/svg-img-logos";
 import { keepStoredLogo } from "./lib/logo-keep";
-import { keepOperatorFields, parseReplaceFields } from "../src/lib/operatorFields";
+import { captureQuery, keepOperatorFields, parseReplaceFields, withoutHumanHqAnswer } from "../src/lib/operatorFields";
 import { capturedHomepage } from "../src/lib/companyHomepage";
 import { fetchImage, ImageRejected, type FetchedImage } from "./lib/fetch-image";
 import { inspectImage } from "../src/lib/image-validate";
@@ -1775,7 +1775,7 @@ async function writeProfile(
   // left out of the payload, never sent as null (src/lib/operatorFields.ts).
   // Read fresh here, whichever way the site was resolved; --replace-field
   // lets a named one through.
-  const stored = await api<{ data: { companyOperatorFields?: string[] } }>(
+  const stored = await api<{ data: { companyOperatorFields?: string[]; companyHqCitySource?: string | null } }>(
     "GET",
     `/api/sites/${siteId}/company-profile`,
   );
@@ -1805,7 +1805,17 @@ async function writeProfile(
     (result.notes ??= []).push(note);
     console.log(`[company-profile] ${siteId}: ${note}`);
   }
-  await api("PUT", `/api/sites/${siteId}/company-profile${force ? "?force=1" : ""}`, payload);
+  // A person's "no HQ here" (companyHqCitySource operator:none) is an answer:
+  // city and address stay out of the payload (report fixes 3, item 12).
+  const sent = withoutHumanHqAnswer(payload, stored.data.companyHqCitySource);
+  if (sent !== payload) {
+    const note = "kept the hand-set HQ answer (operator:none): city and address not sent";
+    (result.notes ??= []).push(note);
+    console.log(`[company-profile] ${siteId}: ${note}`);
+  }
+  // Marked as the capture's write, so the route does not record its values as
+  // hand-set (src/lib/operatorFields.ts captureQuery).
+  await api("PUT", `/api/sites/${siteId}/company-profile?${captureQuery(force)}`, sent);
 }
 
 /**

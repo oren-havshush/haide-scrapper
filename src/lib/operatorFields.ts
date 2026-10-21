@@ -65,3 +65,34 @@ export function parseReplaceFields(argv: readonly string[]): string[] {
   }
   return names;
 }
+
+// Report fixes 3, item 12 (the developer's 2026-10-19 to 20 report, item 7):
+// the company routes record operator fields for every hand write, the
+// operator token's included, not only the dashboard's. The capture
+// (scripts/company-profile.ts) marks its own writes with ?capture=1; those
+// are not hand writes and are never recorded.
+export const CAPTURE_WRITE_PARAM = "capture";
+
+/** The capture's query string for its PUT, with --force when given. */
+export function captureQuery(force: boolean): string {
+  return `${CAPTURE_WRITE_PARAM}=1${force ? "&force=1" : ""}`;
+}
+
+/** True when the write is the capture's own (?capture=1). */
+export function isCaptureWrite(params: URLSearchParams): boolean {
+  return params.get(CAPTURE_WRITE_PARAM) === "1";
+}
+
+/**
+ * The capture's payload without city and address when the stored
+ * companyHqCitySource is operator:none: a person checked and found no HQ, an
+ * answer the capture must not overwrite. Omitted, not null: the write is
+ * presence-based, and a null would clear. Any other source is unchanged here
+ * (an authored city is re-emitted by the capture itself).
+ */
+export function withoutHumanHqAnswer<T extends Record<string, unknown>>(payload: T, hqCitySource: string | null | undefined): Partial<T> {
+  if (hqCitySource !== "operator:none") return payload;
+  const out: Record<string, unknown> = {};
+  for (const [k, v] of Object.entries(payload)) if (k !== "companyHqCity" && k !== "companyHqAddress") out[k] = v;
+  return out as Partial<T>;
+}

@@ -90,13 +90,15 @@ const read = (p: string) => readFileSync(join(ROOT, p), "utf8");
   assert(/companyOperatorFields: true/.test(sel), "the company-profile GET returns the list");
   assert(/export async function recordOperatorFields\(/.test(svc) && /nextOperatorFields\(/.test(svc), "the service records the list with nextOperatorFields");
 
-  for (const [route, call] of [
-    ["src/app/api/sites/[id]/company-profile/route.ts", "recordOperatorFields(id, parsed.data)"],
-    ["src/app/api/sites/[id]/company-homepage/route.ts", "recordOperatorFields(id, { companyHomepageUrl: site.companyHomepageUrl })"],
+  // Every hand write records the list, the operator token's too (report fixes
+  // 3, item 12); the capture's own write (?capture=1) does not. The rule's own
+  // test is src/lib/operatorWrites.test.ts.
+  for (const [route, guarded] of [
+    ["src/app/api/sites/[id]/company-profile/route.ts", "if (!isCaptureWrite(request.nextUrl.searchParams)) await recordOperatorFields(id, parsed.data)"],
+    ["src/app/api/sites/[id]/company-homepage/route.ts", "await recordOperatorFields(id, { companyHomepageUrl: site.companyHomepageUrl })"],
   ] as const) {
     const src = read(route);
-    const at = src.indexOf(`if (isDashboardRequest(request)) await ${call}`);
-    assert(at > 0, `${route}: records the list on the dashboard's write only`);
+    assert(src.indexOf(guarded) > 0, `${route}: records the list on every hand write`);
   }
   assert(!read("src/app/api/sites/[id]/company-hq-city/route.ts").includes("recordOperatorFields("), "the HQ-city route keeps its own provenance and lists nothing");
 
