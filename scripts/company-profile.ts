@@ -82,7 +82,6 @@ import {
   deriveHomepageCandidates,
   emptyHarvest,
   chooseAboutText,
-  extractCompactAddressLines,
   extractOfficeListRuns,
   homepageFromLinks,
   homepageFromOgUrl,
