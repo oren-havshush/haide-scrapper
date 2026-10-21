@@ -21,6 +21,8 @@
     "test:locations": "tsx src/lib/locations.test.ts && tsx scripts/cityCsv.test.ts",
     "sync:skills": "node scripts/sync-addsite2.mjs",
     "check:skills": "node scripts/sync-addsite2.mjs --check",
+    "sync:template": "node scripts/compact-form-template.mjs",
+    "check:template": "node scripts/compact-form-template.mjs --check",
     "postinstall": "prisma generate"
   },
   "dependencies": {
