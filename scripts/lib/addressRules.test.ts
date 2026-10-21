@@ -67,13 +67,15 @@ function assert(cond: boolean, msg: string) {
   assert(headOfficeBlock("צפון\nרחוב הנמל 2, חיפה") === null, "a regional heading alone is no head-office block");
 }
 
-// company-profile.ts: addressFrom tries the head-office block before the whole text.
+// addressFrom (scripts/lib/company-extract.ts since report fixes 3, item 14)
+// decides by the head-office block when there is one, and the whole text only
+// when there is none; scripts/lib/headOfficeAddress.test.ts tests it on pages.
 {
-  const src = readFileSync(join(__dirname, "..", "company-profile.ts"), "utf8");
-  const start = src.indexOf("function addressFrom(");
+  const src = readFileSync(join(__dirname, "company-extract.ts"), "utf8");
+  const start = src.indexOf("export function addressFrom(");
   const body = src.slice(start, src.indexOf("\n}\n", start));
-  assert(/const head = headOfficeBlock\(text\);/.test(body) && /addressFromText\(head, cities\)/.test(body), "addressFrom tries the head-office block first");
-  assert(/return addressFromText\(text, cities\);/.test(body), "then the whole text");
+  assert(/const head = headOfficeBlock\(text\);/.test(body) && /if \(head\) return addressFromText\(head, cities\);/.test(body), "addressFrom answers from the head-office block when there is one");
+  assert(/return addressFromText\(text, cities\);/.test(body), "and from the whole text when there is none");
 }
 
 if (failures > 0) {

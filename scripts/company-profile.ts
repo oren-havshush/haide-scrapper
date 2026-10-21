@@ -74,18 +74,16 @@ if (!process.env.PLAYWRIGHT_BROWSERS_PATH) {
 }
 
 import {
+  addressFrom,
   addressFromJsonLd,
+  chooseLogoVariant,
   classifyProfileStatus,
   collectLogoCandidates,
-  compactAddressAnchored,
   deriveHomepageCandidates,
   emptyHarvest,
   extractAboutText,
-  extractAddressLine,
   extractCompactAddressLines,
-  extractLabelledAddress,
   extractOfficeListRuns,
-  headOfficeBlock,
   homepageFromLinks,
   homepageFromOgUrl,
   isBotChallengePage,
@@ -94,6 +92,7 @@ import {
   modelAboutRejection,
   modelAddressUsable,
   parseJsonLdOrganization,
+  READS_ON_WHITE,
   pickAboutUrl,
   pickContactUrl,
   pickDirectionsUrl,
@@ -1219,7 +1218,21 @@ async function captureLogo(
   dryRun: boolean,
 ): Promise<LogoOutcome> {
   const attempts: LogoOutcome["attempts"] = [];
+  const failed = (candidate: LogoCandidate, error: unknown) =>
+    attempts.push({
+      url: candidate.url,
+      source: candidate.source,
+      result:
+        error instanceof ImageRejected
+          ? `rejected (${error.reason})`
+          : `error: ${error instanceof Error ? error.message : String(error)}`,
+    });
 
+  // The candidates that pass the gate, in rank order. The first that reads on
+  // a white page ends the search, as before; a light one keeps looking for a
+  // dark copy of the same logo further down (chooseLogoVariant; report fixes
+  // 3, item 14: afi-hotels.co.il's white copy won over its colour logo).
+  const passed: Array<{ candidate: LogoCandidate; image: FetchedImage; visibility: LogoVisibility | null }> = [];
   for (const candidate of candidates.slice(0, 6)) {
     try {
       // A rasterised inline <svg> arrives as PNG bytes already in hand, so
@@ -1233,22 +1246,38 @@ async function captureLogo(
         candidate.source === "inline-svg"
           ? decodeDataUrlImage(candidate.url)
           : await retryOnce(() => fetchImage(candidate.url, referer), (e) => !(e instanceof ImageRejected));
+      const visibility = await measureLogoVisibility(page, image.bytes, image.contentType);
+      passed.push({ candidate, image, visibility });
+      if (passed.length === 1 && (visibility === null || visibility.onWhite >= READS_ON_WHITE)) break;
+    } catch (error) {
+      failed(candidate, error);
+    }
+  }
 
-      if (dryRun) {
-        attempts.push({
-          url: candidate.url,
-          source: candidate.source,
-          result: `would upload (${image.inspection.format} ${image.inspection.width}x${image.inspection.height}, ${image.inspection.byteLength}B)`,
-        });
-        return {
-          logoPath: "(dry-run)",
-          sourceUrl: image.finalUrl,
-          candidateUrl: candidate.url,
-          visibility: await measureLogoVisibility(page, image.bytes, image.contentType),
-          attempts,
-        };
-      }
+  const chosen = chooseLogoVariant(
+    passed.map((p) => ({ width: p.image.inspection.width, height: p.image.inspection.height, onWhite: p.visibility?.onWhite ?? null })),
+  );
+  if (chosen > 0) {
+    const light = passed[0]!;
+    attempts.push({
+      url: light.candidate.url,
+      source: light.candidate.source,
+      result: `passed, but light on white (${Math.round((light.visibility?.onWhite ?? 0) * 100)}% clears 3:1): a dark copy of the same shape taken instead`,
+    });
+  }
+  // The chosen one first, then the rest in rank order, should an upload fail.
+  const order = passed.length ? [passed[chosen]!, ...passed.filter((_, i) => i !== chosen)] : [];
 
+  for (const { candidate, image, visibility } of order) {
+    if (dryRun) {
+      attempts.push({
+        url: candidate.url,
+        source: candidate.source,
+        result: `would upload (${image.inspection.format} ${image.inspection.width}x${image.inspection.height}, ${image.inspection.byteLength}B)`,
+      });
+      return { logoPath: "(dry-run)", sourceUrl: image.finalUrl, candidateUrl: candidate.url, visibility, attempts };
+    }
+    try {
       const uploaded = await api<{ data: { logoPath: string } }>(
         "POST",
         `/api/sites/${siteId}/company-logo`,
@@ -1259,22 +1288,9 @@ async function captureLogo(
         },
       );
       attempts.push({ url: candidate.url, source: candidate.source, result: "uploaded" });
-      return {
-        logoPath: uploaded.data.logoPath,
-        sourceUrl: image.finalUrl,
-        candidateUrl: candidate.url,
-        visibility: await measureLogoVisibility(page, image.bytes, image.contentType),
-        attempts,
-      };
+      return { logoPath: uploaded.data.logoPath, sourceUrl: image.finalUrl, candidateUrl: candidate.url, visibility, attempts };
     } catch (error) {
-      attempts.push({
-        url: candidate.url,
-        source: candidate.source,
-        result:
-          error instanceof ImageRejected
-            ? `rejected (${error.reason})`
-            : `error: ${error instanceof Error ? error.message : String(error)}`,
-      });
+      failed(candidate, error);
     }
   }
 
@@ -1860,60 +1876,8 @@ async function writeProfile(
  * string manipulation and is present even when every page load failed, so
  * counting it would make an empty capture look successful.
  */
-/**
- * An address from one page's text: structural pattern first, then a labelled
- * one gated through city.csv.
- *
- * The gate is what makes the labelled path safe to use on prose-heavy pages. A
- * privacy policy is full of lines like "כתובת: Flying-cargo.com" and mentions
- * of other companies; requiring the value to contain a city.csv entry keeps the
- * real registered address and discards the rest. The structural pattern needs
- * no such gate because a street noun plus a house number is already specific.
- */
-function addressFrom(text: string, cities: CityList): string | null {
-  // Among several office blocks, the one headed מטה or הנהלה first
-  // (headOfficeBlock; brooks-keret's דרום block won over its מטה block).
-  const head = headOfficeBlock(text);
-  if (head) {
-    const fromHead = addressFromText(head, cities);
-    if (fromHead) return fromHead;
-  }
-  return addressFromText(text, cities);
-}
-
-function addressFromText(text: string, cities: CityList): string | null {
-  // A SCANNED address must name a city.csv city, or it is not an address.
-  //
-  // "רחוב"/"דרך" are ordinary Hebrew words as well as street nouns, so the
-  // structural pattern fires on any prose that happens to put a number after
-  // one. Three of thirteen addresses in one 20-site batch were not addresses:
-  //   "דרך בחר שנה 1969"                      — a year-picker label
-  //   "דרך שהיא. 3. הרשאה לדיוור…"            — "בכל דרך שהיא", legal prose
-  //   "2025 by CNBC and Statista"             — an award caption
-  // None produced a wrong city, because the gate rejected them — which is
-  // exactly the signal. Real addresses in this fleet carry their city; text
-  // that carries none is prose that merely looks like an address.
-  //
-  // JSON-LD addresses skip this: addressFromJsonLd() reads a structured
-  // PostalAddress the company published itself, which needs no corroboration.
-  const structural = extractAddressLine(text);
-  if (structural && matchCityInAddress(structural, cities)) return structural;
-
-  for (const candidate of extractLabelledAddress(text)) {
-    if (matchCityInAddress(candidate, cities)) return candidate;
-  }
-
-  // Last: a short line that names a city but no street. Only reachable once the
-  // two stricter patterns have failed, and still gated, so the risk is a line
-  // that is short, carries a digit AND names a real city yet is not an address.
-  // That risk happened twice in dry run 2 (cellcom's "סגירת רשתות דור 2/3",
-  // iaa's gallery caption), so since round 2 something before the city must
-  // anchor it: a street word, an address label or a house number.
-  for (const candidate of extractCompactAddressLines(text)) {
-    if (matchCityInAddress(candidate, cities) && compactAddressAnchored(candidate, cities)) return candidate;
-  }
-  return null;
-}
+// addressFrom (one page's text to an address) lives in
+// scripts/lib/company-extract.ts, where its head-office rule is tested.
 
 /**
  * The one Israeli city in an international company's office list.

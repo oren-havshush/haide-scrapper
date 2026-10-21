@@ -916,19 +916,21 @@ export function extractCompactAddressLines(text: string, maxCandidates = 6): str
     if (line.length < 8 || whole.length > 90) continue;
     if (!/\d/.test(whole)) continue;
 
+    // A PO box is not where a company is, on every path (item 3), and its words
+    // do not count against the caps below (report fixes 3, item 14: a P.O. box
+    // took eladsoft's מטה line over the ten-word cap).
+    const kept = stripPoBox(line);
+
     // An address is either COMMA-SEPARATED or very short. A sentence is
     // neither, and this is what separates them: polycad's homepage says
     // "ב-3 משמרות להבטחת רציפות יצור" — "in 3 shifts to ensure production
     // continuity" — where משמרות is both the word for shifts and a real kibbutz
     // in city.csv. Five words, no comma, and it was being stored as the HQ.
-    const words = line.split(" ").filter(Boolean);
-    if (!line.includes(",") && words.length > 4) continue;
+    const words = kept.split(" ").filter(Boolean);
+    if (!kept.includes(",") && words.length > 4) continue;
     if (words.length > 10) continue;
-    if (!/\p{L}/u.test(line)) continue;
+    if (!/\p{L}/u.test(kept)) continue;
     if (BRANCH_LINE.test(line)) continue;
-
-    // A PO box is not where a company is, on every path (item 3).
-    const kept = stripPoBox(line);
     if (kept && !out.includes(kept)) out.push(kept);
     if (out.length >= maxCandidates) break;
   }
@@ -1068,7 +1070,72 @@ export function headOfficeBlock(text: string): string | null {
     const second = (words[1] ?? "").replace(/[^\p{L}]/gu, "").toLowerCase();
     const isHead = HEAD_OFFICE_HEADING.has(lead) || (lead === "משרדי" && HEAD_OFFICE_HEADING.has(second)) || (lead === "head" && second === "office");
     if (!isHead) continue;
-    return lines.slice(i, i + 1 + OFFICE_BLOCK_LINES).join("\n");
+    // The block ends where the next office's heading begins (report fixes 3,
+    // item 14: eladsoft's "סניף ירושלים" followed its מטה block within five
+    // lines, and its street line was taken as the head office's).
+    const block = [lines[i]];
+    for (const next of lines.slice(i + 1, i + 1 + OFFICE_BLOCK_LINES)) {
+      if (BRANCH_LINE.test(next.replace(/\s+/g, " ").trim())) break;
+      block.push(next);
+    }
+    return block.join("\n");
+  }
+  return null;
+}
+
+/**
+ * An address from one page's text: structural pattern first, then a labelled
+ * one gated through city.csv.
+ *
+ * The gate is what makes the labelled path safe to use on prose-heavy pages. A
+ * privacy policy is full of lines like "כתובת: Flying-cargo.com" and mentions
+ * of other companies; requiring the value to contain a city.csv entry keeps the
+ * real registered address and discards the rest. The structural pattern needs
+ * no such gate because a street noun plus a house number is already specific.
+ *
+ * Among several office blocks, the one headed מטה or הנהלה decides
+ * (headOfficeBlock; brooks-keret's דרום block won over its מטה block). When
+ * the page has one, the answer is that block's address or none, never the
+ * rest of the page: eladsoft's מטה line was not read, and the page's next
+ * address, a Jerusalem branch, became the head office (report fixes 3, item
+ * 14; LRN-HQ-11).
+ */
+export function addressFrom(text: string, cities: CityList): string | null {
+  const head = headOfficeBlock(text);
+  if (head) return addressFromText(head, cities);
+  return addressFromText(text, cities);
+}
+
+function addressFromText(text: string, cities: CityList): string | null {
+  // A SCANNED address must name a city.csv city, or it is not an address.
+  //
+  // "רחוב"/"דרך" are ordinary Hebrew words as well as street nouns, so the
+  // structural pattern fires on any prose that happens to put a number after
+  // one. Three of thirteen addresses in one 20-site batch were not addresses:
+  //   "דרך בחר שנה 1969"                      — a year-picker label
+  //   "דרך שהיא. 3. הרשאה לדיוור…"            — "בכל דרך שהיא", legal prose
+  //   "2025 by CNBC and Statista"             — an award caption
+  // None produced a wrong city, because the gate rejected them — which is
+  // exactly the signal. Real addresses in this fleet carry their city; text
+  // that carries none is prose that merely looks like an address.
+  //
+  // JSON-LD addresses skip this: addressFromJsonLd() reads a structured
+  // PostalAddress the company published itself, which needs no corroboration.
+  const structural = extractAddressLine(text);
+  if (structural && matchCityInAddress(structural, cities)) return structural;
+
+  for (const candidate of extractLabelledAddress(text)) {
+    if (matchCityInAddress(candidate, cities)) return candidate;
+  }
+
+  // Last: a short line that names a city but no street. Only reachable once the
+  // two stricter patterns have failed, and still gated, so the risk is a line
+  // that is short, carries a digit AND names a real city yet is not an address.
+  // That risk happened twice in dry run 2 (cellcom's "סגירת רשתות דור 2/3",
+  // iaa's gallery caption), so since round 2 something before the city must
+  // anchor it: a street word, an address label or a house number.
+  for (const candidate of extractCompactAddressLines(text)) {
+    if (matchCityInAddress(candidate, cities) && compactAddressAnchored(candidate, cities)) return candidate;
   }
   return null;
 }
@@ -1263,11 +1330,49 @@ export function inlineLogoRejection(logo: InlineLogo, pageUrl: string): string |
     // purpose: maccabi4u's blue and BDO's white logos are each 100% one
     // colour, and both are correct.
     const [r, g, b] = logo.colour.dominant;
-    if (logo.colour.dominantShare >= SILHOUETTE_MIN_SHARE && Math.max(r, g, b) <= SILHOUETTE_MAX_CHANNEL) {
+    // Not a mark that links home and names itself a logo, in a colour of its
+    // own: that is the company's logo in its own dark colour (report fixes 3,
+    // item 14: isracard's navy rgb(16,24,32), "לוגו ישראכרט"). Pure black is
+    // still the stylesheet's default fill, ness-tech's case, refused.
+    const ownColour = !(r === 0 && g === 0 && b === 0);
+    const namedHomeLogo = ownColour && linksHome(logo, pageUrl) && /logo|לוגו/.test(logo.ancestry ?? "");
+    if (logo.colour.dominantShare >= SILHOUETTE_MIN_SHARE && Math.max(r, g, b) <= SILHOUETTE_MAX_CHANNEL && !namedHomeLogo) {
       return "a single-colour black silhouette";
     }
   }
   return null;
+}
+
+/** Two sizes of one shape: aspect ratios within this share of each other. */
+const SAME_SHAPE_TOLERANCE = 0.05;
+function sameShape(a: { width: number; height: number }, b: { width: number; height: number }): boolean {
+  return Math.abs(a.width / a.height / (b.width / b.height) - 1) <= SAME_SHAPE_TOLERANCE;
+}
+
+/** A logo this share of whose pixels clears 3:1 on white reads on a white page. */
+export const READS_ON_WHITE = 0.5;
+/** A light copy and a dark copy of one logo: aspect ratios within this share. */
+const VARIANT_SHAPE_TOLERANCE = 0.12;
+
+/**
+ * Which of the logo candidates that passed the gate to keep, by index, in
+ * the order they were tried (report fixes 3, item 14: afi-hotels.co.il's
+ * header holds its colour logo and a white copy, and the white one won). The
+ * first, unless it does not read on a white page and a later one of the same
+ * shape does: then that one, the dark variant of the same logo. onWhite is
+ * the share of opaque pixels that clear 3:1 on white (measureLogoVisibility);
+ * null when it could not be measured, which keeps the first.
+ */
+export function chooseLogoVariant(passing: Array<{ width: number; height: number; onWhite: number | null }>): number {
+  const first = passing[0];
+  if (!first || first.onWhite === null || first.onWhite >= READS_ON_WHITE || !first.width || !first.height) return 0;
+  const aspect = first.width / first.height;
+  for (let i = 1; i < passing.length; i++) {
+    const c = passing[i]!;
+    if (c.onWhite === null || c.onWhite < READS_ON_WHITE || !c.width || !c.height) continue;
+    if (Math.abs(c.width / c.height / aspect - 1) <= VARIANT_SHAPE_TOLERANCE) return i;
+  }
+  return 0;
 }
 
 /** A raster this much one colour, and that colour this dark, is a silhouette. */
@@ -1349,9 +1454,15 @@ export function collectLogoCandidates(
     out.push({ url: logo.dataUrl, source: "inline-svg", score: 12 });
   }
 
+  // Each image candidate's size, for the larger-copy rule below.
+  const imgSize = new Map<string, { width: number; height: number }>();
   for (const img of harvest.images) {
     const hint = `${img.alt} ${img.context} ${img.src}`.toLowerCase();
-    if (!/logo|לוגו/.test(hint)) continue;
+    // A header or nav image that links home is a candidate by where it sits,
+    // named a logo or not (report fixes 3, item 14: tema.co.il's and
+    // gsil.co.il's header logos name nothing).
+    const homeHeader = img.inHeader && linksHome(img, harvest.url);
+    if (!/logo|לוגו/.test(hint) && !homeHeader) continue;
     // The same placement rules as an inline SVG: cellcom.co.il's TV-channel
     // carousel image had "logos" only in its file name and won.
     if (logoPlacementRejection(img, harvest.url) !== null) continue;
@@ -1366,7 +1477,19 @@ export function collectLogoCandidates(
     if (img.inHeader && linksHome(img, harvest.url)) score += HEADER_HOME_BONUS;
     // Tracking pixels and spacers dressed up as logos.
     if (img.width > 0 && img.width < 32) score -= 6;
+    const before = out.length;
     add(img.src, "header-img", score);
+    if (out.length > before && img.width > 0 && img.height > 0) imgSize.set(out[out.length - 1]!.url, { width: img.width, height: img.height });
+  }
+
+  // The larger copy of the same logo over the smaller (report fixes 3, item
+  // 14: gsil.co.il): of two image candidates of the same shape, the larger
+  // gets one point, enough to win a tie and no more.
+  for (const c of out) {
+    const s = imgSize.get(c.url);
+    if (!s) continue;
+    const larger = [...imgSize.entries()].some(([u, o]) => u !== c.url && sameShape(s, o) && s.width * s.height > o.width * o.height);
+    if (larger) c.score += 1;
   }
 
   // og:image is meant for social cards, so it is often a banner rather than a

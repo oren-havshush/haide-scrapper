@@ -1208,8 +1208,9 @@ function testCompactAddressAnchor() {
   assert.equal(compactAddressAnchored("אופקים מיקוד: 84747", cities), false, "a city and a postal code alone are not anchored");
   assert.equal(compactAddressAnchored("ת.ד. 1325 באר טוביה", cities), false, "a PO box number is not a house number");
 
-  const source = readFileSync(join(__dirname, "..", "company-profile.ts"), "utf8");
-  const fn = source.slice(source.indexOf("function addressFrom("), source.indexOf("function officeListCity("));
+  // addressFrom lives here since report fixes 3, item 14.
+  const source = readFileSync(join(__dirname, "company-extract.ts"), "utf8");
+  const fn = source.slice(source.indexOf("export function addressFrom("), source.indexOf("export function addressFromJsonLd("));
   assert.ok(/compactAddressAnchored\(candidate, cities\)/.test(fn), "addressFrom() gates the compact path with compactAddressAnchored");
 }
 
