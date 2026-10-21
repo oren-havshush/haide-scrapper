@@ -62,3 +62,11 @@ export function planMirrorWrite(
 export function writesIndex(opts: { oneSite: string | undefined }): boolean {
   return !opts.oneSite;
 }
+
+/**
+ * One INDEX.md table cell: a "|" in the text is written "\|", so a company
+ * name such as "Gal HR | גל אייץ׳ אר" stays one cell (report fixes 3, item 11).
+ */
+export function mdCell(text: string): string {
+  return text.replace(/\|/g, String.raw`\|`);
+}

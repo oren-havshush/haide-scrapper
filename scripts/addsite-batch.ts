@@ -78,6 +78,7 @@ import { scriptIdRules } from "./lib/verifyJobIds";
 import { checkedLine, pageAllJobs, siteJobsPageReader } from "./lib/jobPager";
 import { verifyLocationsGate, type LocationJob } from "./lib/locationGate";
 import { loadCityList } from "./lib/city-csv";
+import { DOM_RECIPES, domVendorSignal, fingerprintByHost, knownIframeHost, redirectOf } from "./lib/vendorFingerprints";
 import { compareSetupScript } from "./lib/verifyConfig";
 import { flattenStoredConfig, mergeConfigPatch, type StoredConfig } from "../src/lib/configPatch";
 import { FIX_FIELDS } from "../src/lib/fixFields";
@@ -1278,6 +1279,8 @@ interface NavResult {
   error?: string;
   htmlLen: number;
   html: string;
+  /** The page the browser ended on, after any redirect. */
+  finalUrl?: string;
 }
 
 async function tryNav(chromium: any, url: string, opts: any): Promise<NavResult> {
@@ -1297,6 +1300,7 @@ async function tryNav(chromium: any, url: string, opts: any): Promise<NavResult>
       challengeReason: verdict.reason,
       htmlLen: html.length,
       html,
+      finalUrl: p.url(),
     };
   } catch (e: any) {
     return { ok: false, error: String(e?.message || e).split("\n")[0], htmlLen: 0, html: "" };
@@ -1643,38 +1647,9 @@ interface Fingerprint {
   embeddedBoardUrl?: string;
 }
 
-function fingerprintByHost(host: string): { vendor: string; recipe: string } | null {
-  const h = host.toLowerCase();
-  if (h.endsWith("myworkdayjobs.com") || h.includes(".myworkdayjobs."))
-    return { vendor: "workday", recipe: "recipes/spa-frameworks.md#workday" };
-  if (h.endsWith("greenhouse.io") || h.includes("boards.greenhouse"))
-    return { vendor: "greenhouse", recipe: "recipes/spa-frameworks.md#greenhouse" };
-  if (h.endsWith("lever.co")) return { vendor: "lever", recipe: "recipes/spa-frameworks.md#lever" };
-  if (h.includes("comeet.com") || h.endsWith("comeet.co"))
-    return { vendor: "comeet", recipe: "recipes/spa-frameworks.md#comeet" };
-  if (h.includes("icims.com")) return { vendor: "icims", recipe: "recipes/spa-frameworks.md#icims" };
-  if (h.includes("smartrecruiters.com"))
-    return { vendor: "smartrecruiters", recipe: "recipes/spa-frameworks.md#smartrecruiters" };
-  if (h.includes("ashbyhq.com")) return { vendor: "ashby", recipe: "recipes/spa-frameworks.md#ashby" };
-  // Civi board host (app.civi.co.il/promos/...). Onboarding the board URL directly
-  // fingerprints GREEN → #civi recipe (listing-only setupScript, no skeleton). LRN-SPA-8.
-  if (h.endsWith("civi.co.il")) return { vendor: "civi", recipe: "recipes/spa-frameworks.md#civi" };
-  return null;
-}
-
-// Known ATS hosts that a company careers page commonly embeds via <iframe>.
-const ATS_IFRAME_HOSTS: { re: RegExp; vendor: string; recipe: string }[] = [
-  { re: /(^|\.)myworkdayjobs\.com$/i, vendor: "workday", recipe: "recipes/spa-frameworks.md#workday" },
-  { re: /(^|\.)greenhouse\.io$/i, vendor: "greenhouse", recipe: "recipes/spa-frameworks.md#greenhouse" },
-  { re: /(^|\.)lever\.co$/i, vendor: "lever", recipe: "recipes/spa-frameworks.md#lever" },
-  { re: /(^|\.)comeet\.(com|co)$/i, vendor: "comeet", recipe: "recipes/spa-frameworks.md#comeet" },
-  { re: /(^|\.)icims\.com$/i, vendor: "icims", recipe: "recipes/spa-frameworks.md#icims" },
-  { re: /(^|\.)smartrecruiters\.com$/i, vendor: "smartrecruiters", recipe: "recipes/spa-frameworks.md#smartrecruiters" },
-  { re: /(^|\.)ashbyhq\.com$/i, vendor: "ashby", recipe: "recipes/spa-frameworks.md#ashby" },
-  // Civi boards are commonly embedded in a company careers page via a cross-origin
-  // <iframe src="https://app.civi.co.il/promos/id=...&src=...">. LRN-SPA-8.
-  { re: /(^|\.)civi\.co\.il$/i, vendor: "civi", recipe: "recipes/spa-frameworks.md#civi" },
-];
+// The vendor fingerprints (by host, by iframe host, by page) live in
+// scripts/lib/vendorFingerprints.ts, where every recipe they name is checked
+// against addsite3-recipes/ (report fixes 3, item 11).
 
 // Detect a jobs board embedded via a cross-origin <iframe> on a wrapper careers
 // page. The worker can't read into a cross-origin iframe, so the wrapper page
@@ -1698,11 +1673,6 @@ function findEmbeddedBoardUrl(html: string, pageHost: string): EmbeddedBoard | n
   return embeddedBoardFrom(frames, pageHost, knownIframeHost);
 }
 
-/** A host on ATS_IFRAME_HOSTS, with its vendor and recipe, or null. */
-function knownIframeHost(host: string): { vendor: string; recipe: string } | null {
-  const a = ATS_IFRAME_HOSTS.find((x) => x.re.test(host));
-  return a ? { vendor: a.vendor, recipe: a.recipe } : null;
-}
 
 /**
  * A WordPress job post type confirmed by the site's own REST index: GET
@@ -1780,22 +1750,29 @@ async function cmdFingerprint(argv: string[]): Promise<void> {
     embedded = findEmbeddedBoardUrl(html, host);
     if (/greenhouse\.io\/embed|grnhse_app|boards\.greenhouse/i.test(html)) {
       vendor = "greenhouse";
-      recipe = "recipes/spa-frameworks.md#greenhouse";
+      recipe = DOM_RECIPES.greenhouse;
       lane = "GREEN";
       signals.push("greenhouse embed in DOM");
     } else if (/comeet\.co|positionItem|data-qa="position/i.test(html)) {
       vendor = "comeet";
-      recipe = "recipes/spa-frameworks.md#comeet";
+      recipe = DOM_RECIPES.comeet;
       lane = "GREEN";
       signals.push("comeet markup in DOM");
     } else if (/api\.lever\.co|lever-jobs/i.test(html)) {
       vendor = "lever";
-      recipe = "recipes/spa-frameworks.md#lever";
+      recipe = DOM_RECIPES.lever;
       lane = "GREEN";
       signals.push("lever markup in DOM");
+    } else if (domVendorSignal(html)) {
+      // Wix, a Wix Blog board, AdamTotal behind the employer's front end.
+      const dv = domVendorSignal(html)!;
+      vendor = dv.vendor;
+      recipe = dv.recipe;
+      lane = "GREEN";
+      signals.push(dv.signal);
     } else if (/elementor-widget|data-elementor-type/i.test(html)) {
       vendor = "wordpress-elementor";
-      recipe = "recipes/setupscript-patterns.md#elementor";
+      recipe = DOM_RECIPES.elementor;
       lane = "YELLOW";
       signals.push("Elementor detected");
     } else if (/wp-content|wp-json|name="generator" content="WordPress/i.test(html)) {
@@ -1902,9 +1879,15 @@ async function cmdTriage(argv: string[]): Promise<void> {
     return;
   }
 
+  // 1b. A redirect is reported as one, with the host the browser ended on,
+  //     and that host is the one fingerprinted (report fixes 3, item 11:
+  //     isracard.co.il, dbil.bamboohr.com).
+  const landed = (needsUaOverride ? reach.real?.finalUrl : bare.finalUrl) ?? "";
+  const redirect = landed ? redirectOf(normalizeUrl(url), landed) : null;
+
   // 2. Known framework? (host first; DOM signal second from the fetched HTML)
   const cache = readPatterns();
-  const byHost = fingerprintByHost(host);
+  const byHost = fingerprintByHost(redirect?.host ?? host);
   let vendor = byHost?.vendor ?? "unknown";
   let recipe: string | null = byHost?.recipe ?? null;
   /** What triage saw but did not act on, for the onboarder. */
@@ -1912,10 +1895,16 @@ async function cmdTriage(argv: string[]): Promise<void> {
   if (!byHost && listingHtml) {
     if (/grnhse_app|boards\.greenhouse|greenhouse\.io\/embed/i.test(listingHtml)) {
       vendor = "greenhouse";
-      recipe = "recipes/spa-frameworks.md#greenhouse";
+      recipe = DOM_RECIPES.greenhouse;
     } else if (/positionItem|data-qa="position/i.test(listingHtml)) {
       vendor = "comeet";
-      recipe = "recipes/spa-frameworks.md#comeet";
+      recipe = DOM_RECIPES.comeet;
+    } else if (domVendorSignal(listingHtml)) {
+      // Wix, a Wix Blog board, AdamTotal behind the employer's front end.
+      const dv = domVendorSignal(listingHtml)!;
+      vendor = dv.vendor;
+      recipe = dv.recipe;
+      notes.push(dv.signal);
     } else if (/wp-content|wp-json|name="generator" content="WordPress/i.test(listingHtml)) {
       // A job post type by its word list, not "job" alone (H5; TOP BIT's
       // vacancies), and only once the REST index lists it (report 2026-10-18,
@@ -1990,9 +1979,11 @@ async function cmdTriage(argv: string[]): Promise<void> {
     reason = `no obvious repeating listing structure (top cluster ${topCluster}) — needs human eyes`;
   }
 
+  if (redirect) reason += ` (redirects to ${redirect.host})`;
   const out = {
     url,
     host,
+    ...(redirect ? { redirect: { from: url, to: redirect.to, host: redirect.host } } : {}),
     lane,
     reason,
     reachable,

@@ -28,7 +28,7 @@
  */
 import * as fs from "fs";
 import * as path from "path";
-import { planMirrorWrite, writesIndex } from "./lib/configMirror";
+import { mdCell, planMirrorWrite, writesIndex } from "./lib/configMirror";
 
 const BASE = "https://scrapper.haide-jobs.co.il";
 const PAGE_SIZE = 100; // LRN-API-1: >100 silently returns []
@@ -183,11 +183,9 @@ async function main() {
     // How many listing pages this site scrapes: 1 unless it has listingUrls.
     const listingUrls = (meta as { listingUrls?: unknown } | undefined)?.listingUrls;
     const pages = Array.isArray(listingUrls) && listingUrls.length > 0 ? listingUrls.length : 1;
-    index.push(
-      `| ${site.companyName ?? "*(none)*"} | ${site.status} | ${fieldCount} | ${
-        setupScript ? `${setupScript.length}` : "—"
-      } | ${pages} | \`${slug}\` |`,
-    );
+    // Every cell escaped: a "|" in a company name split its row (Gal HR).
+    const cells = [site.companyName ?? "*(none)*", site.status, `${fieldCount}`, setupScript ? `${setupScript.length}` : "—", `${pages}`, `\`${slug}\``];
+    index.push(`| ${cells.map(mdCell).join(" | ")} |`);
   }
 
   index.sort();

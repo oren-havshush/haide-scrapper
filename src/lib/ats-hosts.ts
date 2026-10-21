@@ -13,7 +13,7 @@
  * between its careers URL and its own domain, so deriving a homepage from the
  * hostname would point every employer on that vendor at the vendor itself.
  *
- * Kept in sync with fingerprintByHost() in scripts/addsite-batch.ts.
+ * Kept in sync with fingerprintByHost() in scripts/lib/vendorFingerprints.ts.
  */
 
 const ATS_HOSTS: readonly RegExp[] = [
@@ -59,6 +59,9 @@ const ATS_HOSTS: readonly RegExp[] = [
   // report 2026-10-18, item 3: mega-talents). Unlisted, a TalentFlow board
   // would have given TalentFlow's identity as the employer's.
   /(^|\.)talentflow\.co\.il$/i,
+  // BambooHR (report fixes 3, item 11: triage now fingerprints it): an
+  // employer's board is <tenant>.bamboohr.com, the vendor's own domain.
+  /(^|\.)bamboohr\.com$/i,
 ];
 
 export function isAtsHost(host: string): boolean {
