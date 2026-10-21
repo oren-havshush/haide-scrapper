@@ -5396,3 +5396,18 @@ async function failScrapeRun(
     ...(details.scheduled ? { scheduled: true } : {}),
   };
 }
+
+/**
+ * The worker's own listing read, for scripts/setup-script-dryrun.ts (report
+ * fixes 3, item 16b): a dry run of a setup script is only worth anything if it
+ * reads the page exactly as the worker does. Read-only helpers; nothing here
+ * writes, and the dry run never calls anything that does.
+ */
+export const workerListingRead = {
+  parseFieldMappings,
+  parsePageFlow,
+  getStructuralSelectors,
+  getSetupScript,
+  getBrowserOverrides,
+  extractRawFieldsFromListingPageOnce,
+};
