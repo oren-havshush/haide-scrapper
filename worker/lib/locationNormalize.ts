@@ -30,7 +30,7 @@
  *
  * Measured on the live fleet: canonical 35.6% -> 98.5%.
  */
-import { IL_CANONICAL } from "../data/il-places";
+import { IL_CANONICAL, IL_PLACE_KIND } from "../data/il-places";
 import { SCAN_NEIGHBOUR_BEFORE, SCAN_ONLY_DENYLIST, SCAN_STOP_AFTER } from "../data/scan-markers";
 
 const CANONICAL: ReadonlySet<string> = new Set(IL_CANONICAL);
@@ -47,6 +47,32 @@ export function squash(s: string): string {
     .replace(/\s*-\s*/g, "-")
     .replace(/\s+/g, " ")
     .trim();
+}
+
+/**
+ * Industrial zones (report fixes 3, item 6; LRN-LOC-28). city.csv's zone rows
+ * ("אזור תעשיה כנות", "אזור תעשיה ברקן") each have a town row of the same
+ * name, so "א.ת כנות" read as the youth village כנות, a different place. Each
+ * zone, as [the row, its name after the prefix], from the kind column.
+ */
+const ZONE_PREFIX_ROW = "אזור תעשיה ";
+const ZONES: ReadonlyArray<readonly [string, RegExp]> = Object.entries(IL_PLACE_KIND)
+  .filter(([row, kind]) => kind === "zone" && row.startsWith(ZONE_PREFIX_ROW))
+  .map(([row]) => {
+    const name = row.slice(ZONE_PREFIX_ROW.length).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    // The abbreviated form with a dot (and a second dot), or the two spelled
+    // forms, then the zone's name, not run into a longer word.
+    return [row, new RegExp(`(?:א\\.ת\\.?|אזור התעשייה|אזור תעשיה)\\s*${name}(?![\\p{L}])`, "gu")] as const;
+  });
+
+/**
+ * A place written as the zone prefix and a name that has a zone row becomes
+ * that row, verbatim; everything else is left as it is.
+ */
+export function rewriteIndustrialZones(s: string): string {
+  let out = s;
+  for (const [row, re] of ZONES) out = out.replace(re, row);
+  return out;
 }
 
 /** A "מיקום:" / "מיקום המשרה:" label that leaked into the value. */
@@ -408,7 +434,7 @@ function dropPartOfAName(hay: string, hits: ScanHit[]): ScanHit[] {
  * this, never resolvePart.
  */
 export function resolveExactLocation(part: string): string | null {
-  const p = squash(part);
+  const p = rewriteIndustrialZones(squash(part));
   if (!p) return null;
   if (CANONICAL.has(p)) return p;
   if (LOCATION_ALIAS[p]) return LOCATION_ALIAS[p];
@@ -458,7 +484,9 @@ export function normalizeLocations(raw: string | null | undefined): string[] {
   if (!original || original === "Unknown") return [];
   if (CANONICAL.has(original)) return [original];
 
-  const s = squash(original).replace(LABEL, "").trim();
+  // A zone written with its prefix becomes the zone row before anything else
+  // reads it, so neither the parts nor the scan see the town's name alone.
+  const s = rewriteIndustrialZones(squash(original).replace(LABEL, "").trim());
   if (!s) return [];
 
   const out: string[] = [];
@@ -497,6 +525,11 @@ export function isCanonicalLocation(v: string): boolean {
  * the drift src/lib/ats-hosts.ts was created to end.
  */
 export function isRegionLocation(v: string): boolean {
+  // city.csv's kind column decides for its own rows: an industrial zone
+  // ("אזור תעשיה כנות", kind zone) starts with אזור and is a place, not a
+  // region (report fixes 3, item 6). A value off the list keeps the prefix rule.
+  const kind = IL_PLACE_KIND[v];
+  if (kind) return kind === "region" || kind === "nationwide";
   return /^אזור\s/.test(v) || v === NATIONWIDE_LOCATION;
 }
 

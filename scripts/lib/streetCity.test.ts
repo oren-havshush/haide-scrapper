@@ -41,6 +41,16 @@ const cases: Array<[string, string | null]> = [
   // A segment that does not open with a street word is unchanged.
   ["פתח תקווה", "פתח תקווה"],
   ["ספיר 1 הרצליה", "הרצליה"],
+  // Report fixes 3, item 6 (LRN-LOC-28): an industrial zone with its prefix is
+  // the zone row, both rows; gsbgroup's head office, as printed.
+  ["אדום 33, אזור התעשייה כנות", "אזור תעשיה כנות"],
+  ["אדום 33, א.ת כנות", "אזור תעשיה כנות"],
+  ["רחוב אדום 33 א.ת כנות", "אזור תעשיה כנות"],
+  ["אזור תעשיה ברקן", "אזור תעשיה ברקן"],
+  ["רחוב התעשייה 5, א.ת ברקן", "אזור תעשיה ברקן"],
+  ["אזור התעשייה ברקן", "אזור תעשיה ברקן"],
+  // The bare name is still the town.
+  ["הדקל 3, כנות", "כנות"],
 ];
 for (const [address, want] of cases) {
   const got = matchCityInAddress(address, cities);

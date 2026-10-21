@@ -30,6 +30,7 @@ import {
   LOCATION_EN,
   isRegionLocation,
   normalizeLocations,
+  rewriteIndustrialZones,
 } from "../../worker/lib/locationNormalize";
 import { cityColumn } from "../../worker/lib/cityCsvParse";
 
@@ -242,6 +243,9 @@ export function matchCityInAddress(address: string, cities: CityList): string | 
 
   const segments = address
     .split(/[,|;\n•]|\s{2,}/)
+    // An industrial zone with its prefix is the zone row before the building
+    // nouns ("אזור התעשייה") are stripped (report fixes 3, item 6).
+    .map((s) => rewriteIndustrialZones(s))
     .map((s) => afterStreetAndNumber(s))
     .filter((s): s is string => s !== null)
     .map((s) => cleanAddressSegment(s))

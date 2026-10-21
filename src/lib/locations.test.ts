@@ -233,5 +233,28 @@ console.log("\n# IL_CANONICAL still equals CSV files/city.csv");
   }
 }
 
+// Report fixes 3, item 6 (2026-10-21, LRN-LOC-28): an industrial zone written
+// with its prefix is the zone row, never the town of the same name. gsbgroup
+// prints "א.ת כנות" and "אזור התעשייה כנות"; both gave the youth village כנות.
+console.log("\n# industrial zones");
+{
+  for (const [zone, town] of [["אזור תעשיה כנות", "כנות"], ["אזור תעשיה ברקן", "ברקן"]]) {
+    const name = town;
+    for (const written of [`א.ת ${name}`, `א.ת. ${name}`, `אזור התעשייה ${name}`, `אזור תעשיה ${name}`]) {
+      eq(normalizeLocations(written), [zone], `"${written}" is the zone row`);
+    }
+    eq(normalizeLocations(`רחוב אדום 33, א.ת ${name}`), [zone], `with a street before it`);
+    eq(normalizeLocations(name), [town], `the bare name is still the town`);
+    assert(!isRegionLocation(zone), `${zone} is not a region (a zone row is a place)`);
+  }
+  // The kind column decides, not the prefix: every region row is still a region.
+  for (const r of ["אזור צפון", "אזור דרום", "אזור מרכז", "אזור שפלה", "אזור ירושלים", "אזור אילת", "אזור השרון", "אזור רמת הגולן", "אזור יהודה ושומרון", "פריסה ארצית"]) {
+    assert(isRegionLocation(r), `${r} is still a region`);
+  }
+  assert(!isRegionLocation("תל אביב-יפו"), "a town is not");
+  // A prefix before a name with no zone row gives nothing new.
+  assert(!normalizeLocations("א.ת חולון").some((v) => v.startsWith("אזור")), "no zone row for חולון: no zone invented");
+}
+
 console.log(failures === 0 ? "\nALL PASS" : `\n${failures} FAILURE(S)`);
 process.exit(failures === 0 ? 0 : 1);
