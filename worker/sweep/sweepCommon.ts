@@ -216,6 +216,8 @@ export async function closeSweep(args: {
   bigLane?: { logText: string } | null;
   /** The nightly fleet's report only: the On hold block (sweepReport.ts ReportOptions.holds). */
   holds?: HoldReport;
+  /** The policy sweep's report only: the Apply refusals section (worker/lib/applyRefusals.ts). */
+  applyRefusals?: string[] | null;
 }, deps: CloseSweepDeps = {}): Promise<string> {
   const update = deps.update ?? ((a: SweepRowUpdate) => prisma.scrapeSweep.update(a));
   const send = deps.send ?? ((a: Parameters<typeof sendSweepMail>[0]) => sendSweepMail(a));
@@ -251,6 +253,7 @@ export async function closeSweep(args: {
     fixQueue,
     bigLane: args.bigLane,
     holds: args.holds,
+    applyRefusals: args.applyRefusals,
     // The thresholds the worker's undersize guard read, so the report's drop
     // rule is the same rule.
     dropThresholds: {

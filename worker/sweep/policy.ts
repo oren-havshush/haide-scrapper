@@ -35,6 +35,8 @@ import {
   toPolicyReportItem,
   type PolicySiteResult,
 } from "../lib/policyOutcome";
+import { renderRefusalsSection, runApplyRefusals } from "../lib/applyRefusals";
+import { prismaRefusalsStore } from "../lib/applyRefusalsStore";
 import {
   cancelPendingJobById,
   closeSweep,
@@ -279,6 +281,19 @@ async function realRun(trigger: string): Promise<number> {
     if (policyConfig.jobDelayMs > 0) await sleep(policyConfig.jobDelayMs);
   }
 
+  // The public site's apply refusals (report fixes 3, item 17), after the
+  // policy checks, as one step: whatever it meets, the sweep carries on and
+  // closes. Not configured or unavailable changes nothing in the fix queue.
+  let applyRefusals: string[];
+  try {
+    const summary = await runApplyRefusals(prismaRefusalsStore, { log });
+    applyRefusals = renderRefusalsSection(summary);
+    log(`[policy] apply refusals: ${applyRefusals[1]?.trim() ?? ""}`);
+  } catch (err) {
+    applyRefusals = ["Apply refusals", `  the step failed: ${(err as Error).message.slice(0, 200)}; the fix queue is as the step left it`];
+    log(`[policy] apply refusals failed: ${(err as Error).message}`);
+  }
+
   // Through the shared close, so the verdict line, the stored logText and the
   // journal are one string, and the counters come from the items.
   const logText = await closeSweep({
@@ -290,6 +305,7 @@ async function realRun(trigger: string): Promise<number> {
     status: halt ? "FAILED" : "COMPLETED",
     haltReason: halt,
     items: results.map(toPolicyReportItem),
+    applyRefusals,
   });
 
   // Last, so journalctl ends with the whole report.

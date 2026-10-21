@@ -188,6 +188,8 @@ export type ReportOptions = {
    * On hold block and names held sites in the skipped list as before.
    */
   holds?: HoldReport;
+  /** The policy sweep's Apply refusals section, its lines as rendered (worker/lib/applyRefusals.ts). */
+  applyRefusals?: string[] | null;
 };
 
 /** A site held or paused out of the sweeps, as the On hold block names it. */
@@ -960,6 +962,14 @@ export function renderSweepReport(
     } else {
       for (const l of opts.bigLane.logText.split("\n")) lines.push(l ? `  ${l}` : "");
     }
+  }
+
+  // --- Apply refusals ------------------------------------------------------
+  // The policy sweep's read of the public site's refusals (report fixes 3,
+  // item 17; worker/lib/applyRefusals.ts), as that module renders it.
+  if (opts.applyRefusals && opts.applyRefusals.length > 0) {
+    lines.push("");
+    lines.push(...opts.applyRefusals);
   }
 
   // --- Fix queue -----------------------------------------------------------

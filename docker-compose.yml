@@ -38,6 +38,12 @@ x-worker-env: &worker-env
   HAIDE_MAILER_URL: ${HAIDE_MAILER_URL:-}
   HAIDE_MAILER_TOKEN: ${HAIDE_MAILER_TOKEN:-}
   SWEEP_EMAIL_TO: ${SWEEP_EMAIL_TO:-info@haide-jobs.co.il}
+  # The public site's apply refusals, read once a night by the policy sweep
+  # (worker/lib/applyRefusals.ts). The URL is not a secret; the token lives
+  # only in the server's .env. Unset, the reader says "not configured" and
+  # does nothing.
+  PUBLIC_SITE_REFUSALS_URL: ${PUBLIC_SITE_REFUSALS_URL:-https://haide-frontend.vercel.app/api/crawler/apply-refusals}
+  PUBLIC_SITE_REFUSALS_TOKEN: ${PUBLIC_SITE_REFUSALS_TOKEN:-}
 
 services:
   db:
