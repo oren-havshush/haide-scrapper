@@ -66,6 +66,7 @@ import { DOM_FIELD_EXTRACT_SOURCE } from "../lib/domFieldExtract";
 import { applyLocationMap, LOCATION_FROM_MAP, readAllMatches, readLocationMap, unmappedLabelWarnings } from "../lib/locationMap";
 import { APPLY_LOGIN_SKIP_NOTE, APPLY_LOGIN_FAILURE_CATEGORY } from "../lib/applyGate";
 import { applyJobIdFallback, jobIdKind } from "../lib/synthesizeJobId";
+import { normalizedDedupKey, rawDedupFingerprint, recordsForSeeds, seedsFromCards } from "../lib/cardSeeds";
 import { getApplyRequiresLogin, isUsableMappingEntry, mapsExternalJobId } from "../lib/fieldMappings";
 import {
   BUDGET_EXHAUSTED,
@@ -1647,7 +1648,6 @@ function dedupeAndCapRawFields(
   for (const raw of rawFieldsList) {
     const title = (raw["title"] ?? "").trim().toLowerCase();
     const location = (raw["location"] ?? "").trim().toLowerCase();
-    const externalJobId = (raw["externalJobId"] ?? "").trim().toLowerCase();
     const rawUrl = (raw["title_href"] ?? raw["_detailUrl"] ?? "").trim().toLowerCase();
     const url = isUsableUrl(rawUrl) ? rawUrl : "";
 
@@ -1667,8 +1667,11 @@ function dedupeAndCapRawFields(
     // jobs from different pages into one — exactly as it always could. Left
     // as-is deliberately: it is not a regression, and the sites that reach
     // this tier are the ones with the least to key on.
-    const listingUrl = (raw[LISTING_URL_TAG] ?? "").trim().toLowerCase();
-    const fingerprint = url || externalJobId || `${title}|${location}|${listingUrl}`;
+    //
+    // A multi-step flow's card carries its identity (address and title), and
+    // that ranks first: two cards sharing a detail address are two jobs
+    // (worker/lib/cardSeeds.ts).
+    const fingerprint = rawDedupFingerprint(raw, url);
     if (seen.has(fingerprint)) {
       if (deduped.length <= 1) {
         console.warn(
@@ -1798,10 +1801,11 @@ async function extractRawFieldsWithPageFlow(
   );
 
   // Multi-page: collect all detail page URLs first.
-  // We also remember each URL's containing listing item so we can extract
-  // listing-scope fields from it before navigating away.
+  // We also read each card's listing-scope fields before navigating away:
+  // every card, not the first per URL, since two cards can share a detail
+  // address and still be two jobs (worker/lib/cardSeeds.ts).
   const detailUrls: string[] = [];
-  const listingFieldsByUrl: Record<string, Record<string, string>> = {};
+  const cards: Array<{ url: string; fields: Record<string, string> }> = [];
   const detailStep = pageFlow[1];
   const linkSel = detailStep.action !== "navigate" ? detailStep.action : null;
 
@@ -1843,7 +1847,7 @@ async function extractRawFieldsWithPageFlow(
 
   // The URL-collection block below runs per listing page. With pagination,
   // we run it for each clicked page, accumulating into the same detailUrls /
-  // listingFieldsByUrl. With no pagination, this loop runs once.
+  // cards. With no pagination, this loop runs once.
   //
   // The ajax mode loads every page into the listing first (worker/lib/ajaxWalk.ts),
   // and its walk is recorded there; the loop below then runs once.
@@ -1948,7 +1952,8 @@ async function extractRawFieldsWithPageFlow(
           // Item is either the link itself or the closest itemSelector
           // ancestor (when itemSelector is configured). We fall back to
           // the link's parent.
-          if (Object.keys(listingFields).length > 0 && !listingFieldsByUrl[absUrl]) {
+          let fields: Record<string, string> = {};
+          if (Object.keys(listingFields).length > 0) {
             try {
               let itemHandle: import("playwright").ElementHandle<Element> | null = null;
               if (itemSelector) {
@@ -1960,12 +1965,13 @@ async function extractRawFieldsWithPageFlow(
                 itemHandle = await el.evaluateHandle((node) => (node as Element).parentElement ?? node) as import("playwright").ElementHandle<Element>;
               }
               if (itemHandle) {
-                listingFieldsByUrl[absUrl] = await extractListingFieldsFromItem(itemHandle);
+                fields = await extractListingFieldsFromItem(itemHandle);
               }
             } catch {
               // Listing-field extraction failed for this item — leave empty.
             }
           }
+          cards.push({ url: absUrl, fields });
         }
       } catch {
         // Skip items where URL extraction fails
@@ -1998,13 +2004,15 @@ async function extractRawFieldsWithPageFlow(
         if (href) {
           const absUrl = new URL(href, page.url()).toString();
           detailUrls.push(absUrl);
-          if (Object.keys(listingFields).length > 0 && !listingFieldsByUrl[absUrl]) {
+          let fields: Record<string, string> = {};
+          if (Object.keys(listingFields).length > 0) {
             try {
-              listingFieldsByUrl[absUrl] = await extractListingFieldsFromItem(element);
+              fields = await extractListingFieldsFromItem(element);
             } catch {
               // Listing-field extraction failed — leave empty.
             }
           }
+          cards.push({ url: absUrl, fields });
         }
       } catch {
         // Skip items where URL extraction fails
@@ -2057,12 +2065,12 @@ async function extractRawFieldsWithPageFlow(
   // refusal — a refused night must fetch nothing and carry nothing, and until
   // this split every detail page had already been paid for before the refusal
   // was even asked (worker/lib/detailPlan.ts). A seed is the card's
-  // listing-scope fields plus the URL its detail page lives at.
-  const seeds = uniqueUrls.map((url) => ({
-    ...(listingFieldsByUrl[url] ?? {}),
-    _detailUrl: url,
-    [PENDING_DETAIL_KEY]: "1",
-  }));
+  // listing-scope fields plus the URL its detail page lives at, one per card
+  // identity — address and title (worker/lib/cardSeeds.ts).
+  const seeds = seedsFromCards(cards, PENDING_DETAIL_KEY);
+  if (seeds.length > uniqueUrls.length) {
+    console.info(`[scrape] ${seeds.length} cards for ${uniqueUrls.length} detail URLs: cards that share an address stay separate jobs`);
+  }
   return dedupeAndCapRawFields(seeds, guard);
 }
 
@@ -2071,11 +2079,13 @@ async function extractRawFieldsWithPageFlow(
 // ---------------------------------------------------------------------------
 
 /**
- * Visit the detail page of each seed and return one raw record per visit,
- * seeded with the card's listing-scope fields. The loop is the one that used
- * to close extractRawFieldsWithPageFlow, moved unchanged; what changed is who
- * calls it and when — executeScrape, after the listing refusal, with only the
- * seeds the fetch-or-carry plan chose to fetch.
+ * Visit the detail page of each seed and return one raw record per SEED,
+ * aligned with `seeds` (null where the visit produced none), each seeded with
+ * its own card's listing-scope fields. An address two cards share is visited
+ * once (worker/lib/cardSeeds.ts). The loop is the one that used to close
+ * extractRawFieldsWithPageFlow, moved unchanged; what changed is who calls it
+ * and when — executeScrape, after the listing refusal, with only the seeds the
+ * fetch-or-carry plan chose to fetch.
  */
 async function visitDetailPages(
   page: Page,
@@ -2086,14 +2096,17 @@ async function visitDetailPages(
   setupScript: string | null,
   /** The run's guard, so a setup script cut off at its limit is recorded on the run. */
   guard: ExtractGuard | null = null,
-): Promise<Record<string, string>[]> {
+): Promise<Array<Record<string, string> | null>> {
   const { detailFields } = classifyFieldsByPage(fieldMappings, pageFlow);
   const detailStep = pageFlow[1]!;
   const rawFieldsList: Record<string, string>[] = [];
   const uniqueUrls: string[] = [];
+  // The first card for each address seeds its visit; recordsForSeeds gives
+  // every other card for that address its own record.
   const listingFieldsByUrl: Record<string, Record<string, string>> = {};
   for (const seed of seeds) {
     const url = seed._detailUrl ?? "";
+    if (url in listingFieldsByUrl) continue;
     uniqueUrls.push(url);
     const card = { ...seed };
     delete card[PENDING_DETAIL_KEY];
@@ -2321,7 +2334,7 @@ async function visitDetailPages(
     const card = listingFieldsByUrl[r._detailUrl ?? ""];
     if (card && card[LISTING_URL_TAG] && !r[LISTING_URL_TAG]) r[LISTING_URL_TAG] = card[LISTING_URL_TAG]!;
   }
-  return rawFieldsList;
+  return recordsForSeeds(seeds, rawFieldsList);
 }
 
 // ---------------------------------------------------------------------------
@@ -4434,7 +4447,9 @@ async function executeScrape(
       setupScript,
       runMode.extract,
     );
-    const visitedByUrl = new Map(visited.map((r) => [r._detailUrl ?? "", r]));
+    // Joined by the card (the seed itself), not by its address: two cards that
+    // share a detail page are two records (worker/lib/cardSeeds.ts).
+    const visitedBySeed = new Map(toFetch.map((seed, i) => [seed, visited[i] ?? null] as const));
 
     // Card order, as the listing showed it. A dead detail page produced no
     // record, and drops out here exactly as it always has.
@@ -4444,7 +4459,7 @@ async function executeScrape(
         detailRecords.push(buildCarriedRawFields(d.seed, d.stored));
         continue;
       }
-      const rec = visitedByUrl.get(d.seed._detailUrl ?? "");
+      const rec = visitedBySeed.get(d.seed);
       if (rec) detailRecords.push(stampFetched(rec, d.seed, configSavedAt, detailNow));
     }
 
@@ -4567,11 +4582,8 @@ async function executeScrape(
   const dedupSeen = new Set<string>();
   const recordsToPersist = validatedRecords.filter((r) => {
     if (!r.validation.isValid) return false;
-    const n = r.normalized;
-    const key =
-      n.externalJobId ||
-      n.url ||
-      `${(n.title || "").toLowerCase()}|${(n.location || "").toLowerCase()}`;
+    // id, then the card's identity, then the address, then title and location.
+    const key = normalizedDedupKey(r.normalized);
     if (!key || key === "|") return true;
     if (dedupSeen.has(key)) return false;
     dedupSeen.add(key);
