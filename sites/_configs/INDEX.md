@@ -157,6 +157,7 @@ refused. This is how `listingUrls` gets back too: on a site whose Pages column i
 | דיוטי פרי ג'יימס ריצ'רדסון | ACTIVE | 6 | 4985 | 1 | `adamtotal--dj7gwo` |
 | דלקו יבואנים | ACTIVE | 6 | 4709 | 1 | `delco--jot0bp` |
 | דלתות פנדור | ACTIVE | 7 | 13600 | 1 | `app-civi--5u2rbo` |
+| דן אנד ברדסטריט ישראל | ACTIVE | 11 | 10824 | 1 | `dbil-bamboohr--vbygwf` |
 | האקדמית רמת גן | ACTIVE | 5 | 1124 | 1 | `landing-iac--3cdlhs` |
 | הארה תוכניות העשרה בע"מ | ACTIVE | 6 | 6423 | 1 | `heara--xhar00` |
 | הבנק הבינלאומי | ACTIVE | 6 | 4541 | 1 | `fibi--4j7v1x` |
