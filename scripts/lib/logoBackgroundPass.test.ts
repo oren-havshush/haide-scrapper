@@ -24,13 +24,18 @@ const H = 100;
 let seed = 7;
 const next = () => (seed = (seed * 1103515245 + 12345) % 2147483648) % 256;
 
-/** A mark on the middle quarter; transparent pixels hide noise so every file clears 512 bytes. */
-function raw(mark: number[], field: "clear" | "white"): Buffer {
+/**
+ * A mark on the middle quarter; transparent pixels hide noise so every file
+ * clears 512 bytes. A lossless webp drops the colour of fully clear pixels, so
+ * "faint" puts the noise at alpha 1-31, which the rule still counts as transparent.
+ */
+function raw(mark: number[], field: "clear" | "faint" | "white"): Buffer {
   const out = Buffer.alloc(W * H * 4);
   for (let y = 0; y < H; y++) {
     for (let x = 0; x < W; x++) {
       const inMark = x >= 50 && x < 150 && y >= 25 && y < 75;
-      out.set(inMark ? mark : field === "white" ? [255, 255 - (x % 30), 255, 255] : [next(), next(), next(), 0], (y * W + x) * 4);
+      const back = field === "white" ? [255, 255 - (x % 30), 255, 255] : [next(), next(), next(), field === "faint" ? 1 + (next() % 31) : 0];
+      out.set(inMark ? mark : back, (y * W + x) * 4);
     }
   }
   return out;
@@ -58,7 +63,7 @@ function snapshot(dir: string): string {
   writeFileSync(join(dir, `${A}.png`), await img(raw([255, 255, 255, 255], "clear")).png({ compressionLevel: 0 }).toBuffer());
   writeFileSync(join(dir, `${B}.png`), await img(raw([30, 30, 30, 255], "clear")).png({ compressionLevel: 0 }).toBuffer());
   writeFileSync(join(dir, `${C}.jpg`), await img(raw([255, 255, 255, 255], "white")).jpeg({ quality: 100 }).toBuffer());
-  writeFileSync(join(dir, `${D}.webp`), await img(raw([255, 255, 255, 255], "clear")).webp({ lossless: true, exact: true }).toBuffer());
+  writeFileSync(join(dir, `${D}.webp`), await img(raw([255, 255, 255, 255], "faint")).webp({ lossless: true }).toBuffer());
   const sites = [
     { id: A, companyLogoPath: `/logos/${A}.png` },
     { id: B, companyLogoPath: `/logos/${B}.png` },

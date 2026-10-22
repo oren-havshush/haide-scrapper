@@ -113,13 +113,14 @@ const same = (a: Buffer | Uint8Array, b: Buffer | Uint8Array) => Buffer.compare(
 
   // 5. A white mark on transparency as webp: the composite is png, the original keeps .webp.
   const site5 = "cmlogobg00000000000000005";
-  // A flat lossless webp is a few dozen bytes, under MIN_LOGO_BYTES, so the
-  // hidden colour of the transparent pixels is noise, kept by `exact`.
+  // A flat lossless webp is a few dozen bytes, under MIN_LOGO_BYTES, and the
+  // encoder drops the colour of fully clear pixels, so the transparent field is
+  // noise at alpha 1-31: still transparent to the rule, kept by the encoder.
   const noisy = rgba(CLEAR, WHITE);
   let seed = 1;
   const next = () => (seed = (seed * 1103515245 + 12345) % 2147483648) % 256;
-  for (let i = 0; i < W * H; i++) if (noisy[i * 4 + 3] === 0) noisy.set([next(), next(), next()], i * 4);
-  const webp = new Uint8Array(await sharp(noisy, { raw: { width: W, height: H, channels: 4 } }).webp({ lossless: true, exact: true }).toBuffer());
+  for (let i = 0; i < W * H; i++) if (noisy[i * 4 + 3] === 0) noisy.set([next(), next(), next(), 1 + (next() % 31)], i * 4);
+  const webp = new Uint8Array(await sharp(noisy, { raw: { width: W, height: H, channels: 4 } }).webp({ lossless: true }).toBuffer());
   assert(webp.byteLength >= 512, `webp: the fixture clears the byte floor (${webp.byteLength})`);
   const s5 = await storeLogo(site5, webp, "image/webp");
   assert(s5.logoPath === `/logos/${site5}.png` && s5.background === "#1F2937", `webp: composited and stored as png (${s5.logoPath})`);

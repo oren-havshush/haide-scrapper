@@ -89,7 +89,7 @@ export function judgeLogoPixels(rgba: Uint8Array): LogoPixelVerdict {
   return { light, transparentShare, opaqueMeanLuminance, opaqueDarkShare };
 }
 
-type Sharp = (typeof import("sharp"))["default"];
+type Sharp = typeof import("sharp");
 let sharpModule: Promise<Sharp> | null = null;
 
 /** Loaded on first use, so a missing native build degrades to "unreadable", never a failed upload. */

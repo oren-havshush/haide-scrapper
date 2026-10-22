@@ -64,7 +64,10 @@ jobs:
 
       # sharp judges and composites light logos (src/lib/logo-background.ts). An
       # image without its native build would store every logo unchanged with only
-      # a console warning, so both images prove it composites one pixel.
+      # a console warning, so both images prove it composites one pixel. Our sharp
+      # is pinned to the version next depends on (0.34.5): with two versions the
+      # standalone trace put next's libvips at the top level and our binary nested,
+      # and the web image could not load it (run #380).
       - name: The web image composites with sharp
         run: |
           docker image inspect -f 'web image {{.Size}} bytes' scrapnew-web:${{ github.sha }}
