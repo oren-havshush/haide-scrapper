@@ -55,7 +55,10 @@ function norm(l) { return l.replace(/[\s:?\-–]+$/, '').replace(/\s+/g, ' ').tr
 
 // Area tag -> its region row (as the config's locationMap reads it); cue-line place -> [city.csv row, region].
 var M = 'אזור מרכז', N = 'אזור צפון';
-var TAG_REGION = { 'גוש דן': M, 'מרכז': M, 'צפון': N, 'כל הארץ': '*' };
+var TAG_REGION = { 'גוש דן': M, 'מרכז': M, 'צפון': N, 'כל הארץ': '*', 'חיפה והקריות': N };
+// A city plus a group is the city and the region (LRN-LOC-21): the tag is emitted as the two labels the
+// locationMap already maps (חיפה -> חיפה, צפון -> אזור צפון); a map value holds one row only.
+var TAG_SPLIT = { 'חיפה והקריות': ['חיפה', 'צפון'] };
 var CITY = { 'תל אביב': ['תל אביב-יפו', M], 'תל אביב-יפו': ['תל אביב-יפו', M], 'ת"א': ['תל אביב-יפו', M],
   'רמת החייל': ['תל אביב-יפו', M], 'חיפה': ['חיפה', N] };
 // All or nothing: a cue line with a part we cannot map verbatim yields no city.
@@ -122,7 +125,7 @@ document.querySelectorAll(ITEM).forEach(function (item) {
   var inside = cities.filter(function (cr) { return regions.indexOf('*') >= 0 || regions.indexOf(cr[1]) >= 0; });
   var locs;
   if (cities.length && (!tags.length || inside.length === cities.length)) locs = cities.map(function (cr) { return cr[0]; });
-  else locs = tags;
+  else locs = [].concat.apply([], tags.map(function (t) { return TAG_SPLIT[t] || [t]; }));
   if (locs.length) put(item, '__ai-location', locs.join(' | '));
 
   // Per-job apply blob: the request the page's submit really sends (FormData of the form + OrderNo + Token).

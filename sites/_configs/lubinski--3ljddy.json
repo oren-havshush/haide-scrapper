@@ -1,5 +1,5 @@
 {
-  "_exportedAt": "2026-10-21T12:55:39.588Z",
+  "_exportedAt": "2026-10-22T14:13:31.920Z",
   "_note": "Mirror of the live config. The DB is authoritative; the worker never reads this file. setupScript lives alongside in <slug>.setup.js.",
   "id": "cmvi4258w00k401ox5f3ljddy",
   "siteUrl": "https://www.lubinski.co.il/job/?",
@@ -11,7 +11,7 @@
     "_meta": {
       "lane": null,
       "limits": null,
-      "savedAt": "2026-10-21T12:51:54.619Z",
+      "savedAt": "2026-10-22T14:08:58.656Z",
       "pagination": null,
       "formCapture": null,
       "listingUrls": [
@@ -48,7 +48,8 @@
       "loadMoreSelector": null,
       "locationFallback": null,
       "originalMappings": null,
-      "applyRequiresLogin": false
+      "applyRequiresLogin": false,
+      "externalJobIdNativeSlug": null
     },
     "title": {
       "source": "MANUAL",
