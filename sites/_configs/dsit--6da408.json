@@ -1,5 +1,5 @@
 {
-  "_exportedAt": "2026-10-20T14:55:40.366Z",
+  "_exportedAt": "2026-10-22T12:07:08.554Z",
   "_note": "Mirror of the live config. The DB is authoritative; the worker never reads this file. setupScript lives alongside in <slug>.setup.js.",
   "id": "cmvgrp0xl009901ox266da408",
   "siteUrl": "https://dsit.co.il/career/",
@@ -11,7 +11,7 @@
     "_meta": {
       "lane": null,
       "limits": null,
-      "savedAt": "2026-10-20T14:22:02.860Z",
+      "savedAt": "2026-10-22T12:01:10.452Z",
       "pagination": null,
       "formCapture": null,
       "listingUrls": null,
@@ -37,7 +37,8 @@
       "loadMoreSelector": null,
       "locationFallback": null,
       "originalMappings": null,
-      "applyRequiresLogin": false
+      "applyRequiresLogin": false,
+      "externalJobIdNativeSlug": true
     },
     "title": {
       "source": "MANUAL",
