@@ -1,5 +1,5 @@
 {
-  "_exportedAt": "2026-10-20T14:55:40.163Z",
+  "_exportedAt": "2026-10-22T14:13:34.881Z",
   "_note": "Mirror of the live config. The DB is authoritative; the worker never reads this file. setupScript lives alongside in <slug>.setup.js.",
   "id": "cmvgryb0f009f01oxykcnb9n1",
   "siteUrl": "https://career.adamtotal.co.il/?token=1EB6B34D-8783-4AD3-8SS80-7FA0CFA5DFC8",
@@ -11,7 +11,7 @@
     "_meta": {
       "lane": null,
       "limits": null,
-      "savedAt": "2026-10-20T14:26:19.583Z",
+      "savedAt": "2026-10-22T14:10:40.505Z",
       "pagination": null,
       "formCapture": null,
       "listingUrls": null,
@@ -34,7 +34,8 @@
       "loadMoreSelector": null,
       "locationFallback": null,
       "originalMappings": null,
-      "applyRequiresLogin": false
+      "applyRequiresLogin": false,
+      "externalJobIdNativeSlug": null
     },
     "title": {
       "source": "MANUAL",

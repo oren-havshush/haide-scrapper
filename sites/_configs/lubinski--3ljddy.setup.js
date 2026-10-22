@@ -1,5 +1,4 @@
-// lubinski (see notes.md): all /job/page/N/ + job pages, credentials omit, 20 s each, all-or-nothing; job page
-// redirected to /job/ = closed, named. Apply = the AJAX request (LRN-FORM-17). No captcha, no consent box.
+// id, city: shown by "אם אין ברשותך קובץ קורות חיים לחץ כאן", so fields (optional), not honeypots; file stays required.
 if (document.getElementById('haide-lub')) return;
 var T0 = Date.now(), B = 'https://www.lubinski.co.il/job/', S = String.fromCharCode;
 var OK1 = /(?=\p{L})[\p{sc=Hebrew}\p{sc=Latin}\p{sc=Arabic}]/u;
@@ -12,8 +11,6 @@ var RS = X('מאפיינים אישיותיים|מאפיינים אישיים|כ
 var DL = X('תיאור (משרה|המשרה|התפקיד)|מהות (התפקיד|המשרה)( וניהול שוטף)?');
 var DS = X('מה אנחנו מציעים|מה מחכה (לך|לכם) בתפקיד|במסגרת התפקיד|תחומי אחריות( עיקריים)?|תמצית התפקיד ותחומי אחריות|מה כולל התפקיד|התפקיד כולל|מה תעשו (אצלנו|בפועל)|למה כדאי לכם להצטרף אלינו|תנאי המשרה והסדר שעות|ימים ושעות המשרה|היקף המשרה|שווה לעבוד (אצלנו|בלובינסקי)');
 var TAIL = /משרה זו פונה|הזדמנות נדירה להצטרף|חושב\/ת ש/;
-// text form | city.csv row (verbatim). A city on the title or a work line wins over the tag (owner, STOP 1),
-// unless the title and the text name different cities: then the tag.
 var CT = [['תל אביב|תל-אביב|ת"א', 'תל אביב-יפו'], ['פתח תקווה|פתח תקוה|פ"ת', 'פתח תקווה'], ['ראשון לציון|ראשל"צ', 'ראשון לציון'],
 ['רמת גן', 'רמת גן'], ['ראש העין', 'ראש העין'], ['מודיעין(?! עלית)', 'מודיעין'], ['קריית מלאכי|קרית מלאכי', 'קרית מלאכי'],
 ['אשדוד', 'אשדוד'], ['באר שבע|ב"ש', 'באר שבע'], ['נתניה', 'נתניה'], ['עמק חפר', 'עמק חפר'], ['ירושלים', 'ירושלים'], ['חיפה', 'חיפה']];
@@ -21,7 +18,6 @@ CT.forEach(function (c) {
 c[3] = new RegExp('(^|[\\s(\\[/,.-]|[\\s(](ו?ב|ו?ל|ו))(' + c[0] + ')(?![א-ת])');
 c[4] = new RegExp('(^|[^א-ת])(ו?ב|ו|ל?סניף |באזור |מיקום המשרה:? )(' + c[0] + ')(?![א-ת])');
 });
-// owner-reviewed: JB -> [check on title+text, value or null = the tags]
 var OV = { 'JB-3369': [/השירות שורק/, 'ראשון לציון'] };
 var sq = function (s) { return String(s || '').split(S(160)).join(' ').replace(/[ \t]+/g, ' ').trim(); };
 var tx = function (e) { return sq((e || {}).textContent); };
@@ -272,7 +268,10 @@ item.appendChild(s);
 root.querySelectorAll('div.haide-job').forEach(function (it) {
 var s = it.querySelector('[data-extracted-form]'), h = it.querySelector('.haide-form'), a = it.querySelector('a.haide-link');
 if (!s || !h) { drop.push('form:' + a.href); return; }
-var o = JSON.parse(s.textContent); o.pageUrl = a.href; s.remove(); h.remove();
+var o = JSON.parse(s.textContent); o.pageUrl = a.href;
+o.honeypots = (o.honeypots || []).filter(function (x) { return x != 'id' && x != 'city'; });
+o.fields.splice(3, 0, ...['id', 'city'].map(function (n) { var e = h.querySelector('[name="' + n + '"]'); return e && { name: n, fieldType: 'text', label: e.parentNode.textContent.trim(), required: false, tagName: 'input' }; }).filter(Boolean));
+s.remove(); h.remove();
 ['__ai-applicationInfo', '__ai-formData'].forEach(function (k) { var e = document.createElement('span'); e.className = k; e.textContent = JSON.stringify(o); it.appendChild(e); });
 });
 if (drop.join().indexOf('form:') < 0) root.id = 'haide-lub';
