@@ -1,0 +1,88 @@
+{
+  "_exportedAt": "2026-10-22T13:41:06.004Z",
+  "_note": "Mirror of the live config. The DB is authoritative; the worker never reads this file. setupScript lives alongside in <slug>.setup.js.",
+  "id": "cmqyg1r6m002801nznlbd8461",
+  "siteUrl": "https://safelog.co.il/%D7%93%D7%A8%D7%95%D7%A9%D7%99%D7%9D/",
+  "companyName": "safelog",
+  "status": "ACTIVE",
+  "setupScriptFile": "safelog--bd8461.setup.js",
+  "pageFlow": [],
+  "fieldMappings": {
+    "_meta": {
+      "savedAt": "2026-09-23T12:19:13.823Z",
+      "pagination": null,
+      "formCapture": {
+        "fields": [
+          {
+            "name": "form_fields[name]",
+            "label": "שם מלא",
+            "tagName": "input",
+            "required": true,
+            "fieldType": "text"
+          },
+          {
+            "name": "form_fields[email]",
+            "label": "מייל",
+            "tagName": "input",
+            "required": true,
+            "fieldType": "email"
+          },
+          {
+            "name": "form_fields[field_9dd33f9]",
+            "label": "טלפון",
+            "tagName": "input",
+            "required": true,
+            "fieldType": "text"
+          },
+          {
+            "name": "form_fields[field_949d861]",
+            "label": "העלאת קובץ קורות חיים",
+            "tagName": "input",
+            "required": false,
+            "fieldType": "file"
+          }
+        ],
+        "method": "post",
+        "actionUrl": "https://safelog.co.il/%D7%93%D7%A8%D7%95%D7%A9%D7%99%D7%9D/",
+        "formSelector": "form.elementor-form"
+      },
+      "listingUrls": null,
+      "itemSelector": "ul:not([class]) > li:not([class])",
+      "minPublishDate": null,
+      "minPublishDays": null,
+      "revealSelector": null,
+      "listingSelector": null,
+      "applyLoginReason": null,
+      "browserOverrides": null,
+      "loadMoreSelector": null,
+      "locationFallback": null,
+      "originalMappings": null,
+      "applyRequiresLogin": false
+    },
+    "title": {
+      "source": "auto",
+      "selector": ".__ai-title",
+      "confidence": 0.95
+    },
+    "location": {
+      "source": "auto",
+      "selector": ".__ai-location",
+      "confidence": 0.9
+    },
+    "description": {
+      "source": "auto",
+      "selector": ".__ai-description",
+      "confidence": 0.8
+    },
+    "externalJobId": {
+      "source": "auto",
+      "selector": ".__ai-id",
+      "confidence": 0.95
+    },
+    "applicationInfo": {
+      "source": "auto",
+      "selector": ".__ai-apply",
+      "confidence": 0.95
+    }
+  }
+}
