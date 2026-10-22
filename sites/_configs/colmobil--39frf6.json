@@ -1,5 +1,5 @@
 {
-  "_exportedAt": "2026-09-22T14:36:18.463Z",
+  "_exportedAt": "2026-10-22T08:09:49.167Z",
   "_note": "Mirror of the live config. The DB is authoritative; the worker never reads this file. setupScript lives alongside in <slug>.setup.js.",
   "id": "cmtprk0bt000201rwti39frf6",
   "siteUrl": "https://www.colmobil.co.il/career-in-colmobil/jobs/",
@@ -9,7 +9,11 @@
   "pageFlow": [],
   "fieldMappings": {
     "_meta": {
-      "savedAt": "2026-09-06T12:17:31.790Z",
+      "lane": null,
+      "limits": {
+        "setupScriptSeconds": 300
+      },
+      "savedAt": "2026-10-21T20:56:47.240Z",
       "pagination": null,
       "formCapture": {
         "fields": [
@@ -46,7 +50,10 @@
         "actionUrl": "https://www.colmobil.co.il/career-in-colmobil/jobs/",
         "formSelector": "form.job-cv-form"
       },
+      "listingUrls": null,
+      "locationMap": null,
       "itemSelector": "a.job-card-wrap",
+      "acceptedGates": null,
       "minPublishDate": null,
       "minPublishDays": null,
       "revealSelector": null,
@@ -61,7 +68,8 @@
       "loadMoreSelector": null,
       "locationFallback": null,
       "originalMappings": null,
-      "applyRequiresLogin": false
+      "applyRequiresLogin": false,
+      "externalJobIdNativeSlug": null
     },
     "title": {
       "source": "auto",
