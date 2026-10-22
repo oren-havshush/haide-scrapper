@@ -1,5 +1,5 @@
 {
-  "_exportedAt": "2026-09-22T14:36:42.601Z",
+  "_exportedAt": "2026-10-22T13:41:22.169Z",
   "_note": "Mirror of the live config. The DB is authoritative; the worker never reads this file. setupScript lives alongside in <slug>.setup.js.",
   "id": "cmp9p34hw001501lsdle2pnpm",
   "siteUrl": "https://kedmi770.co.il/%D7%93%D7%A8%D7%95%D7%A9%D7%99%D7%9D-%D7%9E%D7%97%D7%A4%D7%A9%D7%99%D7%9D-%D7%A2%D7%95%D7%91%D7%93%D7%99%D7%9D/",
@@ -9,44 +9,56 @@
   "pageFlow": [],
   "fieldMappings": {
     "_meta": {
-      "savedAt": "2026-05-17T11:36:27.803Z",
+      "lane": null,
+      "limits": null,
+      "savedAt": "2026-10-22T13:24:04.296Z",
       "pagination": null,
       "formCapture": null,
-      "itemSelector": "#haide-jobs-root [data-haide-job]",
+      "listingUrls": null,
+      "locationMap": null,
+      "itemSelector": "#haide-kedmi .haide-job",
+      "acceptedGates": null,
+      "minPublishDate": null,
+      "minPublishDays": null,
       "revealSelector": null,
       "listingSelector": null,
-      "originalMappings": null
+      "applyLoginReason": null,
+      "browserOverrides": null,
+      "loadMoreSelector": null,
+      "locationFallback": null,
+      "originalMappings": null,
+      "applyRequiresLogin": false,
+      "externalJobIdNativeSlug": null
     },
     "title": {
       "source": "MANUAL",
-      "selector": "h3",
+      "selector": ".__ai-title",
       "confidence": 100,
-      "capturedOnUrl": "https://kedmi770.co.il/%D7%93%D7%A8%D7%95%D7%A9%D7%99%D7%9D-%D7%9E%D7%97%D7%A4%D7%A9%D7%99%D7%9D-%D7%A2%D7%95%D7%91%D7%93%D7%99%D7%9D/"
+      "capturedOnUrl": "https://kedmi770.co.il/careers"
+    },
+    "location": {
+      "source": "MANUAL",
+      "selector": ".__ai-location",
+      "confidence": 100,
+      "capturedOnUrl": "https://kedmi770.co.il/careers"
     },
     "description": {
       "source": "MANUAL",
-      "selector": "p",
+      "selector": ".__ai-description",
       "confidence": 100,
-      "capturedOnUrl": "https://kedmi770.co.il/%D7%93%D7%A8%D7%95%D7%A9%D7%99%D7%9D-%D7%9E%D7%97%D7%A4%D7%A9%D7%99%D7%9D-%D7%A2%D7%95%D7%91%D7%93%D7%99%D7%9D/"
+      "capturedOnUrl": "https://kedmi770.co.il/careers"
     },
     "requirements": {
       "source": "MANUAL",
-      "selector": "ul",
+      "selector": ".__ai-requirements",
       "confidence": 100,
-      "capturedOnUrl": "https://kedmi770.co.il/%D7%93%D7%A8%D7%95%D7%A9%D7%99%D7%9D-%D7%9E%D7%97%D7%A4%D7%A9%D7%99%D7%9D-%D7%A2%D7%95%D7%91%D7%93%D7%99%D7%9D/"
-    },
-    "externalJobId": {
-      "source": "MANUAL",
-      "selector": "[data-haide-job-id]",
-      "confidence": 100,
-      "capturedOnUrl": "https://kedmi770.co.il/%D7%93%D7%A8%D7%95%D7%A9%D7%99%D7%9D-%D7%9E%D7%97%D7%A4%D7%A9%D7%99%D7%9D-%D7%A2%D7%95%D7%91%D7%93%D7%99%D7%9D/"
+      "capturedOnUrl": "https://kedmi770.co.il/careers"
     },
     "applicationInfo": {
       "source": "MANUAL",
-      "selector": "a[href^=\"mailto:\"]",
+      "selector": ".__ai-apply",
       "confidence": 100,
-      "extractAttr": "href",
-      "capturedOnUrl": "https://kedmi770.co.il/%D7%93%D7%A8%D7%95%D7%A9%D7%99%D7%9D-%D7%9E%D7%97%D7%A4%D7%A9%D7%99%D7%9D-%D7%A2%D7%95%D7%91%D7%93%D7%99%D7%9D/"
+      "capturedOnUrl": "https://kedmi770.co.il/careers"
     }
   }
 }
