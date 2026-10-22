@@ -63,6 +63,8 @@ export async function POST(
       height: stored.inspection.height,
       format: stored.inspection.format,
       byteLength: stored.inspection.byteLength,
+      // The hex a light-on-transparent logo was composited on, or null.
+      background: stored.background,
       site,
     });
   } catch (error) {

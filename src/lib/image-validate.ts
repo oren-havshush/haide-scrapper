@@ -21,9 +21,9 @@
  *  2. SVG is rejected outright. An SVG is an XML document the browser
  *     executes (<script>, <foreignObject>, external entities). Self-hosting
  *     one on the public jobs site's own origin is stored XSS. Making SVG safe
- *     means rasterising it; there is no `sharp` in this project (it sits in
- *     pnpm-workspace.yaml's ignoredBuiltDependencies) and adding a native
- *     dependency for a logo is a bad trade. Raster only.
+ *     means rasterising it. `sharp` is a dependency since 2026-10-22, but only
+ *     to judge and composite raster logos after this gate accepted them
+ *     (src/lib/logo-background.ts); it never opens an SVG. Raster only.
  */
 
 /** Hard ceiling on logo bytes. Enforced by streaming, never via Content-Length. */

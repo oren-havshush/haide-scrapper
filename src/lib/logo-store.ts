@@ -10,9 +10,10 @@
  * than taken from any client string.
  */
 
-import { mkdir, rename, writeFile } from "node:fs/promises";
+import { mkdir, rename, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { ValidationError } from "@/lib/errors";
+import { withLogoBackground } from "@/lib/logo-background";
 import {
   FORMAT_TO_CONTENT_TYPE,
   inspectImage,
@@ -38,7 +39,10 @@ const CUID_PATTERN = /^[a-z0-9]{20,32}$/;
 export interface StoredLogo {
   /** Path stored in Site.companyLogoPath, e.g. "/logos/clx123….png". */
   logoPath: string;
+  /** Describes the stored file: the composite when a background was added. */
   inspection: ImageInspection;
+  /** The hex the logo was composited on (src/lib/logo-background.ts), or null. */
+  background: string | null;
 }
 
 export function assertValidSiteId(siteId: string): void {
@@ -77,6 +81,27 @@ export async function storeLogo(
     throw error;
   }
 
+  // A light logo on transparency disappears on the public site's white card:
+  // it is stored composited on one dark neutral, with the original kept as
+  // <siteId>.orig.<ext>. Anything else is stored unchanged, as before.
+  const original = { bytes, format: inspection.format };
+  let stored = bytes;
+  let background: string | null = null;
+  const judged = await withLogoBackground(bytes, inspection.format);
+  if (judged.kind === "unreadable") {
+    console.warn(`[logo-store] ${siteId}: the decoder could not read the ${inspection.format}; stored unchanged (${judged.error})`);
+  } else if (judged.kind === "composited") {
+    try {
+      inspection = inspectImage(judged.bytes, "image/png", {
+        minDimension: opts.operator ? OPERATOR_MIN_LOGO_DIMENSION : MIN_LOGO_DIMENSION,
+      });
+      stored = judged.bytes;
+      background = judged.background;
+    } catch (error) {
+      console.warn(`[logo-store] ${siteId}: the composite failed validation; stored unchanged (${(error as Error).message})`);
+    }
+  }
+
   // Generated, never derived from a client string. The extension comes from
   // the magic bytes, not from the URL or the Content-Type header.
   const filename = `${siteId}.${inspection.format}`;
@@ -90,12 +115,28 @@ export async function storeLogo(
 
   await mkdir(LOGO_DIR, { recursive: true });
 
-  // Atomic publish: Caddy must never serve a half-written file.
+  // The original first, so a stored composite never exists without it. A logo
+  // stored unchanged removes any earlier original: a later pass must never
+  // rebuild from a logo the site has since replaced.
+  for (const format of ["png", "webp"] as const) {
+    const origPath = path.join(LOGO_DIR, `${siteId}.orig.${format}`);
+    if (background !== null && format === original.format) {
+      await writeAtomic(origPath, original.bytes);
+    } else {
+      await rm(origPath, { force: true });
+    }
+  }
+
+  await writeAtomic(fullPath, stored);
+
+  return { logoPath: `${LOGO_URL_PREFIX}/${filename}`, inspection, background };
+}
+
+/** Atomic publish: Caddy must never serve a half-written file. */
+async function writeAtomic(fullPath: string, bytes: Uint8Array): Promise<void> {
   const tmpPath = `${fullPath}.tmp`;
   await writeFile(tmpPath, bytes);
   await rename(tmpPath, fullPath);
-
-  return { logoPath: `${LOGO_URL_PREFIX}/${filename}`, inspection };
 }
 
 export function contentTypeForStoredLogo(logoPath: string): string | null {

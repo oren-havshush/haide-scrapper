@@ -62,5 +62,18 @@ jobs:
       - name: Build web image
         run: docker build -t scrapnew-web:${{ github.sha }} .
 
+      # sharp judges and composites light logos (src/lib/logo-background.ts). An
+      # image without its native build would store every logo unchanged with only
+      # a console warning, so both images prove it composites one pixel.
+      - name: The web image composites with sharp
+        run: |
+          docker image inspect -f 'web image {{.Size}} bytes' scrapnew-web:${{ github.sha }}
+          docker run --rm --entrypoint sh scrapnew-web:${{ github.sha }} -c 'du -sk node_modules/sharp node_modules/@img/* 2>/dev/null || true'
+          docker run --rm --entrypoint node scrapnew-web:${{ github.sha }} -e 'const s=require("sharp");s({create:{width:4,height:4,channels:4,background:{r:255,g:255,b:255,alpha:0}}}).flatten({background:"#1F2937"}).raw().toBuffer().then((b)=>{if(b[0]!==31||b[1]!==41||b[2]!==55)throw new Error("composite "+Array.from(b.subarray(0,3)));console.log("sharp",s.versions.sharp,"composites in the web image")})'
+
       - name: Build worker image
         run: docker build -t scrapnew-worker:${{ github.sha }} -f Dockerfile.worker .
+
+      - name: The worker image composites with sharp (scripts/logo-background-pass.ts runs there)
+        run: |
+          docker run --rm --entrypoint node scrapnew-worker:${{ github.sha }} -e 'const s=require("sharp");s({create:{width:4,height:4,channels:4,background:{r:255,g:255,b:255,alpha:0}}}).flatten({background:"#1F2937"}).raw().toBuffer().then((b)=>{if(b[0]!==31||b[1]!==41||b[2]!==55)throw new Error("composite "+Array.from(b.subarray(0,3)));console.log("sharp",s.versions.sharp,"composites in the worker image")})'

@@ -117,6 +117,7 @@ import { captureQuery, keepOperatorFields, parseReplaceFields, withoutHumanHqAns
 import { capturedHomepage } from "../src/lib/companyHomepage";
 import { fetchImage, ImageRejected, type FetchedImage } from "./lib/fetch-image";
 import { inspectImage } from "../src/lib/image-validate";
+import { logoBackgroundNote } from "../src/lib/logo-background";
 
 import type { Browser, Page } from "playwright";
 import type { BrowserOverrides } from "../worker/lib/playwright";
@@ -1200,6 +1201,8 @@ interface LogoOutcome {
   attempts: { url: string; source: string; result: string }[];
   /** True when the stored logo was kept and the step skipped (logo-keep.ts). */
   kept?: boolean;
+  /** The hex the server composited a light-on-transparent logo on (src/lib/logo-background.ts). */
+  background?: string | null;
 }
 
 /**
@@ -1277,7 +1280,7 @@ async function captureLogo(
       return { logoPath: "(dry-run)", sourceUrl: image.finalUrl, candidateUrl: candidate.url, visibility, attempts };
     }
     try {
-      const uploaded = await api<{ data: { logoPath: string } }>(
+      const uploaded = await api<{ data: { logoPath: string; background?: string | null } }>(
         "POST",
         `/api/sites/${siteId}/company-logo`,
         image.bytes,
@@ -1287,7 +1290,14 @@ async function captureLogo(
         },
       );
       attempts.push({ url: candidate.url, source: candidate.source, result: "uploaded" });
-      return { logoPath: uploaded.data.logoPath, sourceUrl: image.finalUrl, candidateUrl: candidate.url, visibility, attempts };
+      return {
+        logoPath: uploaded.data.logoPath,
+        sourceUrl: image.finalUrl,
+        candidateUrl: candidate.url,
+        visibility,
+        attempts,
+        background: uploaded.data.background ?? null,
+      };
     } catch (error) {
       failed(candidate, error);
     }
@@ -1747,18 +1757,19 @@ async function captureSite(
       // A light-on-dark logo is a valid image that passes every byte check and
       // is then invisible on the public site's light background.
       //
-      // Flagged, never altered. Compositing a backdrop into the stored PNG was
-      // considered and rejected (decision 2026-08-26): companyLogoPath is
-      // write-once and the public site reads it directly, so a baked-in
-      // background is irreversible short of a --force recapture, and for an
-      // inline-SVG logo there is no companyLogoSourceUrl for rehydrate-logos.ts
-      // to repair from. The fix belongs at render time — a dark chip behind the
-      // logo — which stays reversible and adapts if the site gains a dark mode.
+      // One kind is fixed on the server: a light mark on transparency is
+      // stored composited on one dark neutral, with the original kept beside
+      // it (src/lib/logo-background.ts, item 19 of 2026-10-22; it supersedes
+      // the 2026-08-26 decision to only flag). The note says so.
       //
-      // This warning is therefore the ONLY signal that a logo needs that
-      // treatment. It must stay accurate, and it must cover every source.
+      // Every other low-contrast logo (light on an opaque light field, say)
+      // is flagged, never altered. This warning is the ONLY signal that such
+      // a logo needs a hand. It must stay accurate, and it must cover every
+      // source.
       const seen = logo.visibility;
-      if (seen && seen.onWhite < LOGO_VISIBLE_ON_WHITE_MIN) {
+      if (logo.background) {
+        (result.notes ??= []).push(logoBackgroundNote(logo.background));
+      } else if (seen && seen.onWhite < LOGO_VISIBLE_ON_WHITE_MIN) {
         const wouldHelp = seen.onDark - seen.onWhite >= LOGO_DARK_IMPROVEMENT_MIN;
         (result.warnings ??= []).push(
           `only ${Math.round(seen.onWhite * 100)}% of this logo clears 3:1 contrast on a white ` +
